@@ -1,0 +1,25 @@
+{
+  "openrpc": "1.2.4",
+  "info": {
+    "title": "SDK",
+    "version": "0.0.0"
+  },
+  "methods": [
+    {
+      "name": "rpc.discover",
+      "summary": "Test SDK OpenRPC schema",
+      "params": [],
+      "result": {
+        "name": "OpenRPC Schema",
+        "schema": {
+          "type": "object"
+        }
+      }
+    }
+  ],
+  "components": {
+    "schemas": {
+      
+    }
+  }
+}

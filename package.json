@@ -1,0 +1,51 @@
+{
+  "name": "@firebolt-js/openrpc",
+  "version": "1.0.1-rc.6",
+  "description": "The Firebolt SDK Code & Doc Generator",
+  "bin": {
+    "firebolt-openrpc": "./src/cli.mjs"
+  },
+  "scripts": {
+    "prepare": "npm run prepare:setup",
+    "prepare:setup": "mkdir -p ./dist/docs ./build/docs/markdown ./build/sdk/javascript/src",
+    "test": "jest --config=jest.config.js --detectOpenHandles",
+    "build": "npm run validate && npm run build:docs && npm run build:sdk",
+    "validate": "npm run build:openrpc && node ./src/cli.mjs validate ./src",
+    "build:openrpc": "node ./src/cli.mjs openrpc ./src ./src/template/openrpc/template.json ./dist/sdk-open-rpc.json",
+    "build:sdk": "node ./src/cli.mjs sdk ./src/ ./src/template/js ./build/sdk/javascript/src",
+    "build:docs": "node ./src/cli.mjs docs ./src/ ./src/template/markdown ./build/docs/markdown asPath",
+    "build:wiki": "node ./src/cli.mjs docs ./src/ ./src/template/markdown ./build/docs/markdown",
+    "dist": "npm run validate && npm run build:sdk && npm run build:docs && npm run pack && npm run test",
+    "pack": "webpack --config webpack.config.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rdkcentral/firebolt-core-sdk/blob/main/src/modules//ottx/firebolt-openrpc.git"
+  },
+  "author": "",
+  "bugs": {
+    "url": "https://github.com/rdkcentral/firebolt-openrpc/issues"
+  },
+  "homepage": "https://github.com/rdkcentral/firebolt-core-sdk/blob/main/src/modules//ottx/firebolt-openrpc#readme",
+  "devDependencies": {
+    "webpack-cli": "^4.8.0"
+  },
+  "keywords": [
+    "firebolt",
+    "apps",
+    "sdk"
+  ],
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@babel/preset-env": "^7.15.0",
+    "ajv": "^8.3.0",
+    "ajv-formats": "^2.1.0",
+    "babel-cli": "^6.0.0",
+    "babel-jest": "^27.0.6",
+    "babel-preset-es2015": "^6.0.0",
+    "crocks": "^0.12.4",
+    "deepmerge": "^4.2.2",
+    "highland": "^2.13.5",
+    "webpack": "^5.51.1"
+  }
+}

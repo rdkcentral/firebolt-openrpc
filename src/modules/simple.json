@@ -1,0 +1,105 @@
+{
+    "openrpc": "1.2.4",
+    "info": {
+        "title": "Simple",
+        "description": "Simple module for testing firebolt-openrpc",
+        "version": "0.0.0"
+    },
+    "methods": [
+        {
+            "name": "method",
+            "summary": "A method.",
+            "description": "A method for testing basic method generation.",
+            "params": [
+                {
+                    "name": "parameter",
+                    "required": true,
+                    "schema": {
+                        "type": "boolean"
+                    },
+                    "summary": "A test parameter."
+                }
+            ],
+            "result": {
+                "name": "result",
+                "summary": "A result for testing basic method generation.",
+                "schema": {
+                    "type": "object",
+                    "required": [
+                        "foo"
+                    ],
+                    "properties": {
+                        "foo": {
+                            "type": "string",
+                            "description": "A required field in the result."
+                        },
+                        "bar": {
+                            "type": "number",
+                            "description": "An optional field in the result."
+                        }
+                    },
+                    "additionalProperties": false
+                }
+            },
+            "examples": [
+                {
+                    "name": "Default Example",
+                    "params": [
+                        {
+                            "name": "parameter",
+                            "value": true
+                        }
+                    ],
+                    "result": {
+                        "name": "Default Result",
+                        "value": {
+                            "foo": "here's foo"
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "methodWithSchema",
+            "summary": "A method using a schema.",
+            "description": "A method for testing schema-dependent method generation.",
+            "params": [
+                {
+                    "name": "title",
+                    "required": true,
+                    "schema": {
+                        "$ref": "https://meta.comcast.com/firebolt/types#/definitions/LocalizedString"
+                    },
+                    "summary": "A localized string test parameter."
+                }
+            ],
+            "result": {
+                "name": "result",
+                "summary": "A result for testing basic method generation.",
+                "schema": {
+                    "$ref": "https://meta.comcast.com/firebolt/types#/definitions/LocalizedString"
+                }
+            },
+            "examples": [
+                {
+                    "name": "Default Example",
+                    "params": [
+                        {
+                            "name": "parameter",
+                            "value": true
+                        }
+                    ],
+                    "result": {
+                        "name": "Default Result",
+                        "value": {
+                            "foo": "here's foo"
+                        }
+                    }
+                }
+            ]
+        }
+    ],
+    "components": {
+        "schemas": {}
+    }
+}
