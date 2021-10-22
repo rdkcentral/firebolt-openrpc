@@ -71,7 +71,6 @@ const getTransportLayer = () => {
     // in 500ms, default to the mock FTL
     // TODO: design a better way to load mock
     timeout = setTimeout(() => {
-      console.log("Setting up mock transport layer")
       setTransportLayer(mock)
     }, 500)
 
@@ -80,6 +79,7 @@ const getTransportLayer = () => {
 }
 
 const setTransportLayer = tl => {
+  
   if (timeout) clearTimeout(timeout)
 
   // remove handshake object
@@ -88,6 +88,8 @@ const setTransportLayer = tl => {
   transport = tl
   queue.flush(tl)
 }
+
+const getEventName = x => (x[3].match(/[A-Z]/) ? x[2] : x[2].toLowerCase()) + x.substr(3)
 
 const send = (module, method, params) => {
   let p = new Promise((resolve, reject) => {
@@ -101,12 +103,12 @@ const send = (module, method, params) => {
     if (method.match(/^on[A-Z]/)) {
       //onEventName(true)
       if (params.listen) {
-        event_map[id] = module.toLowerCase() + '.' + method[2].toLowerCase() + method.substr(3)
+        event_map[id] = module.toLowerCase() + '.' + getEventName(method)
       }
       //onEventName(false)
       else {
         Object.keys(event_map).forEach( key => {
-          if (event_map[key] === module.toLowerCase() + '.' + method[2].toLowerCase() + method.substr(3)) {
+          if (event_map[key] === module.toLowerCase() + '.' + getEventName(method)) {
             delete event_map[key]
           }
         })

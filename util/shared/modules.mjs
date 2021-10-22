@@ -176,7 +176,7 @@ const getEvents = compose(
     // Maintain the side effect of process.exit here if someone is violating the rules
     map(map(e => {
         if (!e.name.match(/on[A-Z]/)) {
-            console.error(`ERROR: ${e.name} method is tagged as an event, but does not match the pattern "on[A-Z]"`)
+            console.error(`ERROR: '${e.name}' method is tagged as an event, but does not match the pattern "on[A-Z]"`)
             process.exit(1) // Non-zero exit since we don't want to continue. Useful for CI/CD pipelines.
         }
         return e

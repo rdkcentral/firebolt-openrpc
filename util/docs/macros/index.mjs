@@ -23,6 +23,7 @@ import { fsWriteFile, fsReadFile, bufferToString, getFilename, getDirectory, get
 import { getMethodSignature, getMethodSignatureParams ,getSchemaType, getSchemaShape } from '../../shared/typescript.mjs'
 import { getPath, getSchema, getExternalSchemaPaths, getSchemaConstraints, isDefinitionReferencedBySchema, hasTitle, localizeDependencies } from '../../shared/json-schema.mjs'
 import { getTemplate, getAllTemplateNames } from '../../shared/template.mjs'
+import { getEventName } from '../../shared/javascript.mjs'
 import path from 'path'
 
 /**
@@ -168,7 +169,7 @@ function insertMacros(data, json) {
     if (json.methods) {
         data = data
             .replace(/\$\{toc.methods\}/g, json.methods.filter(m => !m.name.match(/^on[A-Z]/)).map(m => '    - [' + m.name + '](#' + m.name.toLowerCase() + ')').join('\n'))
-            .replace(/\$\{toc.events\}/g, json.methods.filter(m => m.name.match(/^on[A-Z]/)).map(m => '    - [' + m.name[2].toLowerCase() + m.name.substr(3) + '](#' + m.name.substr(3).toLowerCase() + ')').join('\n'))
+            .replace(/\$\{toc.events\}/g, json.methods.filter(m => m.name.match(/^on[A-Z]/)).map(m => '    - [' + getEventName(m.name) + '](#' + getEventName(m.name).toLowerCase() + ')').join('\n'))
     }
 
     data = data
@@ -206,7 +207,7 @@ function insertMethodMacros(data, method, module) {
 
     method_data = method_data
         .replace(/\$\{method.name\}/g, method.name)
-        .replace(/\$\{event.name\}/g, method.name.length > 3 ? method.name[2].toLowerCase() + method.name.substr(3): method.name)
+        .replace(/\$\{event.name\}/g, method.name.length > 3 ? getEventName(method.name): method.name)
         .replace(/\$\{method.summary\}/g, method.summary)
         .replace(/\$\{method.description\}/g, method.description || method.summary)
         .replace(/\$\{module\}/g, module)
@@ -401,7 +402,7 @@ function insertEventMacros(data, methods, module) {
         lines = lines.split('\n')
 
         let method_data = lines.join('\n')
-            .replace(/\$\{event.name\}/, method.name[2].toLowerCase() + method.name.substr(3))
+            .replace(/\$\{event.name\}/, getEventName(method.name))
             .replace(/\$\{event.summary\}/, method.summary)
             .replace(/\$\{event.description\}/, method.description)
             .replace(/\$\{event.result.name\}/, method.result.name)
@@ -614,7 +615,7 @@ function generateRPCCallbackExampleResult(example, m, module) {
 
 function generateEventExample(example, m, module) {
     let typescript = `import { ${module} } from '@firebolt-js/sdk'\n\n`
-    typescript += `${module}.listen('${m.name[2].toLowerCase() + m.name.substr(3)}', ${m.result.name} => {\n`
+    typescript += `${module}.listen('${getEventName(m.name)}', ${m.result.name} => {\n`
     typescript += `  console.log(${m.result.name})\n`
     typescript += '})'
 

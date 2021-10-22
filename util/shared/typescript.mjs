@@ -18,15 +18,14 @@
 
 import { getPath, getSchema } from './json-schema.mjs'
 import deepmerge from 'deepmerge'
-import { localizeDependencies } from './json-schema.mjs'
-import { getLinkFromRef, getTitle } from './helpers.mjs'
-import { getFilename } from './helpers.mjs'
+import { getLinkFromRef } from './helpers.mjs'
+import { getSafeName } from './javascript.mjs'
 import path from 'path'
 
 const isSynchronous = m => !m.tags ? false : m.tags.map(t => t.name).find(s => s === 'synchronous')
 
 function getMethodSignature(module, method, options={ isInterface: false }) {
-    let typescript = (options.isInterface ? '' : 'function ') + method.name + '('
+    let typescript = (options.isInterface ? '' : 'function ') + getSafeName(method.name) + '('
 
     typescript += getMethodSignatureParams(module, method)
     typescript += '): ' + (isSynchronous(method) ? getSchemaType(module, method.result, {title: true}) : 'Promise<' + getSchemaType(module, method.result, {title: true}) + '>')
@@ -35,7 +34,7 @@ function getMethodSignature(module, method, options={ isInterface: false }) {
 }
 
 function getMethodSignatureParams(module, method) {
-    return method.params.map( param => param.name + (!param.required ? '?' : '') + ': ' + getSchemaType(module, param, {title: true})).join(', ')
+    return method.params.map( param => getSafeName(param.name) + (!param.required ? '?' : '') + ': ' + getSchemaType(module, param, {title: true})).join(', ')
 }
 
 const safeName = prop => prop.match(/[.+]/) ? '"' + prop + '"' : prop
@@ -47,7 +46,7 @@ function getSchemaShape(module, json, name, options = {level: 0, descriptions: t
 
     let prefix = (level === 0 ? 'type ' : '')
     let operator = (level == 0 ? ' =' : ':')
-    let title = (level === 0 ? json.title || name : name)
+    let title = getSafeName(level === 0 ? json.title || name : name)
 
     if (!title) {
       prefix = operator = title = ''
@@ -76,6 +75,7 @@ function getSchemaShape(module, json, name, options = {level: 0, descriptions: t
   
       if (json.properties) {
         Object.entries(json.properties).forEach(([name, prop]) => {
+          name = getSafeName(name)
           if (!json.required || !json.required.includes(name)) {
             name = name + '?'
           }
@@ -290,7 +290,7 @@ function getSchemaShape(module, json, name, options = {level: 0, descriptions: t
   }
 
   const enumReducer = (acc, val, i, arr) => {
-    const keyName = val.replace(/[\.\-]/g, '_').replace(/\+/g, '_plus').replace(/([a-z])([A-Z0-9])/g, '$1_$2').toUpperCase()
+    const keyName = getSafeName(val.replace(/[\.\-]/g, '_').replace(/\+/g, '_plus').replace(/([a-z])([A-Z0-9])/g, '$1_$2').toUpperCase())
     acc = acc + `    ${keyName} = '${val}'`
     if (i < arr.length-1) {
       acc = acc.concat(',\n')
@@ -299,7 +299,7 @@ function getSchemaShape(module, json, name, options = {level: 0, descriptions: t
   }
 
   const generateEnum = schema => {
-    if (!schema.enum) {
+    if (!schema.enum || !(schema.type === 'string')) {
       return ''
     }
     else {

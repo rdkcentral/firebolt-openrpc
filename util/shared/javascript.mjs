@@ -17,7 +17,7 @@
  */
 
 const enumReducer = (acc, val, i, arr) => {
-    const keyName = val.replace(/[\.\-]/g, '_').replace(/\+/g, '_plus').replace(/([a-z])([A-Z0-9])/g, '$1_$2').toUpperCase()
+    const keyName = getSafeName(val.replace(/[\.\-]/g, '_').replace(/\+/g, '_plus').replace(/([a-z])([A-Z0-9])/g, '$1_$2').toUpperCase())
     acc = acc + `    ${keyName}: '${val}'`
     if (i < arr.length-1) {
       acc = acc.concat(',\n')
@@ -37,6 +37,53 @@ const generateEnum = schema => {
   }
 }
 
+const reserved = [
+'break',
+'case', 
+'catch', 
+'class', 
+'const', 
+'continue', 
+'debugger', 
+'default', 
+'delete', 
+'do',
+'else', 
+'export', 
+'extends',
+'finally',
+'for',
+'function',
+'if',
+'import',
+'in',
+'instanceof',
+'new',
+'return',
+'super',
+'switch',
+'this',
+'throw',
+'try',
+'typeof',
+'var',
+'void',
+'while',
+'with',
+'yield'
+]
+
+function getSafeName(name) {
+  name = name .replace(/ /g, '_')
+              .replace(/\-/g, '_')
+
+  if (reserved.includes(name)) {
+    name = '_' + name
+  }
+
+  return name
+}
+
 function getMethodSignature(module, method, options={ isInterface: false }) {
   let javascript = (isInterface ? '' : 'function ') + method.name + '('
   javascript += getMethodSignatureParams(module, method)
@@ -46,11 +93,18 @@ function getMethodSignature(module, method, options={ isInterface: false }) {
 }
 
 function getMethodSignatureParams(module, method) {
-  return method.params.map( param => param.name ).join(', ')
+  if (method.params)
+    return method.params.map( param => param.name ).join(', ')
+  else
+    return ''
 }
+
+const getEventName = x => (x[3].match(/[A-Z]/) ? x[2] : x[2].toLowerCase()) + x.substr(3) // onFooBar becomes fooBar, onFOOBar becomes FOOBar
 
 export {
     generateEnum,
     getMethodSignature,
-    getMethodSignatureParams
+    getMethodSignatureParams,
+    getEventName,
+    getSafeName
 }

@@ -17,6 +17,7 @@
  */
 
 import crocks from 'crocks'
+import { read } from 'fs'
 import fs from 'fs/promises'
 import path from 'path'
 import url from 'url'
@@ -51,7 +52,7 @@ const getRef = (ref, json) => {
 
 const refToPath = ref => {
   let path = ref.split('#').pop().substr(1).split('/')
-  return path.map(x => x.match(/[0-9]+/) ? parseInt(x) : x)
+  return path.map(x => x.match(/^[0-9]+$/) ? parseInt(x) : x)
 }
 
 const objectPaths = obj => {
@@ -151,11 +152,23 @@ const replaceUri = (existing, replacement, schema) => {
 }
 
 const replaceRef = (existing, replacement, schema) => {
+  if (existing.endsWith('/')) {
+    existing = existing.slice(0, -1)
+  }
+
   if (schema) {
     if (schema.hasOwnProperty('$ref') && (typeof schema['$ref'] === 'string')) {
       if (schema['$ref'] === existing) {
         schema['$ref'] = replacement
       }
+      else if (schema['$ref'].startsWith(existing + '/')) {
+        schema['$ref'] = replacement + schema['$ref'].substr(existing.length)
+      }
+    }
+    else if (Array.isArray(schema)) {
+      schema.forEach(item => {
+        replaceRef(existing, replacement, item)
+      })
     }
     else if (typeof schema === 'object') {
       Object.keys(schema).forEach(key => {

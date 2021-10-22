@@ -31,7 +31,7 @@ const { isObject, isArray, propEq, pathSatisfies } = predicates
 
 import { isExcludedMethod, isRPCOnlyMethod } from '../../shared/modules.mjs'
 import { getTemplate, getTemplateForMethod } from '../../shared/template.mjs'
-import { getMethodSignatureParams } from '../../shared/javascript.mjs'
+import { getMethodSignatureParams, getEventName } from '../../shared/javascript.mjs'
 
 const staticModules = []
 
@@ -136,8 +136,8 @@ const eventsOrEmptyArray = compose(
   // Maintain the side effect of process.exit here if someone is violating the rules
   map(map(e => {
     if (!e.name.match(/on[A-Z]/)) {
-      console.error(`ERROR: ${e.name} method is tagged as an event, but does not match the pattern "on[A-Z]"`)
-      process.exit(1) // Non-zero exit since we don't want to continue. Useful for CI/CD pipelines.
+      console.log(`WARNING: '${e.name}' method is tagged as an event, but does not match the pattern "on[A-Z]"`)
+//      process.exit(1) // Non-zero exit since we don't want to continue. Useful for CI/CD pipelines.
     }
     return e
   })),
@@ -154,8 +154,6 @@ const getMethodsThatCallMetrics = compose(
 const getModuleName = json => {
   return json ? (json.title || (json.info ? json.info.title : 'Unknown')) : 'Unknown'
 }
-
-const makeEventName = x => x.name[2].toLowerCase() + x.name.substr(3) // onFooBar becomes fooBar
 
 //import { default as platform } from '../Platform/defaults'
 const generateAggregateMacros = obj => {
@@ -277,7 +275,7 @@ const generateEvents = compose(
     }
     return acc
   }, ''),
-  map(makeEventName),
+  map(e => getEventName(e.name)),
   eventsOrEmptyArray
 )
 
@@ -315,7 +313,7 @@ const generateInitialization = json => compose(
     if (i === 0) {
       acc = []
     }
-    acc.push(makeEventName(method))
+    acc.push(getEventName(method.name))
     if (i < arr.length-1) {
       return acc  
     }
@@ -344,7 +342,7 @@ function generateMethodList(json = {}) {
 }
 
 function generateMethods(json = {}, onlyEvents = false) {
-  const moduleName = getModuleName(json).toLowerCase()
+  const moduleName = getModuleName(json)//.toLowerCase()
   
   // Two arrays that represent two codegen flows
   const eventMethods = eventsOrEmptyArray(json)
