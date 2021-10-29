@@ -113,6 +113,17 @@
         }
       }
     },
+    "OfferingType": {
+      "title" : "OfferingType",
+      "type": "string",
+      "enum": [
+        "free",
+        "subscribe",
+        "buy",
+        "rent"
+      ],
+      "description": "The offering type of the WayToWatch."
+    },
     "WayToWatch": {
       "title": "WayToWatch",
       "type": "object",
@@ -138,14 +149,7 @@
           "description": "Time when the entity is no longer entitled."
         },
         "offeringType": {
-          "type": "string",
-          "enum": [
-            "free",
-            "subscribe",
-            "buy",
-            "rent"
-          ],
-          "description": "The offering type of the WayToWatch."
+          "$ref": "https://meta.comcast.com/firebolt/entertainment#/definitions/OfferingType"
         },
         "hasAds": {
           "type": "boolean",
