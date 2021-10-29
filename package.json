@@ -28,6 +28,7 @@
   },
   "homepage": "https://github.com/rdkcentral/firebolt-core-sdk/blob/main/src/modules//ottx/firebolt-openrpc#readme",
   "devDependencies": {
+    "jest": "^27.3.1",
     "webpack-cli": "^4.8.0"
   },
   "keywords": [
