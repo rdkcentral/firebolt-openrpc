@@ -21,6 +21,7 @@ import { default as queue } from './queue.js'
 import Settings, { initSettings } from '../Settings/index.js'
 import LegacyTransport from './LegacyTransport.js'
 import { default as win } from '../Transport/global'
+import WebsocketTransport from './WebsocketTransport.js'
 
 // TODO need to spec Firebolt Settings
 initSettings({}, { log: true })
@@ -48,7 +49,11 @@ const getTransportLayer = () => {
   if (typeof win.__firebolt.transport_service_name === 'string')
     transport_service_name = win.__firebolt.transport_service_name
 
-  if (
+  // TODO need a better way then query parameter to tell app to use transport
+  let fbTrans = new URLSearchParams(window.location.search).get('_fbTrans')
+  if ((fbTrans === 'ws') || (fbTrans === 'ws_wrap')) {
+    setTransportLayer(new WebsocketTransport(fbTrans === 'ws_wrap'))
+  } else if (
     typeof win.ServiceManager !== 'undefined' &&
     win.ServiceManager &&
     win.ServiceManager.version
