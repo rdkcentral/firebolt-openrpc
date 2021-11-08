@@ -49,7 +49,7 @@
     },
     "EntityInfo": {
       "title": "EntityInfo",
-      "description": "An EntityInfo object represents an \"entity\" on the platform. Currently, only entities of type `program` are supported. `programType` must be supplied to identify the program type.\n\nAdditionally, EntityInfo objects must specify a properly formed\nContentIdentifiers object, `entityType`, and `title`.  The app should provide\nthe `synopsis` property for a good user experience if the content\nmetadata is not available another way.\n\nThe ContentIdentifiers must be sufficient for navigating the user to the\nappropriate entity or detail screen via a `detail` intent or deep link.\n\nEntityInfo objects must provide at least one WayToWatch object when returned as\npart of an `entityInfo` method and a streamable asset is available to the user.\nIt is optional for the `purchasedContent` method, but recommended because the UI\nmay use those data.",
+      "description": "An EntityInfo object represents an \"entity\" on the platform. If the entity is of  type `program`, `programType` must be supplied to identify the program type.\n\nAdditionally, EntityInfo objects must specify a properly formed\nContentIdentifiers object, `entityType`, and `title`.  The app should provide\nthe `synopsis` property for a good user experience if the content\nmetadata is not available another way.\n\nThe ContentIdentifiers must be sufficient for navigating the user to the\nappropriate entity or detail screen via a `detail` intent or deep link.\n\nEntityInfo objects must provide at least one WayToWatch object when returned as\npart of an `entityInfo` method and a streamable asset is available to the user.\nIt is optional for the `purchasedContent` method, but recommended because the UI\nmay use those data.",
       "type": "object",
       "required": [
         "identifiers",
@@ -66,7 +66,11 @@
           "description": "Title of the entity."
         },
         "entityType": {
-          "const": "program",
+          "type"  : "string",
+          "enum": [
+            "program",
+            "bundle"
+          ],
           "description": "The type of the entity. If `program`, then `programType` must be provided."
         },
         "programType": {
@@ -75,6 +79,21 @@
         "synopsis": {
           "type": "string",
           "description": "Short description of the entity."
+        },
+        "purchasedStatus" : {
+          "type" : "string",
+          "enum" : [
+            "purchased",
+            "rented",
+            "preordered",
+            "free",
+            "unentitled"
+          ],
+          "description" : "Ownership status of an entity."
+        },
+        "price" : {
+          "type" : "number",
+          "description": "The price for the desired transaction in the user's preferred currency."
         },
         "seasonNumber": {
           "type": "number",
@@ -120,7 +139,8 @@
         "free",
         "subscribe",
         "buy",
-        "rent"
+        "rent",
+        "preorder"
       ],
       "description": "The offering type of the WayToWatch."
     },

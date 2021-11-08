@@ -51,6 +51,12 @@
             "items": {
               "$ref": "https://meta.comcast.com/firebolt/entertainment#/definitions/EntityInfo"
             }
+          },
+          "bundleItems": {
+            "type": "array",
+            "items": {
+              "$ref": "https://meta.comcast.com/firebolt/entertainment#/definitions/EntityInfo"
+            }
           }
         },
         "required": [
