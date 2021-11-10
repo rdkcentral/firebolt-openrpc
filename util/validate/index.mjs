@@ -34,12 +34,11 @@ const __dirname = url.fileURLToPath(new URL('.', import.meta.url))
 /************************************************************************************************/
 
 let errors = 0
-
-const run = args => {
-
+// destructure well-known cli args and alias to variables expected by script
+const run = ({
+  source: srcFolderArg
+}) => {
   logHeader(` VALIDATING... `)
-
-  const [srcFolderArg] = args || process.argv.slice(3)
 
   // Important file/directory locations
   const schemasFolder = path.join(srcFolderArg, 'schemas')
