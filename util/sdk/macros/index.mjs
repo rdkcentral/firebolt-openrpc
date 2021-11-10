@@ -31,7 +31,7 @@ const { isObject, isArray, propEq, pathSatisfies } = predicates
 
 import { isExcludedMethod, isRPCOnlyMethod } from '../../shared/modules.mjs'
 import { getTemplate, getTemplateForMethod } from '../../shared/template.mjs'
-import { getMethodSignatureParams, getEventName } from '../../shared/javascript.mjs'
+import { getMethodSignatureParams, getEventName, getSafeName } from '../../shared/javascript.mjs'
 
 const staticModules = []
 
@@ -231,7 +231,7 @@ const insertMacros = ([file, fContents, macros, obj]) => {
 }
 
 const enumReducer = (acc, val, i, arr) => {
-  const keyName = val.replace(/[\.\-]/g, '_').replace(/\+/g, '_plus').replace(/([a-z])([A-Z0-9])/g, '$1_$2').toUpperCase()
+  const keyName = val.replace(/[\.\-\ ]/g, '_').replace(/\+/g, '_plus').replace(/([a-z])([A-Z0-9])/g, '$1_$2').toUpperCase()
   acc = acc + `    ${keyName}: '${val}'`
   if (i < arr.length-1) {
     acc = acc.concat(',\n')
@@ -333,7 +333,7 @@ function generateMethodList(json = {}) {
   )(json)
   const eventMethods = eventsOrEmptyArray(json)
 
-  let result = notEventMethods.map(m => m.name).join(',\n  ')
+  let result = notEventMethods.map(m => getSafeName(m.name)).join(',\n  ')
   if (eventMethods.length) {
     result += ',\n  listen,\n  once,\n  clear'
   }
@@ -383,7 +383,7 @@ function generateMethods(json = {}, onlyEvents = false) {
         title: moduleName
       }
       const method = {
-        name: methodObj.name,
+        name: getSafeName(methodObj.name),
         params: getMethodSignatureParams(moduleName, methodObj, { isInterface: false })
       }
 

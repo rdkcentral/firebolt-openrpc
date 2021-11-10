@@ -17,7 +17,7 @@
  */
 
 const enumReducer = (acc, val, i, arr) => {
-    const keyName = getSafeName(val.replace(/[\.\-]/g, '_').replace(/\+/g, '_plus').replace(/([a-z])([A-Z0-9])/g, '$1_$2').toUpperCase())
+    const keyName = getSafeName(val.replace(/[\.\- ]/g, '_').replace(/\+/g, '_plus').replace(/([a-z])([A-Z0-9])/g, '$1_$2').toUpperCase())
     acc = acc + `    ${keyName}: '${val}'`
     if (i < arr.length-1) {
       acc = acc.concat(',\n')
@@ -74,7 +74,7 @@ const reserved = [
 ]
 
 function getSafeName(name) {
-  name = name .replace(/ /g, '_')
+  name = name .replace(/\ /g, '_')
               .replace(/\-/g, '_')
 
   if (reserved.includes(name)) {
@@ -85,7 +85,7 @@ function getSafeName(name) {
 }
 
 function getMethodSignature(module, method, options={ isInterface: false }) {
-  let javascript = (isInterface ? '' : 'function ') + method.name + '('
+  let javascript = (isInterface ? '' : 'function ') + getSafeName(method.name) + '('
   javascript += getMethodSignatureParams(module, method)
   javascript += ')'
   

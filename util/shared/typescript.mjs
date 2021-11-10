@@ -290,7 +290,7 @@ function getSchemaShape(module, json, name, options = {level: 0, descriptions: t
   }
 
   const enumReducer = (acc, val, i, arr) => {
-    const keyName = getSafeName(val.replace(/[\.\-]/g, '_').replace(/\+/g, '_plus').replace(/([a-z])([A-Z0-9])/g, '$1_$2').toUpperCase())
+    const keyName = getSafeName(val.replace(/[\.\-\ ]/g, '_').replace(/\+/g, '_plus').replace(/([a-z])([A-Z0-9])/g, '$1_$2').toUpperCase())
     acc = acc + `    ${keyName} = '${val}'`
     if (i < arr.length-1) {
       acc = acc.concat(',\n')
