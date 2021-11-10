@@ -19,6 +19,10 @@ Tools to enable consistent Firebolt SDK generation.
 
 `--output`: The relative or absolute path to the folder or file that will hold the task's generated output.
 
+`--as-path`: I'm not sure what this does.
+
+`--static-modules`: Makes sure that statically defined modules get exported. An example is `Platform`.
+
 ### SDK Generation
 
 Indicated by `--task sdk`. Generate the Firebolt JavaScript SDK from a json-rpc spec.
