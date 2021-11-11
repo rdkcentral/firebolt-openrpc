@@ -4,12 +4,23 @@ title: Firebolt OpenRPC Tools
 # Firebolt OpenRPC Tools
 Tools to enable consistent Firebolt SDK and document generation.
 
+- [Firebolt OpenRPC Tools](#firebolt-openrpc-tools)
+  - [To Use](#to-use)
+  - [CLI Arguments](#cli-arguments)
+    - [SDK Generation](#sdk-generation)
+      - [Note on --static-modules](#note-on---static-modules)
+    - [Document Generation](#document-generation)
+      - [Note on --as-path](#note-on---as-path)
+    - [OpenRPC Generation](#openrpc-generation)
+    - [OpenRPC Validation](#openrpc-validation)
+  - [CLI Shorthands](#cli-shorthands)
+
 ## To Use
 
   - First, `npm install`.
   - Next, invoke the cli directly with `src/cli.js`. See below for arguments.
 
-Alternatively, you may install globally using `npm install -g @firebolt-js/openrpc`, which will install the cli and add it to your $PATH so it may be invoked with the `firebolt-openrpc` command. However, trying this at the time of writing, it did not work.
+Alternatively, you may install globally using `npm install -g @firebolt-js/openrpc`, which will install the cli and add it to your $PATH so it may be invoked with the `firebolt-openrpc` command.
 
 ## CLI Arguments
 
@@ -26,17 +37,39 @@ Alternatively, you may install globally using `npm install -g @firebolt-js/openr
 
 `--output`: The relative or absolute path to the folder or file that will hold the task's generated output.
 
-`--as-path`: This has some effect on the document generation task. Not sure what.
+`--as-path`: Used by the document generator. This is a toggle for generating content as files vs folders. More info below in [Document Generation](/#document-generation).
 
-`--static-modules`: Used by the SDK generator. Makes sure that statically defined modules get exported. An example is `Platform`.
+`--static-modules`: String. Used by the SDK generator. "Static modules" are modules without an OpenRPC json document. More on this below.
 
 ### SDK Generation
 
 Indicated by `--task sdk`. Generate the Firebolt SDKs from an OpenRPC spec. Currently, only the JavaScript SDK is supported.
 
+#### Note on --static-modules
+
+Static modules are modules without a corresponding OpenRPC json document. It will be included statically from the location supplied by the `--template` option. Listing your module in the `--static-modules` property ensures that it is properly exported by the SDK and wires up mock responses as well.
+
 ### Document Generation
 
 Indicated by `--task docs`. Generate markdown docs from the OpenRPC spec.
+
+#### Note on --as-path
+
+When deploying docs to web servers, `--as-path` is generally used. For deploying to GitHub pages/wikis, do not use `--as-path`.
+
+This toggle will generate content as files vs folders. For exmaple, this:
+```
+/docs/Topic.md
+```
+vs
+```
+/docs/Topic/index.md
+```
+It affects the output of:
+
+  - file names
+  - relative links
+  - relative images
 
 ### OpenRPC Generation
 
