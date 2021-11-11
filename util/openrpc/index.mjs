@@ -24,11 +24,12 @@ import { setTemplate, setVersion, mergeSchemas, mergeMethods, updateSchemaUris, 
 import path from 'path'
 import url from 'url'
 const __dirname = url.fileURLToPath(new URL('.', import.meta.url))
-
-const run = args => {
-
-  const [srcFolderArg, templateArg, outputArg] = args
-
+// destructure well-known cli args and alias to variables expected by script
+const run = ({
+  source: srcFolderArg,
+  template: templateArg,
+  output: outputArg
+}) => {
   // Important file/directory locations
   const versionJson = path.join('package.json')
   const sharedSchemasFolder = path.join(__dirname, '..', '..', 'src', 'schemas')

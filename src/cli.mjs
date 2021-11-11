@@ -5,22 +5,43 @@ import docs from '../util/docs/index.mjs'
 import validate from '../util/validate/index.mjs'
 import openrpc from '../util/openrpc/index.mjs'
 import declarations from '../util/declarations/index.mjs'
+import nopt from 'nopt'
+import path from 'path'
 
-const args = process.argv.slice(2)
-const util = args.shift()
+const knownOpts = {
+  'task': [String, null],
+  'source': [path],
+  'template': [path],
+  'output': [path],
+  'as-path': Boolean,
+  'static-modules': String
+}
+const shortHands = {
+  't': '--task',
+  's': '--source',
+  'tm': '--template',
+  'o': '--output',
+  'ap': '--as-path',
+  'sm': '--static-modules'
+}
+// Last 2 arguments are the defaults.
+const parsedArgs = nopt(knownOpts, shortHands, process.argv, 2)
+const util = parsedArgs.task
 
 if (util === 'sdk') {
-    sdk(args)
+    sdk(parsedArgs)
 }
 else if (util === 'docs') {
-    docs(args)
+    docs(parsedArgs)
 }
 else if (util === 'validate') {
-    validate(args)
+    validate(parsedArgs)
 }
 else if (util === 'openrpc') {
-    openrpc(args)
+    openrpc(parsedArgs)
 }
 else if (util === 'declarations') {
-    declarations(args)
+    declarations(parsedArgs)
+} else {
+  console.log("Invalid build type")
 }

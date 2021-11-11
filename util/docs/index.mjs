@@ -32,15 +32,18 @@ const __dirname = url.fileURLToPath(new URL('.', import.meta.url))
 /************************************************************************************************/
 /******************************************** MAIN **********************************************/
 /************************************************************************************************/
-
-const run = args => {
+// destructure well-known cli args and alias to variables expected by script
+const run = ({
+  source: srcFolderArg,
+  template: templateFolderArg,
+  output: outputFolderArg,
+  'as-path': asPath = false,
+}) => {
 
   setPathDelimiter('/template/markdown/')
   setSuffix('.md')
-  
-  const [srcFolderArg, templateFolderArg, outputFolderArg] = args
 
-  if (args.includes('asPath')) {
+  if (asPath) {
     setOptions({ asPath: true })
   }
 
@@ -59,7 +62,7 @@ const run = args => {
   const hasPublicMethods = json => json.methods && json.methods.filter(m => !m.tags || !m.tags.map(t=>t.name).includes('rpc-only')).length > 0
   const alphabeticalSorter = (a, b) => a.info.title > b.info.title ? 1 : b.info.title > a.info.title ? -1 : 0
   const fsCopyFile = h.wrapCallback(fs.copyFile)
-  const copyReadMe = _ => args.includes('asPath') ? fsCopyFile(apiIndex, path.join(outputFolder, 'index.md')) : fsCopyFile(readMe, path.join(outputFolder, 'index.md'))
+  const copyReadMe = _ => asPath ? fsCopyFile(apiIndex, path.join(outputFolder, 'index.md')) : fsCopyFile(readMe, path.join(outputFolder, 'index.md'))
   const createDocsDir = _ => h.wrapCallback(fs.mkdir)(path.join(outputFolder))
   const createSchemasDir = _ => h.wrapCallback(fs.mkdir)(path.join(outputFolder, 'schemas'))
   

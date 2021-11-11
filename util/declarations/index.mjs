@@ -36,11 +36,11 @@ const __dirname = url.fileURLToPath(new URL('.', import.meta.url))
   // .tap(setVersion)
   // .tap(v => console.log(`\nVERSION ${v.major}.${v.minor}.${v.patch}`))
   // .collect()
-
-const run = args => {
-
-  const [srcFolderArg, outputFile] = args || process.argv.slice(3)
-
+// destructure well-known cli args and alias to variables expected by script
+const run = ({
+  source: srcFolderArg,
+  output: outputFile
+}) => {
   // Important file/directory locations
   const declarationsFile = path.join(outputFile)
   const schemasFolder = path.join(srcFolderArg, 'schemas')
