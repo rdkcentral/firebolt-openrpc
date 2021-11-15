@@ -42,8 +42,8 @@ const run = ({
 
   // Important file/directory locations
   const schemasFolder = path.join(srcFolderArg, 'schemas')
-  const sharedSchemasFolder = path.join(__dirname, '..', '..', srcFolderArg, 'schemas')
-  const externalFolder = path.join(__dirname, '..', '..', srcFolderArg, 'external')
+  const sharedSchemasFolder = path.join(__dirname, '..', '..', 'src', 'schemas')
+  const externalFolder = path.join(__dirname, '..', '..', 'src', 'external')
   const modulesFolder = path.join(srcFolderArg, 'modules')
   const distFolder = path.join('dist')
   

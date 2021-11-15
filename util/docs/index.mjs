@@ -55,7 +55,7 @@ const run = ({
   const schemasFolder = path.join(srcFolderArg, 'schemas')
   const modulesFolder = path.join(srcFolderArg, 'modules')
   const templateFolder = path.join(templateFolderArg)
-  const sharedTemplateFolder = path.join(__dirname, '..', '..', templateFolderArg)
+  const sharedTemplateFolder = path.join(__dirname, '..', '..', 'src', 'template', 'markdown')
   const outputFolder = path.join(outputFolderArg)
   const getAllModulesStream = _ => h(getAllModules())
   const getAllSchemasStream = _ => h(getAllSchemas())
