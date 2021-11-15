@@ -1,6 +1,6 @@
 {
   "name": "@firebolt-js/openrpc",
-  "version": "1.0.1-rc.6",
+  "version": "1.1.0-beta.2",
   "description": "The Firebolt SDK Code & Doc Generator",
   "bin": {
     "firebolt-openrpc": "./src/cli.mjs"
@@ -29,7 +29,6 @@
   "homepage": "https://github.com/rdkcentral/firebolt-core-sdk/blob/main/src/modules//ottx/firebolt-openrpc#readme",
   "devDependencies": {
     "jest": "^27.3.1",
-    "nopt": "^5.0.0",
     "webpack-cli": "^4.8.0"
   },
   "keywords": [
@@ -48,6 +47,7 @@
     "crocks": "^0.12.4",
     "deepmerge": "^4.2.2",
     "highland": "^2.13.5",
+    "nopt": "^5.0.0",
     "webpack": "^5.51.1"
   }
 }
