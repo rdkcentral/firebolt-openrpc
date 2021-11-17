@@ -52,7 +52,8 @@ const getTransportLayer = () => {
   // TODO need a better way then query parameter to tell app to use transport
   let fbTrans = new URLSearchParams(window.location.search).get('_fbTrans')
   if ((fbTrans === 'ws') || (fbTrans === 'ws_wrap')) {
-    setTransportLayer(new WebsocketTransport(fbTrans === 'ws_wrap'))
+    transport = new WebsocketTransport(fbTrans === 'ws_wrap')
+    setTransportLayer(transport)
   } else if (
     typeof win.ServiceManager !== 'undefined' &&
     win.ServiceManager &&

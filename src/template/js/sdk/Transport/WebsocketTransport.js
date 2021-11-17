@@ -24,6 +24,7 @@ export default class WebsocketTransport {
   }
 
   receive (callback) {
+    if (!callback) return
     this._connect()
     this._callbacks.push(callback)
   }
@@ -38,6 +39,10 @@ export default class WebsocketTransport {
     })
   }
 
+  _unwrapMessage (msg) {
+    return JSON.parse(msg.payload)
+  }
+
   _notifyCallbacks (message) {
     for (let i = 0; i < this._callbacks.length; i++) {
       setTimeout(() => this._callbacks[i](message), 1)
@@ -48,7 +53,8 @@ export default class WebsocketTransport {
     if (this._ws) return
     this._ws = new WebSocket(this._apiTarget())
     this._ws.addEventListener('message', message => {
-      this._notifyCallbacks(message.data)
+      const m = this._wrap ? this._unwrapMessage(message.data) : message.data
+      this._notifyCallbacks(m)
     })
     this._ws.addEventListener('error', message => {
     })
@@ -66,8 +72,10 @@ export default class WebsocketTransport {
   }
 
   _apiTarget () {
+    let apiTarget = new URLSearchParams(window.location.search).get('_apiTarget')
+    if (apiTarget) return apiTarget
     if (window.apiTarget) {
-      return apiTarget
+      return window.apiTarget
     }
     return this._defaultApiTarget()
   }
@@ -79,7 +87,7 @@ export default class WebsocketTransport {
         fbTransToken = window.thunder.token()
       }
     }
-    let target = 'ws://127.0.0.1:9998?token='
+    let target = 'ws://127.0.0.1:9998/jsonrpc?token='
     if (fbTransToken) {
       target += fbTransToken
     }
