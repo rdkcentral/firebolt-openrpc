@@ -38,9 +38,13 @@ const __dirname = url.fileURLToPath(new URL('.', import.meta.url))
 /************************************************************************************************/
 /******************************************** MAIN **********************************************/
 /************************************************************************************************/
-const run = args => {
-  const [srcFolderArg, templateFolderArg, outputFolderArg, staticModules] = args || process.argv.slice(3)
-
+// destructure well-known cli args and alias to variables expected by script
+const run = ({
+  source: srcFolderArg,
+  template: templateFolderArg,
+  output: outputFolderArg,
+  'static-modules': staticModules = false
+}) => {
   // Important file/directory locations
   const versionJson = path.join('package.json')
   const modulesFolder = path.join(srcFolderArg, 'modules')
