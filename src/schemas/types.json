@@ -121,6 +121,15 @@
                 }
             },
             "additionalProperties": false
+        },
+        "SetResponse": {
+            "title": "SetResponse",
+            "type": "object",
+            "required": [
+            ],
+            "properties": {
+            },
+            "additionalProperties": false
         }
     }
 }

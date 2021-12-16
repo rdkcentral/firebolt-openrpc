@@ -129,6 +129,14 @@ const validEvent = and(
   pathSatisfies(['name'], x => x.match(/on[A-Z]/))
 )
 
+const hasTag = (method, tag) => {
+  return method.tags && method.tags.filter(t => t.name === tag).length > 0
+}
+
+const isPropertyMethod = (m) => {
+  return hasTag(m, 'property') || hasTag(m, 'property:immutable') || hasTag(m, 'property:readonly')
+}
+
 // Pick events out of the methods array
 const eventsOrEmptyArray = compose(
   option([]),
@@ -142,6 +150,14 @@ const eventsOrEmptyArray = compose(
     return e
   })),
   map(filter(isPublicEventMethod)),
+  getMethods
+)
+
+const props = compose(
+  option([]),
+  map(filter(m => {
+    return isPropertyMethod(m)
+  })),
   getMethods
 )
 
@@ -306,6 +322,9 @@ const generateImports = json => {
     imports += `import Events from '../Events'\n`
     imports += `import { registerEvents } from \'../Events\'\n`
   }
+  if (props(json).length) {
+    imports += `import Prop from '../Prop'\n`
+  }
 
   return imports
 }
@@ -389,11 +408,16 @@ function generateMethods(json = {}, onlyEvents = false) {
         params: getMethodSignatureParams(moduleName, methodObj, { isInterface: false })
       }
 
-      const template = getTemplateForMethod(methodObj)
+      let template = getTemplateForMethod(methodObj)
+      if (isPropertyMethod(methodObj)) {
+        template = getTemplate('methods/polymorphic-property.js')
+      }
       const javascript = template.replace(/\$\{method\.name\}/g, method.name)
         .replace(/\$\{method\.params\}/g, method.params)
         .replace(/\$\{method\.Name\}/g, method.name[0].toUpperCase() + method.name.substr(1))
         .replace(/\$\{info\.title\}/g, info.title)
+        .replace(/\$\{method\.property\.immutable\}/g, hasTag(methodObj, 'property:immutable'))
+        .replace(/\$\{method\.property\.readonly\}/g, hasTag(methodObj, 'property:immutable') || hasTag(methodObj, 'property:readonly'))
 
       acc = acc.concat(javascript)
 
