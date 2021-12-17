@@ -299,8 +299,14 @@ const generateEvents = compose(
 
 const generateDefaults = compose(
   reduce((acc, val, i, arr) => {
-    acc += `
-${val.name}: ${JSON.stringify(val.examples[0].result.value, null, '  ')}`
+    const def = JSON.stringify(val.examples[0].result.value, null, '  ')
+    if (isPropertyMethod(val)) {
+      acc += `
+  ${val.name}: function () { return Prop.mock('${val.name}', arguments, ${def}) }`
+    } else {
+      acc += `
+  ${val.name}: ${def}`
+    }
     if (i < arr.length-1) {
       acc = acc.concat(',\n')
     } else {

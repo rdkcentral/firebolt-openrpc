@@ -110,7 +110,7 @@ function getResult(method, params) {
   }
 
   if (typeof api === 'function') {
-    return api(params)
+    return params == null ? api() : api(params)
   } else return api
 }
 
