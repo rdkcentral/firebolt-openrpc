@@ -15,7 +15,7 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-import Prop from "../Prop"
+import MockProps from "../Prop/MockProps"
 
 export default {
   /* ${DEFAULTS} */

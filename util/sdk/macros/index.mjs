@@ -297,29 +297,34 @@ const generateEvents = compose(
   eventsOrEmptyArray
 )
 
-const generateDefaults = compose(
-  reduce((acc, val, i, arr) => {
-    const def = JSON.stringify(val.examples[0].result.value, null, '  ')
-    if (isPropertyMethod(val)) {
-      acc += `
-  ${val.name}: function () { return Prop.mock('${val.name}', arguments, ${def}) }`
-    } else {
-      acc += `
-  ${val.name}: ${def}`
-    }
-    if (i < arr.length-1) {
-      acc = acc.concat(',\n')
-    } else {
-      acc = acc.concat('\n')
-    }
-    return acc
-  }, ''),
-  compose(
-    option([]),
-    map(filter(and(not(isEventMethod), methodHasExamples))),
-    getMethods
+function generateDefaults(json = {}) {
+  const moduleName = getModuleName(json).toLowerCase()
+  const reducer = compose(
+    reduce((acc, val, i, arr) => {
+      const def = JSON.stringify(val.examples[0].result.value, null, '  ')
+      if (isPropertyMethod(val)) {
+        acc += `
+    ${val.name}: function () { return MockProps.mock('${moduleName}', '${val.name}', arguments, ${def}) }`
+      } else {
+        acc += `
+    ${val.name}: ${def}`
+      }
+      if (i < arr.length-1) {
+        acc = acc.concat(',\n')
+      } else {
+        acc = acc.concat('\n')
+      }
+      return acc
+    }, ''),
+    compose(
+      option([]),
+      map(filter(and(not(isEventMethod), methodHasExamples))),
+      getMethods
+    ),
+  
   )
-)
+  return reducer(json)
+}
 
 const generateImports = json => {
   let imports = ''

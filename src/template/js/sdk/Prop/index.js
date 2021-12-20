@@ -1,8 +1,6 @@
 import Transport from "../Transport"
 import Events from "../Events"
 
-const mocks = {}
-
 function prop(moduleName, key, args, immutable, readonly) {
   if (args.length === 0) {
     // getter
@@ -27,26 +25,6 @@ function prop(moduleName, key, args, immutable, readonly) {
   }
 }
 
-function mock(method, args, def) {
-  if ((args == null) || (args.length === 0)) {
-    // get
-    const rv = mocks[method] && mocks[method].value ? mocks[method].value : def
-    return rv
-  } else {
-    // set
-    let mockMethod = mocks[method]
-    if (mockMethod == null) {
-      mockMethod = {
-        subscribers: []
-      }
-    }
-    mocks[method] = mockMethod
-    mockMethod.value = args[0].value
-    return {}
-  }
-}
-
 export default {
-  prop: prop,
-  mock: mock
+  prop: prop
 }

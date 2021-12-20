@@ -79,11 +79,12 @@ function receive(_callback) {
 }
 
 function event(module, event, value) {
-  const id = Object.entries(event_map).find(([k, v]) => v === module.toLowerCase() + '.' + event.toLowerCase())[0]
-  if (id) {
+  const eventMap = event_map
+  const listener = Object.entries(eventMap).find(([k, v]) => v === module.toLowerCase() + '.' + event)
+  if (listener) {
     let message = JSON.stringify({
       jsonrpc: '2.0',
-      id: id,
+      id: listener[0],
       result: value
     })
     callback(message)
