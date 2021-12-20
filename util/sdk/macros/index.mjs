@@ -155,9 +155,7 @@ const eventsOrEmptyArray = compose(
 
 const props = compose(
   option([]),
-  map(filter(m => {
-    return isPropertyMethod(m)
-  })),
+  map(filter(m => isPropertyMethod(m))),
   getMethods
 )
 

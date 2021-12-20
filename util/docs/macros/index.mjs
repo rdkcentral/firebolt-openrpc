@@ -621,7 +621,7 @@ function generateJavaScriptExample(example, m, module) {
 
     let typescript
 
-    let template = m.tags && m.tags.map(t=>t.name).find(t => getAllTemplateNames().includes('examples/' + t + '.md')) || 'default'
+    const template = m.tags && m.tags.map(t=>t.name).find(t => getAllTemplateNames().includes('examples/' + t + '.md')) || 'default'
     typescript = getTemplate(`examples/${template}.md`)
 
     typescript = typescript.replace(/\$\{example.params\}/g, params)
