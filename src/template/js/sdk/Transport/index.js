@@ -44,9 +44,9 @@ if (!win.__firebolt) {
 }
 
 const _endpoint = () => {
-  let endpoint = win.location ? new URLSearchParams(win.location.search).get('__firebolt_endpoint') : null
+  const endpoint = win.location ? new URLSearchParams(win.location.search).get('__firebolt_endpoint') : null
   if (endpoint) return endpoint
-  if (win.__firebolt.endpoint) {
+  if (win.__firebolt && win.__firebolt.endpoint) {
     return win.__firebolt.endpoint
   }
   return null
@@ -58,7 +58,7 @@ const getTransportLayer = () => {
   if (typeof win.__firebolt.transport_service_name === 'string')
     transport_service_name = win.__firebolt.transport_service_name
 
-  let endpoint = _endpoint()
+  const endpoint = _endpoint()
   if (endpoint && (endpoint.startsWith('ws://') || endpoint.startsWith('wss://'))) {
     transport = new WebsocketTransport(endpoint)
     setTransportLayer(transport)
