@@ -1,9 +1,8 @@
 const MAX_QUEUED_MESSAGES = 100
-const WRAP_METHOD = 'org.firebolt.Firebolt.1.call'
 
 export default class WebsocketTransport {
-  constructor (wrap = false) {
-    this._wrap = wrap
+  constructor (endpoint) {
+    this._endpoint = endpoint
     this._ws = null
     this._connected = false
     this._queue = []
@@ -12,13 +11,12 @@ export default class WebsocketTransport {
 
   send (msg) {
     this._connect()
-    const wsMsg = this._wrap ? this._wrapMessage(msg) : msg
 
     if (this._connected) {
-      this._ws.send(wsMsg)
+      this._ws.send(msg)
     } else {
       if (this._queue.length < MAX_QUEUED_MESSAGES) {
-        this._queue.push(wsMsg)
+        this._queue.push(msg)
       }
     }
   }
@@ -29,20 +27,6 @@ export default class WebsocketTransport {
     this._callbacks.push(callback)
   }
 
-  _wrapMessage (msg) {
-    return JSON.stringify({
-      jsonrpc: '2.0',
-      method: WRAP_METHOD,
-      params: {
-        payload: msg
-      }
-    })
-  }
-
-  _unwrapMessage (msg) {
-    return JSON.parse(msg.payload)
-  }
-
   _notifyCallbacks (message) {
     for (let i = 0; i < this._callbacks.length; i++) {
       setTimeout(() => this._callbacks[i](message), 1)
@@ -51,10 +35,9 @@ export default class WebsocketTransport {
 
   _connect () {
     if (this._ws) return
-    this._ws = new WebSocket(this._apiTarget())
+    this._ws = new WebSocket(this._endpoint)
     this._ws.addEventListener('message', message => {
-      const m = this._wrap ? this._unwrapMessage(message.data) : message.data
-      this._notifyCallbacks(m)
+      this._notifyCallbacks(message.data)
     })
     this._ws.addEventListener('error', message => {
     })
@@ -70,28 +53,4 @@ export default class WebsocketTransport {
       this._queue = []
     })
   }
-
-  _apiTarget () {
-    let apiTarget = new URLSearchParams(window.location.search).get('_apiTarget')
-    if (apiTarget) return apiTarget
-    if (window.apiTarget) {
-      return window.apiTarget
-    }
-    return this._defaultApiTarget()
-  }
-
-  _defaultApiTarget () {
-    let fbTransToken = new URLSearchParams(window.location.search).get('_fbTransToken')
-    if (fbTransToken == null) {
-      if (window && window.thunder && (typeof window.thunder.token === 'function')) {
-        fbTransToken = window.thunder.token()
-      }
-    }
-    let target = 'ws://127.0.0.1:9998/jsonrpc?token='
-    if (fbTransToken) {
-      target += fbTransToken
-    }
-    return target
-  }
-
 }

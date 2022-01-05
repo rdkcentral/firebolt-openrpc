@@ -43,16 +43,24 @@ if (!win.__firebolt) {
   win.__firebolt = {}
 }
 
+const _endpoint = () => {
+  let endpoint = win.location ? new URLSearchParams(win.location.search).get('__firebolt_endpoint') : null
+  if (endpoint) return endpoint
+  if (win.__firebolt.endpoint) {
+    return win.__firebolt.endpoint
+  }
+  return null
+}
+
 // Returns an FTL queue. Initializes the default transport layer if available
 const getTransportLayer = () => {
   let transport
   if (typeof win.__firebolt.transport_service_name === 'string')
     transport_service_name = win.__firebolt.transport_service_name
 
-  // TODO need a better way then query parameter to tell app to use transport
-  let fbTrans = new URLSearchParams(window.location.search).get('_fbTrans')
-  if ((fbTrans === 'ws') || (fbTrans === 'ws_wrap')) {
-    transport = new WebsocketTransport(fbTrans === 'ws_wrap')
+  let endpoint = _endpoint()
+  if (endpoint && (endpoint.startsWith('ws://') || endpoint.startsWith('wss://'))) {
+    transport = new WebsocketTransport(endpoint)
     setTransportLayer(transport)
   } else if (
     typeof win.ServiceManager !== 'undefined' &&
