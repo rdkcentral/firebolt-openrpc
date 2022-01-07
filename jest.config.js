@@ -6,5 +6,6 @@ module.exports = {
     },
     testPathIgnorePatterns: ["<rootDir>/build/", "<rootDir>/node_modules/"],
     moduleFileExtensions: ["js", "jsx", "mjs"],
+    testEnvironment: 'jsdom',
     "verbose": true
   }
