@@ -19,7 +19,7 @@
 /* ${MOCK_IMPORTS} */
 
 import { default as win } from '../Transport/global'
-import {event_map } from './'
+import Transport from './'
 
 let listener
 export const setMockListener = func => { listener = func }
@@ -57,7 +57,7 @@ function send(message) {
         message: "Invalid params (this is a mock error from the mock transport layer)"
       },
       id: json.id
-    })))      
+    })))
   }
 
   setTimeout(() => callback(JSON.stringify({ 
@@ -79,7 +79,7 @@ function receive(_callback) {
 }
 
 function event(module, event, value) {
-  const id = Object.entries(event_map).find(([k, v]) => v === module.toLowerCase() + '.' + event.toLowerCase())[0]
+  const id = Object.entries(Transport.getEventMap()).find(([k, v]) => v === module.toLowerCase() + '.' + event.toLowerCase())[0]
   if (id) {
     let message = JSON.stringify({
       jsonrpc: '2.0',
@@ -87,7 +87,7 @@ function event(module, event, value) {
       result: value
     })
     callback(message)
-  }  
+  }
 }
 
 function dotGrab(obj = {}, key) {
