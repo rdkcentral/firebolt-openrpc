@@ -44,8 +44,6 @@ if (!win.__firebolt) {
 }
 
 const _endpoint = () => {
-  const endpoint = win.location ? new URLSearchParams(win.location.search).get('__firebolt_endpoint') : null
-  if (endpoint) return endpoint
   if (win.__firebolt && win.__firebolt.endpoint) {
     return win.__firebolt.endpoint
   }
