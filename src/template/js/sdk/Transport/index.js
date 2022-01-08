@@ -55,7 +55,7 @@ export default class Transport {
     const endpoint = this._endpoint()
     if (endpoint && (endpoint.startsWith('ws://') || endpoint.startsWith('wss://'))) {
       transport = new WebsocketTransport(endpoint)
-      this.setTransportLayer(transport)
+      transport.receive(this.receiveHandler.bind(this))
     } else if (
       typeof win.ServiceManager !== 'undefined' &&
       win.ServiceManager &&
