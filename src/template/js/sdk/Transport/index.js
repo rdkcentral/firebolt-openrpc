@@ -21,6 +21,7 @@ import Queue from './queue.js'
 import Settings, { initSettings } from '../Settings/index.js'
 import LegacyTransport from './LegacyTransport.js'
 import win from '../Transport/global'
+import WebsocketTransport from './WebsocketTransport.js'
 
 const LEGACY_TRANSPORT_SERVICE_NAME = 'com.comcast.BridgeObject_1'
 let moduleInstance = null
@@ -42,9 +43,20 @@ export default class Transport {
     Transport.get()._eventEmitters.push(emitter)
   }
 
+  _endpoint () {
+    if (win.__firebolt && win.__firebolt.endpoint) {
+      return win.__firebolt.endpoint
+    }
+    return null
+  }
+
   constructTransportLayer () {
     let transport
-    if (
+    const endpoint = this._endpoint()
+    if (endpoint && (endpoint.startsWith('ws://') || endpoint.startsWith('wss://'))) {
+      transport = new WebsocketTransport(endpoint)
+      this.setTransportLayer(transport)
+    } else if (
       typeof win.ServiceManager !== 'undefined' &&
       win.ServiceManager &&
       win.ServiceManager.version
