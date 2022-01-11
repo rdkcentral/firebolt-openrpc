@@ -1,6 +1,6 @@
 {
   "name": "@firebolt-js/openrpc",
-  "version": "1.1.0-alpha.2",
+  "version": "1.1.0-beta.2",
   "description": "The Firebolt SDK Code & Doc Generator",
   "bin": {
     "firebolt-openrpc": "./src/cli.mjs"
@@ -10,11 +10,11 @@
     "prepare:setup": "mkdir -p ./dist/docs ./build/docs/markdown ./build/sdk/javascript/src",
     "test": "jest --config=jest.config.js --detectOpenHandles",
     "build": "npm run validate && npm run build:docs && npm run build:sdk",
-    "validate": "npm run build:openrpc && node ./src/cli.mjs validate ./src",
-    "build:openrpc": "node ./src/cli.mjs openrpc ./src ./src/template/openrpc/template.json ./dist/sdk-open-rpc.json",
-    "build:sdk": "node ./src/cli.mjs sdk ./src/ ./src/template/js ./build/sdk/javascript/src",
-    "build:docs": "node ./src/cli.mjs docs ./src/ ./src/template/markdown ./build/docs/markdown asPath",
-    "build:wiki": "node ./src/cli.mjs docs ./src/ ./src/template/markdown ./build/docs/markdown",
+    "validate": "npm run build:openrpc && node ./src/cli.mjs --task validate --source ./src",
+    "build:openrpc": "node ./src/cli.mjs --task openrpc --source ./src --template ./src/template/openrpc/template.json --output ./dist/sdk-open-rpc.json",
+    "build:sdk": "node ./src/cli.mjs --task sdk --source ./src/ --template ./src/template/js --output ./build/sdk/javascript/src",
+    "build:docs": "node ./src/cli.mjs --task docs --source ./src/ --template ./src/template/markdown --output ./build/docs/markdown --as-path",
+    "build:wiki": "node ./src/cli.mjs --task docs --source ./src/ --template ./src/template/markdown --output ./build/docs/markdown",
     "dist": "npm run validate && npm run build:sdk && npm run build:docs && npm run pack && npm run test",
     "pack": "webpack --config webpack.config.js"
   },
@@ -28,6 +28,7 @@
   },
   "homepage": "https://github.com/rdkcentral/firebolt-core-sdk/blob/main/src/modules//ottx/firebolt-openrpc#readme",
   "devDependencies": {
+    "jest": "^27.3.1",
     "webpack-cli": "^4.8.0"
   },
   "keywords": [
@@ -46,6 +47,7 @@
     "crocks": "^0.12.4",
     "deepmerge": "^4.2.2",
     "highland": "^2.13.5",
+    "nopt": "^5.0.0",
     "webpack": "^5.51.1"
   }
 }

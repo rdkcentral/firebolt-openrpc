@@ -21,6 +21,7 @@ import { default as queue } from './queue.js'
 import Settings, { initSettings } from '../Settings/index.js'
 import LegacyTransport from './LegacyTransport.js'
 import { default as win } from '../Transport/global'
+import WebsocketTransport from './WebsocketTransport.js'
 
 // TODO need to spec Firebolt Settings
 initSettings({}, { log: true })
@@ -42,13 +43,24 @@ if (!win.__firebolt) {
   win.__firebolt = {}
 }
 
+const _endpoint = () => {
+  if (win.__firebolt && win.__firebolt.endpoint) {
+    return win.__firebolt.endpoint
+  }
+  return null
+}
+
 // Returns an FTL queue. Initializes the default transport layer if available
 const getTransportLayer = () => {
   let transport
   if (typeof win.__firebolt.transport_service_name === 'string')
     transport_service_name = win.__firebolt.transport_service_name
 
-  if (
+  const endpoint = _endpoint()
+  if (endpoint && (endpoint.startsWith('ws://') || endpoint.startsWith('wss://'))) {
+    transport = new WebsocketTransport(endpoint)
+    setTransportLayer(transport)
+  } else if (
     typeof win.ServiceManager !== 'undefined' &&
     win.ServiceManager &&
     win.ServiceManager.version
