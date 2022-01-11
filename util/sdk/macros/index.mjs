@@ -31,7 +31,7 @@ const { isObject, isArray, propEq, pathSatisfies } = predicates
 
 import { isExcludedMethod, isRPCOnlyMethod } from '../../shared/modules.mjs'
 import { getTemplate, getTemplateForMethod } from '../../shared/template.mjs'
-import { getMethodSignatureParams } from '../../shared/javascript.mjs'
+import { getMethodSignatureParams, getEventName, getSafeName } from '../../shared/javascript.mjs'
 
 const staticModules = []
 
@@ -136,8 +136,8 @@ const eventsOrEmptyArray = compose(
   // Maintain the side effect of process.exit here if someone is violating the rules
   map(map(e => {
     if (!e.name.match(/on[A-Z]/)) {
-      console.error(`ERROR: ${e.name} method is tagged as an event, but does not match the pattern "on[A-Z]"`)
-      process.exit(1) // Non-zero exit since we don't want to continue. Useful for CI/CD pipelines.
+      console.log(`WARNING: '${e.name}' method is tagged as an event, but does not match the pattern "on[A-Z]"`)
+//      process.exit(1) // Non-zero exit since we don't want to continue. Useful for CI/CD pipelines.
     }
     return e
   })),
@@ -154,8 +154,6 @@ const getMethodsThatCallMetrics = compose(
 const getModuleName = json => {
   return json ? (json.title || (json.info ? json.info.title : 'Unknown')) : 'Unknown'
 }
-
-const makeEventName = x => x.name[2].toLowerCase() + x.name.substr(3) // onFooBar becomes fooBar
 
 //import { default as platform } from '../Platform/defaults'
 const generateAggregateMacros = obj => {
@@ -233,7 +231,7 @@ const insertMacros = ([file, fContents, macros, obj]) => {
 }
 
 const enumReducer = (acc, val, i, arr) => {
-  const keyName = val.replace(/[\.\-]/g, '_').replace(/\+/g, '_plus').replace(/([a-z])([A-Z0-9])/g, '$1_$2').toUpperCase()
+  const keyName = val.replace(/[\.\-\ ]/g, '_').replace(/\+/g, '_plus').replace(/([a-z])([A-Z0-9])/g, '$1_$2').toUpperCase()
   acc = acc + `    ${keyName}: '${val}'`
   if (i < arr.length-1) {
     acc = acc.concat(',\n')
@@ -277,7 +275,7 @@ const generateEvents = compose(
     }
     return acc
   }, ''),
-  map(makeEventName),
+  map(e => getEventName(e.name)),
   eventsOrEmptyArray
 )
 
@@ -315,7 +313,7 @@ const generateInitialization = json => compose(
     if (i === 0) {
       acc = []
     }
-    acc.push(makeEventName(method))
+    acc.push(getEventName(method.name))
     if (i < arr.length-1) {
       return acc  
     }
@@ -335,7 +333,7 @@ function generateMethodList(json = {}) {
   )(json)
   const eventMethods = eventsOrEmptyArray(json)
 
-  let result = notEventMethods.map(m => m.name).join(',\n  ')
+  let result = notEventMethods.map(m => getSafeName(m.name)).join(',\n  ')
   if (eventMethods.length) {
     result += ',\n  listen,\n  once,\n  clear'
   }
@@ -344,7 +342,7 @@ function generateMethodList(json = {}) {
 }
 
 function generateMethods(json = {}, onlyEvents = false) {
-  const moduleName = getModuleName(json).toLowerCase()
+  const moduleName = getModuleName(json)//.toLowerCase()
   
   // Two arrays that represent two codegen flows
   const eventMethods = eventsOrEmptyArray(json)
@@ -385,7 +383,7 @@ function generateMethods(json = {}, onlyEvents = false) {
         title: moduleName
       }
       const method = {
-        name: methodObj.name,
+        name: getSafeName(methodObj.name),
         params: getMethodSignatureParams(moduleName, methodObj, { isInterface: false })
       }
 

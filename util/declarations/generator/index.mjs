@@ -18,22 +18,17 @@
 
 import helpers from 'crocks/helpers/index.js'
 const { tap, compose, getPathOr } = helpers
-import safe from 'crocks/Maybe/safe.js'
-import find from 'crocks/Maybe/find.js'
-import getPath from 'crocks/Maybe/getPath.js'
 import pointfree from 'crocks/pointfree/index.js'
 const { chain, filter, option, map, reduce } = pointfree
 import logic from 'crocks/logic/index.js'
 const { and, not } = logic
-import isString from 'crocks/core/isString.js'
 import predicates from 'crocks/predicates/index.js'
 const { isObject, isArray, propEq, pathSatisfies } = predicates
 
 import { getMethods, getTypes, isEventMethod, isPublicEventMethod, getEnums } from '../../shared/modules.mjs'
 import { getSchemaType, getSchemaShape, getMethodSignature, generateEnum } from '../../shared/typescript.mjs'
+import { getEventName, getSafeName } from '../../shared/javascript.mjs'
 import { getExternalSchemas } from '../../shared/json-schema.mjs'
-import { getAllSchemas } from '../../shared/json-schema.mjs'
-import { getExternalSchemaPaths } from '../../shared/json-schema.mjs'
 
 const aggregateMacros = {
   exports: '',
@@ -51,7 +46,6 @@ const inspector = obj => {
 }
 
 const getModuleName = getPathOr('missing', ['info', 'title'])
-const makeEventName = x => x.name[2].toLowerCase() + x.name.substr(3) // onFooBar becomes fooBar
 
 //import { default as platform } from '../Platform/defaults'
 const generateAggregateMacros = obj => {
@@ -117,7 +111,7 @@ const generateEvents = (json) => compose(
       acc += 'type Event = '
     }
 
-    acc += `'${val.name[2].toLowerCase() + val.name.substr(3)}'`
+    acc += `'${getEventName(val.name)}'`
     if (i < arr.length-1) {
       acc += ' | '
     }
@@ -155,14 +149,14 @@ const generateListeners = (json) => compose(
    * @param {Event} event The Event to listen to.
    * @param {Function} listener The listener function to handle the event.
    */
-  function listen(event: '${val.name[2].toLowerCase() + val.name.substr(3)}', listener: (data: ${getSchemaType(json, result, {title: true})}) => {})
+  function listen(event: '${getEventName(val.name)}', listener: (data: ${getSchemaType(json, result, {title: true})}) => {})
 
   /**
    * Listen to one and only one instance of a specific ${getModuleName(json)} event.
    * @param {Event} event The Event to listen to.
    * @param {Function} listener The listener function to handle the event.
    */
-  function once(event: '${val.name[2].toLowerCase() + val.name.substr(3)}', listener: (data: ${getSchemaType(json, result, {title: true})}) => {})
+  function once(event: '${getEventName(val.name)}', listener: (data: ${getSchemaType(json, result, {title: true})}) => {})
 
 `
     return acc
@@ -179,7 +173,7 @@ const generateMethods = json => compose(
 
       if (val.params && val.params.length) {
         val.params.forEach(p => acc += `
- * @param {${getSchemaType(json, p.schema)}} ${p.name} ${p.summary}`)
+ * @param {${getSchemaType(json, p.schema)}} ${getSafeName(p.name)} ${p.summary}`)
       }
 
       acc += `

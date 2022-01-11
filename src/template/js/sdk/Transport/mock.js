@@ -57,7 +57,9 @@ function send(message) {
         message: "Invalid params (this is a mock error from the mock transport layer)"
       },
       id: json.id
-    })))      
+    })))
+
+    return
   }
 
   setTimeout(() => callback(JSON.stringify({ 
@@ -80,6 +82,7 @@ function receive(_callback) {
 
 function event(module, event, value) {
   const id = Object.entries(event_map).find(([k, v]) => v === module.toLowerCase() + '.' + event.toLowerCase())[0]
+
   if (id) {
     let message = JSON.stringify({
       jsonrpc: '2.0',
@@ -100,6 +103,11 @@ function dotGrab(obj = {}, key) {
 }
 
 function getResult(method, params) {
+  let parts = method.toLowerCase().split('.')
+  parts.pop()
+  parts.push(method.split('.').pop())
+  method = parts.join('.')
+
   let api = dotGrab(mock, method)
 
   if (method.match(/^[a-zA-Z]+\.on[A-Za-z]+$/)) {
