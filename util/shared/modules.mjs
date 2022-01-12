@@ -30,6 +30,7 @@ import isString from 'crocks/core/isString.js'
 import predicates from 'crocks/predicates/index.js'
 const { isObject, isArray, propEq, pathSatisfies } = predicates
 import { fsReadFile, bufferToString } from './helpers.mjs'
+import { getSchemaContent } from './json-schema.mjs'
 
 const modules = {}
 
@@ -204,11 +205,11 @@ const getAllModules = _ => {
 // A through stream that expects a stream of filepaths, reads the contents
 // of any .json files found, and converts them to POJOs
 // DOES NOT DEAL WITH ERRORS
-const getModuleContent = fileStream => fileStream
-    .filter(filepath => path.extname(filepath) === '.json')
-    .flatMap(fsReadFile)
-    .map(bufferToString)
-    .map(JSON.parse)
+const getModuleContent = getSchemaContent //fileStream => fileStream
+    // .filter(filepath => path.extname(filepath) === '.json')
+    // .flatMap(fsReadFile)
+    // .map(bufferToString)
+    // .map(JSON.parse)
 
 const getPathFromModule = (module, path) => {
     console.error("DEPRECATED: getPathFromModule")

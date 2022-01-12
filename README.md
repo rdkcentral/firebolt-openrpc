@@ -22,6 +22,8 @@ Tools to enable consistent Firebolt SDK and document generation.
 
 Alternatively, you may install globally using `npm install -g @firebolt-js/openrpc`, which will install the cli and add it to your $PATH so it may be invoked with the `firebolt-openrpc` command.
 
+Firebolt OpenRPC Tools require Node 16.
+
 ## CLI Arguments
 
 `--task`: Tell the tool what you want it to do. Options are:
