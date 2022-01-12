@@ -69,40 +69,6 @@ const addExternalMarkdown = obj => {
   })
 
   return obj
-
-/*
-  return h(paths).map(path => {
-    console.log(__dirname)
-    console.log(path)
-    // grab url
-    const url = getPathOr(null, path, obj).split(":").pop()
-
-    console.log(url)
-
-    // drop ref
-    path.pop();
-
-    // grab field name
-    const field = path.pop()
-
-    // reassign value
-    const node = getPathOr(null, path, obj)
-//    node[field] = "Jeremy was here!"
-    
-    return [node, field, url]
-  })
-  .flatMap(([node, field, url]) => {
-    return h((push, next) => {
-      fs.readFile(path.join(__dirname, url), 'utf8', (err, data) => {
-        node[field] = 'Jezza was here'//data
-        push(null, h.nil)
-      })
-    })
-  })
-  .append(0)
-  .collect()
-  .map(_ => obj)
-  */
 }
 
 // A through stream that expects a stream of filepaths, reads the contents
