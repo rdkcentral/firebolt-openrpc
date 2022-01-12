@@ -168,7 +168,7 @@ function insertMacros(data, json) {
     if (json.methods) {
         data = data
             .replace(/\$\{toc.methods\}/g, json.methods.filter(m => !m.name.match(/^on[A-Z]/)).map(m => '    - [' + m.name + '](#' + m.name.toLowerCase() + ')').join('\n'))
-            .replace(/\$\{toc.events\}/g, json.methods.filter(m => m.name.match(/^on[A-Z]/)).map(m => '    - [' + m.name[2].toLowerCase() + m.name.substr(3) + '](#' + m.name.substr(3).toLowerCase() + ')').join('\n'))
+            .replace(/\$\{toc.events\}/g, json.methods.filter(m => m.name.match(/^on[A-Z]/)).map(m => '    - [' + m.name[2].toLowerCase() + m.name.substr(3) + '](#' + m.name.substr(2).toLowerCase() + ')').join('\n'))
     }
 
     data = data
