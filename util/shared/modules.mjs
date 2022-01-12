@@ -205,11 +205,7 @@ const getAllModules = _ => {
 // A through stream that expects a stream of filepaths, reads the contents
 // of any .json files found, and converts them to POJOs
 // DOES NOT DEAL WITH ERRORS
-const getModuleContent = getSchemaContent //fileStream => fileStream
-    // .filter(filepath => path.extname(filepath) === '.json')
-    // .flatMap(fsReadFile)
-    // .map(bufferToString)
-    // .map(JSON.parse)
+const getModuleContent = getSchemaContent
 
 const getPathFromModule = (module, path) => {
     console.error("DEPRECATED: getPathFromModule")
