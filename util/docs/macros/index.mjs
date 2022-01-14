@@ -24,6 +24,9 @@ import { getMethodSignature, getMethodSignatureParams ,getSchemaType, getSchemaS
 import { getPath, getSchema, getExternalSchemaPaths, getSchemaConstraints, isDefinitionReferencedBySchema, hasTitle, localizeDependencies } from '../../shared/json-schema.mjs'
 import { getTemplate, getAllTemplateNames } from '../../shared/template.mjs'
 import path from 'path'
+import fs from 'fs'
+
+var pkg = JSON.parse(fs.readFileSync('./package.json', 'utf8'));
 
 /**
  * TODO
@@ -174,6 +177,7 @@ function insertMacros(data, json) {
     data = data
         .replace(/\$\{module}/g, getTitle(json).toLowerCase() + '.json')
         .replace(/\$\{info.title}/g, getTitle(json))
+        .replace(/\$\{pkg.name}/g, pkg.name)
         .replace(/\$\{info.version}/g, version.readable)
         .replace(/\$\{info.description}/g, json.info ? json.info.description : '')
 
