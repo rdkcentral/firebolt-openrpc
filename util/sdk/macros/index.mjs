@@ -129,6 +129,14 @@ const validEvent = and(
   pathSatisfies(['name'], x => x.match(/on[A-Z]/))
 )
 
+const hasTag = (method, tag) => {
+  return method.tags && method.tags.filter(t => t.name === tag).length > 0
+}
+
+const isPropertyMethod = (m) => {
+  return hasTag(m, 'property') || hasTag(m, 'property:immutable') || hasTag(m, 'property:readonly')
+}
+
 // Pick events out of the methods array
 const eventsOrEmptyArray = compose(
   option([]),
@@ -142,6 +150,12 @@ const eventsOrEmptyArray = compose(
     return e
   })),
   map(filter(isPublicEventMethod)),
+  getMethods
+)
+
+const props = compose(
+  option([]),
+  map(filter(m => isPropertyMethod(m))),
   getMethods
 )
 
@@ -281,23 +295,34 @@ const generateEvents = compose(
   eventsOrEmptyArray
 )
 
-const generateDefaults = compose(
-  reduce((acc, val, i, arr) => {
-    acc += `
-${val.name}: ${JSON.stringify(val.examples[0].result.value, null, '  ')}`
-    if (i < arr.length-1) {
-      acc = acc.concat(',\n')
-    } else {
-      acc = acc.concat('\n')
-    }
-    return acc
-  }, ''),
-  compose(
-    option([]),
-    map(filter(and(not(isEventMethod), methodHasExamples))),
-    getMethods
+function generateDefaults(json = {}) {
+  const moduleName = getModuleName(json).toLowerCase()
+  const reducer = compose(
+    reduce((acc, val, i, arr) => {
+      const def = JSON.stringify(val.examples[0].result.value, null, '  ')
+      if (isPropertyMethod(val)) {
+        acc += `
+    ${val.name}: function () { return MockProps.mock('${moduleName}', '${val.name}', arguments, ${def}) }`
+      } else {
+        acc += `
+    ${val.name}: ${def}`
+      }
+      if (i < arr.length-1) {
+        acc = acc.concat(',\n')
+      } else {
+        acc = acc.concat('\n')
+      }
+      return acc
+    }, ''),
+    compose(
+      option([]),
+      map(filter(and(not(isEventMethod), methodHasExamples))),
+      getMethods
+    ),
+  
   )
-)
+  return reducer(json)
+}
 
 const generateImports = json => {
   let imports = ''
@@ -305,6 +330,9 @@ const generateImports = json => {
   if (eventsOrEmptyArray(json).length) {
     imports += `import Events from '../Events'\n`
     imports += `import { registerEvents } from \'../Events\'\n`
+  }
+  if (props(json).length) {
+    imports += `import Prop from '../Prop'\n`
   }
 
   return imports
@@ -389,11 +417,16 @@ function generateMethods(json = {}, onlyEvents = false) {
         params: getMethodSignatureParams(moduleName, methodObj, { isInterface: false })
       }
 
-      const template = getTemplateForMethod(methodObj)
+      let template = getTemplateForMethod(methodObj)
+      if (isPropertyMethod(methodObj)) {
+        template = getTemplate('methods/polymorphic-property.js')
+      }
       const javascript = template.replace(/\$\{method\.name\}/g, method.name)
         .replace(/\$\{method\.params\}/g, method.params)
         .replace(/\$\{method\.Name\}/g, method.name[0].toUpperCase() + method.name.substr(1))
         .replace(/\$\{info\.title\}/g, info.title)
+        .replace(/\$\{method\.property\.immutable\}/g, hasTag(methodObj, 'property:immutable'))
+        .replace(/\$\{method\.property\.readonly\}/g, hasTag(methodObj, 'property:immutable') || hasTag(methodObj, 'property:readonly'))
 
       acc = acc.concat(javascript)
 

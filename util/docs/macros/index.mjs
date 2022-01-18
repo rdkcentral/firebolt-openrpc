@@ -78,6 +78,10 @@ const insertAggregateMacrosOnly = () => false
 
 const getTitle = json => json.info ? json.info.title :json.title
 
+function hasTag (method, tag) {
+    return method.tags && method.tags.filter(t => (t.name === tag)).length > 0
+}
+
 export {
     setOptions,
     setVersion,
@@ -191,9 +195,11 @@ function insertMethodMacros(data, method, module) {
 
     if (!data) return ''
 
-    const template = method.tags && method.tags.map(t=>t.name).find(t => getAllTemplateNames().includes('methods/' + t + '.md')) || 'default'
+    let template = method.tags && method.tags.map(t=>t.name).find(t => getAllTemplateNames().includes('methods/' + t + '.md')) || 'default'
+    if (hasTag(method, 'property') || hasTag(method, 'property:readonly') || hasTag(method, 'property:immutable')) {
+        template = 'polymorphic-property'
+    }
     data = getTemplate(`methods/${template}.md`)
-
     data = iterateSignatures(data, method, module)
 
     if (method.params.length === 0) {
@@ -222,11 +228,82 @@ function insertMethodMacros(data, method, module) {
     return result
 }
 
+function generatePropertySignatures (m) {
+    let signatures = [m]
+    if (hasTag(m, 'property') && !hasTag(m, 'property:immutable') && !hasTag(m, 'property:readonly')) {
+        signatures.push({
+            name: m.name,
+            summary: 'Set value for ' + m.summary,
+            // setter takes the getters result
+            params: [
+                {
+                    ...m.result,
+                    name: 'value',
+                    required: true
+                }
+            ],
+            result: {
+                name: "response",
+                summary: "",
+                schema: {
+                  const: null
+                }
+            },
+            examples: [
+                {
+                    name: "",
+                    params: [
+                      {
+                        name: "value",
+                        value: m.examples[0].result.value
+                      }
+                    ],
+                    result: {
+                      name: "Default Result",
+                      value: null
+                    }
+                  }
+            ]
+        })
+    } else {
+        signatures.push(null)
+    }
+    if ((hasTag(m, 'property') || hasTag(m, 'property:readonly')) && !hasTag(m, 'property:immutable')) {
+        signatures.push({
+            name: m.name,
+            summary: 'Subscribe to value for ' + m.summary,
+            tags: [{
+                name: 'property-subscribe'
+            }],
+            params: [
+                {
+                    ...m.result,
+                    required: true
+                }
+            ],
+            result: {
+                name: "listenerId",
+                summary: "",
+                schema: {
+                    type: 'string'
+                }
+            },
+            examples: m.examples
+        })
+    } else {
+        signatures.push(null)
+    }
+    return signatures
+}
+
 function iterateSignatures(data, method, module) {
     // we're hacking the schema here... make a copy!
     method = JSON.parse(JSON.stringify(method))
     let signatures = [method]
-
+    if (hasTag(method, 'property') || hasTag(method, 'property:readonly') || hasTag(method, 'property:immutable')) {
+        signatures = generatePropertySignatures(method)
+    }
+    
     if (method.tags && method.tags.find(t => t.name === 'polymorphic-pull')) {
         // copy the method for the pull version
         const pull = JSON.parse(JSON.stringify(method))
@@ -295,7 +372,7 @@ function iterateSignatures(data, method, module) {
             match = data.match(regex)
         }
 
-        let block = insertSignatureMacros(match[1], sig, module)
+        let block = sig == null ? '' : insertSignatureMacros(match[1], sig, module)
         data = data.replace(regex, block)
     })
 
@@ -548,7 +625,7 @@ function generateJavaScriptExample(example, m, module) {
 
     let typescript
 
-    const template = m.tags && m.tags.map(t=>t.name).find(t => getAllTemplateNames().includes('methods/' + t + '.md')) || 'default'
+    const template = m.tags && m.tags.map(t=>t.name).find(t => getAllTemplateNames().includes('examples/' + t + '.md')) || 'default'
     typescript = getTemplate(`examples/${template}.md`)
 
     typescript = typescript.replace(/\$\{example.params\}/g, params)
@@ -563,6 +640,9 @@ function generateJavaScriptExampleResult(example, m, module) {
 }
 
 function generateRPCExample(example, m, module) {
+    if (m.tags && m.tags.filter(t => (t.name === 'property-subscribe')).length) {
+        return generatePropertyChangedRPCExample(example, m, module)
+    }
     let request = {
         "jsonrpc": "2.0",
         "id": 1,
@@ -576,6 +656,19 @@ function generateRPCExample(example, m, module) {
             request.params[p.name] = example_p.value
         }
     })
+
+    return JSON.stringify(request, null, '  ')
+}
+
+function generatePropertyChangedRPCExample(example, m, module) {
+    let request = {
+        jsonrpc: "2.0",
+        id: 1,
+        "method": `${module.toLowerCase()}.on${m.name.substr(0, 1).toUpperCase()}${m.name.substr(1)}Changed`,
+        "params": {
+            listen: true
+        },
+    }
 
     return JSON.stringify(request, null, '  ')
 }

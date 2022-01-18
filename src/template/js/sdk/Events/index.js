@@ -31,13 +31,12 @@ const enabledEvents = {}
 
 const oncers = []
 const validEvents = {}
+let transportInitialized = false
 
 export const emit = (module, event, value) => {
   callCallbacks(listeners[module + '.*'], [event, value])
   callCallbacks(listeners[module + '.' + event], [value])
 }
-
-Transport.addEventEmitter(emit)
 
 export const registerEvents = (module, events) => {
   validEvents[module.toLowerCase()] = events.concat()
@@ -125,11 +124,18 @@ const once = function(...args) {
 }
 
 const listen = function(...args) {
+  init()
   const [module, event, callback] = getListenArgs(...args)
   return doListen(module, event, callback, false)
 }
 
-setMockListener(listen)
+const init = () => {
+  if (!transportInitialized) {
+    Transport.addEventEmitter(emit)
+    setMockListener(listen)
+    transportInitialized = true
+  }
+}
 
 export default {
   listen: listen,
