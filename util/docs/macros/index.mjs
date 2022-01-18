@@ -246,7 +246,7 @@ function generatePropertySignatures (m) {
                 name: "response",
                 summary: "",
                 schema: {
-                    $ref: "https://meta.comcast.com/firebolt/types#/definitions/SetResponse"
+                  const: null
                 }
             },
             examples: [
@@ -260,7 +260,7 @@ function generatePropertySignatures (m) {
                     ],
                     result: {
                       name: "Default Result",
-                      value: {}
+                      value: null
                     }
                   }
             ]
