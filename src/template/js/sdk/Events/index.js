@@ -17,8 +17,7 @@
  */
 
 import Transport from '../Transport'
-import Log from '../Log'
-import { setEmitter, setListener } from '../Transport'
+import { setMockListener } from '../Transport/mock.js'
 
 let listenerId = 0
 
@@ -34,12 +33,10 @@ const oncers = []
 const validEvents = {}
 let transportInitialized = false
 
-
 export const emit = (module, event, value) => {
   callCallbacks(listeners[module + '.*'], [event, value])
   callCallbacks(listeners[module + '.' + event], [value])
 }
-
 
 export const registerEvents = (module, events) => {
   validEvents[module.toLowerCase()] = events.concat()
@@ -134,8 +131,8 @@ const listen = function(...args) {
 
 const init = () => {
   if (!transportInitialized) {
-    setEmitter(emit)
-    setListener(listen)
+    Transport.addEventEmitter(emit)
+    setMockListener(listen)
     transportInitialized = true
   }
 }

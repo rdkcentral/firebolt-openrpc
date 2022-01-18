@@ -60,6 +60,61 @@
             ]
         },
         {
+            "name": "methodWithMarkdownDescription",
+            "summary": "A method that pulls it's description from an external markdown file.",
+            "description": {
+                "$ref": "file:../descriptions/modules/Simple/methodWithMarkdownDescription.md"
+            },
+            "params": [
+                {
+                    "name": "parameter",
+                    "required": true,
+                    "schema": {
+                        "type": "boolean"
+                    },
+                    "summary": "A test parameter."
+                }
+            ],
+            "result": {
+                "name": "result",
+                "summary": "A result for testing basic method generation.",
+                "schema": {
+                    "type": "object",
+                    "required": [
+                        "foo"
+                    ],
+                    "properties": {
+                        "foo": {
+                            "type": "string",
+                            "description": "A required field in the result."
+                        },
+                        "bar": {
+                            "type": "number",
+                            "description": "An optional field in the result."
+                        }
+                    },
+                    "additionalProperties": false
+                }
+            },
+            "examples": [
+                {
+                    "name": "Default Example",
+                    "params": [
+                        {
+                            "name": "parameter",
+                            "value": true
+                        }
+                    ],
+                    "result": {
+                        "name": "Default Result",
+                        "value": {
+                            "foo": "here's foo"
+                        }
+                    }
+                }
+            ]
+        },
+        {
             "name": "methodWithSchema",
             "summary": "A method using a schema.",
             "description": "A method for testing schema-dependent method generation.",

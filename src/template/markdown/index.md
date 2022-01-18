@@ -33,7 +33,7 @@ ${if.javascript}
 To use the ${info.title} module, you can import it into your project from the Firebolt SDK:
 
 ```javascript
-import { ${info.title} } from '@firebolt-js/sdk'
+import { ${info.title} } from '${pkg.name}'
 ```
 ${end.if.javascript}
 

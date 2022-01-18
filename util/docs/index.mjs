@@ -24,6 +24,7 @@ import { getModuleContent, getAllModules, addModule } from '../shared/modules.mj
 import path from 'path'
 import fs from 'fs'
 import { loadTemplateContent, setPathDelimiter, setSuffix } from '../shared/template.mjs'
+import { loadMarkdownContent } from '../shared/descriptions.mjs'
 
 // Workaround for using __dirname in ESM
 import url from 'url'
@@ -54,6 +55,7 @@ const run = ({
   const sharedSchemasFolder = path.join(__dirname, '..', '..', 'src', 'schemas')
   const schemasFolder = path.join(srcFolderArg, 'schemas')
   const modulesFolder = path.join(srcFolderArg, 'modules')
+  const markdownFolder = path.join(srcFolderArg, 'descriptions')
   const templateFolder = path.join(templateFolderArg)
   const sharedTemplateFolder = path.join(__dirname, '..', '..', 'src', 'template', 'markdown')
   const outputFolder = path.join(outputFolderArg)
@@ -74,13 +76,17 @@ const run = ({
   .tap(_ => setOutput(outputFolder))
   .tap(_ => logSuccess(`Created ${outputFolder}`))
   .tap(_ => logSuccess(`Created index.md`))
-  // Load all of the templates
+  // Load all of the shared templates
   .flatMap(_ => recursiveFileDirectoryList(sharedTemplateFolder).flatFilter(isFile))
   .through(loadTemplateContent)
   .collect()
   // Load all of the templates
   .flatMap(_ => recursiveFileDirectoryList(templateFolder).flatFilter(isFile))
   .through(loadTemplateContent)
+  .collect()
+  // Load all of the external markdown resources
+  .flatMap(_ => recursiveFileDirectoryList(markdownFolder).flatFilter(isFile))
+  .through(loadMarkdownContent)
   .collect()
   // Load all of the shared Firebolt JSON-Schemas
   .flatMap(_ => recursiveFileDirectoryList(sharedSchemasFolder).flatFilter(isFile))

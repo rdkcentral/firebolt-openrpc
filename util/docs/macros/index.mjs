@@ -24,6 +24,9 @@ import { getMethodSignature, getMethodSignatureParams ,getSchemaType, getSchemaS
 import { getPath, getSchema, getExternalSchemaPaths, getSchemaConstraints, isDefinitionReferencedBySchema, hasTitle, localizeDependencies } from '../../shared/json-schema.mjs'
 import { getTemplate, getAllTemplateNames } from '../../shared/template.mjs'
 import path from 'path'
+import fs from 'fs'
+
+var pkg = JSON.parse(fs.readFileSync('./package.json', 'utf8'));
 
 /**
  * TODO
@@ -172,12 +175,13 @@ function insertMacros(data, json) {
     if (json.methods) {
         data = data
             .replace(/\$\{toc.methods\}/g, json.methods.filter(m => !m.name.match(/^on[A-Z]/)).map(m => '    - [' + m.name + '](#' + m.name.toLowerCase() + ')').join('\n'))
-            .replace(/\$\{toc.events\}/g, json.methods.filter(m => m.name.match(/^on[A-Z]/)).map(m => '    - [' + m.name[2].toLowerCase() + m.name.substr(3) + '](#' + m.name.substr(3).toLowerCase() + ')').join('\n'))
+            .replace(/\$\{toc.events\}/g, json.methods.filter(m => m.name.match(/^on[A-Z]/)).map(m => '    - [' + m.name[2].toLowerCase() + m.name.substr(3) + '](#' + m.name.substr(2).toLowerCase() + ')').join('\n'))
     }
 
     data = data
         .replace(/\$\{module}/g, getTitle(json).toLowerCase() + '.json')
         .replace(/\$\{info.title}/g, getTitle(json))
+        .replace(/\$\{pkg.name}/g, pkg.name)
         .replace(/\$\{info.version}/g, version.readable)
         .replace(/\$\{info.description}/g, json.info ? json.info.description : '')
 

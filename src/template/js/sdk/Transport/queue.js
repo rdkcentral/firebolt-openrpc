@@ -16,24 +16,22 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-let callback
-let queue = []
+export default class Queue {
+  constructor () {
+    this._callback = null
+    this._queue = []
+  }
 
-function send(json) {
-  queue.push(json)
-}
+  send (json) {
+    this._queue.push(json)
+  }
 
-function receive(_callback) {
-  callback = _callback
-}
+  receive (_callback) {
+    this._callback = _callback
+  }
 
-function flush(transport) {
-  transport.receive(callback)
-  queue.forEach(item => transport.send(item))
-}
-
-export default {
-  send: send,
-  receive: receive,
-  flush: flush,
+  flush (transport) {
+    transport.receive(this._callback)
+    this._queue.forEach(item => transport.send(item))
+  }
 }

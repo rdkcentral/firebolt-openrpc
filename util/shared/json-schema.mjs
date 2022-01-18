@@ -16,11 +16,16 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import h from 'highland'
 import crocks from 'crocks'
 import fs from 'fs/promises'
 import path from 'path'
 import url from 'url'
 import { fsReadFile, bufferToString } from './helpers.mjs'
+import { getAllMarkdownNames, getMarkdown } from './descriptions.mjs'
+
+const __dirname = url.fileURLToPath(new URL('.', import.meta.url))
+
 
 const { setPath, getPathOr } = crocks
 const schemas = {}
@@ -36,6 +41,36 @@ const getAllSchemas = _ => {
   return Object.values(schemas)
 }
 
+const getExternalMarkdownPaths = obj => {
+  return objectPaths(obj)
+    .filter(x => /\/\$ref$/.test(x))
+    .map(refToPath)
+    .filter(x => /^file:/.test(getPathOr(null, x, obj)))
+}
+
+const addExternalMarkdown = obj => {
+  const paths = getExternalMarkdownPaths(obj)
+
+  paths.map(path => {
+    // grab url
+    const urn = getPathOr(null, path, obj)
+    const url = urn.indexOf("file:../") == 0 ? urn.substr("file:../".length) : urn.substr("file:".length)
+    const md = getMarkdown(url)// || "Jeremy was here..."
+
+    // drop ref
+    path.pop();
+
+    // grab field name
+    const field = path.pop()
+
+    // reassign value
+    const node = getPathOr(null, path, obj)
+    node[field] = md
+  })
+
+  return obj
+}
+
 // A through stream that expects a stream of filepaths, reads the contents
 // of any .json files found, and converts them to POJOs
 // DOES NOT DEAL WITH ERRORS
@@ -44,6 +79,7 @@ const getSchemaContent = fileStream => fileStream
     .flatMap(fsReadFile)
     .map(bufferToString)
     .map(JSON.parse)
+    .map(addExternalMarkdown)
 
 const getRef = (ref, json) => {
   return getPathOr({}, refToPath(ref), json)
