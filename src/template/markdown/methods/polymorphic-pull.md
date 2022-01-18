@@ -109,7 +109,7 @@ ${if.javascript}
   <summary><b>JavaScript</b></summary>
 
 ```javascript
-import { ${info.title} } from '@firebolt-js/sdk'
+import { ${info.title} } from '${pkg.name}'
 
 ${info.title}.${method.name}(${example.params})
 ```
