@@ -77,6 +77,18 @@ It affects the output of:
 
 Indicated by `--task openrpc`. Assembles a corpus of individual OpenRPC documents into a single OpenRPC document.
 
+#### Tags
+* __event__ - When a method is tagged with this then it will be treated as an asynchronous event. The call to subscribe to the event will return a success reponse and then zero or more asynchronous responses with the same id. These responses correlate to the event happening. Events are documented in a different section of the module. The app can use the event not through a specific method call but by doing `Module.listen('eventName')`
+* __exclude-from-sdk__ - When a method is tagged with this then no SDK method is generated. Instead, custom code for that method is used. This is often used for methods that have client code associated with it instead of just calling the Transport directly.
+* __polymorphic-pull__ - Instructs the code generation to generate a single method that be used for both pushing data to Firebolt or registering a callback that Firebolt can use to pull data from the application.
+* __polymorphic-reducer__ - Instructs the code generation to generate a single method that can take a single object or an array of objects.
+* __rpc-only__ - No SDK method or docs are generated for this method, but FireboltOS should still handle the RPC call. This is used for internal communication within the SDK to FireboltOS, but is not meant to be consumed by an application.
+* __synchronous__ - Almost all firebolt methods are asynchronous because they make an asynchronous call through the Transport. Some calls which are handled entirely client side can be marked as synchronous and thus do not return a Promise.
+* __calls-metrics__ - Whenever the method is called, another call is made to produce a metric for that method call.
+* __property__ - Generates a single method that can be used as a getter, setter, and subscription based on the arguments the app gives to that method call.
+* __property:readonly__ - Generates a single method that can be used as a getter and subscription based on the arguments the app gives to that method call.
+* __property:immutable__ - Generates a single method that can be used as a getter based on the arguments the app gives to that method call.
+
 ### OpenRPC Validation
 
 Indicated by `--task validate`. Reads and validates a corpus of individual OpenRPC documents and validates the result of assembling them together into a single OpenRPC document.
