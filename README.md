@@ -84,6 +84,7 @@ Indicated by `--task openrpc`. Assembles a corpus of individual OpenRPC document
 * __polymorphic-reducer__ - Instructs the code generation to generate a single method that can take a single object or an array of objects.
 * __rpc-only__ - No SDK method or docs are generated for this method, but FireboltOS should still handle the RPC call. This is used for internal communication within the SDK to FireboltOS, but is not meant to be consumed by an application.
 * __synchronous__ - Almost all firebolt methods are asynchronous because that make an asynchronous call through the Transport. Some calls which are handled entirely client side can be marked as synchronous and thus do not return a Promise.
+* __calls-metrics__ - Whenever the method is called, another call is made to produce a metric for that method call.
 * __property__ - Generates a single method that can be used as a getter, setter, and subscription based on the arguments the app gives to that method call.
 * __property:readonly__ - Generates a single method that can be used as a getter and subscription based on the arguments the app gives to that method call.
 * __property:immutable__ - Generates a single method that can be used as a getter based on the arguments the app gives to that method call.
