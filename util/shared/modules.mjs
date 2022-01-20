@@ -202,10 +202,49 @@ const getAllModules = _ => {
     return Object.values(modules)
 }
 
+const createEventFromProperty = property => {
+    const event = JSON.parse(JSON.stringify(property))
+    event.name = 'on' + event.name.charAt(0).toUpperCase() + event.name.substr(1) + 'Changed'
+    const old_tags = event.tags
+    event.tags = [
+        {
+            'name': 'event'
+        }
+    ]
+
+    event.result.schema = {
+        "oneOf": [
+            {
+                "$ref": "https://meta.comcast.com/firebolt/types#/definitions/ListenResponse"
+            },
+            event.result.schema
+        ]
+    }
+
+    old_tags.forEach(t => {
+        if (t.name !== 'property' && !t.name.startsWith('property:'))
+        {
+            event.tags.push(t)
+        }
+    })
+
+    return event
+}
+
+const generateEvents = json => {
+    const properties = json.methods.filter( m => m.tags && m.tags.find( t => t.name == 'property')) || []
+    const readonlies = json.methods.filter( m => m.tags && m.tags.find( t => t.name == 'property:readonly')) || []
+
+    properties.forEach(property => json.methods.push(createEventFromProperty(property)))
+    readonlies.forEach(property => json.methods.push(createEventFromProperty(property)))
+
+    return json
+}
+
 // A through stream that expects a stream of filepaths, reads the contents
 // of any .json files found, and converts them to POJOs
 // DOES NOT DEAL WITH ERRORS
-const getModuleContent = getSchemaContent
+const getModuleContent = x => getSchemaContent(x).map(generateEvents)
 
 const getPathFromModule = (module, path) => {
     console.error("DEPRECATED: getPathFromModule")
