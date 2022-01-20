@@ -84,6 +84,13 @@ const isCallMetricsMethod = compose(
   getPath(['tags'])
 )
 
+const isDeprecatedMethod = compose(
+  option(false),
+  map(_ => true),
+  chain(find(propEq('name', 'deprecated'))),
+  getPath(['tags'])
+)
+
 const isPublicEventMethod = and(
   compose(
     option(true),
@@ -150,6 +157,13 @@ const eventsOrEmptyArray = compose(
     return e
   })),
   map(filter(isPublicEventMethod)),
+  getMethods
+)
+
+// Pick deprecated methods out of the methods array
+const deprecatedOrEmptyArray = compose(
+  option([]),
+  map(filter(isDeprecatedMethod)),
   getMethods
 )
 
@@ -338,7 +352,10 @@ const generateImports = json => {
   return imports
 }
 
-const generateInitialization = json => compose(
+const generateInitialization = json => generateEventInitialization(json) + '\n' + generateDeprecatedInitialization(json)
+
+
+const generateEventInitialization = json => compose(
   reduce((acc, method, i, arr) => {
     if (i === 0) {
       acc = []
@@ -351,6 +368,22 @@ const generateInitialization = json => compose(
 registerEvents('${getModuleName(json)}', Object.values(${JSON.stringify(acc)}))\n`
     }, ''),
   eventsOrEmptyArray
+)(json)
+
+const generateDeprecatedInitialization = json => compose(
+  reduce((acc, method, i, arr) => {
+    if (i === 0) {
+      acc = ''
+    }
+    let alternative = method.tags.find( t => t.name === 'deprecated')['x-alternative'] || ''
+
+    if (alternative && alternative.indexOf(' ') === -1) {
+      alternative = `Use ${alternative} instead.`
+    }
+
+    return acc + `Transport.registerDeprecatedMethod('${getModuleName(json)}', '${method.name}', '${alternative}')\n`
+  }, ''),
+  deprecatedOrEmptyArray
 )(json)
 
 function generateMethodList(json = {}) {
