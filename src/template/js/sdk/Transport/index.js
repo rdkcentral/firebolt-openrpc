@@ -36,6 +36,7 @@ export default class Transport {
     this._eventEmitters = []
     this._eventMap = {}
     this._queue = new Queue()
+    this._timeout = null
     this.isMock = false
   }
 
@@ -73,9 +74,15 @@ export default class Transport {
         this.setTransportLayer(transport)
       })
     } else {
-      this.isMock = true
-      transport = mock
-      transport.receive(this.receiveHandler.bind(this))
+      // Wire up the queue
+      transport = this._queue
+
+      // Set up mock if there's no override in 500ms
+      const self = this
+      this._timeout = setTimeout( _ => {
+        self.isMock = true
+        self.setTransportLayer(mock)
+      }, 500)
     }
     return transport
   }
@@ -83,6 +90,7 @@ export default class Transport {
   setTransportLayer (tl) {
     this._transport = tl
     this._queue.flush(tl)
+    clearTimeout(this._timeout)
   }
 
   static send (module, method, params) {
