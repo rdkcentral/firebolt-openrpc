@@ -5,6 +5,7 @@ import docs from '../util/docs/index.mjs'
 import validate from '../util/validate/index.mjs'
 import openrpc from '../util/openrpc/index.mjs'
 import declarations from '../util/declarations/index.mjs'
+import csv from '../util/csv/index.mjs'
 import nopt from 'nopt'
 import path from 'path'
 
@@ -42,6 +43,9 @@ else if (util === 'openrpc') {
 }
 else if (util === 'declarations') {
     declarations(parsedArgs)
+}
+else if (util === 'csv') {
+    csv(parsedArgs)
 } else {
   console.log("Invalid build type")
 }
