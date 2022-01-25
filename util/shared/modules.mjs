@@ -208,7 +208,8 @@ const createEventFromProperty = property => {
     const old_tags = event.tags
     event.tags = [
         {
-            'name': 'event'
+            'name': 'event',
+            'x-alternative': property.name
         }
     ]
 

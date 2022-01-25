@@ -19,10 +19,10 @@ For the full schema, see the link below.
 ## Table of Contents
  - [Usage](#usage)
  - [Overview](#overview)
- - [Events](#events)
-${toc.events}
  - [Methods](#methods)
 ${toc.methods}
+ - [Events](#events)
+${toc.events}
  - [Schemas](#schemas)
 ${toc.schemas}
 
@@ -41,11 +41,18 @@ ${end.if.javascript}
 ## Overview
 ${info.description}
 
-## Events
-${events}
-
 ## Methods
 ${methods}
+
+${if.events}
+
+## Events
+
+| Name | Payload | Property | Description |
+|------|---------|----------|-------------|
+${events}
+
+#{end.if.events}
 
 ${if.schemas}
 

@@ -94,8 +94,56 @@ export {
 
 function insertMacros(data, json) {
     let match, regex
+    let hasEvents = false
 
     if (json.methods) {
+        
+        json.methods.sort( (a, b) => (a.name.toLowerCase() > b.name.toLowerCase()) ? 1 : -1 )
+
+        regex = /\$\{events\}/
+        if (match = data.match(regex)) {
+            let events = ''
+            json.methods.forEach(method => {
+                if (method.tags && method.tags.find(t => t.name === 'event')) {
+                    hasEvents = true
+                    events += insertMethodMacros(match[0], method, getTitle(json))
+                }
+            })
+            data = data.replace(regex, events)
+        }
+
+        if (hasEvents) {
+            const listenerTemplate = 
+            {
+                name: 'listen',
+                tags: [
+                    {
+                        name: 'listener'
+                    }
+                ],
+                summary: 'Listen for events from this module.',
+                params: [
+                    {
+                        name: 'event',
+
+                        schema: {
+                            type: 'string'
+                        }
+                    }
+                ],
+                result: {
+                    name: 'success',
+                    schema: {
+                        type: 'boolean'
+                    }
+                }
+            }
+
+            json.methods.push(listenerTemplate)
+            json.methods.push(Object.assign({}, listenerTemplate, { name: "once", summary: "Listen for only one occurance of an event from this module. The callback will be cleared after one event." }))
+            json.methods.sort( (a, b) => (a.name.toLowerCase() > b.name.toLowerCase()) ? 1 : -1 )
+        }
+
         regex = /\$\{methods\}/
         while (match = data.match(regex)) {
             let methods = ''
@@ -105,17 +153,6 @@ function insertMacros(data, json) {
                 }
             })
             data = data.replace(regex, methods)
-        }
-
-        regex = /\$\{events\}/
-        if (match = data.match(regex)) {
-            let events = ''
-            json.methods.forEach(method => {
-                if (method.tags && method.tags.find(t => t.name === 'event')) {
-                    events += insertMethodMacros(match[0], method, getTitle(json))
-                }
-            })
-            data = data.replace(regex, events)
         }
 
         regex = /[\# \t]*?\$\{event\.[a-zA-Z]+\}.*?\$\{end.event\}/s
@@ -213,6 +250,7 @@ function insertMethodMacros(data, method, module) {
     }
 
     let method_data = data
+    const alternative = method.tags && method.tags.find( t => t['x-alternative']) || { 'x-alternative': ''}
 
     method_data = method_data
         .replace(/\$\{method.name\}/g, method.name)
@@ -220,6 +258,7 @@ function insertMethodMacros(data, method, module) {
         .replace(/\$\{method.summary\}/g, method.summary)
         .replace(/\$\{method.description\}/g, method.description || method.summary)
         .replace(/\$\{module\}/g, module)
+        .replace(/\$\{event.property\}/g, alternative['x-alternative'])
 
     method_data = method_data.replace(/\$\{.*?method.*?\}\s*\n?/g, '')
 
@@ -394,9 +433,10 @@ function insertSignatureMacros(block, sig, module) {
     let regex = /[\# \t]*?\$\{example\.[a-zA-Z]+\}.*?\$\{end.example\}/s
     let match = block.match(regex)
  
-    let exampleBlock = insertExampleMacros(match[0], sig, module)
-
-    block = block.replace(regex, exampleBlock)
+    if (match) {
+        let exampleBlock = insertExampleMacros(match[0], sig, module)
+        block = block.replace(regex, exampleBlock)
+    }
 
     let lines = block.split('\n')
 
@@ -414,6 +454,7 @@ function insertSignatureMacros(block, sig, module) {
         .replace(/\$\{method.params\}/g, getMethodSignatureParams(currentSchema, sig))
         .replace(/\$\{method.result.name\}/g, sig.result.name)
         .replace(/\$\{method.result.summary\}/g, sig.result.summary)
+        .replace(/\$\{method.result.link\}/g, getSchemaType(currentSchema, sig.result, {title: true, link: true, asPath: _options.asPath, baseUrl: _options.baseUrl}))
         .replace(/\$\{method.result.type\}/g, getSchemaType(currentSchema, sig.result, {title: true, asPath: _options.asPath, baseUrl: _options.baseUrl}))
         .replace(/\$\{method.result\}/g, getSchemaTypeTable(currentSchema, sig.result, { description: sig.result.summary, title: true, asPath: _options.asPath, baseUrl: _options.baseUrl}))
 
