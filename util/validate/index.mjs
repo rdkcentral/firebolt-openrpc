@@ -46,10 +46,6 @@ const run = ({
   const externalFolder = path.join(__dirname, '..', '..', 'src', 'external')
   const modulesFolder = path.join(srcFolderArg, 'modules')
   
-  const load = path => h.of(path)
-          .through(getSchemaContent)
-          .tap(addSchema)
-
   const validate = (json, validator, prefix) => h(validator(json))
           .tap(result => {
             if (result.valid) {
@@ -84,16 +80,25 @@ const run = ({
   // Load all of the shared JSON-Schemas
   recursiveFileDirectoryList(sharedSchemasFolder).flatFilter(isFile)
     .through(getSchemaContent)
+    .errors( (err, push) => {
+      errors ++
+    })
     .tap(addSchema)
     .collect()
     // Load & validate all of the local JSON-Schemas
     .flatMap(_ => recursiveFileDirectoryList(schemasFolder).flatFilter(isFile))
     .through(getSchemaContent)
+    .errors( (err, push) => {
+      errors ++
+    })
     .tap(addSchema)
     .collect()
     // Switch to external schemas
     .flatMap(_ => recursiveFileDirectoryList(externalFolder))
     .through(getSchemaContent)
+    .errors( (err, push) => {
+      errors ++
+    })
     .tap(addSchema)
     .collect()
     .flatMap( _ => h(getAllSchemas()))
@@ -105,6 +110,9 @@ const run = ({
     // Switch to OpenRPC modules
     .flatMap(_ => recursiveFileDirectoryList(modulesFolder))
     .through(getModuleContent)
+    .errors( (err, push) => {
+      errors ++
+    })
     .flatMap(json => validate(json, validateOpenRpc, 'Module'))
     .errors( (error, push) => {
       console.log(error)

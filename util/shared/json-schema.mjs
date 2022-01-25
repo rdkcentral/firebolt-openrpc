@@ -83,9 +83,9 @@ const loadAndParseSchema = filepath => h.of(filepath)
     .map(bufferToString)
     .map(JSON.parse)
     .errors( (err, push) => {
-      err.message = path.basename(filepath) + ": " + err.message
+      err.message = filepath + ": " + err.message
       console.error(`\n\x1b[41m ERROR:\x1b[0m ${err.message}\n`)
-      process.exit(1)
+      push(nil, err)
     })
     .map(addExternalMarkdown)
 
