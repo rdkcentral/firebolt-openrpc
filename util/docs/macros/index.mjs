@@ -214,6 +214,19 @@ function insertMethodMacros(data, method, module) {
 
     let method_data = data
 
+    const deprecated = method.tags && method.tags.find( t => t.name === 'deprecated')
+    if (deprecated ) {
+        let alternative = deprecated['x-alternative'] || ''
+        let since = deprecated['x-since'] || ''
+
+        if (alternative && alternative.indexOf(' ') === -1) {
+          alternative = `Use \`${alternative}\` instead.`
+        }
+    
+        method_data = method_data
+            .replace(/\$\{method.description\}/g, `This method is **deprecated**` + (since ? ` since version ${since}. ` : '. ') + `${alternative}\n\n\$\{method.description\}`)
+    }
+
     method_data = method_data
         .replace(/\$\{method.name\}/g, method.name)
         .replace(/\$\{event.name\}/g, method.name.length > 3 ? method.name[2].toLowerCase() + method.name.substr(3): method.name)
