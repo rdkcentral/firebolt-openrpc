@@ -16,12 +16,16 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import Setup from '../Setup'
-import { Simple } from '../../dist/sdk.js'
-import { expect } from '@jest/globals';
+import { getMarkdown, getAllMarkdownNames } from './descriptions.mjs'
 
-test('Basic', () => {
-    Simple.method(true).then(result => {
-        expect(result.foo).toBe("here's foo")
-    })
-});
+test('proving that getMarkdown is untestable', () => {
+  // This function mutates a variable in the function's global scope and performs side-effects on it.
+  // Unless we setup the entire scenario around this, all we're testing is that a feature of
+  // the javascript syntax works. description[name].
+  expect(getMarkdown('foo')).toBeUndefined()
+})
+
+test('and by extension, so is getAllMarkdowns', () => {
+  // Yay, we have tested that Object.keys works as described
+  expect(getAllMarkdownNames('blah')).toStrictEqual([])
+})
