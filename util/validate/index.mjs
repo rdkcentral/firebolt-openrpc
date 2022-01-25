@@ -46,88 +46,70 @@ const run = ({
   const externalFolder = path.join(__dirname, '..', '..', 'src', 'external')
   const modulesFolder = path.join(srcFolderArg, 'modules')
   
+  const load = path => h.of(path)
+          .through(getSchemaContent)
+          .tap(addSchema)
+
+  const validate = (json, validator, prefix) => h(validator(json))
+          .tap(result => {
+            if (result.valid) {
+              logSuccess( prefix + `: ${result.title} is valid`)
+            }
+            else {
+              console.error(`\nERROR: ${prefix}: ${result.title} failed validation`)
+              errors ++
+            }
+          })
+
+  const report = _ => {
+    if (errors > 0) {
+      console.error(`\nValidation failed with errors in ${errors} files`)
+      process.exit(1000)
+    }
+  }
+
+  // special case for single file
   if (path.extname(srcFolderArg) === '.json') {
     h.of(srcFolderArg)
-      .through(getSchemaContent)
-      .flatMap(x => {return h(validateJsonSchema(x))})
-      .tap(result => {
-        if (result.valid) {
-          logSuccess(`OpenRPC: ${result.title} is valid`)
-        }
-        else {
-          console.error(`\nERROR: ${result.title} failed validation`)
-          errors ++
-        }
-      })
-      .done(() => {
-        if (errors > 0) {
-          console.error(`\nValidation failed with errors in ${errors} files`)
-          process.exit(1000)
-        }
-      })
-  }
-  else {
-    // Load all of the JSON-Schemas
-    recursiveFileDirectoryList(sharedSchemasFolder).flatFilter(isFile)
-      .through(getSchemaContent)
-      .tap(addSchema)
-      .collect()
-      .flatMap(_ => recursiveFileDirectoryList(schemasFolder).flatFilter(isFile))
-      .through(getSchemaContent)
-      .tap(addSchema)
-      .collect()
-      // Validate all of the JSON-Schemas
-      .flatMap(_ => h(getAllSchemas()))
-      .flatMap(x => {return h(validateJsonSchema(x))})
-      .tap(result => {
-        if (result.valid) {
-          logSuccess(`Schema: ${result.title} is valid`)
-        }
-        else {
-          console.error(`\nERROR: ${result.title} failed validation`)
-          errors ++
-        }
-      })
-      .collect()
-      // Switch to external schemas
-      .flatMap(_ => recursiveFileDirectoryList(externalFolder))
-      .through(getSchemaContent)
-      .tap(addSchema)
-      .flatMap(x => {return h(validateJsonSchema(x))})
-      .tap(result => {
-        if (result) {
-          logSuccess(`Schema: ${result.title} is valid`)
-        }
-        else {
-          console.error(`\nERROR: ${result.title} failed validation`)
-          errors ++
-        }
-      })
-      .collect()
-      // Switch to OpenRPC modules
-      .flatMap(_ => recursiveFileDirectoryList(modulesFolder))
       .through(getModuleContent)
-      .errors( (error, push) => {
-        console.log(error)
-      })
-      .flatMap(x => {return h(validateOpenRpc(x))})
-      .tap(result => {
-        if (result.valid) {
-          logSuccess(`Module: ${result.title} is valid`)
-        }
-        else {
-          console.error(`\nERROR: ${result.title} failed validation`)
-          errors ++
-        }
-      })
-      .collect()
-      .done(() => {
-        if (errors > 0) {
-          console.error(`\nValidation failed with errors in ${errors} files`)
-          process.exit(1000)
-        }
-      })
+      .flatMap(json => validate(json, validateOpenRpc, 'OpenRPC'))
+      .tap(_ => console.log(''))
+      .done(report)
+
+    return
   }
+
+  // otherwise do the entire project
+
+  // Load all of the shared JSON-Schemas
+  recursiveFileDirectoryList(sharedSchemasFolder).flatFilter(isFile)
+    .through(getSchemaContent)
+    .tap(addSchema)
+    .collect()
+    // Load & validate all of the local JSON-Schemas
+    .flatMap(_ => recursiveFileDirectoryList(schemasFolder).flatFilter(isFile))
+    .through(getSchemaContent)
+    .tap(addSchema)
+    .collect()
+    // Switch to external schemas
+    .flatMap(_ => recursiveFileDirectoryList(externalFolder))
+    .through(getSchemaContent)
+    .tap(addSchema)
+    .collect()
+    .flatMap( _ => h(getAllSchemas()))
+    .flatMap(json => validate(json, validateJsonSchema, 'Schema'))
+    .errors( (error, push) => {
+      console.log(error)
+    })
+    .collect()
+    // Switch to OpenRPC modules
+    .flatMap(_ => recursiveFileDirectoryList(modulesFolder))
+    .through(getModuleContent)
+    .flatMap(json => validate(json, validateOpenRpc, 'Module'))
+    .errors( (error, push) => {
+      console.log(error)
+    })
+    .done(report)
 }
 
 export default run

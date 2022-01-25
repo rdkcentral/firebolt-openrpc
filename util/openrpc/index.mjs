@@ -96,7 +96,7 @@ const run = ({
     // Write it all to the output file
     .flatMap(writeOpenRPC)
     .done(() => {
-        logSuccess('Generated Firebolt OpenRPC document')
+        logSuccess('Generated Firebolt OpenRPC document\n')
     })
 }
 
