@@ -604,6 +604,11 @@ function getExternalSchemaLinks(json) {
 
     const isModule = currentSchema.info
 
+    // Generate list of links to other Firebolt docs
+    //  - get all $ref nodes that point to external files
+    //  - dedupe them
+    //  - convert them to the $ref value (which are paths to other schema files), instead of the path to the ref node itself
+    //  - convert those into markdown links of the form [Schema](Schema#/link/to/element)
     let links = getExternalSchemaPaths(json)
         .map(path => getPathOr(null, path, json))
         .filter(path => seen.hasOwnProperty(path) ? false : (seen[path] = true))
