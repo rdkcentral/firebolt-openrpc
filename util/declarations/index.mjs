@@ -21,7 +21,7 @@ import { recursiveFileDirectoryList, fsWriteFile, isFile, logSuccess } from '../
 import { generateDeclarations } from './generator/index.mjs'
 import { getModuleContent, addModule } from '../shared/modules.mjs'
 import path from 'path'
-import { getSchemaContent, addSchema, localizeDependencies } from '../shared/json-schema.mjs'
+import { getSchemaContent, addSchema } from '../shared/json-schema.mjs'
 
 // Workaround for using __dirname in ESM
 import url from 'url'
@@ -39,12 +39,13 @@ const __dirname = url.fileURLToPath(new URL('.', import.meta.url))
 // destructure well-known cli args and alias to variables expected by script
 const run = ({
   source: srcFolderArg,
+  'shared-schemas': sharedSchemasFolderArg,
   output: outputFile
 }) => {
   // Important file/directory locations
   const declarationsFile = path.join(outputFile)
   const schemasFolder = path.join(srcFolderArg, 'schemas')
-  const sharedSchemasFolder = path.join(__dirname, '..', '..', 'node_modules', '@firebolt-js', 'schemas', 'src', 'schemas')
+  const sharedSchemasFolder = sharedSchemasFolderArg
   const modulesFolder = path.join(srcFolderArg, 'modules')
   const hasPublicMethods = json => json.methods && json.methods.filter(m => !m.tags || !m.tags.map(t=>t.name).includes('rpc-only')).length > 0
   const alphabeticalSorter = (a, b) => a.info.title > b.info.title ? 1 : b.info.title > a.info.title ? -1 : 0
