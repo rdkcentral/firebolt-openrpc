@@ -39,6 +39,7 @@
   "license": "Apache-2.0",
   "dependencies": {
     "@babel/preset-env": "^7.15.0",
+    "@firebolt-js/schemas": "file:../firebolt-schemas",
     "ajv": "^8.3.0",
     "ajv-formats": "^2.1.0",
     "babel-cli": "^6.0.0",

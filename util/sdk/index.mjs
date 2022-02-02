@@ -48,7 +48,8 @@ const run = ({
   // Important file/directory locations
   const versionJson = path.join('package.json')
   const modulesFolder = path.join(srcFolderArg, 'modules')
-  const sharedSchemasFolder = path.join(__dirname, '..', '..', 'src', 'schemas')
+  const sharedSchemasFolder = path.join(__dirname, '..', '..', 'node_modules', '@firebolt-js', 'schemas', 'src', 'schemas')
+  console.log('sharedSchemasFolder : ' + sharedSchemasFolder)
   const schemasFolder = path.join(srcFolderArg, 'schemas')
   const templateFolder = path.join(__dirname, '..', '..', 'src', 'template', 'js')
   const sdkTemplateFolder = path.join(templateFolderArg, 'sdk')
