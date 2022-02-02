@@ -604,16 +604,16 @@ function getExternalSchemaLinks(json) {
 
     const isModule = currentSchema.info
 
+    // Generate list of links to other Firebolt docs
+    //  - get all $ref nodes that point to external files
+    //  - dedupe them
+    //  - convert them to the $ref value (which are paths to other schema files), instead of the path to the ref node itself
+    //  - convert those into markdown links of the form [Schema](Schema#/link/to/element)
     let links = getExternalSchemaPaths(json)
-        .filter(path => path.filter(item => item === 'items').length <= 1) // Schemas burried behind more than one array aren't relevant
         .map(path => getPathOr(null, path, json))
-//        .filter(path => /^modules\//.test(path))
         .filter(path => seen.hasOwnProperty(path) ? false : (seen[path] = true))
         .map(path => _options.baseUrl + getLinkFromRef(path, _options.asPath))
-//        .map(path => path.split('#')[0].split('/').pop().split('.')[0] + 'Schema#' + path.split('/').pop()) // reformat for git wiki
-//        .map(path => path[0].toUpperCase() + path.substr(1)) // initial caps for git wiki
-        //.map(path => (' - [' + path.split('#')[1] + (options.asPath ? '](../' : '](./') + path.split('#')[0] + '#' + path.split('#')[1].toLowerCase() + ')'))
-        .map(path => ' - [' + path.split("/").pop() + '](' + (_options.asPath ? path.toLowerCase() : path) + ')')
+        .map(path => ' - [' + path.split("/").pop() + '](' + (_options.asPath ? path.split('#')[0].toLowerCase() + '#' + path.split('#')[1].split('/').pop().toLowerCase()  : path) + ')')
         .join('\n')
 
     return links
