@@ -43,7 +43,6 @@ const run = ({
   // Important file/directory locations
   const schemasFolder = path.join(srcFolderArg, 'schemas')
   const sharedSchemasFolder = path.join(__dirname, '..', '..', 'node_modules', '@firebolt-js', 'schemas', 'src', 'schemas')
-  console.log('sharedSchemasFolder : ' + sharedSchemasFolder)
   const externalFolder = path.join(__dirname, '..', '..', 'src', 'external')
   const modulesFolder = path.join(srcFolderArg, 'modules')
   
