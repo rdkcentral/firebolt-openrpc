@@ -30,11 +30,12 @@ const __dirname = url.fileURLToPath(new URL('.', import.meta.url))
 const run = ({
   source: srcFolderArg,
   template: templateArg,
+  'shared-schemas': sharedSchemasFolderArg,
   output: outputArg
 }) => {
   // Important file/directory locations
   const versionJson = path.join('package.json')
-  const sharedSchemasFolder = path.join(__dirname, '..', '..', 'src', 'schemas')
+  const sharedSchemasFolder = sharedSchemasFolderArg
   const schemasFolder = path.join(srcFolderArg, 'schemas')
   const modulesFolder = path.join(srcFolderArg, 'modules')
   const markdownFolder = path.join(srcFolderArg, 'descriptions')

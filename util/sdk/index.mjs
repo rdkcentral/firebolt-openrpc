@@ -43,12 +43,13 @@ const run = ({
   source: srcFolderArg,
   template: templateFolderArg,
   output: outputFolderArg,
+  'shared-schemas': sharedSchemasFolderArg,
   'static-modules': staticModules = false
 }) => {
   // Important file/directory locations
   const versionJson = path.join('package.json')
   const modulesFolder = path.join(srcFolderArg, 'modules')
-  const sharedSchemasFolder = path.join(__dirname, '..', '..', 'src', 'schemas')
+  const sharedSchemasFolder = sharedSchemasFolderArg
   const schemasFolder = path.join(srcFolderArg, 'schemas')
   const templateFolder = path.join(__dirname, '..', '..', 'src', 'template', 'js')
   const sdkTemplateFolder = path.join(templateFolderArg, 'sdk')
