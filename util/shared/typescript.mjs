@@ -41,7 +41,7 @@ function getMethodSignatureParams(module, method) {
 const safeName = prop => prop.match(/[.+]/) ? '"' + prop + '"' : prop
 
 function getSchemaShape(module, json, name, options = {level: 0, descriptions: true}) {
-  let level = options.level 
+    let level = options.level 
     let descriptions = options.descriptions
     let structure = []
 
@@ -69,7 +69,9 @@ function getSchemaShape(module, json, name, options = {level: 0, descriptions: t
       return '  '.repeat(level) + `${prefix}${title}${operator} ` + json.title + summary
     }
     else if (json.type === 'object') {
-  
+      // TODO: maybe this should happen at the top of this method for all types? didn't want to make such a drastic change, though.
+      json = localizeDependencies(json)
+
       let suffix = '{'
   
       structure.push('  '.repeat(level) + `${prefix}${title}${operator} ${suffix}`)
@@ -97,6 +99,12 @@ function getSchemaShape(module, json, name, options = {level: 0, descriptions: t
   
           structure.push(getSchemaShape(module, {type: type}, safeName(prop), {descriptions: descriptions, level: level+1}))
         })
+      }
+      else if (json.patternProperties) {
+        Object.entries(json.patternProperties).forEach(([pattern, schema]) => {
+          let type = getSchemaType(module, schema)
+          structure.push(getSchemaShape(module, {type: type}, '\'/'+pattern+'/\'', {descriptions: descriptions, level: level+1}))
+        })        
       }
   
       structure.push('  '.repeat(level) + '}')
