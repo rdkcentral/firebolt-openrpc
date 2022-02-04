@@ -202,14 +202,21 @@ const getAllModules = _ => {
     return Object.values(modules)
 }
 
-const createEventFromProperty = property => {
-    const event = JSON.parse(JSON.stringify(property))
-    event.name = 'on' + event.name.charAt(0).toUpperCase() + event.name.substr(1) + 'Changed'
-    const old_tags = event.tags
+const eventDefaults = event => {
+
     event.tags = [
         {
-            'name': 'event',
-            'x-alternative': property.name
+            'name': 'event'
+        }
+    ]    
+
+    event.params = [
+        {
+            name: 'listen',
+            required: true,
+            schema: {
+                type: 'boolean'
+            }
         }
     ]
 
@@ -222,6 +229,25 @@ const createEventFromProperty = property => {
         ]
     }
 
+    event.examples && event.examples.forEach(example => {
+        example.params = [
+            {
+                name: 'listen',
+                value: true
+            }
+        ]
+    })
+
+    return event
+}
+
+const createEventFromProperty = property => {
+    const event = eventDefaults(JSON.parse(JSON.stringify(property)))
+    event.name = 'on' + event.name.charAt(0).toUpperCase() + event.name.substr(1) + 'Changed'
+    const old_tags = property.tags.concat()
+
+    event.tags[0]['x-alternative'] = property.name
+
     old_tags.forEach(t => {
         if (t.name !== 'property' && !t.name.startsWith('property:'))
         {
@@ -232,7 +258,83 @@ const createEventFromProperty = property => {
     return event
 }
 
-const generateEvents = json => {
+const createPullEventFromPush = (pusher, json) => {
+    const event = eventDefaults(JSON.parse(JSON.stringify(pusher)))
+    event.name = 'onPull' + event.name.charAt(0).toUpperCase() + event.name.substr(1)
+    const old_tags = pusher.tags.concat()
+
+    event.tags[0]['x-pulls-for'] = pusher.name
+    event.tags.push({
+        name: 'rpc-only'
+    })
+
+    const requestType = (pusher.name.charAt(0).toUpperCase() + pusher.name.substr(1)) + "FederatedRequest"
+    event.result.name = "request"
+    event.result.summary = "A " + requestType + " object."
+    event.result.schema.oneOf[1] = {
+        "$ref": "#/components/schemas/" + requestType
+    }
+
+    const exampleResult = {
+        name: "result",
+        value: JSON.parse(JSON.stringify(getPathOr(null, ['components', 'schemas', requestType, 'examples', 0], json)))
+    }
+
+    event.examples && event.examples.forEach(example => {
+        example.result = exampleResult
+    })
+
+    old_tags.forEach(t => {
+        if (t.name !== 'polymorphic-pull')
+        {
+            event.tags.push(t)
+        }
+    })
+
+    return event
+}
+
+const createSetterFromProperty = property => {
+    const setter = JSON.parse(JSON.stringify(property))
+    setter.name = 'set' + setter.name.charAt(0).toUpperCase() + setter.name.substr(1)
+    const old_tags = setter.tags
+    setter.tags = [
+        {
+            'name': 'rpc-only',
+            'x-setter-for': property.name
+        }
+    ]
+
+    setter.params.push(setter.result)
+    setter.result = {
+        name: 'result',
+        schema: {
+            type: "null"
+        }
+    }
+
+    setter.examples && setter.examples.forEach(example => {
+        example.params[0] = {
+            name: 'value',
+            value: example.result.value
+        }
+
+        example.result.value = null
+    })
+
+    old_tags.forEach(t => {
+        if (t.name !== 'property' && !t.name.startsWith('property:'))
+        {
+            setter.tags.push(t)
+        }
+    })
+
+    console.log(' - created ' + setter.name)
+
+    return setter
+}
+
+const generatePropertyEvents = json => {
     const properties = json.methods.filter( m => m.tags && m.tags.find( t => t.name == 'property')) || []
     const readonlies = json.methods.filter( m => m.tags && m.tags.find( t => t.name == 'property:readonly')) || []
 
@@ -242,10 +344,31 @@ const generateEvents = json => {
     return json
 }
 
+const generatePropertySetters = json => {
+    const properties = json.methods.filter( m => m.tags && m.tags.find( t => t.name == 'property')) || []
+
+    properties.forEach(property => json.methods.push(createSetterFromProperty(property)))
+
+    return json
+}
+
+const generatePolymorphicPullEvents = json => {
+    const pushers = json.methods.filter( m => m.tags && m.tags.find( t => t.name == 'polymorphic-pull')) || []
+
+    pushers.forEach(pusher => json.methods.push(createPullEventFromPush(pusher, json)))
+
+    return json
+}
+
 // A through stream that expects a stream of filepaths, reads the contents
 // of any .json files found, and converts them to POJOs
 // DOES NOT DEAL WITH ERRORS
-const getModuleContent = x => getSchemaContent(x).map(generateEvents)
+const getModuleContentWithoutTransforms = getSchemaContent
+
+const getModuleContent = x => getSchemaContent(x)
+        .map(generatePropertyEvents)
+        .map(generatePropertySetters)
+        .map(generatePolymorphicPullEvents)
 
 const getPathFromModule = (module, path) => {
     console.error("DEPRECATED: getPathFromModule")
@@ -287,5 +410,6 @@ export {
     addModule,
     getModuleContent,
     getAllModules,
-    getPathFromModule
+    getPathFromModule,
+    getModuleContentWithoutTransforms
 }

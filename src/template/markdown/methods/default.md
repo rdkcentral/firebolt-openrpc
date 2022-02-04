@@ -8,7 +8,7 @@ ${method.signature}
 ${end.if.javascript}
 ${if.params}
 
-#### Parameters
+Parameters:
 
 | Param                  | Type                 | Required                 | Summary                 |
 | ---------------------- | -------------------- | ------------------------ | ----------------------- |
@@ -16,20 +16,16 @@ ${if.params}
 
 ${end.if.params}
 
-#### Promise Resolution
+Promise resolution:
 
 ${method.result}
 
----
+**Examples**
 
-#### Examples
-
-##### ${example.title}
-${example.summary}
+${example.title}
 
 ${if.javascript}
-<details>
-  <summary><b>JavaScript</b></summary>
+JavaScript:
 
 ```javascript
 ${example.javascript}
@@ -40,19 +36,18 @@ Value of `${method.result.name}`
 ${example.result}
 ```
 
-</details>
 ${end.if.javascript}
 
 <details>
-  <summary><b>JSON-RPC</b></summary>
+  <summary>JSON-RPC:</summary>
 
-###### Request
+Request:
 
 ```json
 ${example.jsonrpc}
 ```
 
-###### Response
+Response:
 
 ```json
 ${example.response}
@@ -61,7 +56,6 @@ ${example.response}
 </details>
 
 ${end.example}
-
 
 ---
 ${end.method}

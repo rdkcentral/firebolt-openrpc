@@ -3,7 +3,7 @@ ${method.description}
 
 ${method.1}
 
-To get the property value, use `${method.name}()`:
+To get the value, call the method with no parameters:
 
 ${if.javascript}
 
@@ -13,25 +13,16 @@ function ${method.name}(): Promise<${method.result.type}>
 
 ${end.if.javascript}
 
-#### Parameters
+Promise resolution:
 
-| Param                  | Type                 | Required                 | Summary                 |
-| ---------------------- | -------------------- | ------------------------ | ----------------------- |
+${method.result}
 
-#### Promise Resolution
+**Examples**
 
-| Type | Summary |
-| ---- | ------- |
-| ${method.result.type} | ${method.result.summary} |
-
-#### Examples
-
-##### ${example.title}
-${example.summary}
+${example.title}
 
 ${if.javascript}
-<details>
-  <summary><b>JavaScript</b></summary>
+JavaScript:
 
 ```javascript
 ${example.javascript}
@@ -42,19 +33,18 @@ Value of `value`
 ${example.result}
 ```
 
-</details>
 ${end.if.javascript}
 
 <details>
-  <summary><b>JSON-RPC</b></summary>
+  <summary>JSON-RPC:</summary>
 
-###### Request
+Request:
 
 ```json
 ${example.jsonrpc}
 ```
 
-###### Response
+Response:
 
 ```json
 ${example.response}
@@ -66,58 +56,57 @@ ${end.example}
 ${end.method}
 
 ${method.2}
-To set the property value, use `${method.name}(value)`:
+To set the value, pass in the new value as the only parameter:
 
 ${if.javascript}
 
 ```typescript
-function ${method.name}(${method.params}): Promise<${method.result.type}>
+function ${method.name}(${method.params}): Promise<void>
 ```
 
 ${end.if.javascript}
 
-#### Parameters
+Parameters:
 
 | Param                  | Type                 | Required                 | Summary                 |
 | ---------------------- | -------------------- | ------------------------ | ----------------------- |
 | `${method.param.name}` | ${method.param.type} | ${method.param.required} | ${method.param.summary} ${method.param.constraints} |
 
-#### Promise Resolution
+Promise resolution:
 
 | Type | Summary |
 | ---- | ------- |
+| `void` | Promise resolves with no value when the operation is complete. |
 
-#### Examples
+**Examples**
 
-##### ${example.title}
-${example.summary}
+${example.title}
+
 
 ${if.javascript}
-<details>
-  <summary><b>JavaScript</b></summary>
+JavaScript:
 
 ```javascript
-${example.javascript}
-```
-Value of `response`
+import { ${module} } from '${package.name}'
 
-```javascript
-{}
+${module}.${method.name}(${example.params})
+    .then(${method.result.name} => {
+        // property value has been set
+    })
 ```
 
-</details>
 ${end.if.javascript}
 
 <details>
-  <summary><b>JSON-RPC</b></summary>
+  <summary>JSON-RPC:</summary>
 
-###### Request
+Request:
 
 ```json
 ${example.jsonrpc}
 ```
 
-###### Response
+Response:
 
 ```json
 ${example.response}
@@ -129,69 +118,71 @@ ${end.example}
 ${end.method}
 
 ${method.3}
-To subscribe to the property value, use `${method.name}(value => { })`:
+To subscribe to notifications when the value changes, pass a function as the only parameter:
 
 ${if.javascript}
 
 ```typescript
-function ${method.name}(callback: (${method.params}) => any): Promise<boolean>
+function ${method.name}(subscriber: (${method.params}) => void): Promise<boolean>
 ```
 
 ${end.if.javascript}
 
-#### Parameters
+Parameters:
 
 | Param                  | Type                 | Required                 | Summary                 |
 | ---------------------- | -------------------- | ------------------------ | ----------------------- |
-| `callback` | `function` | Yes | A callback that gets invoked when the value for ${method.name} changes |
+| `subscriber` | `Function` | Yes | A callback that gets invoked when the value for ${method.name} changes |
 
-#### Promise Resolution
+Promise resolution:
 
 | Type | Summary |
 | ---- | ------- |
 | `listenerId` | The id of the listener that can be used with ${info.title}.clear(listenerId) to unsubscribe |
 
-#### Callback Parameters
+Callback parameters:
+
 | Param                  | Type                 | Required                 | Summary                 |
 | ---------------------- | -------------------- | ------------------------ | ----------------------- |
-| `${method.param.name}` | ${method.param.type} | ${method.param.required} | ${method.param.summary} ${method.param.constraints} |
+| `${method.result.name}` | ${method.result.type} | Yes | ${method.result.summary} ${method.result.constraints} |
 
-#### Examples
+**Examples**
 
-##### ${example.title}
-${example.summary}
+${example.title}
+
 
 ${if.javascript}
-<details>
-  <summary><b>JavaScript</b></summary>
+JavaScript:
 
 ```javascript
-${example.javascript}
-```
-Value of `response`
+import { ${module} } from '${package.name}'
 
-```javascript
-{}
+${module}.${method.name}(value => {
+  // property value was changed
+  console.log(value)
+}.then(listenerId => {
+  // you can clear this listener w/ ${module}.clear(listenerId)
+})
 ```
-Value of `value`
+
+value of `value`:
 
 ```javascript
 ${example.result}
 ```
 
-</details>
 ${end.if.javascript}
 
 <details>
-  <summary><b>JSON-RPC</b></summary>
+  <summary>JSON-RPC:</summary>
 
-###### Request
+Request:
 
 ```json
 ${example.jsonrpc}
 ```
 
-###### Response
+Response:
 ```json
 {
   "jsonrpc": "2.0",
@@ -209,4 +200,6 @@ ${example.response}
 </details>
 
 ${end.example}
+
+---
 ${end.method}

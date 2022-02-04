@@ -6,23 +6,24 @@ title: ${info.title}
 ---
 Version ${info.version}
 
+## Overview
+ ${info.description}
+
 ## OpenRPC
-This document was generated from an OpenRPC JSON-Schema, and is intended to provide a human readable overview and examples of the methods contained in the module.
+Firebolt APIs are maintained in the [${package.repository.name}](${package.repository}) GitHub repository.
 
-For the full schema, see the link below.
-
-| Schema |
-|--------|
-| [${module}](https://github.com/rdkcentral/firebolt-core-sdk/blob/main/src/modules/${module}) |
-
+You can see this API in the [${module}](https://github.com/rdkcentral/firebolt-core-sdk/blob/main/src/modules/${module}) OpenRPC JSON-Schema document. 
 
 ## Table of Contents
- - [Usage](#usage)
  - [Overview](#overview)
+ - [OpenRPC](#openrpc)
+ - [Usage](#usage)
  - [Methods](#methods)
 ${toc.methods}
+${if.events}
  - [Events](#events)
 ${toc.events}
+${end.if.events}
  - [Schemas](#schemas)
 ${toc.schemas}
 
@@ -33,13 +34,10 @@ ${if.javascript}
 To use the ${info.title} module, you can import it into your project from the Firebolt SDK:
 
 ```javascript
-import { ${info.title} } from '${pkg.name}'
+import { ${info.title} } from '${package.name}'
 ```
 ${end.if.javascript}
 
-
-## Overview
-${info.description}
 
 ## Methods
 ${methods}
@@ -48,11 +46,18 @@ ${if.events}
 
 ## Events
 
-| Name | Payload | Property | Description |
-|------|---------|----------|-------------|
 ${events}
 
-#{end.if.events}
+### Additional events
+The following events are documented as part of a related set of method APIs.
+
+For more information, follow the links under the "Documentation" column.
+
+| JavaScript | RPC | Payload | Documentation |
+|-------|---------|----------|-------------|
+${additionalEvents}
+
+${end.if.events}
 
 ${if.schemas}
 
@@ -60,18 +65,16 @@ ${if.schemas}
 
 ### ${schema.title}
 
+${if.description}
+
+${schema.description}
+
+${end.if.description}
 ```typescript
 ${schema.shape}
 ```
 
 See also: ${schema.seeAlso}
-
-${if.description}
-#### Details
-
-${schema.description}
-
-${end.if.description}
 
 ---
 ${end.schema}
