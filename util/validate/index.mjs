@@ -36,87 +36,89 @@ const __dirname = url.fileURLToPath(new URL('.', import.meta.url))
 let errors = 0
 // destructure well-known cli args and alias to variables expected by script
 const run = ({
+  'shared-schemas': sharedSchemasFolderArg,
   source: srcFolderArg
 }) => {
   logHeader(` VALIDATING... `)
 
   // Important file/directory locations
   const schemasFolder = path.join(srcFolderArg, 'schemas')
-  const sharedSchemasFolder = path.join(__dirname, '..', '..', 'src', 'schemas')
+  const sharedSchemasFolder = sharedSchemasFolderArg
   const externalFolder = path.join(__dirname, '..', '..', 'src', 'external')
   const modulesFolder = path.join(srcFolderArg, 'modules')
-  const distFolder = path.join('dist')
   
-  // Load all of the JSON-Schemas
+  const validate = (json, validator, prefix) => h(validator(json))
+          .tap(result => {
+            if (result.valid) {
+              logSuccess( prefix + `: ${result.title} is valid`)
+            }
+            else {
+              console.error(`\nERROR: ${prefix}: ${result.title} failed validation`)
+              errors ++
+            }
+          })
+
+  const report = _ => {
+    if (errors > 0) {
+      console.error(`\nValidation failed with errors in ${errors} files`)
+      process.exit(1000)
+    }
+  }
+
+  // special case for single file
+  if (path.extname(srcFolderArg) === '.json') {
+    h.of(srcFolderArg)
+      .through(getModuleContent)
+      .flatMap(json => validate(json, validateOpenRpc, 'OpenRPC'))
+      .tap(_ => console.log(''))
+      .done(report)
+
+    return
+  }
+
+  // otherwise do the entire project
+
+  // Load all of the shared JSON-Schemas
   recursiveFileDirectoryList(sharedSchemasFolder).flatFilter(isFile)
     .through(getSchemaContent)
+    .errors( (err, push) => {
+      errors ++
+    })
     .tap(addSchema)
     .collect()
+    // Load & validate all of the local JSON-Schemas
     .flatMap(_ => recursiveFileDirectoryList(schemasFolder).flatFilter(isFile))
     .through(getSchemaContent)
+    .errors( (err, push) => {
+      errors ++
+    })
     .tap(addSchema)
     .collect()
-    // Validate all of the JSON-Schemas
-    .flatMap(_ => h(getAllSchemas()))
-    .flatMap(x => {return h(validateJsonSchema(x))})
-    .tap(result => {
-      if (result.valid) {
-        logSuccess(`${result.title} is valid`)
-      }
-      else {
-        console.error(`\nERROR: ${result.title} failed validation`)
-        errors ++
-      }
-    })
-    .collect()
-    // Switch to OpenRPC modules
+    // Switch to external schemas
     .flatMap(_ => recursiveFileDirectoryList(externalFolder))
     .through(getSchemaContent)
+    .errors( (err, push) => {
+      errors ++
+    })
     .tap(addSchema)
-    .flatMap(x => {return h(validateJsonSchema(x))})
-    .tap(result => {
-      if (result) {
-        logSuccess(`${result.title} is valid`)
-      }
-      else {
-        console.error(`\nERROR: ${result.title} failed validation`)
-        errors ++
-      }
+    .collect()
+    .flatMap( _ => h(getAllSchemas()))
+    .flatMap(json => validate(json, validateJsonSchema, 'Schema'))
+    .errors( (error, push) => {
+      console.log(error)
     })
     .collect()
     // Switch to OpenRPC modules
     .flatMap(_ => recursiveFileDirectoryList(modulesFolder))
     .through(getModuleContent)
-    .flatMap(x => {return h(validateOpenRpc(x))})
-    .tap(result => {
-      if (result.valid) {
-        logSuccess(`${result.title} is valid`)
-      }
-      else {
-        console.error(`\nERROR: ${result.title} failed validation`)
-        errors ++
-      }
+    .errors( (err, push) => {
+      errors ++
     })
-    .collect()
-    // Switch to merged OpenRPC file
-    .flatMap(_ => recursiveFileDirectoryList(distFolder))
-    .through(getModuleContent)
-    .flatMap(x => {return h(validateOpenRpc(x))})
-    .tap(result => {
-      if (result.valid) {
-        logSuccess(`${result.title} is valid`)
-      }
-      else {
-        console.error(`\nERROR: ${result.title} failed validation`)
-        errors ++
-      }
+    .flatMap(json => validate(json, validateOpenRpc, 'Module'))
+    .errors( (error, push) => {
+      console.log(error)
     })
-    .done(() => {
-      if (errors > 0) {
-        console.error(`\nValidation failed with errors in ${errors} files`)
-        process.exit(1000)
-      }
-    })
+    .done(report)
 }
 
 export default run

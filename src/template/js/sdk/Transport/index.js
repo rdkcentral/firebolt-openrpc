@@ -36,11 +36,18 @@ export default class Transport {
     this._eventEmitters = []
     this._eventMap = {}
     this._queue = new Queue()
+    this._deprecated = {}
     this.isMock = false
   }
 
   static addEventEmitter (emitter) {
     Transport.get()._eventEmitters.push(emitter)
+  }
+
+  static registerDeprecatedMethod (module, method, alternative) {
+    Transport.get()._deprecated[module.toLowerCase() + '.' + method.toLowerCase()] = {
+      alternative: alternative || ''
+    }
   }
 
   _endpoint () {
@@ -96,6 +103,11 @@ export default class Transport {
       this._promises[this._id].promise = this
       this._promises[this._id].resolve = resolve
       this._promises[this._id].reject = reject
+
+      const deprecated = this._deprecated[module.toLowerCase() + '.' + method.toLowerCase()]
+      if (deprecated) {
+        console.warn(`WARNING: ${module}.${method}() is deprecated. ` + deprecated.alternative)
+      }
 
       // store the ID of the first listen for each event
       // TODO: what about wild cards?

@@ -76,9 +76,17 @@ const addExternalMarkdown = obj => {
 // DOES NOT DEAL WITH ERRORS
 const getSchemaContent = fileStream => fileStream
     .filter(filepath => path.extname(filepath) === '.json')
+    .flatMap(loadAndParseSchema)
+
+const loadAndParseSchema = filepath => h.of(filepath)
     .flatMap(fsReadFile)
     .map(bufferToString)
     .map(JSON.parse)
+    .errors( (err, push) => {
+      err.message = filepath + ": " + err.message
+      console.error(`\n\x1b[41m ERROR:\x1b[0m ${err.message}\n`)
+      push(nil, err)
+    })
     .map(addExternalMarkdown)
 
 const getRef = (ref, json) => {

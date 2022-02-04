@@ -1,6 +1,6 @@
 {
   "name": "@firebolt-js/openrpc",
-  "version": "1.2.0-beta.2",
+  "version": "1.2.0-beta.3",
   "description": "The Firebolt SDK Code & Doc Generator",
   "bin": {
     "firebolt-openrpc": "./src/cli.mjs"
@@ -10,11 +10,11 @@
     "prepare:setup": "mkdir -p ./dist/docs ./build/docs/markdown ./build/sdk/javascript/src",
     "test": "jest --config=jest.config.js --detectOpenHandles",
     "build": "npm run validate && npm run build:docs && npm run build:sdk",
-    "validate": "npm run build:openrpc && node ./src/cli.mjs --task validate --source ./src",
-    "build:openrpc": "node ./src/cli.mjs --task openrpc --source ./src --template ./src/template/openrpc/template.json --output ./dist/sdk-open-rpc.json",
-    "build:sdk": "node ./src/cli.mjs --task sdk --source ./src/ --template ./src/template/js --output ./build/sdk/javascript/src",
-    "build:docs": "node ./src/cli.mjs --task docs --source ./src/ --template ./src/template/markdown --output ./build/docs/markdown --as-path",
-    "build:wiki": "node ./src/cli.mjs --task docs --source ./src/ --template ./src/template/markdown --output ./build/docs/markdown",
+    "validate": "node ./src/cli.mjs --task validate --source ./src --shared-schemas test/sharedSchemas && npm run build:openrpc && node ./src/cli.mjs --task validate --source ./dist --shared-schemas test/sharedSchemas",
+    "build:openrpc": "node ./src/cli.mjs --task openrpc --source ./src --template ./src/template/openrpc/template.json --output ./dist/sdk-open-rpc.json --shared-schemas test/sharedSchemas",
+    "build:sdk": "node ./src/cli.mjs --task sdk --source ./src/ --template ./src/template/js --output ./build/sdk/javascript/src --shared-schemas test/sharedSchemas",
+    "build:docs": "node ./src/cli.mjs --task docs --source ./src/ --template ./src/template/markdown --output ./build/docs/markdown --shared-schemas test/sharedSchemas --as-path",
+    "build:wiki": "node ./src/cli.mjs --task docs --source ./src/ --template ./src/template/markdown --output ./build/docs/markdown --shared-schemas test/sharedSchemas",
     "dist": "npm run validate && npm run build:sdk && npm run build:docs && npm run pack && npm run test",
     "pack": "webpack --config webpack.config.js"
   },

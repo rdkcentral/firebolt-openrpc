@@ -176,17 +176,26 @@ const generateMethods = json => compose(
     if (val.summary) {
       acc += `/**
  * ${val.summary}`
+    }
 
-      if (val.params && val.params.length) {
-        val.params.forEach(p => acc += `
+    const deprecated = val.tags && val.tags.find(t => t.name === 'deprecated')
+    
+    if (deprecated) {
+      acc += `
+ *
+ * @deprecated` + (deprecated['x-since'] ? ` since version ${deprecated['x-since']}` : '') + '.'
+    }
+
+    if (val.params && val.params.length) {
+      acc += `
+ *`
+      val.params.forEach(p => acc += `
  * @param {${getSchemaType(json, p.schema)}} ${p.name} ${p.summary}`)
-      }
+    }
 
       acc += `
  */
 `
-    }
-
     // if (!val.tags || !val.tags.find(t => t.name === 'synchronous')) {
     //   acc += getMethodSignature(json, val, { isInterface: false }).replace(/\)\:\s?(.*)/g, '): Promise<$1>') + '\n'
     // }
