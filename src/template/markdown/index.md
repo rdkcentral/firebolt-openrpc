@@ -12,7 +12,7 @@ Version ${info.version}
 ## OpenRPC
 Firebolt APIs are maintained in the [${package.repository.name}](${package.repository}) GitHub repository.
 
-You can see this API in the [${module}](https://github.com/rdkcentral/firebolt-core-sdk/blob/main/src/modules/${module}) OpenRPC JSON-Schema document. 
+You can see this API in the [${module}](${package.repository}/blob/main/src/modules/${module}) OpenRPC JSON-Schema document. 
 
 ## Table of Contents
  - [Overview](#overview)

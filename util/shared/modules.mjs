@@ -329,8 +329,6 @@ const createSetterFromProperty = property => {
         }
     })
 
-    console.log(' - created ' + setter.name)
-
     return setter
 }
 
