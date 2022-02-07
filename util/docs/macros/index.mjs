@@ -296,7 +296,7 @@ function insertMethodMacros(data, method, module) {
         }
     
         method_data = method_data
-            .replace(/\$\{method.description\}/g, `This method is **deprecated**` + (since ? ` since version ${since}. ` : '. ') + `${alternative}\n\n\$\{method.description\}`)
+            .replace(/\$\{method.description\}/g, `This API is **deprecated**` + (since ? ` since version ${since}. ` : '. ') + `${alternative}\n\n\$\{method.description\}`)
     }
 
     method_data = method_data
