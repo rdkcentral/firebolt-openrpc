@@ -160,7 +160,7 @@ import { ${module} } from '${package.name}'
 ${module}.${method.name}(value => {
   // property value was changed
   console.log(value)
-}.then(listenerId => {
+}).then(listenerId => {
   // you can clear this listener w/ ${module}.clear(listenerId)
 })
 ```
