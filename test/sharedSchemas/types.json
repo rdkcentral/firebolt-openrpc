@@ -1,0 +1,35 @@
+{
+    "$id": "https://meta.comcast.com/firebolt/types",
+    "title": "Types",
+    "anyOf": [
+        {
+            "$ref": "#/definitions/LocalizedString"
+        }
+    ],
+    "definitions": {
+        "LocalizedString": {
+            "title": "LocalizedString",
+            "description": "Localized string supports either a simple `string` or a Map<string, string> of language codes to strings. When using a simple `string`, the current preferred langauge from `Localization.langauge()` is assumed.",
+            "oneOf": [
+                {
+                    "type": "string"
+                },
+                {
+                    "type": "object",
+                    "patternProperties": {
+                        ".*": {
+                            "type": "string"
+                        }
+                    }
+                }
+            ],
+            "examples": [
+                "A simple string, with no language code",
+                {
+                    "en": "This is english",
+                    "es": "esto es español"
+                }
+            ]
+        }
+    }
+}

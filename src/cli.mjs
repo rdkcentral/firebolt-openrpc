@@ -14,6 +14,7 @@ const knownOpts = {
   'source': [path],
   'template': [path],
   'output': [path],
+  'shared-schemas': [path],
   'as-path': Boolean,
   'static-modules': String
 }
@@ -21,12 +22,15 @@ const shortHands = {
   't': '--task',
   's': '--source',
   'tm': '--template',
+  'tm': '--template',
   'o': '--output',
   'ap': '--as-path',
-  'sm': '--static-modules'
+  'sm': '--static-modules',
+  'ss': '--shared-schemas'
 }
 // Last 2 arguments are the defaults.
 const parsedArgs = nopt(knownOpts, shortHands, process.argv, 2)
+
 const util = parsedArgs.task
 
 if (util === 'sdk') {

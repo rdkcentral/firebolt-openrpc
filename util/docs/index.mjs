@@ -37,6 +37,7 @@ const __dirname = url.fileURLToPath(new URL('.', import.meta.url))
 const run = ({
   source: srcFolderArg,
   template: templateFolderArg,
+  'shared-schemas': sharedSchemasFolderArg,
   output: outputFolderArg,
   'as-path': asPath = false,
 }) => {
@@ -52,7 +53,7 @@ const run = ({
   const readMe = path.join('README.md')
   const apiIndex = path.join(__dirname, '..', '..', 'src', 'template', 'markdown', 'api.md')
   const versionJson = path.join('package.json')
-  const sharedSchemasFolder = path.join(__dirname, '..', '..', 'src', 'schemas')
+  const sharedSchemasFolder = sharedSchemasFolderArg
   const schemasFolder = path.join(srcFolderArg, 'schemas')
   const modulesFolder = path.join(srcFolderArg, 'modules')
   const markdownFolder = path.join(srcFolderArg, 'descriptions')
