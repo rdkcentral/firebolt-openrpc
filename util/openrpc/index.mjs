@@ -42,7 +42,7 @@ const run = ({
   const template = path.join(templateArg)
   const output = path.join(outputArg)
   const getAllModulesStream = _ => h(getAllModules())
-  const renameMethods = module => module.methods && (module.methods.forEach(method => method.name = module.info.title.toLowerCase() + '.' + method.name))
+  const renameMethods = module => module.methods && (module.methods.forEach(method => method.name = module.info.title + '.' + method.name))
   const alphabeticalSorter = (a, b) => a.info.title > b.info.title ? 1 : b.info.title > a.info.title ? -1 : 0
   /************************************************************************************************/
   /******************************************** MAIN **********************************************/
