@@ -196,12 +196,7 @@ const generateMethods = json => compose(
       acc += `
  */
 `
-    // if (!val.tags || !val.tags.find(t => t.name === 'synchronous')) {
-    //   acc += getMethodSignature(json, val, { isInterface: false }).replace(/\)\:\s?(.*)/g, '): Promise<$1>') + '\n'
-    // }
-    // else {
-      acc += getMethodSignature(json, val, { isInterface: false }) + '\n'
-    // }
+    acc += getMethodSignature(json, val, { isInterface: false }) + '\n'
     
     return acc
   }, ''),

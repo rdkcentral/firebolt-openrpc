@@ -1,4 +1,4 @@
-import { ${module} } from '${pkg.name}'
+import { ${module} } from '${package.name}'
 
 ${module}.${method.name}(${example.params})
     .then(${method.result.name} => {

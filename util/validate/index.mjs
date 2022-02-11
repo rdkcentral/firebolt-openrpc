@@ -19,7 +19,7 @@
 import h from 'highland'
 import { recursiveFileDirectoryList, isDirectory, isFile, logSuccess, logHeader } from '../shared/helpers.mjs'
 import { validateJsonSchema, validateOpenRpc } from './validation/index.mjs'
-import { getModuleContent } from '../shared/modules.mjs'
+import { getModuleContent, getModuleContentWithoutTransforms } from '../shared/modules.mjs'
 import { getSchemaContent, addSchema } from '../shared/json-schema.mjs'
 import path from 'path'
 import process from 'process'
@@ -34,10 +34,12 @@ const __dirname = url.fileURLToPath(new URL('.', import.meta.url))
 /************************************************************************************************/
 
 let errors = 0
+
 // destructure well-known cli args and alias to variables expected by script
 const run = ({
   'shared-schemas': sharedSchemasFolderArg,
-  source: srcFolderArg
+  source: srcFolderArg,
+  'disable-transforms': disableTransforms
 }) => {
   logHeader(` VALIDATING... `)
 
@@ -46,6 +48,13 @@ const run = ({
   const sharedSchemasFolder = sharedSchemasFolderArg
   const externalFolder = path.join(__dirname, '..', '..', 'src', 'external')
   const modulesFolder = path.join(srcFolderArg, 'modules')
+
+  // Flip default value when running on /dist/ folder
+  if (disableTransforms === undefined && srcFolderArg.indexOf('/dist/') >= 0) {
+    disableTransforms = true
+  }
+
+  const getContent = disableTransforms ? getModuleContentWithoutTransforms : getModuleContent
   
   const validate = (json, validator, prefix) => h(validator(json))
           .tap(result => {
@@ -65,10 +74,10 @@ const run = ({
     }
   }
 
-  // special case for single file
+  // special case for single file (don't do any transforms)
   if (path.extname(srcFolderArg) === '.json') {
     h.of(srcFolderArg)
-      .through(getModuleContent)
+      .through(getContent)
       .flatMap(json => validate(json, validateOpenRpc, 'OpenRPC'))
       .tap(_ => console.log(''))
       .done(report)
@@ -110,7 +119,7 @@ const run = ({
     .collect()
     // Switch to OpenRPC modules
     .flatMap(_ => recursiveFileDirectoryList(modulesFolder))
-    .through(getModuleContent)
+    .through(getContent)
     .errors( (err, push) => {
       errors ++
     })

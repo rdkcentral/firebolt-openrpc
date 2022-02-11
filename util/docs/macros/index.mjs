@@ -78,6 +78,11 @@ const insertAggregateMacrosOnly = () => false
 
 const getTitle = json => json.info ? json.info.title :json.title
 
+const hasEventAttribute = (method, attribute) => method.tags && method.tags.find(t => t.name === 'event').hasOwnProperty(attribute)
+const isEvent = method => hasTag(method, 'event')
+const isFullyDocumentedEvent = method => isEvent(method) && !hasTag('rpc-only') && !hasEventAttribute(method, 'x-alternative') && !hasEventAttribute(method, 'x-pulls-for')
+const isSetter = method => method.tags && method.tags.find(t => t['x-setter-for'])
+
 function hasTag (method, tag) {
     return method.tags && method.tags.filter(t => (t.name === tag)).length > 0
 }
@@ -95,22 +100,19 @@ export {
 function insertMacros(data, json) {
     let match, regex
 
-    if (json.methods) {
-        regex = /\$\{methods\}/
-        while (match = data.match(regex)) {
-            let methods = ''
-            json.methods.forEach(method => {
-                if (!method.tags || (!method.tags.find(t => t.name === 'event'))) {
-                    methods += insertMethodMacros(match[0], method, getTitle(json))
-                }
-            })
-            data = data.replace(regex, methods)
-        }
+    const methods = json.methods && json.methods.filter( method => !isEvent(method) && !isSetter(method) || isEvent(method) && isFullyDocumentedEvent(method))
+    const additionalEvents = json.methods && json.methods.filter( method => isEvent(method) && !isFullyDocumentedEvent(method))
+
+    const hasEvents = (additionalEvents && additionalEvents.length > 0) || (methods && methods.find(m => isEvent(m)))
+
+    if (methods) {
+        
+        methods.sort( (a, b) => (a.name.toLowerCase() > b.name.toLowerCase()) ? 1 : -1 )
 
         regex = /\$\{events\}/
         if (match = data.match(regex)) {
             let events = ''
-            json.methods.forEach(method => {
+            methods.forEach(method => {
                 if (method.tags && method.tags.find(t => t.name === 'event')) {
                     events += insertMethodMacros(match[0], method, getTitle(json))
                 }
@@ -118,13 +120,59 @@ function insertMacros(data, json) {
             data = data.replace(regex, events)
         }
 
+        if (hasEvents) {
+            const listenerTemplate = 
+            {
+                name: 'listen',
+                tags: [
+                    {
+                        name: 'listener'
+                    }
+                ],
+                summary: 'Listen for events from this module.',
+                params: [
+                    {
+                        name: 'event',
+
+                        schema: {
+                            type: 'string'
+                        }
+                    }
+                ],
+                result: {
+                    name: 'success',
+                    schema: {
+                        type: 'boolean'
+                    }
+                }
+            }
+
+            methods.push(listenerTemplate)
+            methods.push(Object.assign({}, listenerTemplate, { name: "once", summary: "Listen for only one occurance of an event from this module. The callback will be cleared after one event." }))
+            methods.sort( (a, b) => (a.name.toLowerCase() > b.name.toLowerCase()) ? 1 : -1 )
+        }
+        else {
+            data = data.replace(/\$\{if\.events\}.*?\{end\.if\.events\}/gms, '')
+        }
+
+        regex = /\$\{methods\}/
+        while (match = data.match(regex)) {
+            let methodsStr = ''
+            methods.forEach(method => {
+                if (!method.tags || (!method.tags.find(t => t.name === 'event'))) {
+                    methodsStr += insertMethodMacros(match[0], method, getTitle(json))
+                }
+            })
+            data = data.replace(regex, methodsStr)
+        }
+
         regex = /[\# \t]*?\$\{event\.[a-zA-Z]+\}.*?\$\{end.event\}/s
         while (match = data.match(regex)) {
-            data = data.replace(regex, insertEventMacros(match[0], json.methods, getTitle(json)))
+            data = data.replace(regex, insertEventMacros(match[0], methods, getTitle(json)))
         }
 
         let js = false
-        json.methods.forEach(m => {
+        methods.forEach(m => {
             if (!m.tags || !m.tags.map(t => t.name).includes('rpc-only')) {
                 js = true
             }
@@ -135,6 +183,23 @@ function insertMacros(data, json) {
             data = data.replace(/\$\{if\.javascript\}.*?\{end\.if\.javascript\}/gms, '')
         }
 
+    }
+
+    if (additionalEvents && additionalEvents.length > 0) {
+        regex = /\$\{additionalEvents\}/
+        while (match = data.match(regex)) {
+            let additionalStr = ''
+            additionalEvents.forEach(event => {
+                // copy it
+                event = JSON.parse(JSON.stringify(event))
+                // change the template
+                event.tags.find(t => t.name === 'event').name = 'additional-event'
+                // drop the ListenerResponse result type
+                event.result.schema = (event.result.schema.oneOf || event.result.schema.anyOf)[1]
+                additionalStr += insertMethodMacros(match[0], event, getTitle(json))
+            })
+            data = data.replace(regex, additionalStr)
+        }
     }
 
     let schemas, prefix
@@ -172,18 +237,20 @@ function insertMacros(data, json) {
         data = data.replace(/\$\{if\.schemas\}.*?\{end\.if\.schemas\}/gms, '')
     }
 
-    if (json.methods) {
+    if (methods) {
         data = data
-            .replace(/\$\{toc.methods\}/g, json.methods.filter(m => !m.name.match(/^on[A-Z]/)).map(m => '    - [' + m.name + '](#' + m.name.toLowerCase() + ')').join('\n'))
-            .replace(/\$\{toc.events\}/g, json.methods.filter(m => m.name.match(/^on[A-Z]/)).map(m => '    - [' + m.name[2].toLowerCase() + m.name.substr(3) + '](#' + m.name.substr(2).toLowerCase() + ')').join('\n'))
+            .replace(/\$\{toc.methods\}/g, methods.filter(m => !m.name.match(/^on[A-Z]/)).map(m => '    - [' + m.name + '](#' + m.name.toLowerCase() + ')').join('\n'))
+            .replace(/\$\{toc.events\}/g, methods.filter(m => m.name.match(/^on[A-Z]/)).map(m => '    - [' + m.name[2].toLowerCase() + m.name.substr(3) + '](#' + m.name.substr(2).toLowerCase() + ')').join('\n'))
     }
 
     data = data
         .replace(/\$\{module}/g, getTitle(json).toLowerCase() + '.json')
         .replace(/\$\{info.title}/g, getTitle(json))
-        .replace(/\$\{pkg.name}/g, pkg.name)
+        .replace(/\$\{package.name}/g, pkg.name)
+        .replace(/\$\{package.repository}/g, pkg.repository && pkg.repository.url && pkg.repository.url.split("git+").pop().split("/blob").shift() || '')
+        .replace(/\$\{package.repository.name}/g, pkg.repository && pkg.repository.url && pkg.repository.url.split("/").slice(3,5).join("/") || '')
         .replace(/\$\{info.version}/g, version.readable)
-        .replace(/\$\{info.description}/g, json.info ? json.info.description : '')
+        .replace(/\$\{info.description}/g, json.info && json.info.description || '')
 
     data = data.replace(/\$\{[a-zA-Z.]+\}\s*\n?/g, '') // remove left-over macros
 
@@ -213,6 +280,11 @@ function insertMethodMacros(data, method, module) {
     }
 
     let method_data = data
+    const alternative = method.tags && method.tags.find( t => t['x-alternative']) || { 'x-alternative': ''}
+    const pullsFor = method.tags && method.tags.find( t => t['x-pulls-for']) || { 'x-pulls-for': ''}
+    const seeAlso = alternative['x-alternative'] || pullsFor['x-pulls-for']
+    const seeAlsoLink = `[${seeAlso}](#${seeAlso.toLowerCase()})`
+    const eventJsName = method.name.length > 3 ? method.name[2].toLowerCase() + method.name.substr(3) : method.name
 
     const deprecated = method.tags && method.tags.find( t => t.name === 'deprecated')
     if (deprecated ) {
@@ -224,15 +296,18 @@ function insertMethodMacros(data, method, module) {
         }
     
         method_data = method_data
-            .replace(/\$\{method.description\}/g, `This method is **deprecated**` + (since ? ` since version ${since}. ` : '. ') + `${alternative}\n\n\$\{method.description\}`)
+            .replace(/\$\{method.description\}/g, `This API is **deprecated**` + (since ? ` since version ${since}. ` : '. ') + `${alternative}\n\n\$\{method.description\}`)
     }
 
     method_data = method_data
         .replace(/\$\{method.name\}/g, method.name)
         .replace(/\$\{event.name\}/g, method.name.length > 3 ? method.name[2].toLowerCase() + method.name.substr(3): method.name)
+        .replace(/\$\{event.javascript\}/g, method.tags && method.tags.find(t => t.name === 'rpc-only') ? '_NA_' : eventJsName)
+        .replace(/\$\{event.rpc\}/g, method.name)
         .replace(/\$\{method.summary\}/g, method.summary)
         .replace(/\$\{method.description\}/g, method.description || method.summary)
         .replace(/\$\{module\}/g, module)
+        .replace(/\$\{event.seeAlso\}/g, seeAlsoLink)
 
     method_data = method_data.replace(/\$\{.*?method.*?\}\s*\n?/g, '')
 
@@ -247,6 +322,11 @@ function generatePropertySignatures (m) {
         signatures.push({
             name: m.name,
             summary: 'Set value for ' + m.summary,
+            tags: [
+                {
+                    name: 'property-set'
+                }
+            ],
             // setter takes the getters result
             params: [
                 {
@@ -282,6 +362,10 @@ function generatePropertySignatures (m) {
         signatures.push(null)
     }
     if ((hasTag(m, 'property') || hasTag(m, 'property:readonly')) && !hasTag(m, 'property:immutable')) {
+        const examples = []
+        m.examples.forEach(e => examples.push(JSON.parse(JSON.stringify(e))))
+        examples.forEach(e => { e.params = [ { name: m.result.name, value: e.result.value } ]; e.result = { name: 'listenerId', value: 1 }; })
+
         signatures.push({
             name: m.name,
             summary: 'Subscribe to value for ' + m.summary,
@@ -298,7 +382,7 @@ function generatePropertySignatures (m) {
                 name: "listenerId",
                 summary: "",
                 schema: {
-                    type: 'string'
+                    type: "integer"
                 }
             },
             examples: m.examples
@@ -407,9 +491,10 @@ function insertSignatureMacros(block, sig, module) {
     let regex = /[\# \t]*?\$\{example\.[a-zA-Z]+\}.*?\$\{end.example\}/s
     let match = block.match(regex)
  
-    let exampleBlock = insertExampleMacros(match[0], sig, module)
-
-    block = block.replace(regex, exampleBlock)
+    if (match) {
+        let exampleBlock = insertExampleMacros(match[0], sig, module)
+        block = block.replace(regex, exampleBlock)
+    }
 
     let lines = block.split('\n')
 
@@ -425,8 +510,10 @@ function insertSignatureMacros(block, sig, module) {
 
     block = block.replace(/\$\{method.signature\}/g, getMethodSignature(currentSchema, sig, { isInterface: false }))
         .replace(/\$\{method.params\}/g, getMethodSignatureParams(currentSchema, sig))
+        .replace(/\$\{method.paramNames\}/g, sig.params.map(p => p.name).join(', '))
         .replace(/\$\{method.result.name\}/g, sig.result.name)
         .replace(/\$\{method.result.summary\}/g, sig.result.summary)
+        .replace(/\$\{method.result.link\}/g, getSchemaType(currentSchema, sig.result, {title: true, link: true, asPath: _options.asPath, baseUrl: _options.baseUrl}))
         .replace(/\$\{method.result.type\}/g, getSchemaType(currentSchema, sig.result, {title: true, asPath: _options.asPath, baseUrl: _options.baseUrl}))
         .replace(/\$\{method.result\}/g, getSchemaTypeTable(currentSchema, sig.result, { description: sig.result.summary, title: true, asPath: _options.asPath, baseUrl: _options.baseUrl}))
 
@@ -533,6 +620,7 @@ function insertParamMacros(data, param) {
 
 function insertExampleMacros(data, method, module) {
     let result = ''
+    let first = true
 
     if (method.tags && method.tags.map(t => t.name).includes('rpc-only')) {
         data = data.replace(/\$\{if\.javascript\}.*?\{end\.if\.javascript\}/gms, '')
@@ -543,17 +631,27 @@ function insertExampleMacros(data, method, module) {
         let params = example.params.map(p => JSON.stringify(p.value, null, '  ')).join(',\n').split('\n').join('\n' + ' '.repeat(module.length + method.name.length + 2))
         
         let example_data = data
-            .replace(/\$\{example.title\}/, example.name)
-            .replace(/\$\{example.javascript\}/, generateJavaScriptExample(example, method, module))
-            .replace(/\$\{example.result\}/, generateJavaScriptExampleResult(example, method, module))
-            .replace(/\$\{example.params\}/, params)
-            .replace(/\$\{example.jsonrpc\}/, generateRPCExample(example, method, module))
-            .replace(/\$\{example.response\}/, generateRPCExampleResult(example, method, module))
-            .replace(/\$\{callback.jsonrpc\}/, generateRPCCallbackExample(example, method, module))
-            .replace(/\$\{callback.response\}/, generateRPCCallbackExampleResult(example, method, module))
+            .replace(/\$\{example.title\}/g, example.name)
+            .replace(/\$\{example.javascript\}/g, generateJavaScriptExample(example, method, module))
+            .replace(/\$\{example.result\}/g, generateJavaScriptExampleResult(example, method, module))
+            .replace(/\$\{example.params\}/g, params)
+            .replace(/\$\{example.jsonrpc\}/g, generateRPCExample(example, method, module))
+            .replace(/\$\{example.response\}/g, generateRPCExampleResult(example, method, module))
+            .replace(/\$\{callback.jsonrpc\}/g, generateRPCCallbackExample(example, method, module))
+            .replace(/\$\{callback.response\}/g, generateRPCCallbackExampleResult(example, method, module))
 
         result += example_data
+
+        if (first && method.examples.length > 1) {
+            result += '<details>\n    <summary>More examples...</summary>\n'
+        }
+
+        first = false
     })
+
+    if (method.examples && method.examples.length > 1) {
+        result += "</details>\n"
+    }
 
     result = result.replace(/\$\{.*?example.*?\}\s*\n?/g, '')
 
@@ -656,6 +754,9 @@ function generateRPCExample(example, m, module) {
     if (m.tags && m.tags.filter(t => (t.name === 'property-subscribe')).length) {
         return generatePropertyChangedRPCExample(example, m, module)
     }
+    else if (m.tags && m.tags.filter(t => (t.name === 'property-set')).length) {
+        return generatePropertySetRPCExample(example, m, module)
+    }
     let request = {
         "jsonrpc": "2.0",
         "id": 1,
@@ -680,6 +781,19 @@ function generatePropertyChangedRPCExample(example, m, module) {
         "method": `${module.toLowerCase()}.on${m.name.substr(0, 1).toUpperCase()}${m.name.substr(1)}Changed`,
         "params": {
             listen: true
+        },
+    }
+
+    return JSON.stringify(request, null, '  ')
+}
+
+function generatePropertySetRPCExample(example, m, module) {
+    let request = {
+        jsonrpc: "2.0",
+        id: 1,
+        "method": `${module.toLowerCase()}.set${m.name.substr(0, 1).toUpperCase()}${m.name.substr(1)}`,
+        "params": {
+            value: example.params[0].value
         },
     }
 
