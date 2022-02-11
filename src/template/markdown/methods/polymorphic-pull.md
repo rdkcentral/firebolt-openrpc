@@ -15,36 +15,36 @@ ${end.if.javascript}
 
 ${if.params}
 
-#### Parameters
+Parameters: 
 
 | Param                  | Type                 | Required                 | Summary                 |
 | ---------------------- | -------------------- | ------------------------ | ----------------------- |
 | `callback` | `function` | Yes | A method the platform will call to pull `${method.name}` data. |
 
 ${end.if.params}
-#### Promise Resolution
+Promise resolution:
 
 | Type | Summary |
 | ---- | ------- |
 | `boolean` | Whether or not the callback registration was successful |
 
-#### Callback Parameters
+Callback parameters:
+
 | Param                  | Type                 | Required                 | Summary                 |
 | ---------------------- | -------------------- | ------------------------ | ----------------------- |
 | `${method.param.name}` | ${method.param.type} | ${method.param.required} | ${method.param.summary} ${method.param.constraints} |
 
-#### Callback Promise Resolution
+Callback promise resolution:
 
 ${method.result}
 
-#### Examples
+**Examples**
 
-##### ${example.title}
-${example.summary}
+${example.title}
+
 
 ${if.javascript}
-<details>
-  <summary><b>JavaScript</b></summary>
+JavaScript:
 
 ```javascript
 ${example.javascript}
@@ -55,19 +55,18 @@ Value of `success`
 true
 ```
 
-</details>
 ${end.if.javascript}
 
 <details>
-  <summary><b>JSON-RPC</b></summary>
+  <summary>JSON-RPC:</summary>
 
-###### Request (from callback)
+Request (from callback):
 
 ```json
 ${callback.jsonrpc}
 ```
 
-###### Response
+Response:
 
 ```json
 ${callback.response}
@@ -87,7 +86,7 @@ ${method.signature}
 
 ${if.params}
 
-#### Parameters
+Parameters:
 
 | Param                  | Type                 | Required                 | Summary                 |
 | ---------------------- | -------------------- | ------------------------ | ----------------------- |
@@ -95,18 +94,17 @@ ${if.params}
 
 ${end.if.params}
 
-#### Promise Resolution
+Promise resolution:
 
 ${method.result.type}
 
-#### Examples
+**Examples**
 
-##### ${example.title}
-${example.summary}
+${example.title}
+
 
 ${if.javascript}
-<details>
-  <summary><b>JavaScript</b></summary>
+JavaScript:
 
 ```javascript
 import { ${info.title} } from '${pkg.name}'
@@ -119,19 +117,18 @@ Value of `${method.result.name}`
 ${example.result}
 ```
 
-</details>
 ${end.if.javascript}
 
 <details>
-  <summary><b>JSON-RPC</b></summary>
+  <summary>JSON-RPC:</summary>
 
-###### Request
+Request:
 
 ```json
 ${example.jsonrpc}
 ```
 
-###### Response
+Response:
 
 ```json
 ${example.response}

@@ -110,7 +110,7 @@ const validate = async (json, validator) => {
         }
         catch (e) {
           console.log('ERROR: ' + e)
-          console.log(method.result.schema)
+          console.dir(method.result.schema)
         }
       }
     }
@@ -131,8 +131,8 @@ const validate = async (json, validator) => {
       })
       error.prettyPath = '/' + path.join('/')
     })
-    console.log(validator.errors)
-  }
+    console.dir(validator.errors, {depth: null, colors: true})
+  } 
 
   return { valid: valid, title: json.title || json.info.title }
 }
