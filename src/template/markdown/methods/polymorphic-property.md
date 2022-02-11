@@ -27,7 +27,7 @@ JavaScript:
 ```javascript
 ${example.javascript}
 ```
-Value of `value`
+Value of `${method.result.name}`:
 
 ```javascript
 ${example.result}
@@ -144,7 +144,7 @@ Callback parameters:
 
 | Param                  | Type                 | Required                 | Summary                 |
 | ---------------------- | -------------------- | ------------------------ | ----------------------- |
-| `${method.result.name}` | ${method.result.type} | Yes | ${method.result.summary} ${method.result.constraints} |
+| `${method.param.name}` | ${method.param.type} | Yes | ${method.param.summary} ${method.param.constraints} |
 
 **Examples**
 
@@ -157,15 +157,15 @@ JavaScript:
 ```javascript
 import { ${module} } from '${package.name}'
 
-${module}.${method.name}(value => {
+${module}.${method.name}(${method.paramNames} => {
   // property value was changed
-  console.log(value)
+  console.log(${method.paramNames})
 }).then(listenerId => {
   // you can clear this listener w/ ${module}.clear(listenerId)
 })
 ```
 
-value of `value`:
+value of `${method.paramNames}`:
 
 ```javascript
 ${example.result}

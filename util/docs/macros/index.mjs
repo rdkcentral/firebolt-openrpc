@@ -362,6 +362,10 @@ function generatePropertySignatures (m) {
         signatures.push(null)
     }
     if ((hasTag(m, 'property') || hasTag(m, 'property:readonly')) && !hasTag(m, 'property:immutable')) {
+        const examples = []
+        m.examples.forEach(e => examples.push(JSON.parse(JSON.stringify(e))))
+        examples.forEach(e => { e.params = [ { name: m.result.name, value: e.result.value } ]; e.result = { name: 'listenerId', value: 1 }; })
+
         signatures.push({
             name: m.name,
             summary: 'Subscribe to value for ' + m.summary,
@@ -378,7 +382,7 @@ function generatePropertySignatures (m) {
                 name: "listenerId",
                 summary: "",
                 schema: {
-                    type: 'string'
+                    type: "integer"
                 }
             },
             examples: m.examples
@@ -506,6 +510,7 @@ function insertSignatureMacros(block, sig, module) {
 
     block = block.replace(/\$\{method.signature\}/g, getMethodSignature(currentSchema, sig, { isInterface: false }))
         .replace(/\$\{method.params\}/g, getMethodSignatureParams(currentSchema, sig))
+        .replace(/\$\{method.paramNames\}/g, sig.params.map(p => p.name).join(', '))
         .replace(/\$\{method.result.name\}/g, sig.result.name)
         .replace(/\$\{method.result.summary\}/g, sig.result.summary)
         .replace(/\$\{method.result.link\}/g, getSchemaType(currentSchema, sig.result, {title: true, link: true, asPath: _options.asPath, baseUrl: _options.baseUrl}))

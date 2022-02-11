@@ -30,7 +30,7 @@ JavaScript:
 ```javascript
 ${example.javascript}
 ```
-Value of `${method.result.name}`
+Value of `${method.result.name}`:
 
 ```javascript
 ${example.result}
