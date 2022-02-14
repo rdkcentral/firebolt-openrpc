@@ -23,7 +23,7 @@ import { getSchemaContent, getAllSchemas, addSchema } from '../shared/json-schem
 import { getModuleContent, getAllModules, addModule } from '../shared/modules.mjs'
 import path from 'path'
 import fs from 'fs'
-import { loadTemplateContent, setPathDelimiter, setSuffix } from '../shared/template.mjs'
+import { loadTemplateContent, setSuffix } from '../shared/template.mjs'
 import { loadMarkdownContent } from '../shared/descriptions.mjs'
 
 // Workaround for using __dirname in ESM
@@ -42,7 +42,6 @@ const run = ({
   'as-path': asPath = false,
 }) => {
 
-  setPathDelimiter('/template/markdown/')
   setSuffix('.md')
 
   if (asPath) {
@@ -79,11 +78,11 @@ const run = ({
   .tap(_ => logSuccess(`Created index.md`))
   // Load all of the shared templates
   .flatMap(_ => recursiveFileDirectoryList(sharedTemplateFolder).flatFilter(isFile))
-  .through(loadTemplateContent)
+  .through(loadTemplateContent('/template/markdown/'))
   .collect()
   // Load all of the templates
   .flatMap(_ => recursiveFileDirectoryList(templateFolder).flatFilter(isFile))
-  .through(loadTemplateContent)
+  .through(loadTemplateContent('/template/markdown/'))
   .collect()
   // Load all of the external markdown resources
   .flatMap(_ => recursiveFileDirectoryList(markdownFolder).flatFilter(isFile))
