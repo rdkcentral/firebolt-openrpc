@@ -450,7 +450,7 @@ function generateMethods(json = {}, onlyEvents = false) {
         params: getMethodSignatureParams(moduleName, methodObj, { isInterface: false })
       }
 
-      let template = getTemplateForMethod(methodObj)
+      let template = getTemplateForMethod(methodObj, '.js')
       if (isPropertyMethod(methodObj)) {
         template = getTemplate('methods/polymorphic-property.js')
       }

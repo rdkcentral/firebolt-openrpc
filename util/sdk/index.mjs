@@ -30,7 +30,7 @@ import url from 'url'
 import { bufferToString } from '../shared/helpers.mjs'
 
 // TODO: move somewhere...
-import { loadTemplateContent, setSuffix } from '../shared/template.mjs'
+import { loadTemplateContent } from '../shared/template.mjs'
 import { addStaticModule } from './macros/index.mjs'
 
 const __dirname = url.fileURLToPath(new URL('.', import.meta.url))
@@ -70,12 +70,11 @@ const run = ({
     console.log(staticModules)
     staticModules.split(',').forEach(m => addStaticModule(m))
   }
-  setSuffix('.js')
   
   clearDirectory(outputFolder)
     // Load all of the templates
     .flatMap(_ => recursiveFileDirectoryList(templateFolder).flatFilter(isFile))
-    .through(loadTemplateContent('/template/js/'))
+    .through(loadTemplateContent('/template/js/', '.js'))
     .collect()
     // load all shared schemas
     .flatMap(_ => recursiveFileDirectoryList(sharedSchemasFolder).flatFilter(isFile))

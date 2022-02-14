@@ -20,14 +20,11 @@ import { fsReadFile, bufferToString } from './helpers.mjs'
 import path from 'path'
 
 const templates = {}
-let suffix
-
-const setSuffix = s => suffix = s
 
 // A through stream that expects a stream of filepaths, reads the contents
 // of any .json files found, and converts them to POJOs
 // DOES NOT DEAL WITH ERRORS
-const loadTemplateContent = pathDelimiter => fileStream => fileStream
+const loadTemplateContent = (pathDelimiter, suffix) => fileStream => fileStream
     .filter(filepath => path.extname(filepath) === suffix)
     .flatMap(filepath => {
         return fsReadFile(filepath)
@@ -37,7 +34,7 @@ const loadTemplateContent = pathDelimiter => fileStream => fileStream
 
 const getTemplate = name => templates[name]
 
-const getTemplateForMethod = method => {
+const getTemplateForMethod = (method, suffix) => {
     const template = method.tags && method.tags.map(t=>t.name).find(t => getAllTemplateNames().includes('methods/' + t + suffix)) || 'default'
     return getTemplate(`methods/${template}${suffix}`)
 }
@@ -49,5 +46,4 @@ export {
     getTemplate,
     getTemplateForMethod,
     getAllTemplateNames,
-    setSuffix
 }
