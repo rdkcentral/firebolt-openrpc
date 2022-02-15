@@ -50,7 +50,7 @@ const version = {
 }
 
 // util for visually debugging crocks ADTs
-const inspector = obj => {
+const _inspector = obj => {
   if (obj.inspect) {
     console.log(obj.inspect())
   } else {

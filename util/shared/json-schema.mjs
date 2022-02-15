@@ -18,11 +18,9 @@
 
 import h from 'highland'
 import crocks from 'crocks'
-import fs from 'fs/promises'
 import path from 'path'
 import url from 'url'
 import { fsReadFile, bufferToString } from './helpers.mjs'
-import { getAllMarkdownNames, getMarkdown } from './descriptions.mjs'
 
 const __dirname = url.fileURLToPath(new URL('.', import.meta.url))
 
@@ -48,14 +46,14 @@ const getExternalMarkdownPaths = obj => {
     .filter(x => /^file:/.test(getPathOr(null, x, obj)))
 }
 
-const addExternalMarkdown = obj => {
+const addExternalMarkdown = (obj, descriptions) => {
   const paths = getExternalMarkdownPaths(obj)
 
   paths.map(path => {
     // grab url
     const urn = getPathOr(null, path, obj)
     const url = urn.indexOf("file:../") == 0 ? urn.substr("file:../".length) : urn.substr("file:".length)
-    const md = getMarkdown(url)// || "Jeremy was here..."
+    const md = descriptions[url]
 
     // drop ref
     path.pop();

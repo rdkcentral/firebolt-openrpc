@@ -19,7 +19,7 @@
  */
 
 import h from 'highland'
-import { recursiveFileDirectoryList, clearDirectory, gatherStateForInsertMacros, getModuleName, loadVersion, fsReadFile, fsWriteFile, isDirectory, isFile, createFilesAbsentInDir, createDirAbsentInDir, relativePath, copyReferenceDirToTarget, copyReferenceFileToTarget, logSuccess } from '../shared/helpers.mjs'
+import { recursiveFileDirectoryList, clearDirectory, gatherStateForInsertMacros, getModuleName, loadVersion, fsReadFile, fsWriteFile, isDirectory, isFile, createFilesAbsentInDir, createDirAbsentInDir, loadFileContent, copyReferenceDirToTarget, copyReferenceFileToTarget, logSuccess } from '../shared/helpers.mjs'
 import { setVersion, generateMacros, insertMacros, insertAggregateMacrosOnly } from './macros/index.mjs'
 import { getModuleContent, getAllModules, addModule } from '../shared/modules.mjs'
 import { localizeDependencies, getSchemaContent, addSchema } from '../shared/json-schema.mjs'
@@ -30,7 +30,6 @@ import url from 'url'
 import { bufferToString } from '../shared/helpers.mjs'
 
 // TODO: move somewhere...
-import { loadTemplateContent } from '../shared/template.mjs'
 import { addStaticModule } from './macros/index.mjs'
 
 const __dirname = url.fileURLToPath(new URL('.', import.meta.url))
@@ -55,7 +54,6 @@ const run = ({
   const sdkTemplateFolder = path.join(templateFolderArg, 'sdk')
   const sharedSdkTemplateFolder = path.join(__dirname, '..', '..', 'src', 'template', 'js', 'sdk')
   const outputFolder = path.join(outputFolderArg)
-  const pathRelativeToOutputFolder = relativePath(outputFolder)
   const createDirectoryFromShared = x => h([x]).flatFilter(isDirectory).flatMap(copyReferenceDirToTarget(sharedSdkTemplateFolder, outputFolder))
   const createFileFromShared = x => h([x]).flatFilter(isFile).flatMap(copyReferenceFileToTarget(sharedSdkTemplateFolder, outputFolder))
   const createDirectoryFromProject = x => h([x]).flatFilter(isDirectory).flatMap(copyReferenceDirToTarget(sdkTemplateFolder, outputFolder))
@@ -75,7 +73,7 @@ const run = ({
   clearDirectory(outputFolder)
     // Load all of the templates
     .flatMap(_ => recursiveFileDirectoryList(templateFolder).flatFilter(isFile))
-    .through(loadTemplateContent('.js'))
+    .through(loadFileContent('.js'))
     // SIDE EFFECTS!!!
     .tap(payload => {
       const [filepath, data] = payload

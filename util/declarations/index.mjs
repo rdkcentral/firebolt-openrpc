@@ -16,7 +16,6 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import h from 'highland'
 import { recursiveFileDirectoryList, fsWriteFile, isFile, logSuccess } from '../shared/helpers.mjs'
 import { generateDeclarations } from './generator/index.mjs'
 import { getModuleContent, addModule } from '../shared/modules.mjs'

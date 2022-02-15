@@ -77,6 +77,16 @@ const recursiveFileDirectoryList = dirOrFile => {
   })
 }
 
+// A through stream that expects a stream of filepaths, reads the contents
+// of any .suffix files found, and converts them to an array tuple that
+// has the filepath and the contents of the file.
+// DOES NOT DEAL WITH ERRORS
+const loadFileContent = suffix => fileStream => fileStream
+  .filter(filepath => path.extname(filepath) === suffix)
+  .flatMap(filepath => fsReadFile(filepath)
+    .map(buf => [filepath, bufferToString(buf)])
+  )
+
 // example:
 // '1.0.0-beta.1' 
 const loadVersion = path => fsReadFile(path)
@@ -169,6 +179,7 @@ export {
   recursiveFileDirectoryList,
   clearDirectory,
   loadVersion,
+  loadFileContent,
   getModuleName,
   fileContent,
   fileExists,

@@ -19,16 +19,6 @@
 import { fsReadFile, bufferToString } from './helpers.mjs'
 import path from 'path'
 
-// A through stream that expects a stream of filepaths, reads the contents
-// of any .json files found, and converts them to an array tuple that
-// has the filepath and the contents of the file.
-// DOES NOT DEAL WITH ERRORS
-const loadTemplateContent = suffix => fileStream => fileStream
-    .filter(filepath => path.extname(filepath) === suffix)
-    .flatMap(filepath => fsReadFile(filepath)
-      .map(buf => [filepath, bufferToString(buf)])
-    )
-
 const getTemplateForMethod = (method, suffix, templates) => {
   const template = method.tags && method.tags.map(t=>t.name).find(t => Object.keys(templates).includes('methods/' + t + suffix)) || 'default'
   return templates[`methods/${template}${suffix}`]

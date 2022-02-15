@@ -17,14 +17,12 @@
  */
 
 import h from 'highland'
-import { recursiveFileDirectoryList, clearDirectory, loadVersion, isFile, logSuccess } from '../shared/helpers.mjs'
+import { recursiveFileDirectoryList, clearDirectory, loadVersion, isFile, logSuccess, loadFileContent } from '../shared/helpers.mjs'
 import { setOptions, setVersion, setOutput, generateMacros, generateDocs, writeDocumentation } from './macros/index.mjs'
 import { getSchemaContent, getAllSchemas, addSchema } from '../shared/json-schema.mjs'
 import { getModuleContent, getAllModules, addModule } from '../shared/modules.mjs'
 import path from 'path'
 import fs from 'fs'
-import { loadTemplateContent } from '../shared/template.mjs'
-import { loadMarkdownContent } from '../shared/descriptions.mjs'
 
 // Workaround for using __dirname in ESM
 import url from 'url'
@@ -42,8 +40,9 @@ const run = ({
   'as-path': asPath = false,
 }) => {
 
-  // Object we'll use to perform side effects while processing the stream.
+  // Objects we'll use to perform side effects while processing the stream.
   const templates = {};
+  const descriptions = {};
 
   if (asPath) {
     setOptions({ asPath: true })
@@ -79,25 +78,25 @@ const run = ({
   .tap(_ => logSuccess(`Created index.md`))
   // Load all of the shared templates
   .flatMap(_ => recursiveFileDirectoryList(sharedTemplateFolder).flatFilter(isFile))
-  .through(loadTemplateContent('.md'))
+  .through(loadFileContent('.md'))
   // SIDE EFFECTS!!!
   .tap(payload => {
     const [filepath, data] = payload
-    templates[filepath.split('/template/markdown/')[1]] = data
+    descriptions[filepath.split('/src/')[1]] = data
   })
   .collect()
   // Load all of the templates
   .flatMap(_ => recursiveFileDirectoryList(templateFolder).flatFilter(isFile))
-  .through(loadTemplateContent('.md'))
+  .through(loadFileContent('.md'))
   // SIDE EFFECTS!!!
   .tap(payload => {
     const [filepath, data] = payload
-    templates[filepath.split('/template/markdown/')[1]] = data
+    descriptions[filepath.split('/src/')[1]] = data
   })
   .collect()
   // Load all of the external markdown resources
   .flatMap(_ => recursiveFileDirectoryList(markdownFolder).flatFilter(isFile))
-  .through(loadMarkdownContent)
+  .through(loadFileContent('.md'))
   .collect()
   // Load all of the shared Firebolt JSON-Schemas
   .flatMap(_ => recursiveFileDirectoryList(sharedSchemasFolder).flatFilter(isFile))
