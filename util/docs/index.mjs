@@ -42,6 +42,9 @@ const run = ({
   'as-path': asPath = false,
 }) => {
 
+  // Object we'll use to perform side effects while processing the stream.
+  const templates = {};
+
   if (asPath) {
     setOptions({ asPath: true })
   }
@@ -76,11 +79,21 @@ const run = ({
   .tap(_ => logSuccess(`Created index.md`))
   // Load all of the shared templates
   .flatMap(_ => recursiveFileDirectoryList(sharedTemplateFolder).flatFilter(isFile))
-  .through(loadTemplateContent('/template/markdown/', '.md'))
+  .through(loadTemplateContent('.md'))
+  // SIDE EFFECTS!!!
+  .tap(payload => {
+    const [filepath, data] = payload
+    templates[filepath.split('/template/markdown/')[1]] = data
+  })
   .collect()
   // Load all of the templates
   .flatMap(_ => recursiveFileDirectoryList(templateFolder).flatFilter(isFile))
-  .through(loadTemplateContent('/template/markdown/', '.md'))
+  .through(loadTemplateContent('.md'))
+  // SIDE EFFECTS!!!
+  .tap(payload => {
+    const [filepath, data] = payload
+    templates[filepath.split('/template/markdown/')[1]] = data
+  })
   .collect()
   // Load all of the external markdown resources
   .flatMap(_ => recursiveFileDirectoryList(markdownFolder).flatFilter(isFile))
@@ -112,14 +125,14 @@ const run = ({
   // Loop through modules
   .flatMap(_ => getAllModulesStream())
   .tap(generateMacros)
-  .tap(generateDocs)
+  .tap(x => generateDocs(x, templates))
   .flatMap(writeDocumentation)
   .collect()
   .tap(x => logSuccess(`Created module docs`))
   // Copy template directory
   .flatMap(_ => getAllSchemasStream())
   .tap(generateMacros)
-  .tap(generateDocs)
+  .tap(x => generateDocs(x, templates))
   .flatMap(writeDocumentation)
   .collect()
   .tap(x => logSuccess(`Created schema docs`))

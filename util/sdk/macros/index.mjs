@@ -30,7 +30,7 @@ import predicates from 'crocks/predicates/index.js'
 const { isObject, isArray, propEq, pathSatisfies } = predicates
 
 import { isExcludedMethod, isRPCOnlyMethod } from '../../shared/modules.mjs'
-import { getTemplate, getTemplateForMethod } from '../../shared/template.mjs'
+import { getTemplateForMethod } from '../../shared/template.mjs'
 import { getMethodSignatureParams } from '../../shared/javascript.mjs'
 
 const staticModules = []
@@ -192,15 +192,15 @@ const generateAggregateMacros = obj => {
   aggregateMacros.mockObjects += `  ${getModuleName(obj).toLowerCase()}: ${getModuleName(obj).toLowerCase()},\n`
 }
 
-const generateMacros = obj => {
+const generateMacros = templates => obj => {
   generateAggregateMacros(obj)
   const imports = generateImports(obj)
   const initialization = generateInitialization(obj)
   const enums = generateEnums(obj)
   const events = generateEvents(obj)
-  const methods = generateMethods(obj)
+  const methods = generateMethods(obj, templates)
   const methodList = generateMethodList(obj)
-  const onlyEventMethods = generateMethods(obj, true)
+  const onlyEventMethods = generateMethods(obj, templates, true)
   const defaults = generateDefaults(obj)
   const macros = {
     imports,
@@ -404,7 +404,7 @@ function generateMethodList(json = {}) {
   return result
 }
 
-function generateMethods(json = {}, onlyEvents = false) {
+function generateMethods(json = {}, templates = {}, onlyEvents = false) {
   const moduleName = getModuleName(json).toLowerCase()
   
   // Two arrays that represent two codegen flows
@@ -450,9 +450,9 @@ function generateMethods(json = {}, onlyEvents = false) {
         params: getMethodSignatureParams(moduleName, methodObj, { isInterface: false })
       }
 
-      let template = getTemplateForMethod(methodObj, '.js')
+      let template = getTemplateForMethod(methodObj, '.js', templates);
       if (isPropertyMethod(methodObj)) {
-        template = getTemplate('methods/polymorphic-property.js')
+        template = templates['methods/polymorphic-property.js']
       }
       const javascript = template.replace(/\$\{method\.name\}/g, method.name)
         .replace(/\$\{method\.params\}/g, method.params)

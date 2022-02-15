@@ -22,7 +22,6 @@ const { getPathOr } = crocksHelpers
 import { fsWriteFile, fsReadFile, bufferToString, getFilename, getDirectory, getLinkFromRef } from '../../shared/helpers.mjs'
 import { getMethodSignature, getMethodSignatureParams ,getSchemaType, getSchemaShape } from '../../shared/typescript.mjs'
 import { getPath, getSchema, getExternalSchemaPaths, getSchemaConstraints, isDefinitionReferencedBySchema, hasTitle, localizeDependencies } from '../../shared/json-schema.mjs'
-import { getTemplate, getAllTemplateNames } from '../../shared/template.mjs'
 import path from 'path'
 import fs from 'fs'
 
@@ -68,8 +67,8 @@ const setOptions = o => {
     _options = o
 }
 
-const generateDocs = j => {
-    document = getTemplate(j.info ? 'index.md' : 'schema.md')
+const generateDocs = (j, templates) => {
+    document = getTemplate(j.info ? 'index.md' : 'schema.md', templates)
     document = insertMacros(document, j)
 }
 
@@ -97,7 +96,7 @@ export {
     insertAggregateMacrosOnly
 }
 
-function insertMacros(data, json) {
+function insertMacros(data, json, templates) {
     let match, regex
 
     const methods = json.methods && json.methods.filter( method => !isEvent(method) && !isSetter(method) || isEvent(method) && isFullyDocumentedEvent(method))
@@ -114,7 +113,7 @@ function insertMacros(data, json) {
             let events = ''
             methods.forEach(method => {
                 if (method.tags && method.tags.find(t => t.name === 'event')) {
-                    events += insertMethodMacros(match[0], method, getTitle(json))
+                    events += insertMethodMacros(match[0], method, getTitle(json), templates)
                 }
             })
             data = data.replace(regex, events)
@@ -160,7 +159,7 @@ function insertMacros(data, json) {
             let methodsStr = ''
             methods.forEach(method => {
                 if (!method.tags || (!method.tags.find(t => t.name === 'event'))) {
-                    methodsStr += insertMethodMacros(match[0], method, getTitle(json))
+                    methodsStr += insertMethodMacros(match[0], method, getTitle(json), templates)
                 }
             })
             data = data.replace(regex, methodsStr)
@@ -196,7 +195,7 @@ function insertMacros(data, json) {
                 event.tags.find(t => t.name === 'event').name = 'additional-event'
                 // drop the ListenerResponse result type
                 event.result.schema = (event.result.schema.oneOf || event.result.schema.anyOf)[1]
-                additionalStr += insertMethodMacros(match[0], event, getTitle(json))
+                additionalStr += insertMethodMacros(match[0], event, getTitle(json), templates)
             })
             data = data.replace(regex, additionalStr)
         }
@@ -257,16 +256,16 @@ function insertMacros(data, json) {
     return data
 }
 
-function insertMethodMacros(data, method, module) {
+function insertMethodMacros(data, method, module, templates) {
     let result = ''
 
     if (!data) return ''
 
-    let template = method.tags && method.tags.map(t=>t.name).find(t => getAllTemplateNames().includes('methods/' + t + '.md')) || 'default'
+    let template = method.tags && method.tags.map(t=>t.name).find(t => Object.keys(templates).includes('methods/' + t + '.md')) || 'default'
     if (hasTag(method, 'property') || hasTag(method, 'property:readonly') || hasTag(method, 'property:immutable')) {
         template = 'polymorphic-property'
     }
-    data = getTemplate(`methods/${template}.md`)
+    data = templates[`methods/${template}.md`]
     data = iterateSignatures(data, method, module)
 
     if (method.params.length === 0) {
@@ -717,7 +716,7 @@ function getExternalSchemaLinks(json) {
     return links
 }
 
-function generateJavaScriptExample(example, m, module) {
+function generateJavaScriptExample(example, m, module, templates) {
     if (m.name.match(/^on[A-Z]/)) {
         return generateEventExample(example, m, module)
     }
@@ -736,8 +735,8 @@ function generateJavaScriptExample(example, m, module) {
 
     let typescript
 
-    const template = m.tags && m.tags.map(t=>t.name).find(t => getAllTemplateNames().includes('examples/' + t + '.md')) || 'default'
-    typescript = getTemplate(`examples/${template}.md`)
+    const template = m.tags && m.tags.map(t=>t.name).find(t => Object.keys(templates).includes('examples/' + t + '.md')) || 'default'
+    typescript = templates[`examples/${template}.md`]
 
     typescript = typescript.replace(/\$\{example.params\}/g, params)
 

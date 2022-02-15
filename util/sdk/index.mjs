@@ -65,16 +65,23 @@ const run = ({
   const insertAggregateMacrosIntoFile = path => fsReadFile(path).map(bufferToString).map(insertAggregateMacrosOnly).flatMap(data => fsWriteFile(path, data))
   const alphabeticalSorter = (a, b) => a.info.title > b.info.title ? 1 : b.info.title > a.info.title ? -1 : 0
 
+  // Object we'll use to perform side effects while processing the stream.
+  const templates = {};
 
   if (staticModules) {
-    console.log(staticModules)
     staticModules.split(',').forEach(m => addStaticModule(m))
   }
   
   clearDirectory(outputFolder)
     // Load all of the templates
     .flatMap(_ => recursiveFileDirectoryList(templateFolder).flatFilter(isFile))
-    .through(loadTemplateContent('/template/js/', '.js'))
+    .through(loadTemplateContent('.js'))
+    // SIDE EFFECTS!!!
+    .tap(payload => {
+      const [filepath, data] = payload
+      const key = filepath.split('/template/js/')[1]
+      templates[key] = data
+    })
     .collect()
     // load all shared schemas
     .flatMap(_ => recursiveFileDirectoryList(sharedSchemasFolder).flatFilter(isFile))
@@ -95,7 +102,7 @@ const run = ({
     .map(m => localizeDependencies(m, m, true))
     .tap(addModule)
     // Here's where the actual code generation takes place.
-    .map(generateMacros)
+    .map(generateMacros(templates))
     .collect()
     .tap(_ => logSuccess("Loading all modules"))
     // Load the version.json file
@@ -122,9 +129,8 @@ const run = ({
     .collect()
     // TODO: reuse already loaded moduleContent
     .flatMap(_ => getAllModulesStream())
-  //  .tap(m => console.log(m.info.title))
     // Here's where the actual code generation takes place.
-    .map(generateMacros)
+    .map(generateMacros(templates))
     // Make sure all modules pass through 'generateMacros' so the aggregate macros are done
     .collect()
     // split the stream back up again
