@@ -16,15 +16,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { fsReadFile, bufferToString } from './helpers.mjs'
-import path from 'path'
-
 const getTemplateForMethod = (method, suffix, templates) => {
   const template = method.tags && method.tags.map(t=>t.name).find(t => Object.keys(templates).includes('methods/' + t + suffix)) || 'default'
   return templates[`methods/${template}${suffix}`]
 }
 
 export {
-  loadTemplateContent,
   getTemplateForMethod,
 }

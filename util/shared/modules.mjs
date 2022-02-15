@@ -17,19 +17,17 @@
  */
 
 import helpers from 'crocks/helpers/index.js'
-import path from 'path'
-const { tap, compose, getPathOr } = helpers
+const { compose, getPathOr } = helpers
 import safe from 'crocks/Maybe/safe.js'
 import find from 'crocks/Maybe/find.js'
 import getPath from 'crocks/Maybe/getPath.js'
 import pointfree from 'crocks/pointfree/index.js'
 const { chain, filter, option, map, reduce } = pointfree
 import logic from 'crocks/logic/index.js'
-const { and, not } = logic
+const { and } = logic
 import isString from 'crocks/core/isString.js'
 import predicates from 'crocks/predicates/index.js'
 const { isObject, isArray, propEq, pathSatisfies } = predicates
-import { fsReadFile, bufferToString } from './helpers.mjs'
 import { getSchemaContent } from './json-schema.mjs'
 
 const modules = {}

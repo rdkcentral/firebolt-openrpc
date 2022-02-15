@@ -22,7 +22,7 @@ import h from 'highland'
 import { recursiveFileDirectoryList, clearDirectory, gatherStateForInsertMacros, getModuleName, loadVersion, fsReadFile, fsWriteFile, isDirectory, isFile, createFilesAbsentInDir, createDirAbsentInDir, loadFileContent, copyReferenceDirToTarget, copyReferenceFileToTarget, logSuccess } from '../shared/helpers.mjs'
 import { setVersion, generateMacros, insertMacros, insertAggregateMacrosOnly } from './macros/index.mjs'
 import { getModuleContent, getAllModules, addModule } from '../shared/modules.mjs'
-import { localizeDependencies, getSchemaContent, addSchema } from '../shared/json-schema.mjs'
+import { localizeDependencies, getSchemaContent, addExternalMarkdown, addSchema } from '../shared/json-schema.mjs'
 import path from 'path'
 
 // Workaround for using __dirname in ESM
@@ -63,8 +63,9 @@ const run = ({
   const insertAggregateMacrosIntoFile = path => fsReadFile(path).map(bufferToString).map(insertAggregateMacrosOnly).flatMap(data => fsWriteFile(path, data))
   const alphabeticalSorter = (a, b) => a.info.title > b.info.title ? 1 : b.info.title > a.info.title ? -1 : 0
 
-  // Object we'll use to perform side effects while processing the stream.
+  // Objects we'll use to perform side effects while processing the stream.
   const templates = {};
+  const descriptions = {};
 
   if (staticModules) {
     staticModules.split(',').forEach(m => addStaticModule(m))
@@ -84,11 +85,15 @@ const run = ({
     // load all shared schemas
     .flatMap(_ => recursiveFileDirectoryList(sharedSchemasFolder).flatFilter(isFile))
     .through(getSchemaContent)
+    // Side effects part 1.
+    .map(addExternalMarkdown(descriptions))
     .tap(addSchema)
     .collect()
     // load all schemas
     .flatMap(_ => recursiveFileDirectoryList(schemasFolder).flatFilter(isFile))
     .through(getSchemaContent)
+    // Side effects part 2.
+    .map(addExternalMarkdown(descriptions))
     .tap(addSchema)
     .collect()
     .tap(_ => logSuccess('Loaded JSON-Schemas'))

@@ -19,11 +19,7 @@
 import h from 'highland'
 import crocks from 'crocks'
 import path from 'path'
-import url from 'url'
 import { fsReadFile, bufferToString } from './helpers.mjs'
-
-const __dirname = url.fileURLToPath(new URL('.', import.meta.url))
-
 
 const { setPath, getPathOr } = crocks
 const schemas = {}
@@ -46,7 +42,7 @@ const getExternalMarkdownPaths = obj => {
     .filter(x => /^file:/.test(getPathOr(null, x, obj)))
 }
 
-const addExternalMarkdown = (obj, descriptions) => {
+const addExternalMarkdown = descriptions => obj => {
   const paths = getExternalMarkdownPaths(obj)
 
   paths.map(path => {
@@ -85,11 +81,6 @@ const loadAndParseSchema = filepath => h.of(filepath)
       console.error(`\n\x1b[41m ERROR:\x1b[0m ${err.message}\n`)
       push(nil, err)
     })
-    .map(addExternalMarkdown)
-
-const getRef = (ref, json) => {
-  return getPathOr({}, refToPath(ref), json)
-}
 
 const refToPath = ref => {
   let path = ref.split('#').pop().substr(1).split('/')
@@ -429,6 +420,7 @@ const isDefinitionReferencedBySchema = (name, schema) => {
 
 export {
   addSchema,
+  addExternalMarkdown,
   getSchema,
   getAllSchemas,
   getSchemaContent,

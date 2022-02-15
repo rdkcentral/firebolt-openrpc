@@ -17,13 +17,12 @@
  */
 
 import h from 'highland'
-import { recursiveFileDirectoryList, isFile, loadVersion, logSuccess, logHeader } from '../shared/helpers.mjs'
+import { recursiveFileDirectoryList, isFile, loadVersion, loadFileContent, logSuccess, logHeader } from '../shared/helpers.mjs'
 import { getModuleContent, getAllModules, addModule } from '../shared/modules.mjs'
 import { getSchemaContent, getExternalSchemas, addSchema } from '../shared/json-schema.mjs'
 import { setTemplate, setVersion, mergeSchemas, mergeMethods, updateSchemaUris, setOutput, writeOpenRPC } from './merge/index.mjs'
 import path from 'path'
 import url from 'url'
-import { loadMarkdownContent } from '../shared/descriptions.mjs'
 
 const __dirname = url.fileURLToPath(new URL('.', import.meta.url))
 // destructure well-known cli args and alias to variables expected by script
@@ -59,7 +58,7 @@ const run = ({
     .tap(setTemplate)
     // Load all of the external markdown resources
     .flatMap(_ => recursiveFileDirectoryList(markdownFolder).flatFilter(isFile))
-    .through(loadMarkdownContent)
+    .through(loadFileContent('.md'))
     .collect()
     // Load all of the global Firebolt JSON-Schemas
     .flatMap(_ => recursiveFileDirectoryList(sharedSchemasFolder).flatFilter(isFile))
