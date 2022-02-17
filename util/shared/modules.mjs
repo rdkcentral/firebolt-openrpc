@@ -361,11 +361,6 @@ const generatePolymorphicPullEvents = json => {
 // DOES NOT DEAL WITH ERRORS
 const getModuleContentWithoutTransforms = getSchemaContent
 
-const getModuleContent = x => getSchemaContent(x)
-        .map(generatePropertyEvents)
-        .map(generatePropertySetters)
-        .map(generatePolymorphicPullEvents)
-
 const getPathFromModule = (module, path) => {
     console.error("DEPRECATED: getPathFromModule")
     
@@ -404,8 +399,10 @@ export {
     setVersion,
     getVersion,
     addModule,
-    getModuleContent,
     getAllModules,
     getPathFromModule,
-    getModuleContentWithoutTransforms
+    getModuleContentWithoutTransforms,
+    generatePolymorphicPullEvents,
+    generatePropertyEvents,
+    generatePropertySetters,
 }
