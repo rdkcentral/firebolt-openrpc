@@ -19,9 +19,9 @@
 import crocksHelpers from 'crocks/helpers/index.js'
 const { getPathOr } = crocksHelpers
 
-import { fsWriteFile, fsReadFile, bufferToString, getFilename, getDirectory, getLinkFromRef } from '../../shared/helpers.mjs'
+import { fsWriteFile, getFilename, getDirectory, getLinkFromRef } from '../../shared/helpers.mjs'
 import { getMethodSignature, getMethodSignatureParams ,getSchemaType, getSchemaShape } from '../../shared/typescript.mjs'
-import { getPath, getSchema, getExternalSchemaPaths, getSchemaConstraints, isDefinitionReferencedBySchema, hasTitle, localizeDependencies } from '../../shared/json-schema.mjs'
+import { getPath, getExternalSchemaPaths, getSchemaConstraints, isDefinitionReferencedBySchema, localizeDependencies } from '../../shared/json-schema.mjs'
 import path from 'path'
 import fs from 'fs'
 
@@ -31,12 +31,6 @@ var pkg = JSON.parse(fs.readFileSync('./package.json', 'utf8'));
  * TODO
  * - add See also, or enum input for schemas (e.g. ProgramType used by Discovery)
  */
-
-// current json schema
-let currentSchema
-let outputDir
-let document
-let _options = {asPath: false, baseUrl: '' }
 
 const version = {
     major: 0,
@@ -52,30 +46,10 @@ const setVersion = (v) => {
     version.readable = v.major + '.' + v.minor + '.' + v.patch
 }
 
-const setOutput = o => outputDir = o
-const generateMacros = j => {
-    currentSchema = j
-    if (currentSchema.info) {
-        _options.baseUrl = _options.asPath ? '../' : './'
-    }
-    else {
-        _options.baseUrl = _options.asPath ? '../../' : './'
-    }
-}
-
-const setOptions = o => {
-    _options = o
-}
-
-const generateDocs = (j, templates) => {
-    document = getTemplate(j.info ? 'index.md' : 'schema.md', templates)
-    document = insertMacros(document, j)
-}
-
-const writeDocumentation = _ => fsWriteFile(path.join(outputDir, getDirectory(currentSchema, _options.asPath), getFilename(currentSchema, _options.asPath) + '.md'), document)
+const writeDocumentation = (outputDir = '', schema = {}, data = '', options = {}) => fsWriteFile(path.join(outputDir, getDirectory(schema, options.asPath), getFilename(currentSchema, options.asPath) + '.md'), data)
 const insertAggregateMacrosOnly = () => false
 
-const getTitle = json => json.info ? json.info.title :json.title
+const getTitle = json => json.info ? json.info.title : json.title
 
 const hasEventAttribute = (method, attribute) => method.tags && method.tags.find(t => t.name === 'event').hasOwnProperty(attribute)
 const isEvent = method => hasTag(method, 'event')
@@ -87,13 +61,10 @@ function hasTag (method, tag) {
 }
 
 export {
-    setOptions,
     setVersion,
-    setOutput,
-    generateMacros,
-    generateDocs,
     writeDocumentation,
-    insertAggregateMacrosOnly
+    insertAggregateMacrosOnly,
+    insertMacros,
 }
 
 function insertMacros(data, json, templates) {
@@ -167,7 +138,7 @@ function insertMacros(data, json, templates) {
 
         regex = /[\# \t]*?\$\{event\.[a-zA-Z]+\}.*?\$\{end.event\}/s
         while (match = data.match(regex)) {
-            data = data.replace(regex, insertEventMacros(match[0], methods, getTitle(json)))
+            data = data.replace(regex, insertEventMacros(match[0], methods, getTitle(json), templates))
         }
 
         let js = false
@@ -266,7 +237,7 @@ function insertMethodMacros(data, method, module, templates) {
         template = 'polymorphic-property'
     }
     data = templates[`methods/${template}.md`]
-    data = iterateSignatures(data, method, module)
+    data = iterateSignatures(data, method, module, templates)
 
     if (method.params.length === 0) {
         data = data.replace(/\$\{if\.params\}.*?\{end\.if\.params\}/gms, '')
@@ -392,7 +363,7 @@ function generatePropertySignatures (m) {
     return signatures
 }
 
-function iterateSignatures(data, method, module) {
+function iterateSignatures(data, method, module, templates = {}) {
     // we're hacking the schema here... make a copy!
     method = JSON.parse(JSON.stringify(method))
     let signatures = [method]
@@ -468,14 +439,14 @@ function iterateSignatures(data, method, module) {
             match = data.match(regex)
         }
 
-        let block = sig == null ? '' : insertSignatureMacros(match[1], sig, module)
+        let block = sig == null ? '' : insertSignatureMacros(match[1], sig, module, templates)
         data = data.replace(regex, block)
     })
 
     return data
 }
 
-function insertSignatureMacros(block, sig, module) {
+function insertSignatureMacros(block, sig, module, templates = {}) {
     if (sig.params.length === 0) {
         block = block.replace(/\$\{if\.params\}.*?\{end\.if\.params\}/gms, '')
     }
@@ -491,7 +462,7 @@ function insertSignatureMacros(block, sig, module) {
     let match = block.match(regex)
  
     if (match) {
-        let exampleBlock = insertExampleMacros(match[0], sig, module)
+        let exampleBlock = insertExampleMacros(match[0], sig, module, templates)
         block = block.replace(regex, exampleBlock)
     }
 
@@ -561,7 +532,7 @@ function insertSchemaMacros(data, schemas, module) {
     return result
 }
 
-function insertEventMacros(data, methods, module) {
+function insertEventMacros(data, methods, module, templates = {}) {
     let result = ''
 
     methods.forEach(method => {
@@ -590,7 +561,7 @@ function insertEventMacros(data, methods, module) {
 
         let match, regex = /[\# \t]*?\$\{example\.[a-zA-Z]+\}.*?\$\{end.example\}/s
         while (match = method_data.match(regex)) {
-            method_data = method_data.replace(regex, insertExampleMacros(match[0], method, module))
+            method_data = method_data.replace(regex, insertExampleMacros(match[0], method, module, templates))
         }
 
         method_data = method_data.replace(/\$\{.*?method.*?\}\s*\n?/g, '')
@@ -617,7 +588,7 @@ function insertParamMacros(data, param) {
         .replace(/\$\{method.param.constraints\}/, constraints) //getType(param))
 }
 
-function insertExampleMacros(data, method, module) {
+function insertExampleMacros(data, method, module, templates = {}) {
     let result = ''
     let first = true
 
@@ -631,13 +602,13 @@ function insertExampleMacros(data, method, module) {
         
         let example_data = data
             .replace(/\$\{example.title\}/g, example.name)
-            .replace(/\$\{example.javascript\}/g, generateJavaScriptExample(example, method, module))
-            .replace(/\$\{example.result\}/g, generateJavaScriptExampleResult(example, method, module))
+            .replace(/\$\{example.javascript\}/g, generateJavaScriptExample(example, method, module, templates))
+            .replace(/\$\{example.result\}/g, generateJavaScriptExampleResult(example, method, module, templates))
             .replace(/\$\{example.params\}/g, params)
-            .replace(/\$\{example.jsonrpc\}/g, generateRPCExample(example, method, module))
-            .replace(/\$\{example.response\}/g, generateRPCExampleResult(example, method, module))
-            .replace(/\$\{callback.jsonrpc\}/g, generateRPCCallbackExample(example, method, module))
-            .replace(/\$\{callback.response\}/g, generateRPCCallbackExampleResult(example, method, module))
+            .replace(/\$\{example.jsonrpc\}/g, generateRPCExample(example, method, module, templates))
+            .replace(/\$\{example.response\}/g, generateRPCExampleResult(example, method, module, templates))
+            .replace(/\$\{callback.jsonrpc\}/g, generateRPCCallbackExample(example, method, module, templates))
+            .replace(/\$\{callback.response\}/g, generateRPCCallbackExampleResult(example, method, module, templates))
 
         result += example_data
 
