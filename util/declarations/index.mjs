@@ -18,7 +18,7 @@
 
 import { recursiveFileDirectoryList, fsWriteFile, isFile, logSuccess } from '../shared/helpers.mjs'
 import { generateDeclarations } from './generator/index.mjs'
-import { getModuleContent, addModule } from '../shared/modules.mjs'
+import { generatePropertyEvents, generatePropertySetters, generatePolymorphicPullEvents, addModule } from '../shared/modules.mjs'
 import path from 'path'
 import { getSchemaContent, addSchema } from '../shared/json-schema.mjs'
 
@@ -48,6 +48,7 @@ const run = ({
   const modulesFolder = path.join(srcFolderArg, 'modules')
   const hasPublicMethods = json => json.methods && json.methods.filter(m => !m.tags || !m.tags.map(t=>t.name).includes('rpc-only')).length > 0
   const alphabeticalSorter = (a, b) => a.info.title > b.info.title ? 1 : b.info.title > a.info.title ? -1 : 0
+  const descriptions = {}
 
   recursiveFileDirectoryList(sharedSchemasFolder).flatFilter(isFile)
     .through(getSchemaContent)
@@ -59,7 +60,12 @@ const run = ({
     .collect()
     .tap(_ => logSuccess('Loaded JSON-Schemas'))
     .flatMap(_ => recursiveFileDirectoryList(modulesFolder).flatFilter(isFile))
-    .through(getModuleContent)
+    .through(getSchemaContent)
+    // Side effects previously performed somewhere after getSchemaContent
+    .map(addExternalMarkdown(descriptions))
+    .map(generatePropertyEvents)
+    .map(generatePropertySetters)
+    .map(generatePolymorphicPullEvents)
     .filter(hasPublicMethods)
     .sortBy(alphabeticalSorter)
     .tap(addModule)
