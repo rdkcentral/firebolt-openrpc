@@ -37,6 +37,7 @@ const fsStat = h.wrapCallback(stat)
 const fsAccess = h.wrapCallback(access)
 const fsCopyFile = h.wrapCallback(copyFile)
 const fsMkDir = h.wrapCallback(mkdir)
+const fsMkDirP = h.wrapCallback((path, cb) => mkdir(path, { recursive: true }, cb))
 const fsRemoveDirectory = h.wrapCallback(rmdir)
 const fsWriteFile = h.wrapCallback(writeFile)
 const fsReadDir = h.wrapCallback(readdir)
@@ -188,6 +189,7 @@ export {
   isPublicModule,
   fsStat,
   fsMkDir,
+  fsMkDirP,
   fsReadDir,
   fsCopyFile,
   fsWriteFile,
