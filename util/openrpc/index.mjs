@@ -18,7 +18,7 @@
 
 import h from 'highland'
 import { recursiveFileDirectoryList, isFile, loadVersion, loadFileContent, logSuccess, logHeader } from '../shared/helpers.mjs'
-import { getModuleContent, getAllModules, addModule } from '../shared/modules.mjs'
+import { generatePropertyEvents, generatePropertySetters, generatePolymorphicPullEvents, getAllModules, addModule } from '../shared/modules.mjs'
 import { getSchemaContent, getExternalSchemas, addSchema } from '../shared/json-schema.mjs'
 import { setTemplate, setVersion, mergeSchemas, mergeMethods, updateSchemaUris, setOutput, writeOpenRPC } from './merge/index.mjs'
 import path from 'path'
@@ -43,11 +43,9 @@ const run = ({
   const getAllModulesStream = _ => h(getAllModules())
   const renameMethods = module => module.methods && (module.methods.forEach(method => method.name = module.info.title.toLowerCase() + '.' + method.name))
   const alphabeticalSorter = (a, b) => a.info.title > b.info.title ? 1 : b.info.title > a.info.title ? -1 : 0
-  /************************************************************************************************/
-  /******************************************** MAIN **********************************************/
-  /************************************************************************************************/
 
   logHeader(` MERGING into: ${output}`)
+  const descriptions = {}
 
   // pass the output path to the merge module
   setOutput(output)
@@ -72,7 +70,12 @@ const run = ({
     .collect()
     // Load all of the Firebolt OpenRPC modules
     .flatMap(_ => recursiveFileDirectoryList(modulesFolder))
-    .through(getModuleContent)
+    .through(getSchemaContent)
+    // Side effects previously performed somewhere after getSchemaContent
+    .map(addExternalMarkdown(descriptions))
+    .map(generatePropertyEvents)
+    .map(generatePropertySetters)
+    .map(generatePolymorphicPullEvents)
     .sortBy(alphabeticalSorter)
     .tap(addModule)
     .collect()
