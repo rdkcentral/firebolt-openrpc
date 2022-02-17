@@ -67,7 +67,7 @@ export {
     insertMacros,
 }
 
-function insertMacros(data, json, templates) {
+function insertMacros(data, json, templates = {}, options = {}) {
     let match, regex
 
     const methods = json.methods && json.methods.filter( method => !isEvent(method) && !isSetter(method) || isEvent(method) && isFullyDocumentedEvent(method))
@@ -84,7 +84,7 @@ function insertMacros(data, json, templates) {
             let events = ''
             methods.forEach(method => {
                 if (method.tags && method.tags.find(t => t.name === 'event')) {
-                    events += insertMethodMacros(match[0], method, getTitle(json), templates)
+                    events += insertMethodMacros(match[0], method, getTitle(json), templates, options)
                 }
             })
             data = data.replace(regex, events)
@@ -130,7 +130,7 @@ function insertMacros(data, json, templates) {
             let methodsStr = ''
             methods.forEach(method => {
                 if (!method.tags || (!method.tags.find(t => t.name === 'event'))) {
-                    methodsStr += insertMethodMacros(match[0], method, getTitle(json), templates)
+                    methodsStr += insertMethodMacros(match[0], method, getTitle(json), templates, options)
                 }
             })
             data = data.replace(regex, methodsStr)
@@ -138,7 +138,7 @@ function insertMacros(data, json, templates) {
 
         regex = /[\# \t]*?\$\{event\.[a-zA-Z]+\}.*?\$\{end.event\}/s
         while (match = data.match(regex)) {
-            data = data.replace(regex, insertEventMacros(match[0], methods, getTitle(json), templates))
+            data = data.replace(regex, insertEventMacros(match[0], methods, getTitle(json), templates, options))
         }
 
         let js = false
@@ -166,7 +166,7 @@ function insertMacros(data, json, templates) {
                 event.tags.find(t => t.name === 'event').name = 'additional-event'
                 // drop the ListenerResponse result type
                 event.result.schema = (event.result.schema.oneOf || event.result.schema.anyOf)[1]
-                additionalStr += insertMethodMacros(match[0], event, getTitle(json), templates)
+                additionalStr += insertMethodMacros(match[0], event, getTitle(json), templates, options)
             })
             data = data.replace(regex, additionalStr)
         }
@@ -186,7 +186,7 @@ function insertMacros(data, json, templates) {
     if (schemas) {
         regex = /[\# \t]*?\$\{schema\.[a-zA-Z]+\}.*?\$\{end.schema\}/s
         while (match = data.match(regex)) {
-            data = data.replace(regex, insertSchemaMacros(match[0], schemas, getTitle(json)))
+            data = data.replace(regex, insertSchemaMacros(match[0], schemas, getTitle(json), options))
         }
 
         let schemas_toc = []
@@ -227,7 +227,7 @@ function insertMacros(data, json, templates) {
     return data
 }
 
-function insertMethodMacros(data, method, module, templates) {
+function insertMethodMacros(data, method, module, templates = {}, options = {}) {
     let result = ''
 
     if (!data) return ''
@@ -237,7 +237,7 @@ function insertMethodMacros(data, method, module, templates) {
         template = 'polymorphic-property'
     }
     data = templates[`methods/${template}.md`]
-    data = iterateSignatures(data, method, module, templates)
+    data = iterateSignatures(data, method, module, templates, options)
 
     if (method.params.length === 0) {
         data = data.replace(/\$\{if\.params\}.*?\{end\.if\.params\}/gms, '')
@@ -363,7 +363,7 @@ function generatePropertySignatures (m) {
     return signatures
 }
 
-function iterateSignatures(data, method, module, templates = {}) {
+function iterateSignatures(data, method, module, templates = {}, options = {}) {
     // we're hacking the schema here... make a copy!
     method = JSON.parse(JSON.stringify(method))
     let signatures = [method]
@@ -439,14 +439,14 @@ function iterateSignatures(data, method, module, templates = {}) {
             match = data.match(regex)
         }
 
-        let block = sig == null ? '' : insertSignatureMacros(match[1], sig, module, templates)
+        let block = sig == null ? '' : insertSignatureMacros(match[1], sig, module, templates, options)
         data = data.replace(regex, block)
     })
 
     return data
 }
 
-function insertSignatureMacros(block, sig, module, templates = {}) {
+function insertSignatureMacros(block, sig, module, templates = {}, options = {}) {
     if (sig.params.length === 0) {
         block = block.replace(/\$\{if\.params\}.*?\{end\.if\.params\}/gms, '')
     }
@@ -462,7 +462,7 @@ function insertSignatureMacros(block, sig, module, templates = {}) {
     let match = block.match(regex)
  
     if (match) {
-        let exampleBlock = insertExampleMacros(match[0], sig, module, templates)
+        let exampleBlock = insertExampleMacros(match[0], sig, module, templates, options)
         block = block.replace(regex, exampleBlock)
     }
 
@@ -472,7 +472,7 @@ function insertSignatureMacros(block, sig, module, templates = {}) {
         if (lines[i].match(/\$\{method\.param\.[a-zA-Z]+\}/)) {
             let line = lines[i]
             lines.splice(i, 1)
-            sig.params.forEach((param) => { lines.splice(i++, 0, insertParamMacros(line, param)) })
+            sig.params.forEach((param) => { lines.splice(i++, 0, insertParamMacros(line, param, options)) })
         }
     }
 
@@ -483,14 +483,14 @@ function insertSignatureMacros(block, sig, module, templates = {}) {
         .replace(/\$\{method.paramNames\}/g, sig.params.map(p => p.name).join(', '))
         .replace(/\$\{method.result.name\}/g, sig.result.name)
         .replace(/\$\{method.result.summary\}/g, sig.result.summary)
-        .replace(/\$\{method.result.link\}/g, getSchemaType(currentSchema, sig.result, {title: true, link: true, asPath: _options.asPath, baseUrl: _options.baseUrl}))
-        .replace(/\$\{method.result.type\}/g, getSchemaType(currentSchema, sig.result, {title: true, asPath: _options.asPath, baseUrl: _options.baseUrl}))
-        .replace(/\$\{method.result\}/g, getSchemaTypeTable(currentSchema, sig.result, { description: sig.result.summary, title: true, asPath: _options.asPath, baseUrl: _options.baseUrl}))
+        .replace(/\$\{method.result.link\}/g, getSchemaType(currentSchema, sig.result, {title: true, link: true, asPath: options.asPath, baseUrl: options.baseUrl}))
+        .replace(/\$\{method.result.type\}/g, getSchemaType(currentSchema, sig.result, {title: true, asPath: options.asPath, baseUrl: options.baseUrl}))
+        .replace(/\$\{method.result\}/g, getSchemaTypeTable(currentSchema, sig.result, { description: sig.result.summary, title: true, asPath: options.asPath, baseUrl: options.baseUrl}))
 
     return block
 }
 
-function insertSchemaMacros(data, schemas, module) {
+function insertSchemaMacros(data, schemas, module = {}, options = {}) {
     let result = ''
     const prefix = currentSchema.info ? '#/components/schemas/' : '#/definitions/'
 
@@ -515,7 +515,7 @@ function insertSchemaMacros(data, schemas, module) {
                 schema_data = schema_data.replace(/\$\{schema.example\}/, schema.examples.map(ex => JSON.stringify(ex, null, '  ')).join('\n\n'))
             }
 
-            let seeAlso = getExternalSchemaLinks(schema, _options)
+            let seeAlso = getExternalSchemaLinks(schema, options)
             if (seeAlso) {
                 schema_data = schema_data.replace(/\$\{schema.seeAlso\}/, '\n\n' + seeAlso)
             }
@@ -532,7 +532,7 @@ function insertSchemaMacros(data, schemas, module) {
     return result
 }
 
-function insertEventMacros(data, methods, module, templates = {}) {
+function insertEventMacros(data, methods, module, templates = {}, options = {}) {
     let result = ''
 
     methods.forEach(method => {
@@ -557,7 +557,7 @@ function insertEventMacros(data, methods, module, templates = {}) {
             .replace(/\$\{event.description\}/, method.description)
             .replace(/\$\{event.result.name\}/, method.result.name)
             .replace(/\$\{event.result.summary\}/, method.result.summary)
-            .replace(/\$\{event.result.type\}/, getSchemaTypeTable(currentSchema, method.result, { event: true, description: method.result.summary, asPath: _options.asPath, baseUrl: _options.baseUrl })) //getType(method.result, true))
+            .replace(/\$\{event.result.type\}/, getSchemaTypeTable(currentSchema, method.result, { event: true, description: method.result.summary, asPath: options.asPath, baseUrl: options.baseUrl })) //getType(method.result, true))
 
         let match, regex = /[\# \t]*?\$\{example\.[a-zA-Z]+\}.*?\$\{end.example\}/s
         while (match = method_data.match(regex)) {
@@ -572,9 +572,9 @@ function insertEventMacros(data, methods, module, templates = {}) {
     return result
 }
 
-function insertParamMacros(data, param) {
+function insertParamMacros(data, param, options = {}) {
     let constraints = getSchemaConstraints(param, currentSchema)
-    let type = getSchemaType(currentSchema, param, { code: true, link: true, title: true, asPath: _options.asPath, baseUrl: _options.baseUrl })
+    let type = getSchemaType(currentSchema, param, { code: true, link: true, title: true, asPath: options.asPath, baseUrl: options.baseUrl })
 
     if (constraints && type) {
         constraints = '<br/>' + constraints
@@ -628,7 +628,7 @@ function insertExampleMacros(data, method, module, templates = {}) {
     return result
 }
 
-function getSchemaTypeTable(module, json, options) {
+function getSchemaTypeTable(module, json, options = {}) {
     let type = getSchemaType(module, json, options)
     let summary = json.summary
 
@@ -647,7 +647,7 @@ function getSchemaTypeTable(module, json, options) {
             + '| ----- | ---- | ----------- |\n'
 
         Object.entries(json.properties).forEach(([name, prop]) => {
-            type += `| \`${name}\` | ${getSchemaType(module, prop, { link: true, code: true, event: options.event, asPath: options.asPath, baseUrl: _options.baseUrl }).replace('|', '\\|')} | ${prop.description || ''} |\n`
+            type += `| \`${name}\` | ${getSchemaType(module, prop, { link: true, code: true, event: options.event, asPath: options.asPath, baseUrl: options.baseUrl }).replace('|', '\\|')} | ${prop.description || ''} |\n`
         })
 
         return type
@@ -660,14 +660,14 @@ function getSchemaTypeTable(module, json, options) {
         const path = obj['$ref']
         const ref = path ? getPath(path, module) : json
     
-        type += `| ${getSchemaType(module, json, { code: true, link: true, event: options.event, title: true, asPath: options.asPath, baseUrl: _options.baseUrl }).replace('|', '\\|')} | ${json.description || ref.description || summary || ''} |\n`
+        type += `| ${getSchemaType(module, json, { code: true, link: true, event: options.event, title: true, asPath: options.asPath, baseUrl: options.baseUrl }).replace('|', '\\|')} | ${json.description || ref.description || summary || ''} |\n`
 
         return type
 
     }
 }
 
-function getExternalSchemaLinks(json) {
+function getExternalSchemaLinks(json, options = {}) {
     const seen = {}
 
     const isModule = currentSchema.info
@@ -680,8 +680,8 @@ function getExternalSchemaLinks(json) {
     let links = getExternalSchemaPaths(json)
         .map(path => getPathOr(null, path, json))
         .filter(path => seen.hasOwnProperty(path) ? false : (seen[path] = true))
-        .map(path => _options.baseUrl + getLinkFromRef(path, _options.asPath))
-        .map(path => ' - [' + path.split("/").pop() + '](' + (_options.asPath ? path.split('#')[0].toLowerCase() + '#' + path.split('#')[1].split('/').pop().toLowerCase()  : path) + ')')
+        .map(path => options.baseUrl + getLinkFromRef(path, options.asPath))
+        .map(path => ' - [' + path.split("/").pop() + '](' + (options.asPath ? path.split('#')[0].toLowerCase() + '#' + path.split('#')[1].split('/').pop().toLowerCase()  : path) + ')')
         .join('\n')
 
     return links
