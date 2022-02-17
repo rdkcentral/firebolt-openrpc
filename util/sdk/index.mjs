@@ -21,7 +21,7 @@
 import h from 'highland'
 import { recursiveFileDirectoryList, clearDirectory, gatherStateForInsertMacros, getModuleName, loadVersion, fsReadFile, fsWriteFile, isDirectory, isFile, createFilesAbsentInDir, createDirAbsentInDir, loadFileContent, copyReferenceDirToTarget, copyReferenceFileToTarget, logSuccess } from '../shared/helpers.mjs'
 import { setVersion, generateMacros, insertMacros, insertAggregateMacrosOnly } from './macros/index.mjs'
-import { getModuleContent, getAllModules, addModule } from '../shared/modules.mjs'
+import { generatePropertyEvents, generatePropertySetters, generatePolymorphicPullEvents, getAllModules, addModule } from '../shared/modules.mjs'
 import { localizeDependencies, getSchemaContent, addExternalMarkdown, addSchema } from '../shared/json-schema.mjs'
 import path from 'path'
 
@@ -99,7 +99,12 @@ const run = ({
     .tap(_ => logSuccess('Loaded JSON-Schemas'))
     // Load all modules
     .flatMap(_ => recursiveFileDirectoryList(modulesFolder).flatFilter(isFile))
-    .through(getModuleContent)
+    .through(getSchemaContent)
+    // Side effects previously performed somewhere after getSchemaContent
+    .map(addExternalMarkdown(descriptions))
+    .map(generatePropertyEvents)
+    .map(generatePropertySetters)
+    .map(generatePolymorphicPullEvents)
     .filter(hasPublicMethods)
     .sortBy(alphabeticalSorter)
     .map(m => localizeDependencies(m, m, true))
