@@ -19,7 +19,7 @@
 import h from 'highland'
 import { recursiveFileDirectoryList, isDirectory, isFile, logSuccess, logHeader } from '../shared/helpers.mjs'
 import { validateJsonSchema, validateOpenRpc } from './validation/index.mjs'
-import { getModuleContent, getModuleContentWithoutTransforms } from '../shared/modules.mjs'
+import { generatePropertyEvents, generatePropertySetters, generatePolymorphicPullEvents } from '../shared/modules.mjs'
 import { getSchemaContent, addSchema } from '../shared/json-schema.mjs'
 import path from 'path'
 import process from 'process'
@@ -27,6 +27,7 @@ import process from 'process'
 // Workaround for using __dirname in ESM
 import url from 'url'
 import { getAllSchemas } from '../shared/json-schema.mjs'
+import { homedir } from 'os'
 const __dirname = url.fileURLToPath(new URL('.', import.meta.url))
 
 /************************************************************************************************/
@@ -34,12 +35,13 @@ const __dirname = url.fileURLToPath(new URL('.', import.meta.url))
 /************************************************************************************************/
 
 let errors = 0
+const descriptions = {}
 
 // destructure well-known cli args and alias to variables expected by script
 const run = ({
   'shared-schemas': sharedSchemasFolderArg,
   source: srcFolderArg,
-  'disable-transforms': disableTransforms
+  'disable-transforms': disableTransforms // UNDOCUMENTED ARGUMENT!
 }) => {
   logHeader(` VALIDATING... `)
 
@@ -53,8 +55,6 @@ const run = ({
   if (disableTransforms === undefined && srcFolderArg.indexOf('/dist/') >= 0) {
     disableTransforms = true
   }
-
-  const getContent = disableTransforms ? getModuleContentWithoutTransforms : getModuleContent
   
   const validate = (json, validator, prefix) => h(validator(json))
           .tap(result => {
@@ -77,7 +77,9 @@ const run = ({
   // special case for single file (don't do any transforms)
   if (path.extname(srcFolderArg) === '.json') {
     h.of(srcFolderArg)
-      .through(getContent)
+      .through(getSchemaContent)
+      // Side effects previously performed somewhere after getSchemaContent
+      .map(addExternalMarkdown(descriptions))
       .flatMap(json => validate(json, validateOpenRpc, 'OpenRPC'))
       .tap(_ => console.log(''))
       .done(report)
@@ -119,9 +121,21 @@ const run = ({
     .collect()
     // Switch to OpenRPC modules
     .flatMap(_ => recursiveFileDirectoryList(modulesFolder))
-    .through(getContent)
+    .through(getSchemaContent)
+    // Side effects previously performed somewhere after getSchemaContent
+    .map(addExternalMarkdown(descriptions))
+    .flatMap(x => {
+      if (disableTransforms === true) {
+        return h.of(x)
+      } else {
+        return h.of(x)
+          .map(generatePropertyEvents)
+          .map(generatePropertySetters)
+          .map(generatePolymorphicPullEvents)
+      }
+    })
     .errors( (err, push) => {
-      errors ++
+      errors ++ // sad panda emoji
     })
     .flatMap(json => validate(json, validateOpenRpc, 'Module'))
     .errors( (error, push) => {
