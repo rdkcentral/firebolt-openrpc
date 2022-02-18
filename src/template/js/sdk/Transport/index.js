@@ -200,6 +200,7 @@ if ((win.__firebolt.transport == null) && (moduleInstance == null)) {
     /** We should use the mock transport built with the SDK, not a global */
     moduleInstance = transport
   } else {
+    win.__firebolt = win.__firebolt || {}
     win.__firebolt.transport = transport
   }
   win.__firebolt.setTransportLayer = transport.setTransportLayer.bind(transport)
