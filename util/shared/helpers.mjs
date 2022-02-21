@@ -173,7 +173,22 @@ const gatherStateForInsertMacros = referenceFolder => ([macros, obj]) => getModu
 const getTitle = json => json.info ? json.info.title : json.title
 const getFilename = (json, asPath) => (json.info ? json.info.title : (asPath ? json.title : json.title + 'Schema'))
 const getDirectory = (json, asPath) => asPath ? json.info ? '' : 'schemas' : ''
-const getLinkFromRef = (ref, asPath) => path.join((asPath ? 'schemas' : ''), getFilename(getSchema(ref.split('#')[0]), asPath)) + (ref.includes('#') ? '#' + ref.split('#')[1] : '')
+const getLinkFromRef = (ref, schemas = {}, asPath) => path.join((asPath ? 'schemas' : ''), getFilename(getSchema(ref.split('#')[0], schemas), asPath)) + (ref.includes('#') ? '#' + ref.split('#')[1] : '')
+
+// Extracted function for the common pattern of building an object of
+// file path keys and file content values. truncateBefore removes the
+// part of the full path before and including truncateBefore's value.
+const fileCollectionReducer = (truncateBefore = '') => (acc = {}, payload = '') => {
+  const [filepath, data] = payload
+  if (truncateBefore !== '') {
+    const pieces = filepath.split(truncateBefore)
+    const truncatedFilepath = pieces[1]
+    acc[truncatedFilepath] = data
+  } else {
+    acc[filepath] = data
+  }
+  return acc
+}
 
 export {
   bufferToString,
@@ -187,6 +202,7 @@ export {
   isDirectory,
   isFile,
   isPublicModule,
+  fileCollectionReducer,
   fsStat,
   fsMkDir,
   fsMkDirP,

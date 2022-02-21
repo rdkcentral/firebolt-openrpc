@@ -16,10 +16,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import h from 'highland'
 import crocks from 'crocks'
-import path from 'path'
-import { fsReadFile, bufferToString } from './helpers.mjs'
 
 const { setPath, getPathOr } = crocks
 const schemas = {}
@@ -42,13 +39,14 @@ const getExternalMarkdownPaths = obj => {
     .filter(x => /^file:/.test(getPathOr(null, x, obj)))
 }
 
-const addExternalMarkdown = descriptions => obj => {
+const addExternalMarkdown = (descriptions = {}) => obj => {
   const paths = getExternalMarkdownPaths(obj)
 
   paths.map(path => {
     // grab url
     const urn = getPathOr(null, path, obj)
     const url = urn.indexOf("file:../") == 0 ? urn.substr("file:../".length) : urn.substr("file:".length)
+    // TODO: This right here is a horrible idea FIXME
     const md = descriptions[url]
 
     // drop ref
@@ -64,21 +62,6 @@ const addExternalMarkdown = descriptions => obj => {
 
   return obj
 }
-
-// A through stream that expects a stream of filepaths, reads the contents
-// of any .json files found, and converts them to POJOs
-// DOES NOT DEAL WITH ERRORS
-const getSchemaContent = fileStream => fileStream
-    .filter(filepath => path.extname(filepath) === '.json')
-    .flatMap(filepath => fsReadFile(filepath)
-      .map(bufferToString)
-      .map(JSON.parse)
-      .errors( (err, push) => {
-        err.message = filepath + ": " + err.message
-        console.error(`\n\x1b[41m ERROR:\x1b[0m ${err.message}\n`)
-        push(nil, err)
-      })
-    )
 
 const refToPath = ref => {
   let path = ref.split('#').pop().substr(1).split('/')
@@ -196,7 +179,7 @@ const replaceRef = (existing, replacement, schema) => {
   }
 }
 
-const getPath = (uri, schema) => {
+const getPath = (uri = '', moduleJson = {}, schemas = {}) => {
   const [mainPath, subPath] = (uri || '').split('#')
   let result
 
@@ -205,14 +188,13 @@ const getPath = (uri, schema) => {
   }
 
   if (mainPath) {
-    result = getExternalPath(uri, true)
+    result = getExternalPath(uri, schemas, true)
   }
   else if (subPath) {
-    result = getPathOr(null, subPath.substr(1).split('/'), schema)
+    result = getPathOr(null, subPath.slice(1).split('/'), moduleJson)
   }
-
   if (!result) {
-    throw `Path '${uri}' not found in ${schema ? (schema.title || schema.info.title) : schema}.`
+    throw `getPath: Path '${uri}' not found in ${moduleJson ? (moduleJson.title || moduleJson.info.title) : moduleJson}.`
   }
   else {
     return result
@@ -220,13 +202,12 @@ const getPath = (uri, schema) => {
 }
 
 // grab a schema from another file in this project
-const getExternalPath = (uri, localize, replace=true) => {
+const getExternalPath = (uri = '', schemas = {}, localize = true, replace = true) => {
   const [mainPath, subPath] = uri.split('#')
   const json = schemas[mainPath] || schemas[mainPath + '/']
-  const result = subPath ? getPathOr(null, subPath.substr(1).split('/'), json) : json
-
+  const result = subPath ? getPathOr(null, subPath.slice(1).split('/'), json) : json
   if (localize) {
-    result && localizeDependencies(result, json)
+    result && localizeDependencies(result, json, schemas)
   }
   else if (replace) {
     result && replaceUri('', mainPath, result)
@@ -235,11 +216,11 @@ const getExternalPath = (uri, localize, replace=true) => {
   return result
 }
 
-const getSchema = (uri) => {
-  return getExternalPath(uri, false, false)
+const getSchema = (uri, schemas) => {
+  return getExternalPath(uri, schemas, false, false)
 }
 
-function getSchemaConstraints(json, module, options = { delimiter: '\n' }) {
+function getSchemaConstraints(json, module, schemas = {}, options = { delimiter: '\n' }) {
   if (json.schema) {
     json = json.schema
   }
@@ -248,7 +229,7 @@ function getSchemaConstraints(json, module, options = { delimiter: '\n' }) {
 
   if (json['$ref']) {
     if (json['$ref'][0] === '#') {
-      return getSchemaConstraints(getPath(json['$ref'], module), module, options)
+      return getSchemaConstraints(getPath(json['$ref'], module, schemas), module, schemas, options)
     }
     else {
       return ''
@@ -296,7 +277,7 @@ function getSchemaConstraints(json, module, options = { delimiter: '\n' }) {
   }
 }
 
-const localizeDependencies = (def, schema, externalOnly=false) => {
+const localizeDependencies = (def, schema, schemas = {}, externalOnly=false) => {
   let definition = JSON.parse(JSON.stringify(def))
   let refs = localRefPaths(definition)
   let unresolvedRefs = []
@@ -332,7 +313,7 @@ const localizeDependencies = (def, schema, externalOnly=false) => {
       let path = refs[i]      
       const ref = getPathOr(null, path, definition)
       path.pop() // drop ref
-      let resolvedSchema = getExternalPath(ref, true)
+      let resolvedSchema = getExternalPath(ref, schemas, true)
       
       if (!resolvedSchema) {
         resolvedSchema = { "$REF": ref}
@@ -401,16 +382,16 @@ const getExternalSchemas = json => {
   return schemas
 }
 
-const hasTitle = (def, schema) => {
-  def = localizeDependencies(def, schema)
+const hasTitle = (def, schema, schemas = {}) => {
+  def = localizeDependencies(def, schema, schemas)
   return (true && def.title)
 }
 
-const isDefinitionReferencedBySchema = (name, schema) => {
-  const refs = objectPaths(schema)
+const isDefinitionReferencedBySchema = (name = '', moduleJson = {}) => {
+  const refs = objectPaths(moduleJson)
                 .filter(x => /\/\$ref$/.test(x))
                 .map(refToPath)
-                .map(x => getPathOr(null, x, schema))
+                .map(x => getPathOr(null, x, moduleJson))
                 .filter(x => x === name)
 
   return (refs.length > 0)
@@ -418,10 +399,10 @@ const isDefinitionReferencedBySchema = (name, schema) => {
 
 export {
   addSchema,
+  getExternalMarkdownPaths,
   addExternalMarkdown,
   getSchema,
   getAllSchemas,
-  getSchemaContent,
   getSchemaConstraints,
   getExternalSchemas,
   getExternalSchemaPaths,
