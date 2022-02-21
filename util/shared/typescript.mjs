@@ -26,6 +26,7 @@ import path from 'path'
 const isSynchronous = m => !m.tags ? false : m.tags.map(t => t.name).find(s => s === 'synchronous')
 
 function getMethodSignature(module, method, options={ isInterface: false }) {
+  // module is {}
     let typescript = (options.isInterface ? '' : 'function ') + method.name + '('
 
     typescript += getMethodSignatureParams(module, method)

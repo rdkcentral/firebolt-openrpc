@@ -49,6 +49,7 @@ const addExternalMarkdown = descriptions => obj => {
     // grab url
     const urn = getPathOr(null, path, obj)
     const url = urn.indexOf("file:../") == 0 ? urn.substr("file:../".length) : urn.substr("file:".length)
+    // TODO: This right here is a horrible idea FIXME
     const md = descriptions[url]
 
     // drop ref
@@ -76,7 +77,7 @@ const getSchemaContent = fileStream => fileStream
       .errors( (err, push) => {
         err.message = filepath + ": " + err.message
         console.error(`\n\x1b[41m ERROR:\x1b[0m ${err.message}\n`)
-        push(nil, err)
+        push(nil, err) // TODO: Verify do we want to push the err value downstream?
       })
     )
 
@@ -406,11 +407,11 @@ const hasTitle = (def, schema) => {
   return (true && def.title)
 }
 
-const isDefinitionReferencedBySchema = (name, schema) => {
-  const refs = objectPaths(schema)
+const isDefinitionReferencedBySchema = (name = '', moduleJson = {}) => {
+  const refs = objectPaths(moduleJson)
                 .filter(x => /\/\$ref$/.test(x))
                 .map(refToPath)
-                .map(x => getPathOr(null, x, schema))
+                .map(x => getPathOr(null, x, moduleJson))
                 .filter(x => x === name)
 
   return (refs.length > 0)
