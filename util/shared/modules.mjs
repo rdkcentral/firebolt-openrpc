@@ -27,7 +27,7 @@ import logic from 'crocks/logic/index.js'
 const { and } = logic
 import isString from 'crocks/core/isString.js'
 import predicates from 'crocks/predicates/index.js'
-const { isObject, isArray, propEq, pathSatisfies } = predicates
+const { isObject, isArray, propEq, pathSatisfies, hasProp } = predicates
 import { getSchemaContent } from './json-schema.mjs'
 
 const modules = {}
@@ -106,6 +106,13 @@ const isEventMethod = compose(
     option(false),
     map(_ => true),
     chain(find(propEq('name', 'event'))),
+    getPath(['tags'])
+)
+
+const isPolymorphicPullMethod = compose(
+    option(false),
+    map(_ => true),
+    chain(find(hasProp('x-pulls-for'))),
     getPath(['tags'])
 )
 
@@ -385,6 +392,7 @@ export {
     isEventMethod,
     isPublicEventMethod,
     isPolymorphicReducer,
+    isPolymorphicPullMethod,
     isExcludedMethod,
     isRPCOnlyMethod,
     hasExamples,
