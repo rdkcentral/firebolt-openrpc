@@ -17,10 +17,10 @@
  */
 
 import h from 'highland'
-import { fileCollectionReducer, fsMkDirP, fsCopyFile, recursiveFileDirectoryList, clearDirectory, isFile, logSuccess, loadFileContent, fsWriteFile, fsReadFile, bufferToString, getDirectory, getFilename } from '../shared/helpers.mjs'
+import { fsMkDirP, fsCopyFile, sharedTemplates, localTemplates, combineStreamObjects, sharedSchemas, localSchemas, localModules } from '../shared/helpers.mjs'
+import { clearDirectory, logSuccess, fsWriteFile, fsReadFile } from '../shared/helpers.mjs'
+import { bufferToString, getDirectory, getFilename } from '../shared/helpers.mjs'
 import { insertMacros } from './macros/index.mjs'
-import { getExternalMarkdownPaths } from '../shared/json-schema.mjs'
-import { generatePropertyEvents, generatePropertySetters, generatePolymorphicPullEvents } from '../shared/modules.mjs'
 import path from 'path'
 
 // Workaround for using __dirname in ESM
@@ -51,18 +51,7 @@ const run = ({
   const templateFolder = path.join(templateFolderArg)
   const sharedTemplateFolder = path.join(__dirname, '..', '..', 'src', 'template', 'markdown')
   const outputFolder = path.join(outputFolderArg)
-  const hasPublicMethods = json => json.methods && json.methods.filter(m => !m.tags || !m.tags.map(t=>t.name).includes('rpc-only')).length > 0
-  const alphabeticalSorter = (a, b) => a.info.title > b.info.title ? 1 : b.info.title > a.info.title ? -1 : 0
   const copyReadMe = _ => asPath ? fsCopyFile(apiIndex, path.join(outputFolder, 'index.md')) : fsCopyFile(readMe, path.join(outputFolder, 'index.md'))
-  
-  // For convenience.
-  const markdownFileReducer = fileCollectionReducer('/template/markdown/')
-  const schemaMapper = ([_filepath, data]) => {
-    const parsed = JSON.parse(data)
-    if (parsed && parsed.$id) {
-      return  [parsed.$id, parsed]
-    }
-  }
 
   // All the streams we care about.
   const loadVersion = fsReadFile(packageJsonFile)
@@ -79,77 +68,8 @@ const run = ({
       }
     })
 
-  const sharedTemplates = recursiveFileDirectoryList(sharedTemplateFolder)
-    .flatFilter(isFile)
-    .through(loadFileContent('.md'))
-    .reduce({}, markdownFileReducer)
-
-  const localTemplates = recursiveFileDirectoryList(templateFolder)
-    .flatFilter(isFile)
-    .through(loadFileContent('.md'))
-    .reduce({}, markdownFileReducer)
-  
-  const externalMarkdownDescriptions = recursiveFileDirectoryList(markdownFolder)
-    .flatFilter(isFile)
-    .through(loadFileContent('.md'))
-    .reduce({}, fileCollectionReducer('/src/'))
-  
-  // TODO: Add error handling back to json docs.
-  const sharedSchemas = recursiveFileDirectoryList(sharedSchemasFolder)
-    .flatFilter(isFile)
-    .through(loadFileContent('.json'))
-    .map(schemaMapper)
-    .reduce({}, fileCollectionReducer())
-  
-  const localSchemas = recursiveFileDirectoryList(schemasFolder)
-    .flatFilter(isFile)
-    .through(loadFileContent('.json'))
-    .map(schemaMapper)
-    .reduce({}, fileCollectionReducer())
-  
-  const localModules = recursiveFileDirectoryList(modulesFolder)
-    .flatFilter(isFile)
-    .through(loadFileContent('.json'))
-    .flatMap(([filepath, data]) => h.of(data)
-      .map(JSON.parse)
-      .map(generatePropertyEvents)
-      .map(generatePropertySetters)
-      .map(generatePolymorphicPullEvents)
-      .filter(hasPublicMethods)
-      .sortBy(alphabeticalSorter)
-      .map(transformedData => [filepath, transformedData])
-    )
-    .flatMap(payload => {
-      const [filepath, data] = payload
-      const paths = getExternalMarkdownPaths(data)
-      // Note that this only evaluates descriptions if there are any to replace in the module.
-      if (paths.length > 0) {
-        return externalMarkdownDescriptions
-          .map(descriptions => addExternalMarkdown(paths, data, descriptions))
-          .map(withExternalMarkdown => [filepath, withExternalMarkdown])
-      } else {
-        // Nothing to replace
-        return h.of(payload)
-      }
-    })
-    .reduce({}, fileCollectionReducer('/modules/'))
-
-  const addExternalMarkdown = (paths = [], data = {}, descriptions = {}) => {
-    paths.map(path => {
-      const urn = getPathOr(null, path, data)
-      const url = urn.indexOf("file:../") == 0 ? urn.substr("file:../".length) : urn.substr("file:".length)
-      const markdownContent = descriptions[url]
-      path.pop() // last element is expected to be `$ref`
-      const field = path.pop() // relies on this position being the field name
-      const objectNode = getPathOr(null, path, data)
-      objectNode[field] = markdownContent // This mutates `data` by reference because JavaScript!
-    })
-    return data
-  }
-
-  const combineStreamObjects = (...xs) => h([...xs]).flatten().collect().map(xs => Object.assign({}, ...xs))
-  const combinedTemplates = combineStreamObjects(sharedTemplates, localTemplates)
-  const combinedSchemas = combineStreamObjects(sharedSchemas, localSchemas)
+  const combinedTemplates = combineStreamObjects(sharedTemplates(sharedTemplateFolder), localTemplates(templateFolder))
+  const combinedSchemas = combineStreamObjects(sharedSchemas(sharedSchemasFolder), localSchemas(schemasFolder))
   
   const generateDocs = templates => modules => schemas => version => h(Object.entries(modules))
     .concat(Object.entries(schemas))
@@ -188,7 +108,7 @@ const run = ({
     // into the context of 4 (A4 "arity 4") other pieces of asynchronous data: combinedTemplates, localModules, combinedSchemas, and loadVersion.
     .flatMap(_ => combinedTemplates
       .map(generateDocs)
-      .flatMap(fnWithTemplates => localModules
+      .flatMap(fnWithTemplates => localModules(modulesFolder, markdownFolder)
         .map(fnWithTemplates)
         .flatMap(fnWithModules => combinedSchemas
           .map(fnWithModules)
