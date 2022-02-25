@@ -17,10 +17,10 @@
  */
 
 import h from 'highland'
-import { recursiveFileDirectoryList, isDirectory, isFile, logSuccess, logHeader } from '../shared/helpers.mjs'
+import { recursiveFileDirectoryList, isFile, logSuccess, logHeader } from '../shared/helpers.mjs'
 import { validateJsonSchema, validateOpenRpc } from './validation/index.mjs'
 import { generatePropertyEvents, generatePropertySetters, generatePolymorphicPullEvents } from '../shared/modules.mjs'
-import { getSchemaContent, addSchema } from '../shared/json-schema.mjs'
+import { addSchema } from '../shared/json-schema.mjs'
 import path from 'path'
 import process from 'process'
 

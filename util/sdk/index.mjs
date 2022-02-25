@@ -22,7 +22,7 @@ import h from 'highland'
 import { recursiveFileDirectoryList, clearDirectory, gatherStateForInsertMacros, getModuleName, loadVersion, fsReadFile, fsWriteFile, isDirectory, isFile, createFilesAbsentInDir, createDirAbsentInDir, loadFileContent, copyReferenceDirToTarget, copyReferenceFileToTarget, logSuccess } from '../shared/helpers.mjs'
 import { setVersion, generateMacros, insertMacros, insertAggregateMacrosOnly } from './macros/index.mjs'
 import { generatePropertyEvents, generatePropertySetters, generatePolymorphicPullEvents, getAllModules, addModule } from '../shared/modules.mjs'
-import { localizeDependencies, getSchemaContent, addExternalMarkdown, addSchema } from '../shared/json-schema.mjs'
+import { localizeDependencies, addExternalMarkdown, addSchema } from '../shared/json-schema.mjs'
 import path from 'path'
 
 // Workaround for using __dirname in ESM

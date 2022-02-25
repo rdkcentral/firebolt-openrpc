@@ -19,7 +19,7 @@
 import h from 'highland'
 import { recursiveFileDirectoryList, isFile, loadVersion, loadFileContent, logSuccess, logHeader } from '../shared/helpers.mjs'
 import { generatePropertyEvents, generatePropertySetters, generatePolymorphicPullEvents, getAllModules, addModule } from '../shared/modules.mjs'
-import { getSchemaContent, getExternalSchemas, addSchema } from '../shared/json-schema.mjs'
+import { getExternalSchemas, addSchema } from '../shared/json-schema.mjs'
 import { setTemplate, setVersion, mergeSchemas, mergeMethods, updateSchemaUris, setOutput, writeOpenRPC } from './merge/index.mjs'
 import path from 'path'
 import url from 'url'

@@ -28,7 +28,6 @@ const { and } = logic
 import isString from 'crocks/core/isString.js'
 import predicates from 'crocks/predicates/index.js'
 const { isObject, isArray, propEq, pathSatisfies } = predicates
-import { getSchemaContent } from './json-schema.mjs'
 
 const modules = {}
 
@@ -356,11 +355,6 @@ const generatePolymorphicPullEvents = json => {
     return json
 }
 
-// A through stream that expects a stream of filepaths, reads the contents
-// of any .json files found, and converts them to POJOs
-// DOES NOT DEAL WITH ERRORS
-const getModuleContentWithoutTransforms = getSchemaContent
-
 const getPathFromModule = (module, path) => {
     console.error("DEPRECATED: getPathFromModule")
     
@@ -401,7 +395,6 @@ export {
     addModule,
     getAllModules,
     getPathFromModule,
-    getModuleContentWithoutTransforms,
     generatePolymorphicPullEvents,
     generatePropertyEvents,
     generatePropertySetters,

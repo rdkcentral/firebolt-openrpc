@@ -20,7 +20,7 @@ import { recursiveFileDirectoryList, fsWriteFile, isFile, logSuccess } from '../
 import { generateDeclarations } from './generator/index.mjs'
 import { generatePropertyEvents, generatePropertySetters, generatePolymorphicPullEvents, addModule } from '../shared/modules.mjs'
 import path from 'path'
-import { getSchemaContent, addSchema } from '../shared/json-schema.mjs'
+import { addSchema } from '../shared/json-schema.mjs'
 
 // Workaround for using __dirname in ESM
 import url from 'url'
