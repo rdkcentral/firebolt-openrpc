@@ -17,7 +17,7 @@
  */
 
 import h from 'highland'
-import { logSuccess, logHeader, schemaFetcher, combineStreamObjects, localModules, bufferToString } from '../shared/helpers.mjs'
+import { logSuccess, logHeader, schemaFetcher, combineStreamObjects, localModules, bufferToString, fsReadFile } from '../shared/helpers.mjs'
 import { validate } from './validation/index.mjs'
 import path from 'path'
 import https from 'https'
@@ -47,7 +47,7 @@ const run = ({
   const externalFolder = path.join(__dirname, '..', '..', 'src', 'external')
   const modulesFolder = path.join(srcFolderArg, 'modules')
 
-  // Flip default value when running on /dist/ folder
+  // Flip default value when running on /dist/ folder (makes default smart)
   if (!disableTransforms && srcFolderArg.indexOf('/dist/') >= 0) {
     disableTransforms = true
   }
@@ -57,7 +57,7 @@ const run = ({
   addFormats(ajv)
 
   const combinedSchemas = combineStreamObjects(schemaFetcher(sharedSchemasFolder), schemaFetcher(schemasFolder), schemaFetcher(externalFolder))
-  const allModules = localModules(modulesFolder)
+  const allModules = localModules(modulesFolder, '', disableTransforms)
   
   const getJsonFromUrl = url => h((push) => {
     https.get(url, res => {
@@ -107,6 +107,22 @@ const run = ({
     .map(Object.values).flatten()
     .map(module => validate(module, schemas, ajv))
     .tap(result => printResult(result, 'Module'))
+  
+  const validateSingleDocument = ajv => (schemas = {}) => document => fsReadFile(document)
+    .map(bufferToString)
+    .map(JSON.parse)
+    .map(module => validate(module, schemas, ajv, false))
+    .tap(result => printResult(result, 'OpenRPC'))
+
+  // If it's a single json file
+  if (path.extname(srcFolderArg) === '.json') {
+    return jsonSchema
+      .flatMap(jsonSchemaSpec => {
+        ajvPackage(ajv, jsonSchemaSpec) // Need to call this here for openrpc validation to work
+        return combinedSchemas.flatMap(schemas => openRpc(jsonSchemaSpec)
+          .flatMap(orSpec => validateSingleDocument(ajvPackage(ajv, orSpec))(schemas)(srcFolderArg)))
+      })
+  }
 
   // Run schema validation, then module validation.
   return jsonSchema
