@@ -45,6 +45,7 @@ const run = ({
   const schemasFolder = path.join(srcFolderArg, 'schemas')
   const sharedSchemasFolder = sharedSchemasFolderArg
   const externalFolder = path.join(__dirname, '..', '..', 'src', 'external')
+  const markdownFolder = path.join(srcFolderArg, 'descriptions')
   const modulesFolder = path.join(srcFolderArg, 'modules')
 
   // Flip default value when running on /dist/ folder (makes default smart)
@@ -58,7 +59,7 @@ const run = ({
   const errorCounter = 0
 
   const combinedSchemas = combineStreamObjects(schemaFetcher(sharedSchemasFolder), schemaFetcher(schemasFolder), schemaFetcher(externalFolder))
-  const allModules = localModules(modulesFolder, '', disableTransforms)
+  const allModules = localModules(modulesFolder, markdownFolder, disableTransforms, true)
   
   const getJsonFromUrl = url => h((push) => {
     https.get(url, res => {
