@@ -17,7 +17,7 @@
  */
 
 import h from 'highland'
-import { fsMkDirP, fsCopyFile, sharedTemplates, localTemplates, combineStreamObjects, sharedSchemas, localSchemas, localModules } from '../shared/helpers.mjs'
+import { fsMkDirP, fsCopyFile, templateFetcher, combineStreamObjects, schemaFetcher, localModules } from '../shared/helpers.mjs'
 import { clearDirectory, logSuccess, fsWriteFile, fsReadFile } from '../shared/helpers.mjs'
 import { bufferToString, getDirectory, getFilename } from '../shared/helpers.mjs'
 import { insertMacros } from './macros/index.mjs'
@@ -68,8 +68,8 @@ const run = ({
       }
     })
 
-  const combinedTemplates = combineStreamObjects(sharedTemplates(sharedTemplateFolder), localTemplates(templateFolder))
-  const combinedSchemas = combineStreamObjects(sharedSchemas(sharedSchemasFolder), localSchemas(schemasFolder))
+  const combinedTemplates = combineStreamObjects(templateFetcher(sharedTemplateFolder), templateFetcher(templateFolder))
+  const combinedSchemas = combineStreamObjects(schemaFetcher(sharedSchemasFolder), schemaFetcher(schemasFolder))
   
   const generateDocs = templates => modules => schemas => version => h(Object.entries(modules))
     .concat(Object.entries(schemas))

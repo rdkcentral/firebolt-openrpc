@@ -216,12 +216,7 @@ const addExternalMarkdown = (paths = [], data = {}, descriptions = {}) => {
   return data
 }
 
-const sharedTemplates = sharedTemplateFolder => recursiveFileDirectoryList(sharedTemplateFolder)
-  .flatFilter(isFile)
-  .through(loadFileContent('.md'))
-  .reduce({}, markdownFileReducer)
-
-const localTemplates = templateFolder => recursiveFileDirectoryList(templateFolder)
+const templateFetcher = folder => recursiveFileDirectoryList(folder)
   .flatFilter(isFile)
   .through(loadFileContent('.md'))
   .reduce({}, markdownFileReducer)
@@ -232,13 +227,7 @@ const externalMarkdownDescriptions = markdownFolder => recursiveFileDirectoryLis
   .reduce({}, fileCollectionReducer('/src/'))
 
 // TODO: Add error handling back to json docs.
-const sharedSchemas = sharedSchemasFolder => recursiveFileDirectoryList(sharedSchemasFolder)
-  .flatFilter(isFile)
-  .through(loadFileContent('.json'))
-  .map(schemaMapper)
-  .reduce({}, fileCollectionReducer())
-
-const localSchemas = schemasFolder => recursiveFileDirectoryList(schemasFolder)
+const schemaFetcher = folder => recursiveFileDirectoryList(folder)
   .flatFilter(isFile)
   .through(loadFileContent('.json'))
   .map(schemaMapper)
@@ -272,11 +261,9 @@ const localModules = (modulesFolder = '', markdownFolder = '') => recursiveFileD
   .reduce({}, fileCollectionReducer('/modules/'))
 
 export {
-  sharedTemplates,
-  localTemplates,
+  templateFetcher,
   externalMarkdownDescriptions,
-  sharedSchemas,
-  localSchemas,
+  schemaFetcher,
   localModules,
   combineStreamObjects,
   bufferToString,

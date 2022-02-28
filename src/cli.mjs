@@ -40,6 +40,7 @@ else if (util === 'docs') {
 }
 else if (util === 'validate') {
     validate(parsedArgs)
+      .done(() => console.log('This has been a presentation of Firebolt'))
 }
 else if (util === 'openrpc') {
     openrpc(parsedArgs)

@@ -104,7 +104,6 @@ const localRefPaths = obj => {
 // - remove $schema & $id
 // - replace all githubusercontent URLs
 const flattenSchemas = (schema, meta) => {
-  const meta_definitions = meta.definitions
   delete schema.definitions[meta.title]['$ref']
 
   Object.keys(meta).forEach(key => {

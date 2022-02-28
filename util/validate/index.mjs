@@ -17,31 +17,27 @@
  */
 
 import h from 'highland'
-import { recursiveFileDirectoryList, isFile, logSuccess, logHeader } from '../shared/helpers.mjs'
-import { validateJsonSchema, validateOpenRpc } from './validation/index.mjs'
-import { generatePropertyEvents, generatePropertySetters, generatePolymorphicPullEvents } from '../shared/modules.mjs'
-import { addSchema } from '../shared/json-schema.mjs'
+import { logSuccess, logHeader, schemaFetcher, combineStreamObjects, localModules, bufferToString } from '../shared/helpers.mjs'
+import { validate } from './validation/index.mjs'
 import path from 'path'
-import process from 'process'
+import https from 'https'
 
 // Workaround for using __dirname in ESM
 import url from 'url'
-import { getAllSchemas } from '../shared/json-schema.mjs'
-import { homedir } from 'os'
+import Ajv from 'ajv'
+import addFormats from 'ajv-formats'
+import { flattenSchemas } from '../shared/json-schema.mjs'
 const __dirname = url.fileURLToPath(new URL('.', import.meta.url))
 
 /************************************************************************************************/
 /******************************************** MAIN **********************************************/
 /************************************************************************************************/
 
-let errors = 0
-const descriptions = {}
-
 // destructure well-known cli args and alias to variables expected by script
 const run = ({
   'shared-schemas': sharedSchemasFolderArg,
   source: srcFolderArg,
-  'disable-transforms': disableTransforms // UNDOCUMENTED ARGUMENT!
+  'disable-transforms': disableTransforms = false // UNDOCUMENTED ARGUMENT!
 }) => {
   logHeader(` VALIDATING... `)
 
@@ -52,96 +48,73 @@ const run = ({
   const modulesFolder = path.join(srcFolderArg, 'modules')
 
   // Flip default value when running on /dist/ folder
-  if (disableTransforms === undefined && srcFolderArg.indexOf('/dist/') >= 0) {
+  if (!disableTransforms && srcFolderArg.indexOf('/dist/') >= 0) {
     disableTransforms = true
   }
-  
-  const validate = (json, validator, prefix) => h(validator(json))
-          .tap(result => {
-            if (result.valid) {
-              logSuccess( prefix + `: ${result.title} is valid`)
-            }
-            else {
-              console.error(`\nERROR: ${prefix}: ${result.title} failed validation`)
-              errors ++
-            }
-          })
 
-  const report = _ => {
-    if (errors > 0) {
-      console.error(`\nValidation failed with errors in ${errors} files`)
-      process.exit(1000)
+  // Set up the ajv instance
+  const ajv = new Ajv()
+  addFormats(ajv)
+
+  const combinedSchemas = combineStreamObjects(schemaFetcher(sharedSchemasFolder), schemaFetcher(schemasFolder), schemaFetcher(externalFolder))
+  const allModules = localModules(modulesFolder)
+  
+  const getJsonFromUrl = url => h((push) => {
+    https.get(url, res => {
+      res.on('data', chunk => push(null, chunk))
+      res.on('end', () => push(null, h.nil))
+    })
+  })
+  .collect()
+  .map(Buffer.concat)
+  .map(bufferToString)
+  .map(JSON.parse)
+  .errors(err => {
+    console.error('getJsonFromUrl error')
+    console.error(err)
+    console.error('Unable to continue')
+    process.exit(1)
+  })
+  
+  const jsonSchema = getJsonFromUrl('https://meta.json-schema.tools')
+  
+  // flatten JSON-Schema into OpenRPC
+  //  - OpenRPC uses `additionalItems` when `items` is not an array of schemas. This fails strict validate, so we remove it
+  //  - AJV can't seem to handle having a property's schema be the entire JSON-Schema spec, so we need to merge OpenRPC & JSON-Schema into one schema
+  const openRpc = jsSpec => getJsonFromUrl('https://meta.open-rpc.org')
+    .map(orSpec => {
+      flattenSchemas(orSpec, jsSpec) // This is mutating by reference. Only mutates `orSpec`.
+      delete orSpec.$schema
+      return orSpec
+    })
+
+  const printResult = (result, moduleType) => {
+    if (result.valid) {
+      logSuccess(`${moduleType}: ${result.title} is valid`)
+    } else {
+      console.error(result)
+      console.error(`\nERROR, ${moduleType}: ${result.title} failed validation`)
     }
   }
 
-  // special case for single file (don't do any transforms)
-  if (path.extname(srcFolderArg) === '.json') {
-    h.of(srcFolderArg)
-      .through(getSchemaContent)
-      // Side effects previously performed somewhere after getSchemaContent
-      .map(addExternalMarkdown(descriptions))
-      .flatMap(json => validate(json, validateOpenRpc, 'OpenRPC'))
-      .tap(_ => console.log(''))
-      .done(report)
+  const ajvPackage = (ajv, spec) => [ajv.compile(spec), ajv] // tupling it up for convenience. downstream code needs the instance reference.
 
-    return
-  }
+  const validateSchemas = ajv => (schemas = {}) => h(Object.values(schemas))
+    .map(module => validate(module, schemas, ajv))
+    .tap(result => printResult(result, 'Schema'))
+  
+  const validateModules = ajv => (schemas = {}) => allModules
+    .map(Object.values).flatten()
+    .map(module => validate(module, schemas, ajv))
+    .tap(result => printResult(result, 'Module'))
 
-  // otherwise do the entire project
-
-  // Load all of the shared JSON-Schemas
-  recursiveFileDirectoryList(sharedSchemasFolder).flatFilter(isFile)
-    .through(getSchemaContent)
-    .errors( (err, push) => {
-      errors ++
-    })
-    .tap(addSchema)
-    .collect()
-    // Load & validate all of the local JSON-Schemas
-    .flatMap(_ => recursiveFileDirectoryList(schemasFolder).flatFilter(isFile))
-    .through(getSchemaContent)
-    .errors( (err, push) => {
-      errors ++
-    })
-    .tap(addSchema)
-    .collect()
-    // Switch to external schemas
-    .flatMap(_ => recursiveFileDirectoryList(externalFolder))
-    .through(getSchemaContent)
-    .errors( (err, push) => {
-      errors ++
-    })
-    .tap(addSchema)
-    .collect()
-    .flatMap( _ => h(getAllSchemas()))
-    .flatMap(json => validate(json, validateJsonSchema, 'Schema'))
-    .errors( (error, push) => {
-      console.log(error)
-    })
-    .collect()
-    // Switch to OpenRPC modules
-    .flatMap(_ => recursiveFileDirectoryList(modulesFolder))
-    .through(getSchemaContent)
-    // Side effects previously performed somewhere after getSchemaContent
-    .map(addExternalMarkdown(descriptions))
-    .flatMap(x => {
-      if (disableTransforms === true) {
-        return h.of(x)
-      } else {
-        return h.of(x)
-          .map(generatePropertyEvents)
-          .map(generatePropertySetters)
-          .map(generatePolymorphicPullEvents)
-      }
-    })
-    .errors( (err, push) => {
-      errors ++ // sad panda emoji
-    })
-    .flatMap(json => validate(json, validateOpenRpc, 'Module'))
-    .errors( (error, push) => {
-      console.log(error)
-    })
-    .done(report)
+  // Run schema validation, then module validation.
+  return jsonSchema
+    .flatMap(jsonSchemaSpec => h.of(validateSchemas(ajvPackage(ajv, jsonSchemaSpec)))
+      .flatMap(fn => combinedSchemas
+        .flatMap(schemas => fn(schemas) // Schema validation occurs here, then...
+          .concat(openRpc(jsonSchemaSpec)
+            .flatMap(orSpec => validateModules(ajvPackage(ajv, orSpec))(schemas))))))
 }
 
 export default run

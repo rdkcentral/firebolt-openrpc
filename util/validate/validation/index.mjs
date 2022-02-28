@@ -15,58 +15,14 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-
-import Ajv from 'ajv'
-import addFormats from 'ajv-formats'
-import https from 'https'
-import { flattenSchemas, localizeDependencies, replaceUri } from '../../shared/json-schema.mjs'
+import { localizeDependencies } from '../../shared/json-schema.mjs'
 import crocks from 'crocks'
-const { setPath, getPathOr } = crocks
+const { getPathOr } = crocks
 
-const getJSON = url => new Promise((resolve, reject) => {
-  https.get(url, resp => {
-    let data = '';
-
-    // A chunk of data has been received.
-    resp.on('data', chunk => {
-      data += chunk;
-    });
-  
-    // The whole response has been received. Print out the result.
-    resp.on('end', () => {
-      resolve(JSON.parse(data))
-    });    
-  }).on('error', err => {
-    reject(err.message)
-  })
-})
-
-const ajv = new Ajv()
-addFormats(ajv)
-
-const openrpc = await getJSON('https://meta.open-rpc.org')
-const jsonschema = await getJSON('https://meta.json-schema.tools')
-
-// compile jsonSchemaValidator before mucking with it
-const jsonSchemaValidator = ajv.compile(jsonschema)
-
-// flatten JSON-Schema into OprnRPC
-//  - OpenRPC uses `additionalItems` when `items` is not an array of schemas. This fails strict validate, so we remove it
-//  - AJV can't seem to handle having a property's schema be the entire JSON-Schema spec, so we need to merge OpenRPC & JSON-Schema into one schema
-flattenSchemas(openrpc, jsonschema)
-delete openrpc['$schema']
-
-
-const openRpcValidator = ajv.compile(openrpc)
-
-export const validateJsonSchema = async json => await validate(json, jsonSchemaValidator)
-export const validateOpenRpc = async json => await validate(json, openRpcValidator)
-
-let root
-
-const validate = async (json, validator) => {
+export const validate = (json = {}, schemas = {}, ajvPackage = []) => {
+  const [validator, _] = ajvPackage
   let valid = validator(json)
-  root = json.title || json.info.title
+  let root = json.title || json.info.title
 
   if (valid) {
     if (json.definitions) {
@@ -75,8 +31,8 @@ const validate = async (json, validator) => {
         let key = keys[i]
         const definition = JSON.parse(JSON.stringify(getPathOr({}, ['definitions', key], json)))
         if (Array.isArray(definition.examples)) {
-          await localizeDependencies(definition, json)
-          valid = valid && validateExamples(definition)
+          localizeDependencies(definition, json, schemas)
+          valid = valid && validateExamples(definition, root, ajvPackage)
         }
       }
     }
@@ -93,18 +49,18 @@ const validate = async (json, validator) => {
                 for (let j=0; j<method.params.length; j++) {
                   const p = method.params[j]
                   const param = JSON.parse(JSON.stringify(p.schema))
-                  await localizeDependencies(param, json)
+                  localizeDependencies(param, json, schemas)
                   param.title = method.name + ' param \'' + p.name + '\''
                   param.examples = method.examples.map(ex => (ex.params.find(x => x.name === p.name) || { value: null }).value)
-                  valid = valid && validateExamples(param)
+                  valid = valid && validateExamples(param, root, ajvPackage)
                 }
               }
 
               // validate result schema/examples
-              await localizeDependencies(result, json)
+              localizeDependencies(result, json, schemas)
               result.title = method.name + ' result'
               result.examples = examples
-              valid = valid && validateExamples(result)
+              valid = valid && validateExamples(result, root, ajvPackage)
             }
           }
         }
@@ -137,21 +93,22 @@ const validate = async (json, validator) => {
   return { valid: valid, title: json.title || json.info.title }
 }
 
-const validateExamples = schema => {
+const validateExamples = (schema, root, ajvPackage = []) => {
+  const [validator, ajv] = ajvPackage
   let valid = true
 
   try {
-    const validator = ajv.compile(schema)
+    const localValidator = ajv.compile(schema)
 
     let index = 0
     schema.examples.forEach(example => {
-      if (example && !validator(example)) {
+      if (example && !localValidator(example)) {
         valid = false
         console.error(`${root} - ${schema.title} example ${index} failed!`)
         console.log('\n')
         console.dir(example, {depth: null, colors: true})// + JSON.stringify(example, null, '  ') + '\n')
         console.log('\n')
-        console.dir(validator.errors, {depth: null, colors: true})
+        console.dir(localValidator.errors, {depth: null, colors: true})
         console.log('\n')
       }
       index++
