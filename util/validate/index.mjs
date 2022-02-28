@@ -55,6 +55,7 @@ const run = ({
   // Set up the ajv instance
   const ajv = new Ajv()
   addFormats(ajv)
+  const errorCounter = 0
 
   const combinedSchemas = combineStreamObjects(schemaFetcher(sharedSchemasFolder), schemaFetcher(schemasFolder), schemaFetcher(externalFolder))
   const allModules = localModules(modulesFolder, '', disableTransforms)
@@ -92,8 +93,9 @@ const run = ({
     if (result.valid) {
       logSuccess(`${moduleType}: ${result.title} is valid`)
     } else {
+      errorCounter++
       console.error(result)
-      console.error(`\nERROR, ${moduleType}: ${result.title} failed validation`)
+      console.error(`\nERROR, ${moduleType}: ${result.title} failed validation. There are ${errorCounter} other errors`)
     }
   }
 
