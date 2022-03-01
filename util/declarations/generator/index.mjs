@@ -17,23 +17,15 @@
  */
 
 import helpers from 'crocks/helpers/index.js'
-const { tap, compose, getPathOr } = helpers
-import safe from 'crocks/Maybe/safe.js'
-import find from 'crocks/Maybe/find.js'
-import getPath from 'crocks/Maybe/getPath.js'
+const { compose, getPathOr } = helpers
 import pointfree from 'crocks/pointfree/index.js'
-const { chain, filter, option, map, reduce } = pointfree
+const { filter, reduce } = pointfree
 import logic from 'crocks/logic/index.js'
-const { and, not } = logic
-import isString from 'crocks/core/isString.js'
-import predicates from 'crocks/predicates/index.js'
-const { isObject, isArray, propEq, pathSatisfies } = predicates
+const { not } = logic
 
 import { getMethods, getTypes, isEventMethod, isPublicEventMethod, getEnums } from '../../shared/modules.mjs'
 import { getSchemaType, getSchemaShape, getMethodSignature, generateEnum } from '../../shared/typescript.mjs'
 import { getExternalSchemas } from '../../shared/json-schema.mjs'
-import { getAllSchemas } from '../../shared/json-schema.mjs'
-import { getExternalSchemaPaths } from '../../shared/json-schema.mjs'
 
 const aggregateMacros = {
   exports: '',
@@ -51,14 +43,6 @@ const inspector = obj => {
 }
 
 const getModuleName = getPathOr('missing', ['info', 'title'])
-const makeEventName = x => x.name[2].toLowerCase() + x.name.substr(3) // onFooBar becomes fooBar
-
-//import { default as platform } from '../Platform/defaults'
-const generateAggregateMacros = obj => {
-  aggregateMacros.exports += `export { default as ${getModuleName(obj)} } from './${getModuleName(obj)}'\n`
-  aggregateMacros.mockImports += `import { default as ${getModuleName(obj).toLowerCase()} } from '../${getModuleName(obj)}/defaults'\n`
-  aggregateMacros.mockObjects += `  ${getModuleName(obj).toLowerCase()}: ${getModuleName(obj).toLowerCase()},\n`
-}
 
 const generateDeclarations = obj => {
   const code = []

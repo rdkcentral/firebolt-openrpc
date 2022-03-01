@@ -46,7 +46,7 @@ else if (util === 'openrpc') {
     openrpc(parsedArgs).done(signOff)
 }
 else if (util === 'declarations') {
-    declarations(parsedArgs)
+    declarations(parsedArgs).done(signOff)
 } else {
   console.log("Invalid build type")
 }

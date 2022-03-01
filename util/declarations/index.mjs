@@ -29,12 +29,6 @@ const __dirname = url.fileURLToPath(new URL('.', import.meta.url))
 /************************************************************************************************/
 /******************************************** MAIN **********************************************/
 /************************************************************************************************/
-// Load all modules
-//todo add version
-  // .flatMap(_ => loadVersion(versionJson))
-  // .tap(setVersion)
-  // .tap(v => console.log(`\nVERSION ${v.major}.${v.minor}.${v.patch}`))
-  // .collect()
 // destructure well-known cli args and alias to variables expected by script
 const run = ({
   source: srcFolderArg,
@@ -54,12 +48,12 @@ const run = ({
     .through(getSchemaContent)
     .tap(addSchema)
     .collect()
-    .flatMap(_ => recursiveFileDirectoryList(schemasFolder).flatFilter(isFile))
+    .flatMap(_ => recursiveFileDirectoryList(schemasFolder).flatFilter(isFile)) // Combined schemas
     .through(getSchemaContent)
     .tap(addSchema)
     .collect()
     .tap(_ => logSuccess('Loaded JSON-Schemas'))
-    .flatMap(_ => recursiveFileDirectoryList(modulesFolder).flatFilter(isFile))
+    .flatMap(_ => recursiveFileDirectoryList(modulesFolder).flatFilter(isFile)) // localModules
     .through(getSchemaContent)
     // Side effects previously performed somewhere after getSchemaContent
     .map(addExternalMarkdown(descriptions))
