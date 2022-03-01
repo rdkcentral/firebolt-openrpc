@@ -22,7 +22,6 @@ import url from 'url'
 import { getMethods, getSchemas } from '../shared/modules.mjs'
 import { getExternalSchemas } from '../shared/json-schema.mjs'
 
-const __dirname = url.fileURLToPath(new URL('.', import.meta.url))
 // destructure well-known cli args and alias to variables expected by script
 const run = ({
   source: srcFolderArg,
@@ -88,7 +87,7 @@ const run = ({
 
               // Schemas getting added to template
               baseTemplate.components.schemas = Object.assign(baseTemplate.components.schemas, moduleSchemas, externalSchemas)
-              baseTemplate.info.version = version.original
+              baseTemplate.info.version = version.original // version from package.json
               return baseTemplate
           })
         )

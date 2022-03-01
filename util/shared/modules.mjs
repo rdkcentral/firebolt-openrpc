@@ -29,20 +29,6 @@ import isString from 'crocks/core/isString.js'
 import predicates from 'crocks/predicates/index.js'
 const { isObject, isArray, propEq, pathSatisfies, hasProp } = predicates
 
-const modules = {}
-
-// overriden by /version.json
-const version = {
-    major: 0,
-    minor: 0,
-    patch: 0,
-    readable: 'v0.0.0'
-}
-
-// Version MUST be global across all modules, it's set here
-const setVersion = v => Object.assign(version, v)
-const getVersion = () => version
-
 // util for visually debugging crocks ADTs
 const inspector = obj => {
     if (obj.inspect) {
@@ -77,15 +63,6 @@ const addMissingTitles = ([k, v]) => {
 const getSchemas = compose(
     option([]),
     chain(safe(isArray)),
-    map(Object.entries), // Maybe Array<Array<key, value>>
-    chain(safe(isObject)), // Maybe Object
-    getPath(['components', 'schemas']) // Maybe any
-)
-
-const getSchemasAndFixTitles = compose(
-    option([]),
-    chain(safe(isArray)),
-    map(map(addMissingTitles)),
     map(Object.entries), // Maybe Array<Array<key, value>>
     chain(safe(isObject)), // Maybe Object
     getPath(['components', 'schemas']) // Maybe any
@@ -195,16 +172,6 @@ const getPublicEvents = compose(
     map(filter(isPublicEventMethod)),
     getEvents
 )
-
-const addModule = obj => {
-    if (obj && obj.info && obj.info.title) {
-        modules[obj.info.title] = obj
-    }
-}
-
-const getAllModules = _ => {
-    return Object.values(modules)
-}
 
 const eventDefaults = event => {
 
@@ -398,10 +365,6 @@ export {
     getPublicEvents,
     getSchemas,
     getParamsFromMethod,
-    setVersion,
-    getVersion,
-    addModule,
-    getAllModules,
     getPathFromModule,
     generatePolymorphicPullEvents,
     generatePropertyEvents,

@@ -17,20 +17,7 @@
  */
 
 import crocks from 'crocks'
-
 const { setPath, getPathOr } = crocks
-const schemas = {}
-
-const addSchema = obj => {
-  if (obj && obj['$id']) {
-      const key = obj['$id'].endsWith('/') ? obj['$id'].substr(0, obj['$id'].length-1) : obj['$id']
-      schemas[obj['$id']] = obj
-  }
-}
-
-const getAllSchemas = _ => {
-  return Object.values(schemas)
-}
 
 const getExternalMarkdownPaths = obj => {
   return objectPaths(obj)
@@ -397,11 +384,9 @@ const isDefinitionReferencedBySchema = (name = '', moduleJson = {}) => {
 }
 
 export {
-  addSchema,
   getExternalMarkdownPaths,
   addExternalMarkdown,
   getSchema,
-  getAllSchemas,
   getSchemaConstraints,
   getExternalSchemas,
   getExternalSchemaPaths,

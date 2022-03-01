@@ -19,9 +19,7 @@
 import { getPath, getSchema } from './json-schema.mjs'
 import deepmerge from 'deepmerge'
 import { localizeDependencies } from './json-schema.mjs'
-import { getLinkFromRef, getTitle } from './helpers.mjs'
-import { getFilename } from './helpers.mjs'
-import path from 'path'
+import { getLinkFromRef } from './helpers.mjs'
 
 const isSynchronous = m => !m.tags ? false : m.tags.map(t => t.name).find(s => s === 'synchronous')
 
