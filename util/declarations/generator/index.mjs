@@ -23,7 +23,7 @@ const { filter, reduce } = pointfree
 import logic from 'crocks/logic/index.js'
 const { not } = logic
 
-import { getMethods, getTypes, isEventMethod, isPublicEventMethod, getEnums } from '../../shared/modules.mjs'
+import { getMethods, getTypes, isEventMethod, isPublicEventMethod, isPolymorphicPullMethod, getEnums, isRPCOnlyMethod } from '../../shared/modules.mjs'
 import { getSchemaType, getSchemaShape, getMethodSignature, generateEnum } from '../../shared/typescript.mjs'
 import { getExternalSchemas } from '../../shared/json-schema.mjs'
 
@@ -78,6 +78,18 @@ const generateEnums = compose(
   }, ''),
   getEnums
 )
+
+const deprecatedMessage = (val) => {
+  const deprecated = val.tags && val.tags.find(t => t.name === 'deprecated')
+    
+  if (deprecated) {
+    return `
+*
+* @deprecated` + (deprecated['x-since'] ? ` since version ${deprecated['x-since']}` : '') + '.'
+  }
+
+  return ''
+}
 
 const generateEvents = compose(
   reduce((acc, val, i, arr) => {
@@ -139,6 +151,79 @@ const generateListeners = (json, schemas = {}) => compose(
   getMethods
 )(json)
 
+const polymorphicPull = (json, val, schemas = {}) => {
+  let acc = ''
+
+  if (val.summary) {
+    acc += `/**
+ * ${val.summary}`
+  }
+
+  acc += deprecatedMessage(val)
+
+  if (val.params && val.params.length) {
+    acc += `
+ *`
+    val.params.forEach(p => acc += `
+ * @param {${getSchemaType(json, p.schema, schemas)}} ${p.name} ${p.summary}`)
+  }
+
+    acc += `
+ */
+`
+
+  const type = val.name[0].toUpperCase() + val.name.substr(1)
+
+  acc += `function ${val.name}(callback: (parameters: ${type}Parameters) => Promise<${type}Result>): Promise<boolean>\n`
+    
+  return acc
+}
+
+const subscriber = (json, val, schemas) => {
+  let acc = ''
+
+  if (val.summary) {
+    acc += `/**
+ * ${val.summary}`
+  }
+
+  acc += deprecatedMessage(val)
+
+  acc += `
+ *
+ * @param {Function} subscriber A subscriber callback to pass updated values to
+ */
+`
+  const type = val.name[0].toUpperCase() + val.name.substr(1)
+
+  acc += `function ${val.name}(subscriber: (${val.result.name}: ${getSchemaType(json, val.result.schema, schemas)}) => void): Promise<integer>\n`
+    
+  return acc
+}
+
+const setter = (json, val, schemas = {}) => {
+  let acc = ''
+
+  if (val.summary) {
+    acc += `/**
+ * ${val.summary}`
+  }
+
+  acc += deprecatedMessage(val)
+
+  acc += `
+ *
+ * @param {${getSchemaType(val.result.schema)}} value The new ${val.name} value.
+ */
+`
+  const type = val.name[0].toUpperCase() + val.name.substr(1)
+
+  acc += `function ${val.name}(value: ${getSchemaType(val.result.schema)}): Promise<void>\n`
+    
+  return acc
+}
+
+
 const generateMethods = (json, schemas = {}) => compose(
   reduce((acc, val, i, arr) => {
     if (val.summary) {
@@ -146,13 +231,7 @@ const generateMethods = (json, schemas = {}) => compose(
  * ${val.summary}`
     }
 
-    const deprecated = val.tags && val.tags.find(t => t.name === 'deprecated')
-    
-    if (deprecated) {
-      acc += `
- *
- * @deprecated` + (deprecated['x-since'] ? ` since version ${deprecated['x-since']}` : '') + '.'
-    }
+    acc += deprecatedMessage(val)
 
     if (val.params && val.params.length) {
       acc += `
@@ -165,14 +244,30 @@ const generateMethods = (json, schemas = {}) => compose(
  */
 `
     acc += getMethodSignature(json, val, schemas, { isInterface: false }) + '\n'
-    
+
+    if (val.tags && val.tags.find(t => t.name == 'polymorphic-pull')) {
+      acc += polymorphicPull(json, val, schemas)
+    }
+
+    const needsSubscriber = val.tags && (val.tags.find(t => t.name === 'property') || val.tags.find(t => t.name === 'property:readonly')) != undefined
+    const needsSetter = val.tags && val.tags.find(t => t.name === 'property') != undefined
+
+    if (needsSubscriber) {
+      acc += subscriber(json, val, schemas)
+    }
+
+    if (needsSetter) {
+      acc += setter(json, val, schemas)
+    }
+
     return acc
   }, ''),
+  filter(not(isRPCOnlyMethod)),
   filter(not(isEventMethod)),
   getMethods
 )(json)
 
-const generateMethodsWithListeners = (json, schemas = {}) => generateMethods(json, schemas) + '\n' + generateListeners(json, schemas)
+const generateMethodsWithListeners = (json, schemas = {}) => generateMethods(json, schemas) + '\n' + generateListeners(json, schemas) + '\n'
 
 export {
   generateDeclarations

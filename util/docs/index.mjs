@@ -25,8 +25,6 @@ import path from 'path'
 
 // Workaround for using __dirname in ESM
 import url from 'url'
-import getPathOr from 'crocks/helpers/getPathOr.js'
-import { homedir } from 'os'
 const __dirname = url.fileURLToPath(new URL('.', import.meta.url))
 
 /************************************************************************************************/
