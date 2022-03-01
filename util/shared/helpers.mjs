@@ -23,6 +23,8 @@ import getPathOr from 'crocks/helpers/getPathOr.js'
 import { getSchema } from './json-schema.mjs'
 import { generatePropertyEvents, generatePropertySetters, generatePolymorphicPullEvents } from '../shared/modules.mjs'
 import { getExternalMarkdownPaths } from '../shared/json-schema.mjs'
+import or from 'crocks/logic/or.js'
+import not from 'crocks/logic/not.js'
 
 const {
   access,
@@ -235,38 +237,41 @@ const schemaFetcher = folder => recursiveFileDirectoryList(folder)
   .map(schemaMapper)
   .reduce({}, fileCollectionReducer())
 
-const localModules = (modulesFolder = '', markdownFolder = '', disableTransforms = false, filterPrivateModules = true) => recursiveFileDirectoryList(modulesFolder)
-  .flatFilter(isFile)
-  .through(loadFileContent('.json'))
-  .flatMap(([filepath, data]) => h.of(data)
-    .map(JSON.parse)
-    .flatMap(obj => {
-      if (disableTransforms) {
+const localModules = (modulesFolder = '', markdownFolder = '', disableTransforms = false, filterPrivateModules = true) => {
+  const isFlagSet = (_) => filterPrivateModules // Makes this impure on purpose b/c our flag lives outside the context of the filter and sometimes, we want to override the filter.
+  return recursiveFileDirectoryList(modulesFolder)
+    .flatFilter(isFile)
+    .through(loadFileContent('.json'))
+    .flatMap(([filepath, data]) => h.of(data)
+      .map(JSON.parse)
+      .flatMap(obj => {
+        if (disableTransforms) {
+          return h.of(obj)
+        }
         return h.of(obj)
+          .map(generatePropertyEvents)
+          .map(generatePropertySetters)
+          .map(generatePolymorphicPullEvents)
+      })
+      .filter(or(not(isFlagSet), hasPublicMethods)) // allows the validator to validate private modules
+      .sortBy(alphabeticalSorter)
+      .map(transformedData => [filepath, transformedData])
+    )
+    .flatMap(payload => {
+      const [filepath, data] = payload
+      const paths = getExternalMarkdownPaths(data)
+      // Note that this only evaluates descriptions if there are any to replace in the module.
+      if (paths.length > 0) {
+        return externalMarkdownDescriptions(markdownFolder)
+          .map(descriptions => addExternalMarkdown(paths, data, descriptions))
+          .map(withExternalMarkdown => [filepath, withExternalMarkdown])
+      } else {
+        // Nothing to replace
+        return h.of(payload)
       }
-      return h.of(obj)
-        .map(generatePropertyEvents)
-        .map(generatePropertySetters)
-        .map(generatePolymorphicPullEvents)
     })
-    .filter(module => filterPrivateModules || hasPublicMethods(module)) // allows the validator to validate private modules
-    .sortBy(alphabeticalSorter)
-    .map(transformedData => [filepath, transformedData])
-  )
-  .flatMap(payload => {
-    const [filepath, data] = payload
-    const paths = getExternalMarkdownPaths(data)
-    // Note that this only evaluates descriptions if there are any to replace in the module.
-    if (paths.length > 0) {
-      return externalMarkdownDescriptions(markdownFolder)
-        .map(descriptions => addExternalMarkdown(paths, data, descriptions))
-        .map(withExternalMarkdown => [filepath, withExternalMarkdown])
-    } else {
-      // Nothing to replace
-      return h.of(payload)
-    }
-  })
-  .reduce({}, fileCollectionReducer('/modules/'))
+    .reduce({}, fileCollectionReducer('/modules/'))
+  }
 
 export {
   templateFetcher,

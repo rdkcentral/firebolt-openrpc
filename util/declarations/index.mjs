@@ -16,62 +16,47 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { recursiveFileDirectoryList, fsWriteFile, isFile, logSuccess } from '../shared/helpers.mjs'
+import { fsWriteFile, logSuccess, fsMkDirP, logHeader, combineStreamObjects, schemaFetcher, localModules } from '../shared/helpers.mjs'
 import { generateDeclarations } from './generator/index.mjs'
-import { generatePropertyEvents, generatePropertySetters, generatePolymorphicPullEvents, addModule } from '../shared/modules.mjs'
 import path from 'path'
-import { addSchema } from '../shared/json-schema.mjs'
-
-// Workaround for using __dirname in ESM
-import url from 'url'
-const __dirname = url.fileURLToPath(new URL('.', import.meta.url))
 
 /************************************************************************************************/
 /******************************************** MAIN **********************************************/
 /************************************************************************************************/
 // destructure well-known cli args and alias to variables expected by script
 const run = ({
-  source: srcFolderArg,
+  source,
   'shared-schemas': sharedSchemasFolderArg,
-  output: outputFile
+  output: declarationsFile
 }) => {
   // Important file/directory locations
-  const declarationsFile = path.join(outputFile)
-  const schemasFolder = path.join(srcFolderArg, 'schemas')
+  const declarationsDir = path.dirname(declarationsFile)
+  const schemasFolder = path.join(source, 'schemas')
   const sharedSchemasFolder = sharedSchemasFolderArg
-  const modulesFolder = path.join(srcFolderArg, 'modules')
-  const hasPublicMethods = json => json.methods && json.methods.filter(m => !m.tags || !m.tags.map(t=>t.name).includes('rpc-only')).length > 0
-  const alphabeticalSorter = (a, b) => a.info.title > b.info.title ? 1 : b.info.title > a.info.title ? -1 : 0
-  const descriptions = {}
-
-  recursiveFileDirectoryList(sharedSchemasFolder).flatFilter(isFile)
-    .through(getSchemaContent)
-    .tap(addSchema)
-    .collect()
-    .flatMap(_ => recursiveFileDirectoryList(schemasFolder).flatFilter(isFile)) // Combined schemas
-    .through(getSchemaContent)
-    .tap(addSchema)
-    .collect()
-    .tap(_ => logSuccess('Loaded JSON-Schemas'))
-    .flatMap(_ => recursiveFileDirectoryList(modulesFolder).flatFilter(isFile)) // localModules
-    .through(getSchemaContent)
-    // Side effects previously performed somewhere after getSchemaContent
-    .map(addExternalMarkdown(descriptions))
-    .map(generatePropertyEvents)
-    .map(generatePropertySetters)
-    .map(generatePolymorphicPullEvents)
-    .filter(hasPublicMethods)
-    .sortBy(alphabeticalSorter)
-    .tap(addModule)
-    // Here's where the actual code generation takes place.
-    .map(generateDeclarations)
-    .collect()
-    .map( array => array.join('\n'))
-    .flatMap(data => fsWriteFile(declarationsFile, data))
-    .collect()
-    .tap(_ => logSuccess('Generated declarations: ./dist/firebolt.d.ts'))
-    // Load the version.json file
-    .done(() => console.log('\nThis has been a presentation of Firebolt OS'))
+  const modulesFolder = path.join(source, 'modules')
+  const markdownFolder = path.join(source, 'declarations')
+  logHeader(`Generating typescript declarations file: ${declarationsFile}`)
+  const combinedSchemas = combineStreamObjects(schemaFetcher(sharedSchemasFolder), schemaFetcher(schemasFolder))
+  const allModules = localModules(modulesFolder, markdownFolder) // Default behavior. Transforms and no private modules
+  return fsMkDirP(declarationsDir)
+    .flatMap(_ => combinedSchemas
+      .flatMap(schemas => allModules
+        .map(modules => Object.values(modules))
+        .flatten()
+        .map(module => generateDeclarations(module, schemas))
+        .collect()
+        .map(xs => {
+          const joined = xs.join('\n')
+          return joined
+        })
+        .flatMap(fileContents => {
+          return fsWriteFile(declarationsFile, fileContents)
+        })
+      )
+    )
+    .tap(_ => {
+      logSuccess(`Wrote file: ${declarationsFile}`)
+    })
 }
 
 export default run

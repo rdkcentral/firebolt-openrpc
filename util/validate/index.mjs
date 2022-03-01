@@ -59,7 +59,7 @@ const run = ({
   const errorCounter = 0
 
   const combinedSchemas = combineStreamObjects(schemaFetcher(sharedSchemasFolder), schemaFetcher(schemasFolder), schemaFetcher(externalFolder))
-  const allModules = localModules(modulesFolder, markdownFolder, disableTransforms, true)
+  const allModules = localModules(modulesFolder, markdownFolder, disableTransforms, false) // Validate private modules
   
   const getJsonFromUrl = url => h((push) => {
     https.get(url, res => {
