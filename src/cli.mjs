@@ -37,11 +37,10 @@ if (util === 'sdk') {
     sdk(parsedArgs)
 }
 else if (util === 'docs') {
-    docs(parsedArgs)
+    docs(parsedArgs).done(signOff)
 }
 else if (util === 'validate') {
-    validate(parsedArgs)
-      .done(signOff)
+    validate(parsedArgs).done(signOff)
 }
 else if (util === 'openrpc') {
     openrpc(parsedArgs).done(signOff)

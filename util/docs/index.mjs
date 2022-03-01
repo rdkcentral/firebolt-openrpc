@@ -84,7 +84,7 @@ const run = ({
         .map(_ => fileToWrite)
     })
 
-  clearDirectory(outputFolder)
+  return clearDirectory(outputFolder)
     .tap(_ => logSuccess(`Removed ${outputFolder}`))
     .flatMap(fsMkDirP(path.join(outputFolder, 'schemas')))
     .flatMap(copyReadMe)
@@ -109,7 +109,6 @@ const run = ({
       // push(nil, err) // TODO: Verify do we want to push the err value downstream?
     })
     .tap(file => logSuccess(`Created module doc: ${file}`))
-    .done(() => console.log('\nThis has been a presentation of Firebolt'))
 }
 
 export default run
