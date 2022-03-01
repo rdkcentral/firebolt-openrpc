@@ -39,58 +39,61 @@ const run = ({
   logHeader(`MERGING into: ${outputArg}`)
 
   const templateFile = fsReadFile(templateArg).map(bufferToString).map(JSON.parse)
-  const version = loadVersion(path.join(srcFolderArg, '..', 'package.json'))
+  const versionObj = loadVersion(path.join(srcFolderArg, '..', 'package.json'))
   const combinedSchemas = combineStreamObjects(schemaFetcher(sharedSchemasFolder), schemaFetcher(schemasFolder))
   const openRpcModules = localModules(modulesFolder, markdownFolder, false, false) // Applies transforms, allows modules with only private methods
 
   return fsMkDirP(path.dirname(outputArg))
-    .flatMap(_ => templateFile
-      .flatMap(baseTemplate => combinedSchemas.flatMap(schemas => openRpcModules
-        .map(Object.values)
-        .flatten()
-        // Renaming module methods
-        .map(module => {
-          const renamed = getMethods(module).map(method => {
-            const { name, ...rest } = method
-            return {
-              name: module.info.title + '.' + method.name,
-              ...rest
-            }
+    .flatMap(_ => versionObj
+      .flatMap(version => templateFile
+        .flatMap(baseTemplate => combinedSchemas.flatMap(schemas => openRpcModules
+          .map(Object.values)
+          .flatten()
+          // Renaming module methods
+          .map(module => {
+            const renamed = getMethods(module).map(method => {
+              const { name, ...rest } = method
+              return {
+                name: module.info.title + '.' + method.name,
+                ...rest
+              }
+            })
+            module.methods = renamed
+            return module
           })
-          module.methods = renamed
-          return module
-        })
-        // Sticking the methods and schemas in the template
-        .map(module => {
-            baseTemplate.methods.push(...module.methods) // methods added here
+          // Sticking the methods and schemas in the template
+          .map(module => {
+              baseTemplate.methods.push(...module.methods) // methods added here
 
-            // Schemas from modules.
-            const moduleSchemas = getSchemas(module)
-              .reduce((acc, [key, schema]) => {
-                acc[key.split('/').pop()] = schema
-                return acc
-              }, {})
-            
-            // External schemas with additional fancying up.
-            const externalSchemas = Object.entries(getExternalSchemas(module, schemas))
-              .map(([k, v]) => {
-                const pieces = k.split('/')
-                const newKey = pieces[pieces.length - 1]
-                return new Map([
-                  [newKey, v]
-                ])
-              })
-              .reduce((acc, it) => {
-                acc = Object.assign(acc, Object.fromEntries(it))
-                return acc
-              }, {})
+              // Schemas from modules.
+              const moduleSchemas = getSchemas(module)
+                .reduce((acc, [key, schema]) => {
+                  acc[key.split('/').pop()] = schema
+                  return acc
+                }, {})
+              
+              // External schemas with additional fancying up.
+              const externalSchemas = Object.entries(getExternalSchemas(module, schemas))
+                .map(([k, v]) => {
+                  const pieces = k.split('/')
+                  const newKey = pieces[pieces.length - 1]
+                  return new Map([
+                    [newKey, v]
+                  ])
+                })
+                .reduce((acc, it) => {
+                  acc = Object.assign(acc, Object.fromEntries(it))
+                  return acc
+                }, {})
 
-            // Schemas getting added to template
-            baseTemplate.components.schemas = Object.assign(baseTemplate.components.schemas, moduleSchemas, externalSchemas)
-            return baseTemplate
-        })
-      )
-    ))
+              // Schemas getting added to template
+              baseTemplate.components.schemas = Object.assign(baseTemplate.components.schemas, moduleSchemas, externalSchemas)
+              baseTemplate.info.version = version.original
+              return baseTemplate
+          })
+        )
+      ))
+    )
     .collect() // Drain all the asynchrony above.
     // clean up $ref URIs still pointing to external stuff.
     .map(thunk => {

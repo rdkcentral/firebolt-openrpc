@@ -17,9 +17,9 @@
  */
 
 import h from 'highland'
-import { fsMkDirP, fsCopyFile, templateFetcher, combineStreamObjects, schemaFetcher, localModules } from '../shared/helpers.mjs'
-import { clearDirectory, logSuccess, fsWriteFile, fsReadFile } from '../shared/helpers.mjs'
-import { bufferToString, getDirectory, getFilename } from '../shared/helpers.mjs'
+import { fsMkDirP, fsCopyFile, templateFetcher, combineStreamObjects, schemaFetcher, localModules, loadVersion } from '../shared/helpers.mjs'
+import { clearDirectory, logSuccess, fsWriteFile } from '../shared/helpers.mjs'
+import { getDirectory, getFilename } from '../shared/helpers.mjs'
 import { insertMacros } from './macros/index.mjs'
 import path from 'path'
 
@@ -54,20 +54,6 @@ const run = ({
   const copyReadMe = _ => asPath ? fsCopyFile(apiIndex, path.join(outputFolder, 'index.md')) : fsCopyFile(readMe, path.join(outputFolder, 'index.md'))
 
   // All the streams we care about.
-  const loadVersion = fsReadFile(packageJsonFile)
-    .map(bufferToString)
-    .map(JSON.parse)
-    // Removing information from sem-ver. Not sure of the reason.
-    .map(x => {
-      const preDash = x.version.split('-').map(y => y.split('.'))[0]
-      return {
-        major: preDash[0],
-        minor: preDash[1],
-        patch: preDash[2],
-        readable: preDash.join('.'),
-      }
-    })
-
   const combinedTemplates = combineStreamObjects(templateFetcher(sharedTemplateFolder), templateFetcher(templateFolder))
   const combinedSchemas = combineStreamObjects(schemaFetcher(sharedSchemasFolder), schemaFetcher(schemasFolder))
   
@@ -112,7 +98,7 @@ const run = ({
         .map(fnWithTemplates)
         .flatMap(fnWithModules => combinedSchemas
           .map(fnWithModules)
-          .flatMap(fnWithSchemas => loadVersion.tap(v => logSuccess(`Generating docs for version ${v.readable}`)).flatMap(fnWithSchemas)))
+          .flatMap(fnWithSchemas => loadVersion(packageJsonFile).tap(v => logSuccess(`Generating docs for version ${v.readable}`)).flatMap(fnWithSchemas)))
       )
     )
     .errors((err, push) => {

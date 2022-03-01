@@ -111,6 +111,8 @@ const loadVersion = path => fsReadFile(path)
       const build = x[1][1]
       v.readable += ` [${tag} ${build}]`
     }
+
+    v.original = json.version
     
     return v
   })
