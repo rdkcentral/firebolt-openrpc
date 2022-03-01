@@ -29,6 +29,7 @@ const shortHands = {
 }
 // Last 2 arguments are the defaults.
 const parsedArgs = nopt(knownOpts, shortHands, process.argv, 2)
+const signOff = () => console.log('This has been a presentation of Firebolt')
 
 const util = parsedArgs.task
 
@@ -40,10 +41,10 @@ else if (util === 'docs') {
 }
 else if (util === 'validate') {
     validate(parsedArgs)
-      .done(() => console.log('This has been a presentation of Firebolt'))
+      .done(signOff)
 }
 else if (util === 'openrpc') {
-    openrpc(parsedArgs)
+    openrpc(parsedArgs).done(signOff)
 }
 else if (util === 'declarations') {
     declarations(parsedArgs)

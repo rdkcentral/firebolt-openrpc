@@ -233,7 +233,7 @@ const schemaFetcher = folder => recursiveFileDirectoryList(folder)
   .map(schemaMapper)
   .reduce({}, fileCollectionReducer())
 
-const localModules = (modulesFolder = '', markdownFolder = '', disableTransforms = false, privateModules = false) => recursiveFileDirectoryList(modulesFolder)
+const localModules = (modulesFolder = '', markdownFolder = '', disableTransforms = false, filterPrivateModules = true) => recursiveFileDirectoryList(modulesFolder)
   .flatFilter(isFile)
   .through(loadFileContent('.json'))
   .flatMap(([filepath, data]) => h.of(data)
@@ -247,7 +247,7 @@ const localModules = (modulesFolder = '', markdownFolder = '', disableTransforms
         .map(generatePropertySetters)
         .map(generatePolymorphicPullEvents)
     })
-    .filter(module => privateModules || hasPublicMethods(module)) // allows the validator to validate private modules
+    .filter(module => filterPrivateModules || hasPublicMethods(module)) // allows the validator to validate private modules
     .sortBy(alphabeticalSorter)
     .map(transformedData => [filepath, transformedData])
   )

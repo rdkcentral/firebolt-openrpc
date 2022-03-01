@@ -342,12 +342,12 @@ const localizeDependencies = (def, schema, schemas = {}, externalOnly=false) => 
   return def
 }
 
-const getExternalSchemas = json => {
+const getExternalSchemas = (json = {}, schemas = {}) => {
   // make a copy for safety!
   json = JSON.parse(JSON.stringify(json))
 
   let refs = getExternalSchemaPaths(json)
-  const schemas = {}
+  const returnedSchemas = {}
   const unresolvedRefs = []
 
   while (refs.length > 0) {
@@ -355,7 +355,7 @@ const getExternalSchemas = json => {
       let path = refs[i]      
       const ref = getPathOr(null, path, json)
       path.pop() // drop ref
-      let resolvedSchema = getExternalPath(ref, false)
+      let resolvedSchema = getExternalPath(ref, schemas, false)
       
       if (!resolvedSchema) {
         // rename it so the while loop ends
@@ -366,7 +366,7 @@ const getExternalSchemas = json => {
       }
       // replace the ref so we can recursively grab more refs if needed...
       else if (path.length) {
-        schemas[ref] = JSON.parse(JSON.stringify(resolvedSchema))
+        returnedSchemas[ref] = JSON.parse(JSON.stringify(resolvedSchema))
         // use a copy, so we don't pollute the returned schemas
         json = setPath(path, JSON.parse(JSON.stringify(resolvedSchema)), json)
       }
@@ -378,7 +378,7 @@ const getExternalSchemas = json => {
     refs = getExternalSchemaPaths(json)
   }
 
-  return schemas
+  return returnedSchemas
 }
 
 const hasTitle = (def, schema, schemas = {}) => {
