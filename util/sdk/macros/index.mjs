@@ -33,20 +33,10 @@ import { isExcludedMethod, isRPCOnlyMethod } from '../../shared/modules.mjs'
 import { getTemplateForMethod } from '../../shared/template.mjs'
 import { getMethodSignatureParams } from '../../shared/javascript.mjs'
 
-const staticModules = []
-
 const aggregateMacros = {
   exports: '',
   mockImports: '',
   mockObjects: ''
-}
-
-// overriden by /version.json
-const version = {
-  major: 0,
-  minor: 0,
-  patch: 0,
-  readable: 'v0.0.0'
 }
 
 // util for visually debugging crocks ADTs
@@ -67,8 +57,6 @@ const getMethods = compose(
   chain(safe(isArray)),
   getPath(['methods'])
 )
-
-const addStaticModule = (m) => { staticModules.push(m) }
 
 // Maybe an array of <key, value> from the schema
 const getSchemas = compose(
@@ -497,7 +485,6 @@ const generateTopIndex = _ => {
 
 export {
   setVersion,
-  addStaticModule,
   generateMacros,
   insertMacros,
   insertAggregateMacrosOnly,

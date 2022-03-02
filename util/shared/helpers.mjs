@@ -198,7 +198,6 @@ const fileCollectionReducer = (truncateBefore = '') => (acc = {}, payload = '') 
 
 const hasPublicMethods = json => json.methods && json.methods.filter(m => !m.tags || !m.tags.map(t=>t.name).includes('rpc-only')).length > 0
 const alphabeticalSorter = (a, b) => a.info.title > b.info.title ? 1 : b.info.title > a.info.title ? -1 : 0
-const markdownFileReducer = fileCollectionReducer('/template/markdown/')
 const combineStreamObjects = (...xs) => h([...xs]).flatten().collect().map(xs => Object.assign({}, ...xs))
 const schemaMapper = ([_filepath, data]) => {
   const parsed = JSON.parse(data)
@@ -220,10 +219,10 @@ const addExternalMarkdown = (paths = [], data = {}, descriptions = {}) => {
   return data
 }
 
-const templateFetcher = folder => recursiveFileDirectoryList(folder)
+const loadFilesIntoObject = (folder = '', ext = '.json', truncateBefore = '') => recursiveFileDirectoryList(folder)
   .flatFilter(isFile)
-  .through(loadFileContent('.md'))
-  .reduce({}, markdownFileReducer)
+  .through(loadFileContent(ext))
+  .reduce({}, fileCollectionReducer(truncateBefore))
 
 const externalMarkdownDescriptions = markdownFolder => recursiveFileDirectoryList(markdownFolder)
   .flatFilter(isFile)
@@ -274,7 +273,7 @@ const localModules = (modulesFolder = '', markdownFolder = '', disableTransforms
   }
 
 export {
-  templateFetcher,
+  loadFilesIntoObject,
   externalMarkdownDescriptions,
   schemaFetcher,
   localModules,

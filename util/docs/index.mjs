@@ -17,7 +17,7 @@
  */
 
 import h from 'highland'
-import { fsMkDirP, fsCopyFile, templateFetcher, combineStreamObjects, schemaFetcher, localModules, loadVersion } from '../shared/helpers.mjs'
+import { fsMkDirP, fsCopyFile, loadFilesIntoObject, combineStreamObjects, schemaFetcher, localModules, loadVersion } from '../shared/helpers.mjs'
 import { clearDirectory, logSuccess, fsWriteFile } from '../shared/helpers.mjs'
 import { getDirectory, getFilename } from '../shared/helpers.mjs'
 import { insertMacros } from './macros/index.mjs'
@@ -52,7 +52,7 @@ const run = ({
   const copyReadMe = _ => asPath ? fsCopyFile(apiIndex, path.join(outputFolder, 'index.md')) : fsCopyFile(readMe, path.join(outputFolder, 'index.md'))
 
   // All the streams we care about.
-  const combinedTemplates = combineStreamObjects(templateFetcher(sharedTemplateFolder), templateFetcher(templateFolder))
+  const combinedTemplates = combineStreamObjects(loadFilesIntoObject(sharedTemplateFolder, '.md', '/template/markdown/'), loadFilesIntoObject(templateFolder, '.md', '/template/markdown/'))
   const combinedSchemas = combineStreamObjects(schemaFetcher(sharedSchemasFolder), schemaFetcher(schemasFolder))
   
   const generateDocs = templates => modules => schemas => version => h(Object.entries(modules))

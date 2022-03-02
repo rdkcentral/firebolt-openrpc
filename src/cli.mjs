@@ -34,7 +34,7 @@ const signOff = () => console.log('This has been a presentation of Firebolt')
 const util = parsedArgs.task
 
 if (util === 'sdk') {
-    sdk(parsedArgs)
+    sdk(parsedArgs).done(signOff)
 }
 else if (util === 'docs') {
     docs(parsedArgs).done(signOff)
