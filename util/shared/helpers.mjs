@@ -27,33 +27,24 @@ import or from 'crocks/logic/or.js'
 import not from 'crocks/logic/not.js'
 
 const {
-  access,
   mkdir,
   writeFile,
   readFile, // NOTE: This explicit casing is _required_
   copyFile, // NOTE: This explicit casing is _required_
-  readdir,
   rmdir,
   stat
 } = fs
 
 const fsStat = h.wrapCallback(stat)
-const fsAccess = h.wrapCallback(access)
 const fsCopyFile = h.wrapCallback(copyFile)
-const fsMkDir = h.wrapCallback(mkdir)
 const fsMkDirP = h.wrapCallback((path, cb) => mkdir(path, { recursive: true }, cb))
 const fsRemoveDirectory = h.wrapCallback(rmdir)
 const fsWriteFile = h.wrapCallback(writeFile)
-const fsReadDir = h.wrapCallback(readdir)
 const fsReadFile = h.wrapCallback(readFile)
 const bufferToString = buf => buf.toString()
 
 const clearDirectory = dir => fsRemoveDirectory(dir, {recursive: true})
-const isDirectory = dir => fsStat(dir).map(statObj => statObj.isDirectory())
 const isFile = dir => fsStat(dir).map(statObj => statObj.isFile())
-const isPublicModule = dir => dir.split('/').pop()[0] !== '_'
-const relativePath = from => to => path.relative(from, to)
-const fileContent = file => fsReadFile(file).map(bufferToString)
 
 const logSuccess = message => console.log(`\x1b[32m ✓ \x1b[0m\x1b[2m ${message}\x1b[0m`)
 const logHeader = message => console.log(`\x1b[0m\x1b[7m\x1b[32m${message}\x1b[0m\n`)
@@ -119,64 +110,6 @@ const loadVersion = path => fsReadFile(path)
     return v
   })
 
-// Can be used with `flatFilter` to skip existing files.
-// TODO: I think this logic is reversed.
-const fileExists = file => fsAccess(file)
-  .errors((err, push) => {
-    if (err && err.code === 'ENOENT') {
-      push(null, true)
-    } else {
-      push(err)
-    }
-  })
-
-const createFilesAbsentInDir = (files, dir, referenceFolder) => h(files)
-  .map(toGenerate => path.join(dir, toGenerate))
-  .flatFilter(fileExists)
-  .flatMap(file => {
-    const fallback = path.join(referenceFolder, path.basename(file))
-    return fsReadFile(fallback)
-      .flatMap(buff => fsWriteFile(file, buff))
-      .map(_ => file)
-  })
-
-const createDirAbsentInDir = dir => h.of(dir)
-  .flatMap(x => fsMkDir(x).errors((err, push) => {
-    if (err.code === 'EEXIST') {
-    } else {
-      push(err)
-    }
-  })
-  .map(_ => x)
-)
-
-// TODO: Make this and copyReferenceFileToTarget a single function
-const copyReferenceDirToTarget = (reference, target) => dir => {
-  const folderToCreate = path.join(target, relativePath(reference)(dir))
-  return fsMkDir(folderToCreate, {recursive: true})
-    .map(_ => folderToCreate)
-}
-
-const copyReferenceFileToTarget = (reference, target) => file => {
-  const destination = path.join(target, relativePath(reference)(file))
-  return fsCopyFile(file, destination)
-    .map(_ => destination)
-}
-
-const getModuleName = obj => h.of(obj)
-  .map(getPathOr(null, ['info', 'title']))
-  .compact()
-
-const gatherStateForInsertMacros = referenceFolder => ([macros, obj]) => getModuleName(obj)
-  .flatMap(moduleName => fsReadDir(path.join(referenceFolder, moduleName))
-    .sequence()
-    .map(file => path.join(referenceFolder, moduleName, file))
-  )
-  .flatMap(file => fileContent(file)
-    .map(fContents => [file, fContents, macros, obj])
-)
-
-const getTitle = json => json.info ? json.info.title : json.title
 const getFilename = (json, asPath) => (json.info ? json.info.title : (asPath ? json.title : json.title + 'Schema'))
 const getDirectory = (json, asPath) => asPath ? json.info ? '' : 'schemas' : ''
 const getLinkFromRef = (ref, schemas = {}, asPath) => path.join((asPath ? 'schemas' : ''), getFilename(getSchema(ref.split('#')[0], schemas), asPath)) + (ref.includes('#') ? '#' + ref.split('#')[1] : '')
@@ -274,39 +207,18 @@ const localModules = (modulesFolder = '', markdownFolder = '', disableTransforms
 
 export {
   loadFilesIntoObject,
-  externalMarkdownDescriptions,
   schemaFetcher,
   localModules,
   combineStreamObjects,
   bufferToString,
-  recursiveFileDirectoryList,
   clearDirectory,
   loadVersion,
-  loadFileContent,
-  getModuleName,
-  fileContent,
-  fileExists,
-  isDirectory,
-  isFile,
-  isPublicModule,
-  fileCollectionReducer,
-  fsStat,
-  fsMkDir,
   fsMkDirP,
-  fsReadDir,
   fsCopyFile,
   fsWriteFile,
-  fsRemoveDirectory,
   fsReadFile,
-  createFilesAbsentInDir,
-  createDirAbsentInDir,
-  gatherStateForInsertMacros,
-  relativePath,
-  copyReferenceFileToTarget,
-  copyReferenceDirToTarget,
   logSuccess,
   logHeader,
-  getTitle,
   getFilename,
   getDirectory,
   getLinkFromRef
