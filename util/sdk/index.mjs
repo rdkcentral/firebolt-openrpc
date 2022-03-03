@@ -19,7 +19,7 @@
  */
 
 import h from 'highland'
-import { bufferToString, fsReadFile, fsWriteFile, isFile, localModules, combineStreamObjects, schemaFetcher, loadFilesIntoObject, clearDirectory, fsMkDirP, logSuccess, logHeader, loadVersion, fsReadDir } from '../shared/helpers.mjs'
+import { fsWriteFile, localModules, combineStreamObjects, schemaFetcher, loadFilesIntoObject, clearDirectory, fsMkDirP, logSuccess, logHeader, loadVersion } from '../shared/helpers.mjs'
 import { insertMacros, insertAggregateMacrosOnly, generateMacros, generateAggregateMacros } from './macros/index.mjs'
 import path from 'path'
 
@@ -52,22 +52,11 @@ const run = ({
   const schemasFolder = path.join(srcFolderArg, 'schemas')
   const sdkTemplateFolder = path.join(templateFolderArg)
   const sharedSdkTemplateFolder = path.join(__dirname, '..', '..', 'src', 'template', 'js', 'sdk')
-  const globalIndexLocation = path.join(sharedSdkTemplateFolder, '..', 'index.js')
-  const globalDefaultsLocation = path.join(sharedSdkTemplateFolder, '..', 'defaults.js')
 
   const allModules = localModules(modulesFolder, markdownFolder)
   const combinedSchemas = combineStreamObjects(schemaFetcher(sharedSchemasFolder), schemaFetcher(schemasFolder))
   const localTemplates = loadFilesIntoObject(sdkTemplateFolder, '.js', '/template/js/sdk/')
-  const sharedTemplates = loadFilesIntoObject(sharedSdkTemplateFolder, '.js', '/template/js/sdk/')
-  const globalDefaultTemplates = fsReadFile(globalIndexLocation).map(bufferToString)
-    .flatMap(indexFileContents => fsReadFile(globalDefaultsLocation).map(bufferToString)
-      .map(defaultsFileContents => {
-        return {
-          'index.js': indexFileContents,
-          'defaults.js': defaultsFileContents
-        }
-      }))
-  const methodTemplates = loadFilesIntoObject(path.join(sharedSdkTemplateFolder, '..'), '.js', '/template/js/')
+  const allSharedTemplates = loadFilesIntoObject(path.join(sharedSdkTemplateFolder, '..'), '.js', '/template/js/')
 
   const getStaticModules = compose(
     option([]),
@@ -82,63 +71,62 @@ const run = ({
     return acc
   }, {})
 
-  const pickTemplateForModule = (moduleTitle = 'Foo', file = 'index.js', templates = {}) => h(Object.entries(templates))
+  const pickTemplateForModule = (moduleTitle = 'Foo', file = 'index.js', templates = []) => h(templates)
       .filter(([k, _v]) => {
         const dirPart = path.dirname(k)
         const filePart = path.basename(k)
         return dirPart === moduleTitle && filePart === file
       })
 
-  const macroOrchestrator = schemas => modules => (localTemplates = {}, sharedTemplates = {}, globalDefaults = {}, methodTemplates = {}) => version => {
+  const macroOrchestrator = schemas => modules => (localTemplates = [], sharedTemplates = [], globalDefaults = [], methodTemplates = []) => version => {
     
-    const macrosAlmost = generateMacros(methodTemplates)
-    const combinedTemplates = Object.assign(sharedTemplates, localTemplates)
+    const macrosAlmost = generateMacros(Object.fromEntries(methodTemplates)) // <-- method expects object
+    const combinedTemplates = Object.entries(
+      Object.assign(
+        Object.fromEntries(sharedTemplates),
+        Object.fromEntries(localTemplates)
+      )
+    ) // <-- local templates override any shared templates
     const macrofiedModules = h(Object.values(modules)
       .concat(Object.values(staticModules)))
       .map(module => localizeDependencies(module, module, schemas, true))
       .flatMap(module => {
-        const moduleDir = path.join(outputFolderArg, module.info.title)
-        const macros = macrosAlmost(module)
+        const macros = macrosAlmost(module) // <-- call generateMacros with final async context
 
         // Pick the index and defaults templates for each module.
-        const indexTemplate = pickTemplateForModule(module.info.title, 'index.js', localTemplates)
-          .otherwise(h([[path.join(module.info.title, "index.js"), globalDefaults['index.js']]]))
-        const defaultsTemplate = pickTemplateForModule(module.info.title, 'defaults.js', localTemplates)
-          .otherwise(h([[path.join(module.info.title, "defaults.js"), globalDefaults['defaults.js']]]))
-        // Any other files for this module? You know b/c it will look like `<moduleTitle>/file.js`  in localTemplates
-        const otherModuleFiles = h(Object.entries(localTemplates))
+        const indexTemplate = pickTemplateForModule(module.info.title, 'index.js', combinedTemplates)
+          .otherwise(h([[path.join(module.info.title, "index.js"), globalDefaults.find(([k, _]) => k === 'index.js')[1]]]))
+        const defaultsTemplate = pickTemplateForModule(module.info.title, 'defaults.js', combinedTemplates)
+          .otherwise(h([[path.join(module.info.title, "defaults.js"), globalDefaults.find(([k, _]) => k === 'defaults.js')[1]]]))
+        // Any other files for this module? You know b/c it will look like `<moduleTitle>/file.js`  in combinedTemplates
+        const otherModuleFiles = h(combinedTemplates)
           .filter(([k, _v]) => {
             const dirPart = path.dirname(k)
             return dirPart === module.info.title
           })
         const filesToWrite = h([indexTemplate, defaultsTemplate, otherModuleFiles])
           .merge()
-          .map(([k, v]) => [path.join(outputFolderArg, k), v]) // <-- concat output folder arg with template path
           .map(([file, contents]) => {
-            const macrofied = insertMacros(contents, macros, module, version) // <-- Macro replacement
+            const macrofied = insertMacros(contents, macros, module, version) // <-- macro replacement
             return [file, macrofied]
           })
 
-        return fsMkDirP(moduleDir)
-          .flatMap(_ => filesToWrite)
+        return filesToWrite
       })
-
-    const sharedFiles = h(Object.entries(sharedTemplates))
-      .map(([k, v]) => [path.join(outputFolderArg, k), v])
-      .flatMap(([file, contents]) => fsMkDirP(path.dirname(file))
-        .map(_ => [file, contents]))
     
     const aggregateMacros = generateAggregateMacros(Object.assign(modules, staticModules))
     
-    return h([macrofiedModules, sharedFiles]).merge()
-      // Do aggregate macro replacement
+    return h(combinedTemplates)
+      .concat(macrofiedModules) // <-- concat guarantees macrofied content wins over plain template content
       .map(([file, contents]) => {
-        return [file, insertAggregateMacrosOnly(contents, aggregateMacros)]
+        return [file, insertAggregateMacrosOnly(contents, aggregateMacros)] // <-- aggregate macro replacement happens for all
       })
-      .tap(([fileName, _]) => {
-        logSuccess(`Writing file: ${fileName}`)
+      .map(([k, v]) => [path.join(outputFolderArg, k), v]) // <-- concat output folder arg with template path
+      .tap(([file, _]) => {
+        logSuccess(`Creating file: ${file}`)
       })
-      .flatMap(([fileName, fileContents]) => fsWriteFile(fileName, fileContents))
+      .flatMap(([file, contents]) => fsMkDirP(path.dirname(file))
+        .flatMap(_ => fsWriteFile(file, contents)))
   }
 
   logHeader(`Generating SDK into: ${outputFolderArg}`)
@@ -150,18 +138,18 @@ const run = ({
         .map(macroOrchestrator)
         .flatMap(fnWithSchemas => allModules
           .map(fnWithSchemas)
-            .flatMap(fnWithModules => globalDefaultTemplates // Loads all 4 kinds of templates into context.
-              .flatMap(globalDefaults => sharedTemplates
-                .flatMap(shared => localTemplates
-                  .flatMap(local => methodTemplates
-                    .map(methods => fnWithModules(local, shared, globalDefaults, methods))
-                    .flatMap(fnWithTemplates => loadVersion(packageJsonFile)
-                      .tap(v => logHeader(`Generating ${v.readable} --${v.original}--`))
-                      .flatMap(fnWithTemplates) // <-- This is calling macroOrchestrator with the last of its arguments, version
-                    )
-                  )
+            .flatMap(fnWithModules => allSharedTemplates // Loads all 4 kinds of templates into an object.
+              .flatMap(shared => {
+                const methodTemplates = Object.entries(shared).filter(([k, _]) => path.dirname(k).startsWith('methods'))
+                const sharedSdkTemplates = Object.entries(shared).filter(([k, _]) => path.dirname(k).startsWith('sdk')).map(([k, v]) => [k.slice(4), v])
+                const globalDefaults = Object.entries(shared).filter(([k, _]) => path.dirname(k) === '.')
+                return localTemplates
+                  .map(local => fnWithModules(Object.entries(local), sharedSdkTemplates, globalDefaults, methodTemplates))
+                  .flatMap(fnWithTemplates => loadVersion(packageJsonFile)
+                    .tap(v => logHeader(`Generating ${v.readable} --${v.original}--`))
+                    .flatMap(fnWithTemplates) // <-- This is calling macroOrchestrator with the last of its arguments, version
                 )
-              )
+              })
             )
         )
       )
