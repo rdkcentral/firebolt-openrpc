@@ -19,7 +19,7 @@
 import { getPath, getSchema } from './json-schema.mjs'
 import deepmerge from 'deepmerge'
 import { localizeDependencies } from './json-schema.mjs'
-import { getLinkFromRef, enumReducer } from './helpers.mjs'
+import { getLinkFromRef } from './helpers.mjs'
 
 const isSynchronous = m => !m.tags ? false : m.tags.map(t => t.name).find(s => s === 'synchronous')
 
@@ -294,6 +294,15 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
     else {
       return jsonType
     }
+  }
+
+  const enumReducer = (acc, val, i, arr) => {
+    const keyName = val.replace(/[\.\-]/g, '_').replace(/\+/g, '_plus').replace(/([a-z])([A-Z0-9])/g, '$1_$2').toUpperCase()
+    acc = acc + `    ${keyName} = '${val}'`
+    if (i < arr.length-1) {
+      acc = acc.concat(',\n')
+    }
+    return acc
   }
 
   const generateEnum = schema => {

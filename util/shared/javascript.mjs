@@ -16,8 +16,15 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { enumReducer } from "./helpers.mjs"
-
+const enumReducer = (acc, val, i, arr) => {
+    const keyName = val.replace(/[\.\-]/g, '_').replace(/\+/g, '_plus').replace(/([a-z])([A-Z0-9])/g, '$1_$2').toUpperCase()
+    acc = acc + `    ${keyName}: '${val}'`
+    if (i < arr.length-1) {
+      acc = acc.concat(',\n')
+    }
+    return acc
+  }
+  
 const generateEnum = schema => {
   if (!schema.enum) {
     return ''

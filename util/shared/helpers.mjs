@@ -42,8 +42,10 @@ const fsRemoveDirectory = h.wrapCallback(rmdir)
 const fsWriteFile = h.wrapCallback(writeFile)
 const fsReadFile = h.wrapCallback(readFile)
 const bufferToString = buf => buf.toString()
+
 const clearDirectory = dir => fsRemoveDirectory(dir, {recursive: true})
 const isFile = dir => fsStat(dir).map(statObj => statObj.isFile())
+
 const logSuccess = message => console.log(`\x1b[32m ✓ \x1b[0m\x1b[2m ${message}\x1b[0m`)
 const logHeader = message => console.log(`\x1b[0m\x1b[7m\x1b[32m${message}\x1b[0m\n`)
 
@@ -80,15 +82,6 @@ const loadFileContent = suffix => fileStream => fileStream
   .flatMap(filepath => fsReadFile(filepath)
     .map(buf => [filepath, bufferToString(buf)])
   )
-
-const enumReducer = (acc, val, i, arr) => {
-  const keyName = val.replace(/[\.\-]/g, '_').replace(/\+/g, '_plus').replace(/([a-z])([A-Z0-9])/g, '$1_$2').toUpperCase()
-  acc = acc + `    ${keyName} = '${val}'`
-  if (i < arr.length-1) {
-    acc = acc.concat(',\n')
-  }
-  return acc
-}
 
 // example:
 // '1.0.0-beta.1' 
@@ -216,7 +209,6 @@ const localModules = (modulesFolder = '', markdownFolder = '', disableTransforms
   }
 
 export {
-  enumReducer,
   loadFilesIntoObject,
   schemaFetcher,
   localModules,

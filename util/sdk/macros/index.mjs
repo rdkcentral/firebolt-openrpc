@@ -32,7 +32,6 @@ const { isObject, isArray, propEq, pathSatisfies } = predicates
 import { isExcludedMethod, isRPCOnlyMethod } from '../../shared/modules.mjs'
 import { getTemplateForMethod } from '../../shared/template.mjs'
 import { getMethodSignatureParams } from '../../shared/javascript.mjs'
-import { enumReducer } from '../../shared/helpers.mjs'
 
 // util for visually debugging crocks ADTs
 const _inspector = obj => {
@@ -206,6 +205,15 @@ const insertMacros = (fContents = '', macros = {}, module = {}, version = {}) =>
   })
 
   return fContents
+}
+
+const enumReducer = (acc, val, i, arr) => {
+  const keyName = val.replace(/[\.\-]/g, '_').replace(/\+/g, '_plus').replace(/([a-z])([A-Z0-9])/g, '$1_$2').toUpperCase()
+  acc = acc + `    ${keyName}: '${val}'`
+  if (i < arr.length-1) {
+    acc = acc.concat(',\n')
+  }
+  return acc
 }
 
 const enumBuilder = map(x => {
