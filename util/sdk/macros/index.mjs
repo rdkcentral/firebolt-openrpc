@@ -386,7 +386,7 @@ function generateMethods(json = {}, templates = {}, onlyEvents = false) {
       }
       const method = {
         name: methodObj.name,
-        params: getMethodSignatureParams(moduleName, methodObj, { isInterface: false })
+        params: getMethodSignatureParams(methodObj)
       }
 
       let template = getTemplateForMethod(methodObj, '.js', templates);

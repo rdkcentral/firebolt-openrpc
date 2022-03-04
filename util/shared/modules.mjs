@@ -22,7 +22,7 @@ import safe from 'crocks/Maybe/safe.js'
 import find from 'crocks/Maybe/find.js'
 import getPath from 'crocks/Maybe/getPath.js'
 import pointfree from 'crocks/pointfree/index.js'
-const { chain, filter, option, map, reduce } = pointfree
+const { chain, filter, option, map } = pointfree
 import logic from 'crocks/logic/index.js'
 const { and } = logic
 import isString from 'crocks/core/isString.js'

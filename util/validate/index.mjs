@@ -133,7 +133,7 @@ const run = ({
       .flatMap(fn => combinedSchemas
         .flatMap(schemas => fn(schemas) // Schema validation occurs here, then...
           .concat(openRpc(jsonSchemaSpec)
-            .flatMap(orSpec => validateModules(ajvPackage(ajv, orSpec))(schemas))))))
+            .flatMap(orSpec => validateModules(ajvPackage(ajv, orSpec))(schemas)))))) // ...module validation
 }
 
 export default run

@@ -26,30 +26,6 @@ const getExternalMarkdownPaths = obj => {
     .filter(x => /^file:/.test(getPathOr(null, x, obj)))
 }
 
-const addExternalMarkdown = (descriptions = {}) => obj => {
-  const paths = getExternalMarkdownPaths(obj)
-
-  paths.map(path => {
-    // grab url
-    const urn = getPathOr(null, path, obj)
-    const url = urn.indexOf("file:../") == 0 ? urn.substr("file:../".length) : urn.substr("file:".length)
-    // TODO: This right here is a horrible idea FIXME
-    const md = descriptions[url]
-
-    // drop ref
-    path.pop();
-
-    // grab field name
-    const field = path.pop()
-
-    // reassign value
-    const node = getPathOr(null, path, obj)
-    node[field] = md
-  })
-
-  return obj
-}
-
 const refToPath = ref => {
   let path = ref.split('#').pop().substr(1).split('/')
   return path.map(x => x.match(/[0-9]+/) ? parseInt(x) : x)
@@ -385,7 +361,6 @@ const isDefinitionReferencedBySchema = (name = '', moduleJson = {}) => {
 
 export {
   getExternalMarkdownPaths,
-  addExternalMarkdown,
   getSchema,
   getSchemaConstraints,
   getExternalSchemas,
