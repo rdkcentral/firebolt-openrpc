@@ -169,11 +169,14 @@ const externalMarkdownDescriptions = markdownFolder => recursiveFileDirectoryLis
   .through(loadFileContent('.md'))
   .reduce({}, fileCollectionReducer('/src/'))
 
-// TODO: Add error handling back to json docs.
 const schemaFetcher = folder => recursiveFileDirectoryList(folder)
   .flatFilter(isFile)
   .through(loadFileContent('.json'))
   .map(schemaMapper)
+  .errors(err => {
+    console.error(`\n\x1b[41m ERROR:\x1b[0m ${err.message}\n`)
+    push(nil, err) // TODO: Verify do we want to push the err value downstream?
+  })
   .reduce({}, fileCollectionReducer())
 
 const localModules = (modulesFolder = '', markdownFolder = '', disableTransforms = false, filterPrivateModules = true) => {

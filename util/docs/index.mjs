@@ -102,9 +102,6 @@ const run = ({
     .errors((err, push) => {
       console.log(err)
       push(null)
-      // err.message = filepath + ": " + err.message
-      // console.error(`\n\x1b[41m ERROR:\x1b[0m ${err.message}\n`)
-      // push(nil, err) // TODO: Verify do we want to push the err value downstream?
     })
     .tap(file => logSuccess(`Created module doc: ${file}`))
 }
