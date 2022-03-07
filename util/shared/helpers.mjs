@@ -222,6 +222,7 @@ export {
   schemaFetcher,
   localModules,
   combineStreamObjects,
+  jsonErrorHandler,
   bufferToString,
   clearDirectory,
   loadVersion,

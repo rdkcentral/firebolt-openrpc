@@ -17,7 +17,7 @@
  */
 
 import h from 'highland'
-import { logSuccess, logHeader, schemaFetcher, combineStreamObjects, localModules, bufferToString, fsReadFile } from '../shared/helpers.mjs'
+import { logSuccess, logHeader, schemaFetcher, combineStreamObjects, localModules, bufferToString, fsReadFile, jsonErrorHandler } from '../shared/helpers.mjs'
 import { validate } from './validation/index.mjs'
 import path from 'path'
 import https from 'https'
@@ -71,12 +71,7 @@ const run = ({
   .map(Buffer.concat)
   .map(bufferToString)
   .map(JSON.parse)
-  .errors(err => {
-    console.error('getJsonFromUrl error')
-    console.error(err)
-    console.error('Unable to continue')
-    process.exit(1)
-  })
+  .errors(jsonErrorHandler(url))
   
   const jsonSchema = getJsonFromUrl('https://meta.json-schema.tools')
   
