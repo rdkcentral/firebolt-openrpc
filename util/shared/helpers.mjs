@@ -80,8 +80,18 @@ const recursiveFileDirectoryList = dirOrFile => {
 const loadFileContent = suffix => fileStream => fileStream
   .filter(filepath => path.extname(filepath) === suffix)
   .flatMap(filepath => fsReadFile(filepath)
-    .map(buf => [filepath, bufferToString(buf)])
-  )
+    .map(buf => [filepath, bufferToString(buf)]))
+
+const jsonErrorHandler = filepath => (err, push) => {
+  console.error(`\u{1F494} Error: ${filepath}`)
+  if (/JSON/.test(err.message)) {
+    console.error('There was an error loading a .json file. Unable to continue.')
+    console.error(err)
+    process.exit(1)
+  } else {
+    push(err)
+  }
+}
 
 // example:
 // '1.0.0-beta.1' 
@@ -132,8 +142,7 @@ const fileCollectionReducer = (truncateBefore = '') => (acc = {}, payload = '') 
 const hasPublicMethods = json => json.methods && json.methods.filter(m => !m.tags || !m.tags.map(t=>t.name).includes('rpc-only')).length > 0
 const alphabeticalSorter = (a, b) => a.info.title > b.info.title ? 1 : b.info.title > a.info.title ? -1 : 0
 const combineStreamObjects = (...xs) => h([...xs]).flatten().collect().map(xs => Object.assign({}, ...xs))
-const schemaMapper = ([_filepath, data]) => {
-  const parsed = JSON.parse(data)
+const schemaMapper = ([_filepath, parsed]) => {
   if (parsed && parsed.$id) {
     return  [parsed.$id, parsed]
   }
@@ -165,11 +174,10 @@ const externalMarkdownDescriptions = markdownFolder => recursiveFileDirectoryLis
 const schemaFetcher = folder => recursiveFileDirectoryList(folder)
   .flatFilter(isFile)
   .through(loadFileContent('.json'))
-  .map(schemaMapper)
-  .errors(err => {
-    console.error(`\n\x1b[41m ERROR:\x1b[0m ${err.message}\n`)
-    push(nil, err) // TODO: Verify do we want to push the err value downstream?
-  })
+  .flatMap(([file, contents]) => h.of(contents)
+    .map(JSON.parse)
+    .errors(jsonErrorHandler(file))
+    .map(parsed => schemaMapper([file, parsed])))
   .reduce({}, fileCollectionReducer())
 
 const localModules = (modulesFolder = '', markdownFolder = '', disableTransforms = false, filterPrivateModules = true) => {
@@ -179,6 +187,7 @@ const localModules = (modulesFolder = '', markdownFolder = '', disableTransforms
     .through(loadFileContent('.json'))
     .flatMap(([filepath, data]) => h.of(data)
       .map(JSON.parse)
+      .errors(jsonErrorHandler(filepath))
       .flatMap(obj => {
         if (disableTransforms) {
           return h.of(obj)
