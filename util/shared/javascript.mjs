@@ -37,20 +37,20 @@ const generateEnum = schema => {
   }
 }
 
-function getMethodSignature(module, method, options={ isInterface: false }) {
+function getMethodSignature(method) {
   let javascript = (isInterface ? '' : 'function ') + method.name + '('
-  javascript += getMethodSignatureParams(module, method)
+  javascript += getMethodSignatureParams(method)
   javascript += ')'
   
   return javascript
 }
 
-function getMethodSignatureParams(module, method) {
+function getMethodSignatureParams(method) {
   return method.params.map( param => param.name ).join(', ')
 }
 
 export {
-    generateEnum,
-    getMethodSignature,
-    getMethodSignatureParams
+  generateEnum,
+  getMethodSignature,
+  getMethodSignatureParams
 }

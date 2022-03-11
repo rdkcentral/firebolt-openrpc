@@ -16,41 +16,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { fsReadFile, bufferToString } from './helpers.mjs'
-import path from 'path'
-
-const templates = {}
-let pathDelimiter
-let suffix
-
-const setPathDelimiter = d => pathDelimiter = d
-const setSuffix = s => suffix = s
-
-// A through stream that expects a stream of filepaths, reads the contents
-// of any .json files found, and converts them to POJOs
-// DOES NOT DEAL WITH ERRORS
-const loadTemplateContent = fileStream => fileStream
-    .filter(filepath => path.extname(filepath) === suffix)
-    .flatMap(filepath => {
-        return fsReadFile(filepath)
-            .map(bufferToString)
-            .tap(data => templates[filepath.split(pathDelimiter)[1]] = data)
-    })
-
-const getTemplate = name => templates[name]
-
-const getTemplateForMethod = method => {
-    const template = method.tags && method.tags.map(t=>t.name).find(t => getAllTemplateNames().includes('methods/' + t + suffix)) || 'default'
-    return getTemplate(`methods/${template}${suffix}`)
+const getTemplateForMethod = (method, suffix, templates) => {
+  const template = method.tags && method.tags.map(t=>t.name).find(t => Object.keys(templates).includes('methods/' + t + suffix)) || 'default'
+  return templates[`methods/${template}${suffix}`]
 }
 
-const getAllTemplateNames = _ => Object.keys(templates)
-
 export {
-    loadTemplateContent,
-    getTemplate,
-    getTemplateForMethod,
-    getAllTemplateNames,
-    setPathDelimiter,
-    setSuffix
+  getTemplateForMethod,
 }

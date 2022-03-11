@@ -19,28 +19,27 @@
 import { getPath, getSchema } from './json-schema.mjs'
 import deepmerge from 'deepmerge'
 import { localizeDependencies } from './json-schema.mjs'
-import { getLinkFromRef, getTitle } from './helpers.mjs'
-import { getFilename } from './helpers.mjs'
-import path from 'path'
+import { getLinkFromRef } from './helpers.mjs'
 
 const isSynchronous = m => !m.tags ? false : m.tags.map(t => t.name).find(s => s === 'synchronous')
 
-function getMethodSignature(module, method, options={ isInterface: false }) {
+function getMethodSignature(module, method, schemas = {}, options={ isInterface: false }) {
+  // module is {}
     let typescript = (options.isInterface ? '' : 'function ') + method.name + '('
 
-    typescript += getMethodSignatureParams(module, method)
-    typescript += '): ' + (isSynchronous(method) ? getSchemaType(module, method.result, {title: true}) : 'Promise<' + getSchemaType(module, method.result, {title: true}) + '>')
+    typescript += getMethodSignatureParams(module, method, schemas)
+    typescript += '): ' + (isSynchronous(method) ? getSchemaType(module, method.result, schemas, {title: true}) : 'Promise<' + getSchemaType(module, method.result, schemas, {title: true}) + '>')
     
     return typescript
 }
 
-function getMethodSignatureParams(module, method) {
-    return method.params.map( param => param.name + (!param.required ? '?' : '') + ': ' + getSchemaType(module, param, {title: true})).join(', ')
+function getMethodSignatureParams(module, method, schemas = {}) {
+    return method.params.map( param => param.name + (!param.required ? '?' : '') + ': ' + getSchemaType(module, param, schemas, {title: true})).join(', ')
 }
 
 const safeName = prop => prop.match(/[.+]/) ? '"' + prop + '"' : prop
 
-function getSchemaShape(module, json, name, options = {level: 0, descriptions: true}) {
+function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', options = {level: 0, descriptions: true}) {
     let level = options.level 
     let descriptions = options.descriptions
     let structure = []
@@ -58,7 +57,8 @@ function getSchemaShape(module, json, name, options = {level: 0, descriptions: t
         return `${prefix}${title};`
       }
       else {
-        return getSchemaShape(module, getPath(json['$ref'], module), name, options)
+        const someJson = getPath(json['$ref'], moduleJson, schemas)
+        return getSchemaShape(moduleJson, someJson, schemas, name, options)
       }
     }
     else if (options.title && json.title) {
@@ -70,7 +70,7 @@ function getSchemaShape(module, json, name, options = {level: 0, descriptions: t
     }
     else if (json.type === 'object') {
       // TODO: maybe this should happen at the top of this method for all types? didn't want to make such a drastic change, though.
-      json = localizeDependencies(json)
+      json = localizeDependencies(json, {}, schemas)
 
       let suffix = '{'
   
@@ -81,7 +81,8 @@ function getSchemaShape(module, json, name, options = {level: 0, descriptions: t
           if (!json.required || !json.required.includes(name)) {
             name = name + '?'
           }
-          structure.push(getSchemaShape(module, prop, name, {summary: prop.description, descriptions: descriptions, level: level+1, title: true}))
+          const schemaShape = getSchemaShape(moduleJson, prop, schemas, name, {summary: prop.description, descriptions: descriptions, level: level+1, title: true})
+          structure.push(schemaShape)
         })
       }
       else if (json.propertyNames && json.propertyNames.enum) {
@@ -92,36 +93,36 @@ function getSchemaShape(module, json, name, options = {level: 0, descriptions: t
             Object.entries(json.patternProperties).forEach(([pattern, schema]) => {
               let regex = new RegExp(pattern)
               if (prop.match(regex)) {
-                type = getSchemaType(module, schema)
+                type = getSchemaType(moduleJson, schema, schemas)
               }
             })
           }
   
-          structure.push(getSchemaShape(module, {type: type}, safeName(prop), {descriptions: descriptions, level: level+1}))
+          structure.push(getSchemaShape(moduleJson, {type: type}, schemas, safeName(prop), {descriptions: descriptions, level: level+1}))
         })
       }
       else if (json.patternProperties) {
         Object.entries(json.patternProperties).forEach(([pattern, schema]) => {
-          let type = getSchemaType(module, schema)
-          structure.push(getSchemaShape(module, {type: type}, '\'/'+pattern+'/\'', {descriptions: descriptions, level: level+1}))
+          let type = getSchemaType(moduleJson, schema, schemas)
+          structure.push(getSchemaShape(moduleJson, {type: type}, schemas, '\'/'+pattern+'/\'', {descriptions: descriptions, level: level+1}))
         })        
       }
   
       structure.push('  '.repeat(level) + '}')
     }
     else if (json.anyOf) {
-      return '  '.repeat(level) + `${prefix}${title}${operator} ` + json.anyOf.map(s => getSchemaType(module, s, options)).join(' | ')
+      return '  '.repeat(level) + `${prefix}${title}${operator} ` + json.anyOf.map(s => getSchemaType(moduleJson, s, schemas, options)).join(' | ')
     }
     else if (json.oneOf) {
-      return '  '.repeat(level) + `${prefix}${title}${operator} ` + json.oneOf.map(s => getSchemaType(module, s, options)).join(' | ')
+      return '  '.repeat(level) + `${prefix}${title}${operator} ` + json.oneOf.map(s => getSchemaType(moduleJson, s, schemas, options)).join(' | ')
     }
     else if (json.allOf) {
-      let union = deepmerge.all([...json.allOf.map(x => x['$ref'] ? getPath(x['$ref'], module) || x : x), options])
+      let union = deepmerge.all([...json.allOf.map(x => x['$ref'] ? getPath(x['$ref'], moduleJson, schemas) || x : x), options])
       if (json.title) {
         union.title = json.title
       }
       delete union['$ref']
-      return getSchemaShape(module, union, name, options)
+      return getSchemaShape(moduleJson, union, schemas, name, options)
     }
     else if (json.type || json.const) {
       const isArrayWithSchemaForItems = json.type === 'array' && json.items && !Array.isArray(json.items)
@@ -135,13 +136,13 @@ function getSchemaShape(module, json, name, options = {level: 0, descriptions: t
         suffix = JSON.stringify(json.const)
       }
       else if (isArrayWithSchemaForItems) {
-        suffix = getSchemaType(module, json.items, { title: level ? true : false }) + '[]' // prefer schema title over robust descriptor
+        suffix = getSchemaType(moduleJson, json.items, schemas, { title: level ? true : false }) + '[]' // prefer schema title over robust descriptor
       }
       else if (isArrayWithSpecificItems) {
-        suffix = '[' + json.items.map(i => getSchemaType(module, i, {title: level ? true : false })).join(', ') + ']'
+        suffix = '[' + json.items.map(i => getSchemaType(moduleJson, i, schemas, {title: level ? true : false })).join(', ') + ']'
       }
       else {
-        suffix = getSchemaType(module, json, { title: level ? true : false }) // prefer schema title over robust descriptor
+        suffix = getSchemaType(moduleJson, json, schemas, { title: level ? true : false }) // prefer schema title over robust descriptor
       }
       
       // if there's a summary or description, append it as a comment (description only gets first line)
@@ -152,7 +153,6 @@ function getSchemaShape(module, json, name, options = {level: 0, descriptions: t
       if (suffix === 'array') {
         suffix = '[]'
       }
-//      suffix += isArrayWithSchemaForItems ? '[]' : ''
   
       if (title === suffix) {
         return '  '.repeat(level) + `${prefix}${title}`
@@ -169,11 +169,10 @@ function getSchemaShape(module, json, name, options = {level: 0, descriptions: t
       let max = Math.max(...structure.map(l => l.split('\t//')[0]).map(length)) + 2
       structure = structure.map( l => l.split('\t//').join(' '.repeat(max - l.split('\t//')[0].length) + '//'))
     }
-  
     return structure.join('\n')
   }
 
-  function getSchemaType(module, json, options = { link: false, title: false, code: false, asPath: false, baseUrl: '' }) {
+  function getSchemaType(module, json, schemas = {}, options = { link: false, title: false, code: false, asPath: false, baseUrl: '' }) {
     if (json.schema) {
       json = json.schema
     }
@@ -182,18 +181,18 @@ function getSchemaShape(module, json, name, options = {level: 0, descriptions: t
   
     if (json['$ref']) {
       if (json['$ref'][0] === '#') {
-        return getSchemaType(module, getPath(json['$ref'], module), {title: true, link: options.link, code: options.code})
+        return getSchemaType(module, getPath(json['$ref'], module, schemas), schemas, {title: true, link: options.link, code: options.code})
       }
       else {
         // TODO: this assumes that the title of the external schema matches the last node in the path (which isn't guaranteed)
 
 
-        const schema = getSchema(json['$ref'].split('#')[0]) || module
-        const definition = getPath(json['$ref'], schema)
+        const schema = getSchema(json['$ref'].split('#')[0], schemas) || module
+        const definition = getPath(json['$ref'], schema, schemas)
         const name = definition.title || json['$ref'].split('/').pop()
 
         if (options.link) {
-          let link = options.baseUrl + getLinkFromRef(json['$ref'], options.asPath)
+          let link = options.baseUrl + getLinkFromRef(json['$ref'], schemas, options.asPath)
 
           if (options.asPath) {
             link = link.toLowerCase()
@@ -223,7 +222,7 @@ function getSchemaShape(module, json, name, options = {level: 0, descriptions: t
     }
     else if (json.type === 'array' && json.items) {
       if (Array.isArray(json.items)) {
-        let type = '[' + json.items.map(x => getSchemaType(module, x)).join(', ') + ']' // no links, no code
+        let type = '[' + json.items.map(x => getSchemaType(module, x, schemas)).join(', ') + ']' // no links, no code
   
         if (options.code) {
           type = wrap(type, '`')
@@ -233,7 +232,7 @@ function getSchemaShape(module, json, name, options = {level: 0, descriptions: t
       }
       else {
         // grab the type for the non-array schema, so we get the link for free
-        let type = getSchemaType(module, json.items, {code: options.code, link: options.link, title: options.title})
+        let type = getSchemaType(module, json.items, schemas, {code: options.code, link: options.link, title: options.title})
         // insert the [] into the type
         if (options.link) {
           type = type.replace(/\[(`?)(.*)(`?)\]/, '\[$1$2\[\]$3\]')
@@ -245,25 +244,25 @@ function getSchemaShape(module, json, name, options = {level: 0, descriptions: t
       }
     }
     else if (json.allOf) {
-      let union = deepmerge.all([...json.allOf.map(x => x['$ref'] ? getPath(x['$ref'], module) || x : x), options])
+      let union = deepmerge.all([...json.allOf.map(x => x['$ref'] ? getPath(x['$ref'], module, schemas) || x : x), options])
       if (json.title) {
         union.title = json.title
       }
-      return getSchemaType(module, union, options)
+      return getSchemaType(module, union, schemas, options)
     }
     else if (json.oneOf || json.anyOf) {
       if (options.event) {
-        return getSchemaType(module, (json.oneOf || json.anyOf)[0], options)
+        return getSchemaType(module, (json.oneOf || json.anyOf)[0], schemas, options)
       }
       else {
         return (json.oneOf || json.anyOf)
-        .map(s => getSchemaType(module, s, options)).join(' | ')
+        .map(s => getSchemaType(module, s, schemas, options)).join(' | ')
       }
     }
     else if (json.type === 'object' && json.title) {
       const maybeGetPath = (path, json) => {
         try {
-          return getPath(path, json)
+          return getPath(path, json, schemas)
         }
         catch (e) {
           return null

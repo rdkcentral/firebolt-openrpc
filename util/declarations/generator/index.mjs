@@ -17,68 +17,36 @@
  */
 
 import helpers from 'crocks/helpers/index.js'
-const { tap, compose, getPathOr } = helpers
-import safe from 'crocks/Maybe/safe.js'
-import find from 'crocks/Maybe/find.js'
-import getPath from 'crocks/Maybe/getPath.js'
+const { compose, getPathOr } = helpers
 import pointfree from 'crocks/pointfree/index.js'
-const { chain, filter, option, map, reduce } = pointfree
+const { filter, reduce } = pointfree
 import logic from 'crocks/logic/index.js'
-const { and, not } = logic
-import isString from 'crocks/core/isString.js'
-import predicates from 'crocks/predicates/index.js'
-const { isObject, isArray, propEq, pathSatisfies } = predicates
+const { not } = logic
 
 import { getMethods, getTypes, isEventMethod, isPublicEventMethod, isPolymorphicPullMethod, getEnums, isRPCOnlyMethod } from '../../shared/modules.mjs'
 import { getSchemaType, getSchemaShape, getMethodSignature, generateEnum } from '../../shared/typescript.mjs'
 import { getExternalSchemas } from '../../shared/json-schema.mjs'
-import { getAllSchemas } from '../../shared/json-schema.mjs'
-import { getExternalSchemaPaths } from '../../shared/json-schema.mjs'
-
-const aggregateMacros = {
-  exports: '',
-  mockImports: '',
-  mockObjects: ''
-}
-
-// util for visually debugging crocks ADTs
-const inspector = obj => {
-  if (obj.inspect) {
-    console.log(obj.inspect())
-  } else {
-    console.log(obj)
-  }
-}
 
 const getModuleName = getPathOr('missing', ['info', 'title'])
-const makeEventName = x => x.name[2].toLowerCase() + x.name.substr(3) // onFooBar becomes fooBar
 
-//import { default as platform } from '../Platform/defaults'
-const generateAggregateMacros = obj => {
-  aggregateMacros.exports += `export { default as ${getModuleName(obj)} } from './${getModuleName(obj)}'\n`
-  aggregateMacros.mockImports += `import { default as ${getModuleName(obj).toLowerCase()} } from '../${getModuleName(obj)}/defaults'\n`
-  aggregateMacros.mockObjects += `  ${getModuleName(obj).toLowerCase()}: ${getModuleName(obj).toLowerCase()},\n`
-}
-
-const generateDeclarations = obj => {
+const generateDeclarations = (obj = {}, schemas = {}) => {
   const code = []
   const namespace = getModuleName(obj)
 
-
   code.push(`export module ${namespace} {`)
-  code.push(generateTypes(obj))
-  code.push(generateExternalTypes(obj))
+  code.push(generateTypes(obj, schemas))
+  code.push(generateExternalTypes(obj, schemas))
   code.push(generateEvents(obj))
   code.push(generateEnums(obj))
-  code.push(generateMethodsWithListeners(obj))
+  code.push(generateMethodsWithListeners(obj, schemas))
   code.push(`}`)
 
   return code.join('\n')
 }
 
-const generateTypes = json => compose(
-  reduce((acc, val, i, arr) => {
-    const shape = getSchemaShape(json, val[1], val[0])
+const generateTypes = (json, schemas = {}) => compose(
+  reduce((acc, val) => {
+    const shape = getSchemaShape(json, val[1], schemas, val[0])
 
     // ignore empty types, e.g. `type foo;` (but not `type foo = {}`)
     if (!shape.match(/type [a-zA-Z]+;/)) {
@@ -91,9 +59,9 @@ const generateTypes = json => compose(
   getTypes
 )(json)
 
-const generateExternalTypes = json => {
-  return Object.entries(getExternalSchemas(json)).reduce((acc, val, i, arr) => {
-    const shape = getSchemaShape(json, val[1], val[0].split('/').pop())
+const generateExternalTypes = (json, schemas = {}) => {
+  return Object.entries(getExternalSchemas(json, schemas)).reduce((acc, val, i, arr) => {
+    const shape = getSchemaShape(json, val[1], schemas, val[0].split('/').pop())
     
     if (!shape.match(/type [a-zA-Z]+;/)) {
       acc += shape + '\n'
@@ -103,13 +71,13 @@ const generateExternalTypes = json => {
   }, '')
 }
 
-const generateEnums = (json) => compose(
+const generateEnums = compose(
   reduce((acc, val, i, arr) => {
     acc += generateEnum(val[1])
     return acc
   }, ''),
   getEnums
-)(json)
+)
 
 const deprecatedMessage = (val) => {
   const deprecated = val.tags && val.tags.find(t => t.name === 'deprecated')
@@ -123,7 +91,7 @@ const deprecatedMessage = (val) => {
   return ''
 }
 
-const generateEvents = (json) => compose(
+const generateEvents = compose(
   reduce((acc, val, i, arr) => {
     if (i === 0) {
       acc += 'type Event = '
@@ -138,9 +106,9 @@ const generateEvents = (json) => compose(
   }, ''),
   filter(isPublicEventMethod),
   getMethods
-)(json)
+)
 
-const generateListeners = (json) => compose(
+const generateListeners = (json, schemas = {}) => compose(
   reduce ((acc, val, i, arr) => {
     if (i === 0) {
       acc += `
@@ -167,14 +135,14 @@ const generateListeners = (json) => compose(
    * @param {Event} event The Event to listen to.
    * @param {Function} listener The listener function to handle the event.
    */
-  function listen(event: '${val.name[2].toLowerCase() + val.name.substr(3)}', listener: (data: ${getSchemaType(json, result, {title: true})}) => {})
+  function listen(event: '${val.name[2].toLowerCase() + val.name.substr(3)}', listener: (data: ${getSchemaType(json, result, schemas, {title: true})}) => {})
 
   /**
    * Listen to one and only one instance of a specific ${getModuleName(json)} event.
    * @param {Event} event The Event to listen to.
    * @param {Function} listener The listener function to handle the event.
    */
-  function once(event: '${val.name[2].toLowerCase() + val.name.substr(3)}', listener: (data: ${getSchemaType(json, result, {title: true})}) => {})
+  function once(event: '${val.name[2].toLowerCase() + val.name.substr(3)}', listener: (data: ${getSchemaType(json, result, schemas, {title: true})}) => {})
 
 `
     return acc
@@ -183,7 +151,7 @@ const generateListeners = (json) => compose(
   getMethods
 )(json)
 
-const polymorphicPull = (json, val) => {
+const polymorphicPull = (json, val, schemas = {}) => {
   let acc = ''
 
   if (val.summary) {
@@ -197,7 +165,7 @@ const polymorphicPull = (json, val) => {
     acc += `
  *`
     val.params.forEach(p => acc += `
- * @param {${getSchemaType(json, p.schema)}} ${p.name} ${p.summary}`)
+ * @param {${getSchemaType(json, p.schema, schemas)}} ${p.name} ${p.summary}`)
   }
 
     acc += `
@@ -211,7 +179,7 @@ const polymorphicPull = (json, val) => {
   return acc
 }
 
-const subscriber = (json, val) => {
+const subscriber = (json, val, schemas) => {
   let acc = ''
 
   if (val.summary) {
@@ -228,12 +196,12 @@ const subscriber = (json, val) => {
 `
   const type = val.name[0].toUpperCase() + val.name.substr(1)
 
-  acc += `function ${val.name}(subscriber: (${val.result.name}: ${getSchemaType(json, val.result.schema)}) => void): Promise<integer>\n`
+  acc += `function ${val.name}(subscriber: (${val.result.name}: ${getSchemaType(json, val.result.schema, schemas)}) => void): Promise<integer>\n`
     
   return acc
 }
 
-const setter = (json, val) => {
+const setter = (json, val, schemas = {}) => {
   let acc = ''
 
   if (val.summary) {
@@ -256,7 +224,7 @@ const setter = (json, val) => {
 }
 
 
-const generateMethods = json => compose(
+const generateMethods = (json, schemas = {}) => compose(
   reduce((acc, val, i, arr) => {
     if (val.summary) {
       acc += `/**
@@ -269,27 +237,27 @@ const generateMethods = json => compose(
       acc += `
  *`
       val.params.forEach(p => acc += `
- * @param {${getSchemaType(json, p.schema)}} ${p.name} ${p.summary}`)
+ * @param {${getSchemaType(json, p.schema, schemas)}} ${p.name} ${p.summary}`)
     }
 
       acc += `
  */
 `
-    acc += getMethodSignature(json, val, { isInterface: false }) + '\n'
+    acc += getMethodSignature(json, val, schemas, { isInterface: false }) + '\n'
 
     if (val.tags && val.tags.find(t => t.name == 'polymorphic-pull')) {
-      acc += polymorphicPull(json, val)
+      acc += polymorphicPull(json, val, schemas)
     }
 
     const needsSubscriber = val.tags && (val.tags.find(t => t.name === 'property') || val.tags.find(t => t.name === 'property:readonly')) != undefined
     const needsSetter = val.tags && val.tags.find(t => t.name === 'property') != undefined
 
     if (needsSubscriber) {
-      acc += subscriber(json, val)
+      acc += subscriber(json, val, schemas)
     }
 
     if (needsSetter) {
-      acc += setter(json, val)
+      acc += setter(json, val, schemas)
     }
 
     return acc
@@ -299,7 +267,7 @@ const generateMethods = json => compose(
   getMethods
 )(json)
 
-const generateMethodsWithListeners = json => generateMethods(json) + '\n' + generateListeners(json) + '\n'
+const generateMethodsWithListeners = (json, schemas = {}) => generateMethods(json, schemas) + '\n' + generateListeners(json, schemas) + '\n'
 
 export {
   generateDeclarations

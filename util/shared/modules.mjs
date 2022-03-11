@@ -17,34 +17,17 @@
  */
 
 import helpers from 'crocks/helpers/index.js'
-import path from 'path'
-const { tap, compose, getPathOr } = helpers
+const { compose, getPathOr } = helpers
 import safe from 'crocks/Maybe/safe.js'
 import find from 'crocks/Maybe/find.js'
 import getPath from 'crocks/Maybe/getPath.js'
 import pointfree from 'crocks/pointfree/index.js'
-const { chain, filter, option, map, reduce } = pointfree
+const { chain, filter, option, map } = pointfree
 import logic from 'crocks/logic/index.js'
-const { and, not } = logic
+const { and } = logic
 import isString from 'crocks/core/isString.js'
 import predicates from 'crocks/predicates/index.js'
 const { isObject, isArray, propEq, pathSatisfies, hasProp } = predicates
-import { fsReadFile, bufferToString } from './helpers.mjs'
-import { getSchemaContent } from './json-schema.mjs'
-
-const modules = {}
-
-// overriden by /version.json
-const version = {
-    major: 0,
-    minor: 0,
-    patch: 0,
-    readable: 'v0.0.0'
-}
-
-// Version MUST be global across all modules, it's set here
-const setVersion = v => Object.assign(version, v)
-const getVersion = () => version
 
 // util for visually debugging crocks ADTs
 const inspector = obj => {
@@ -80,15 +63,6 @@ const addMissingTitles = ([k, v]) => {
 const getSchemas = compose(
     option([]),
     chain(safe(isArray)),
-    map(Object.entries), // Maybe Array<Array<key, value>>
-    chain(safe(isObject)), // Maybe Object
-    getPath(['components', 'schemas']) // Maybe any
-)
-
-const getSchemasAndFixTitles = compose(
-    option([]),
-    chain(safe(isArray)),
-    map(map(addMissingTitles)),
     map(Object.entries), // Maybe Array<Array<key, value>>
     chain(safe(isObject)), // Maybe Object
     getPath(['components', 'schemas']) // Maybe any
@@ -198,16 +172,6 @@ const getPublicEvents = compose(
     map(filter(isPublicEventMethod)),
     getEvents
 )
-
-const addModule = obj => {
-    if (obj && obj.info && obj.info.title) {
-        modules[obj.info.title] = obj
-    }
-}
-
-const getAllModules = _ => {
-    return Object.values(modules)
-}
 
 const eventDefaults = event => {
 
@@ -365,16 +329,6 @@ const generatePolymorphicPullEvents = json => {
     return json
 }
 
-// A through stream that expects a stream of filepaths, reads the contents
-// of any .json files found, and converts them to POJOs
-// DOES NOT DEAL WITH ERRORS
-const getModuleContentWithoutTransforms = getSchemaContent
-
-const getModuleContent = x => getSchemaContent(x)
-        .map(generatePropertyEvents)
-        .map(generatePropertySetters)
-        .map(generatePolymorphicPullEvents)
-
 const getPathFromModule = (module, path) => {
     console.error("DEPRECATED: getPathFromModule")
     
@@ -411,11 +365,8 @@ export {
     getPublicEvents,
     getSchemas,
     getParamsFromMethod,
-    setVersion,
-    getVersion,
-    addModule,
-    getModuleContent,
-    getAllModules,
     getPathFromModule,
-    getModuleContentWithoutTransforms
+    generatePolymorphicPullEvents,
+    generatePropertyEvents,
+    generatePropertySetters,
 }

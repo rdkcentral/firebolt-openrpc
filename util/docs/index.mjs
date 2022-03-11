@@ -17,14 +17,11 @@
  */
 
 import h from 'highland'
-import { recursiveFileDirectoryList, clearDirectory, loadVersion, isFile, logSuccess } from '../shared/helpers.mjs'
-import { setOptions, setVersion, setOutput, generateMacros, generateDocs, writeDocumentation } from './macros/index.mjs'
-import { getSchemaContent, getAllSchemas, addSchema } from '../shared/json-schema.mjs'
-import { getModuleContent, getAllModules, addModule } from '../shared/modules.mjs'
+import { fsMkDirP, fsCopyFile, loadFilesIntoObject, combineStreamObjects, schemaFetcher, localModules, loadVersion } from '../shared/helpers.mjs'
+import { clearDirectory, logSuccess, fsWriteFile } from '../shared/helpers.mjs'
+import { getDirectory, getFilename } from '../shared/helpers.mjs'
+import { insertMacros } from './macros/index.mjs'
 import path from 'path'
-import fs from 'fs'
-import { loadTemplateContent, setPathDelimiter, setSuffix } from '../shared/template.mjs'
-import { loadMarkdownContent } from '../shared/descriptions.mjs'
 
 // Workaround for using __dirname in ESM
 import url from 'url'
@@ -41,18 +38,10 @@ const run = ({
   output: outputFolderArg,
   'as-path': asPath = false,
 }) => {
-
-  setPathDelimiter('/template/markdown/')
-  setSuffix('.md')
-
-  if (asPath) {
-    setOptions({ asPath: true })
-  }
-
   // Important file/directory locations
   const readMe = path.join('README.md')
   const apiIndex = path.join(__dirname, '..', '..', 'src', 'template', 'markdown', 'api.md')
-  const versionJson = path.join('package.json')
+  const packageJsonFile = path.join(srcFolderArg, '..', 'package.json')
   const sharedSchemasFolder = sharedSchemasFolderArg
   const schemasFolder = path.join(srcFolderArg, 'schemas')
   const modulesFolder = path.join(srcFolderArg, 'modules')
@@ -60,73 +49,61 @@ const run = ({
   const templateFolder = path.join(templateFolderArg)
   const sharedTemplateFolder = path.join(__dirname, '..', '..', 'src', 'template', 'markdown')
   const outputFolder = path.join(outputFolderArg)
-  const getAllModulesStream = _ => h(getAllModules())
-  const getAllSchemasStream = _ => h(getAllSchemas())
-  const hasPublicMethods = json => json.methods && json.methods.filter(m => !m.tags || !m.tags.map(t=>t.name).includes('rpc-only')).length > 0
-  const alphabeticalSorter = (a, b) => a.info.title > b.info.title ? 1 : b.info.title > a.info.title ? -1 : 0
-  const fsCopyFile = h.wrapCallback(fs.copyFile)
   const copyReadMe = _ => asPath ? fsCopyFile(apiIndex, path.join(outputFolder, 'index.md')) : fsCopyFile(readMe, path.join(outputFolder, 'index.md'))
-  const createDocsDir = _ => h.wrapCallback(fs.mkdir)(path.join(outputFolder))
-  const createSchemasDir = _ => h.wrapCallback(fs.mkdir)(path.join(outputFolder, 'schemas'))
+
+  // All the streams we care about.
+  const combinedTemplates = combineStreamObjects(loadFilesIntoObject(sharedTemplateFolder, '.md', '/template/markdown/'), loadFilesIntoObject(templateFolder, '.md', '/template/markdown/'))
+  const combinedSchemas = combineStreamObjects(schemaFetcher(sharedSchemasFolder), schemaFetcher(schemasFolder))
   
-  clearDirectory(outputFolder)
-  .tap(_ => logSuccess(`Removed ${outputFolder}`))
-  .flatMap(createDocsDir)
-  .flatMap(createSchemasDir)
-  .flatMap(copyReadMe)
-  .tap(_ => setOutput(outputFolder))
-  .tap(_ => logSuccess(`Created ${outputFolder}`))
-  .tap(_ => logSuccess(`Created index.md`))
-  // Load all of the shared templates
-  .flatMap(_ => recursiveFileDirectoryList(sharedTemplateFolder).flatFilter(isFile))
-  .through(loadTemplateContent)
-  .collect()
-  // Load all of the templates
-  .flatMap(_ => recursiveFileDirectoryList(templateFolder).flatFilter(isFile))
-  .through(loadTemplateContent)
-  .collect()
-  // Load all of the external markdown resources
-  .flatMap(_ => recursiveFileDirectoryList(markdownFolder).flatFilter(isFile))
-  .through(loadMarkdownContent)
-  .collect()
-  // Load all of the shared Firebolt JSON-Schemas
-  .flatMap(_ => recursiveFileDirectoryList(sharedSchemasFolder).flatFilter(isFile))
-  .through(getSchemaContent)
-  .tap(addSchema)
-  .collect()
-  // Load all of the project Firebolt JSON-Schemas
-  .flatMap(_ => recursiveFileDirectoryList(schemasFolder).flatFilter(isFile))
-  .through(getSchemaContent)
-  .tap(addSchema)
-  .collect()
-  .tap(_ => logSuccess('Loaded JSON-Schemas'))
-  // Load all of the Firebolt OpenRPC modules
-  .flatMap(_ => recursiveFileDirectoryList(modulesFolder).flatFilter(isFile))
-  .through(getModuleContent)
-  .filter(hasPublicMethods)
-  .sortBy(alphabeticalSorter)
-  .tap(addModule)
-  .collect()
-  .tap(_ => logSuccess('Loaded OpenRPC modules'))
-  // Load the version.json file
-  .flatMap(_ => loadVersion(versionJson))
-  .tap(setVersion)
-  .tap(v => logSuccess(`Version: ${v.major}.${v.minor}.${v.patch}`))
-  // Loop through modules
-  .flatMap(_ => getAllModulesStream())
-  .tap(generateMacros)
-  .tap(generateDocs)
-  .flatMap(writeDocumentation)
-  .collect()
-  .tap(x => logSuccess(`Created module docs`))
-  // Copy template directory
-  .flatMap(_ => getAllSchemasStream())
-  .tap(generateMacros)
-  .tap(generateDocs)
-  .flatMap(writeDocumentation)
-  .collect()
-  .tap(x => logSuccess(`Created schema docs`))
-  .done(() => console.log('\nThis has been a presentation of Firebolt OS'))
+  const generateDocs = templates => modules => schemas => version => h(Object.entries(modules))
+    .concat(Object.entries(schemas))
+    .flatMap(([_, module]) => {
+      const documentOptions = {
+        asPath: false,
+        baseUrl: ''
+      }
+
+      // TODO: what assumptions are made here?
+      if (module.info !== undefined) {
+        documentOptions.baseUrl = documentOptions.asPath ? '../' : './'
+      } else {
+        documentOptions.baseUrl = documentOptions.asPath ? '../../' : './'
+      }
+
+      const templateKey = module.info !== undefined ? 'index.md': 'schema.md'
+      const template = templates[templateKey]
+      const macrofied = insertMacros(template, module, templates, schemas, documentOptions, version)
+      const fileToWrite = path.join(
+        outputFolder,
+        getDirectory(module, documentOptions.asPath),
+        getFilename(module, documentOptions.asPath) + '.md'
+      )
+      return fsWriteFile(fileToWrite, macrofied)
+        .map(_ => fileToWrite)
+    })
+
+  return clearDirectory(outputFolder)
+    .tap(_ => logSuccess(`Removed ${outputFolder}`))
+    .flatMap(fsMkDirP(path.join(outputFolder, 'schemas')))
+    .flatMap(copyReadMe)
+    .tap(_ => logSuccess(`Created ${outputFolder}`))
+    .tap(_ => logSuccess(`Created index.md`))
+    // This is basically a liftA4. This "lifts" a piece of synchronous data, the `insertMacros` function, indirectly through the `generateDocs` function,
+    // into the context of 4 (A4 "arity 4") other pieces of asynchronous data: combinedTemplates, localModules, combinedSchemas, and loadVersion.
+    .flatMap(_ => combinedTemplates
+      .map(generateDocs)
+      .flatMap(fnWithTemplates => localModules(modulesFolder, markdownFolder)
+        .map(fnWithTemplates)
+        .flatMap(fnWithModules => combinedSchemas
+          .map(fnWithModules)
+          .flatMap(fnWithSchemas => loadVersion(packageJsonFile).tap(v => logSuccess(`Generating docs for version ${v.readable}`)).flatMap(fnWithSchemas)))
+      )
+    )
+    .errors((err, push) => {
+      console.log(err)
+      push(null)
+    })
+    .tap(file => logSuccess(`Created module doc: ${file}`))
 }
 
 export default run

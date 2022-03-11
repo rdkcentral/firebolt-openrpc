@@ -30,36 +30,17 @@ import predicates from 'crocks/predicates/index.js'
 const { isObject, isArray, propEq, pathSatisfies } = predicates
 
 import { isExcludedMethod, isRPCOnlyMethod } from '../../shared/modules.mjs'
-import { getTemplate, getTemplateForMethod } from '../../shared/template.mjs'
+import { getTemplateForMethod } from '../../shared/template.mjs'
 import { getMethodSignatureParams } from '../../shared/javascript.mjs'
 
-const staticModules = []
-
-const aggregateMacros = {
-  exports: '',
-  mockImports: '',
-  mockObjects: ''
-}
-
-// overriden by /version.json
-const version = {
-  major: 0,
-  minor: 0,
-  patch: 0,
-  readable: 'v0.0.0'
-}
-
 // util for visually debugging crocks ADTs
-const inspector = obj => {
+const _inspector = obj => {
   if (obj.inspect) {
     console.log(obj.inspect())
   } else {
     console.log(obj)
   }
 }
-
-// Version MUST be global across all modules, it's set here
-const setVersion = v => Object.assign(version, v)
 
 // Maybe methods array of objects
 const getMethods = compose(
@@ -68,20 +49,11 @@ const getMethods = compose(
   getPath(['methods'])
 )
 
-const addStaticModule = (m) => { staticModules.push(m) }
-
 // Maybe an array of <key, value> from the schema
 const getSchemas = compose(
   map(Object.entries), // Maybe Array<Array<key, value>>
   chain(safe(isObject)), // Maybe Object
   getPath(['components', 'schemas']) // Maybe any
-)
-
-const isCallMetricsMethod = compose(
-  option(false),
-  map(_ => true),
-  chain(find(propEq('name', 'calls-metrics'))),
-  getPath(['tags'])
 )
 
 const isDeprecatedMethod = compose(
@@ -113,22 +85,10 @@ const isEventMethod = compose(
   getPath(['tags'])
 )
 
-const isPolymorphicReducer = compose(
-  option(false),
-  map(_ => true),
-  chain(find(propEq('name', 'polymorphic-reducer'))),
-  getPath(['tags'])
-)
-
 const methodHasExamples = compose(
   option(false),
   map(isObject),
   getPath(['examples', 0])
-)
-
-const getParamsFromMethod = compose(
-  option([]),
-  getPath(['params'])
 )
 
 const validEvent = and(
@@ -173,12 +133,6 @@ const props = compose(
   getMethods
 )
 
-const getMethodsThatCallMetrics = compose(
-  option([]),
-  map(filter(isCallMetricsMethod)),
-  getMethods
-)
-
 const getModuleName = json => {
   return json ? (json.title || (json.info ? json.info.title : 'Unknown')) : 'Unknown'
 }
@@ -186,21 +140,22 @@ const getModuleName = json => {
 const makeEventName = x => x.name[2].toLowerCase() + x.name.substr(3) // onFooBar becomes fooBar
 
 //import { default as platform } from '../Platform/defaults'
-const generateAggregateMacros = obj => {
-  aggregateMacros.exports += `export { default as ${getModuleName(obj)} } from './${getModuleName(obj)}'\n`
-  aggregateMacros.mockImports += `import { default as ${getModuleName(obj).toLowerCase()} } from '../${getModuleName(obj)}/defaults'\n`
-  aggregateMacros.mockObjects += `  ${getModuleName(obj).toLowerCase()}: ${getModuleName(obj).toLowerCase()},\n`
-}
+const generateAggregateMacros = (modules = {}) => Object.values(modules)
+  .reduce((acc, module) => {
+    acc.exports += `export { default as ${getModuleName(module)} } from './${getModuleName(module)}'\n`
+    acc.mockImports += `import { default as ${getModuleName(module).toLowerCase()} } from '../${getModuleName(module)}/defaults'\n`
+    acc.mockObjects += `  ${getModuleName(module).toLowerCase()}: ${getModuleName(module).toLowerCase()},\n`
+    return acc
+  }, {exports: '', mockImports: '', mockObjects: ''})
 
-const generateMacros = obj => {
-  generateAggregateMacros(obj)
+const generateMacros = templates => obj => {
   const imports = generateImports(obj)
   const initialization = generateInitialization(obj)
   const enums = generateEnums(obj)
   const events = generateEvents(obj)
-  const methods = generateMethods(obj)
+  const methods = generateMethods(obj, templates)
   const methodList = generateMethodList(obj)
-  const onlyEventMethods = generateMethods(obj, true)
+  const onlyEventMethods = generateMethods(obj, templates, true)
   const defaults = generateDefaults(obj)
   const macros = {
     imports,
@@ -212,22 +167,17 @@ const generateMacros = obj => {
     onlyEventMethods,
     defaults,
   }
-  return [macros, obj]
+  return macros
 }
 
-const insertAggregateMacrosOnly = fContents => {
-  let m
-  while (m = staticModules.shift()) {
-    generateAggregateMacros({ title: m })
-  }
-
+const insertAggregateMacrosOnly = (fContents = '', aggregateMacros = {}) => {
   fContents = fContents.replace(/[ \t]*\/\* \$\{EXPORTS\} \*\/[ \t]*\n/, aggregateMacros.exports)
   fContents = fContents.replace(/[ \t]*\/\* \$\{MOCK_IMPORTS\} \*\/[ \t]*\n/, aggregateMacros.mockImports)
   fContents = fContents.replace(/[ \t]*\/\* \$\{MOCK_OBJECTS\} \*\/[ \t]*\n/, aggregateMacros.mockObjects)
   return fContents
 }
 
-const insertMacros = ([file, fContents, macros, obj]) => {
+const insertMacros = (fContents = '', macros = {}, module = {}, version = {}) => {
   fContents = fContents.replace(/[ \t]*\/\* \$\{METHODS\} \*\/[ \t]*\n/, macros.methods)
   fContents = fContents.replace(/[ \t]*\/\* \$\{METHOD_LIST\} \*\/[ \t]*\n/, macros.methodList)
   fContents = fContents.replace(/[ \t]*\/\* \$\{ENUMS\} \*\/[ \t]*\n/, macros.enums)
@@ -236,9 +186,6 @@ const insertMacros = ([file, fContents, macros, obj]) => {
   fContents = fContents.replace(/[ \t]*\/\* \$\{INITIALIZATION\} \*\/[ \t]*\n/, macros.initialization)
   fContents = fContents.replace(/[ \t]*\/\* \$\{DEFAULTS\} \*\/[ \t]*\n/, macros.defaults)
   fContents = fContents.replace(/[ \t]*\/\* \$\{EVENT_METHODS\} \*\/[ \t]*\n/, macros.onlyEventMethods)
-
-  fContents = insertAggregateMacrosOnly(fContents)
-
   fContents = fContents.replace(/\$\{readable\}/g, version.readable)
   fContents = fContents.replace(/\$\{major\}/g, version.major)
   fContents = fContents.replace(/\$\{minor\}/g, version.minor)
@@ -254,10 +201,10 @@ const insertMacros = ([file, fContents, macros, obj]) => {
   
   // Here there be side-effects.
   exampleMatches.forEach((match) => {
-    fContents = fContents.replace(match[0], findCorrespondingMethodExample(getMethods(obj))(match))
+    fContents = fContents.replace(match[0], findCorrespondingMethodExample(getMethods(module))(match))
   })
 
-  return [file, fContents]
+  return fContents
 }
 
 const enumReducer = (acc, val, i, arr) => {
@@ -404,7 +351,7 @@ function generateMethodList(json = {}) {
   return result
 }
 
-function generateMethods(json = {}, onlyEvents = false) {
+function generateMethods(json = {}, templates = {}, onlyEvents = false) {
   const moduleName = getModuleName(json).toLowerCase()
   
   // Two arrays that represent two codegen flows
@@ -447,12 +394,12 @@ function generateMethods(json = {}, onlyEvents = false) {
       }
       const method = {
         name: methodObj.name,
-        params: getMethodSignatureParams(moduleName, methodObj, { isInterface: false })
+        params: getMethodSignatureParams(methodObj)
       }
 
-      let template = getTemplateForMethod(methodObj)
+      let template = getTemplateForMethod(methodObj, '.js', templates);
       if (isPropertyMethod(methodObj)) {
-        template = getTemplate('methods/polymorphic-property.js')
+        template = templates['methods/polymorphic-property.js']
       }
       const javascript = template.replace(/\$\{method\.name\}/g, method.name)
         .replace(/\$\{method\.params\}/g, method.params)
@@ -491,15 +438,10 @@ function clear(...args) {
   return nonEventMethodReducer.concat(eventMethodReducer)
 }
 
-const generateTopIndex = _ => {
-  modules
-}
-
 export {
-  setVersion,
-  addStaticModule,
   generateMacros,
   insertMacros,
+  generateAggregateMacros,
   insertAggregateMacrosOnly,
   generateEvents,
   generateDefaults,

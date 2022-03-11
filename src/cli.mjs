@@ -29,23 +29,24 @@ const shortHands = {
 }
 // Last 2 arguments are the defaults.
 const parsedArgs = nopt(knownOpts, shortHands, process.argv, 2)
+const signOff = () => console.log('This has been a presentation of Firebolt \u{1F525} \u{1F529}')
 
 const util = parsedArgs.task
 
 if (util === 'sdk') {
-    sdk(parsedArgs)
+    sdk(parsedArgs).done(signOff)
 }
 else if (util === 'docs') {
-    docs(parsedArgs)
+    docs(parsedArgs).done(signOff)
 }
 else if (util === 'validate') {
-    validate(parsedArgs)
+    validate(parsedArgs).done(signOff)
 }
 else if (util === 'openrpc') {
-    openrpc(parsedArgs)
+    openrpc(parsedArgs).done(signOff)
 }
 else if (util === 'declarations') {
-    declarations(parsedArgs)
+    declarations(parsedArgs).done(signOff)
 } else {
   console.log("Invalid build type")
 }

@@ -16,16 +16,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import h from 'highland'
-import { recursiveFileDirectoryList, isFile, loadVersion, logSuccess, logHeader } from '../shared/helpers.mjs'
-import { getModuleContent, getAllModules, addModule } from '../shared/modules.mjs'
-import { getSchemaContent, getExternalSchemas, addSchema } from '../shared/json-schema.mjs'
-import { setTemplate, setVersion, mergeSchemas, mergeMethods, updateSchemaUris, setOutput, writeOpenRPC } from './merge/index.mjs'
+import { loadVersion, logHeader, fsReadFile, combineStreamObjects, schemaFetcher, localModules, bufferToString, fsWriteFile, logSuccess, fsMkDirP } from '../shared/helpers.mjs'
 import path from 'path'
 import url from 'url'
-import { loadMarkdownContent } from '../shared/descriptions.mjs'
+import { getMethods, getSchemas } from '../shared/modules.mjs'
+import { getExternalSchemas } from '../shared/json-schema.mjs'
 
-const __dirname = url.fileURLToPath(new URL('.', import.meta.url))
 // destructure well-known cli args and alias to variables expected by script
 const run = ({
   source: srcFolderArg,
@@ -34,71 +30,79 @@ const run = ({
   output: outputArg
 }) => {
   // Important file/directory locations
-  const versionJson = path.join('package.json')
   const sharedSchemasFolder = sharedSchemasFolderArg
   const schemasFolder = path.join(srcFolderArg, 'schemas')
   const modulesFolder = path.join(srcFolderArg, 'modules')
   const markdownFolder = path.join(srcFolderArg, 'descriptions')
-  const template = path.join(templateArg)
-  const output = path.join(outputArg)
-  const getAllModulesStream = _ => h(getAllModules())
-  const renameMethods = module => module.methods && (module.methods.forEach(method => method.name = module.info.title.toLowerCase() + '.' + method.name))
-  const alphabeticalSorter = (a, b) => a.info.title > b.info.title ? 1 : b.info.title > a.info.title ? -1 : 0
-  /************************************************************************************************/
-  /******************************************** MAIN **********************************************/
-  /************************************************************************************************/
 
-  logHeader(` MERGING into: ${output}`)
+  logHeader(`MERGING into: ${outputArg}`)
 
-  // pass the output path to the merge module
-  setOutput(output)
+  const templateFile = fsReadFile(templateArg).map(bufferToString).map(JSON.parse)
+  const versionObj = loadVersion(path.join(srcFolderArg, '..', 'package.json'))
+  const combinedSchemas = combineStreamObjects(schemaFetcher(sharedSchemasFolder), schemaFetcher(schemasFolder))
+  const openRpcModules = localModules(modulesFolder, markdownFolder, false, false) // Applies transforms, allows modules with only private methods
 
-  // Load the OpenRPC template.json file
-  h.of(template)
-    .through(getSchemaContent)
-    .tap(setTemplate)
-    // Load all of the external markdown resources
-    .flatMap(_ => recursiveFileDirectoryList(markdownFolder).flatFilter(isFile))
-    .through(loadMarkdownContent)
-    .collect()
-    // Load all of the global Firebolt JSON-Schemas
-    .flatMap(_ => recursiveFileDirectoryList(sharedSchemasFolder).flatFilter(isFile))
-    .through(getSchemaContent)
-    .tap(addSchema)
-    .collect()
-    // Load all of the project Firebolt JSON-Schemas
-    .flatMap(_ => recursiveFileDirectoryList(schemasFolder).flatFilter(isFile))
-    .through(getSchemaContent)
-    .tap(addSchema)
-    .collect()
-    // Load all of the Firebolt OpenRPC modules
-    .flatMap(_ => recursiveFileDirectoryList(modulesFolder))
-    .through(getModuleContent)
-    .sortBy(alphabeticalSorter)
-    .tap(addModule)
-    .collect()
-    // Load the version.json file
-    .flatMap(_ => loadVersion(versionJson))
-    .tap(setVersion)
-    // Iterate through all modules
-    .flatMap(_ => getAllModulesStream())
-    // rename all methods to <module>.<method.name>
-    .tap(renameMethods)
-    // Merge stuff from each module
-    .tap(mergeMethods)
-    .tap(mergeSchemas)
-    // Get any external schemas the module needs
-    .map(getExternalSchemas)
-    // And merge them, too (Note: JSON-Schema's don't have them in the same place, so we're mocking an openrpc-like structure here...)
-    .tap(schemas => mergeSchemas( { components: { schemas: schemas } } ))
-    // Update the URIs to point to the new localized schemas
-    .map(updateSchemaUris)
-    .collect()
-    // Write it all to the output file
-    .flatMap(writeOpenRPC)
-    .done(() => {
-        logSuccess('Generated Firebolt OpenRPC document\n')
+  return fsMkDirP(path.dirname(outputArg))
+    .flatMap(_ => versionObj
+      .flatMap(version => templateFile
+        .flatMap(baseTemplate => combinedSchemas.flatMap(schemas => openRpcModules
+          .map(Object.values)
+          .flatten()
+          // Renaming module methods
+          .map(module => {
+            const renamed = getMethods(module).map(method => {
+              const { name, ...rest } = method
+              return {
+                name: module.info.title + '.' + method.name,
+                ...rest
+              }
+            })
+            module.methods = renamed
+            return module
+          })
+          // Sticking the methods and schemas in the template
+          .map(module => {
+              baseTemplate.methods.push(...module.methods) // methods added here
+
+              // Schemas from modules.
+              const moduleSchemas = getSchemas(module)
+                .reduce((acc, [key, schema]) => {
+                  acc[key.split('/').pop()] = schema
+                  return acc
+                }, {})
+              
+              // External schemas with additional fancying up.
+              const externalSchemas = Object.entries(getExternalSchemas(module, schemas))
+                .map(([k, v]) => {
+                  const pieces = k.split('/')
+                  const newKey = pieces[pieces.length - 1]
+                  return new Map([
+                    [newKey, v]
+                  ])
+                })
+                .reduce((acc, it) => {
+                  acc = Object.assign(acc, Object.fromEntries(it))
+                  return acc
+                }, {})
+
+              // Schemas getting added to template
+              baseTemplate.components.schemas = Object.assign(baseTemplate.components.schemas, moduleSchemas, externalSchemas)
+              baseTemplate.info.version = version.original // version from package.json
+              return baseTemplate
+          })
+        )
+      ))
+    )
+    .collect() // Drain all the asynchrony above.
+    // clean up $ref URIs still pointing to external stuff.
+    .map(thunk => {
+      const [openRpc, ..._rest] = thunk // Because thunk is an array of 1
+      const str = JSON.stringify(openRpc, null, '\t')
+      const patt = /https\:\/\/meta\.comcast\.com\/firebolt\/([a-zA-Z0-9]+)\#\/definitions/g
+      return str.replace(patt, '#/components/schemas')
     })
+    .flatMap(fileContents => fsWriteFile(outputArg, fileContents))
+    .tap(_ => logSuccess(`Wrote file ${outputArg}`))
 }
 
 export default run
