@@ -22,16 +22,18 @@ import safe from 'crocks/Maybe/safe.js'
 import find from 'crocks/Maybe/find.js'
 import getPath from 'crocks/Maybe/getPath.js'
 import pointfree from 'crocks/pointfree/index.js'
-const { chain, filter, option, map, reduce } = pointfree
+const { chain, filter, option, map, reduce, concat } = pointfree
 import logic from 'crocks/logic/index.js'
 const { and, not } = logic
 import isString from 'crocks/core/isString.js'
 import predicates from 'crocks/predicates/index.js'
-const { isObject, isArray, propEq, pathSatisfies } = predicates
+import isNil from 'crocks/core/isNil.js'
+const { isObject, isArray, propEq, pathSatisfies, propSatisfies } = predicates
 
 import { isExcludedMethod, isRPCOnlyMethod } from '../../shared/modules.mjs'
 import { getTemplateForMethod } from '../../shared/template.mjs'
 import { getMethodSignatureParams } from '../../shared/javascript.mjs'
+import isEmpty from 'crocks/core/isEmpty.js'
 
 // util for visually debugging crocks ADTs
 const _inspector = obj => {
@@ -73,9 +75,30 @@ const isPublicEventMethod = and(
   compose(
     option(false),
     map(_ => true),
-      chain(find(propEq('name', 'event'))),
+    chain(
+      find(
+        and(
+          propEq('name', 'event'),
+          propSatisfies('x-provides', isEmpty)
+        )
+      )
+    ),
     getPath(['tags'])
   )
+)
+
+const isProviderMethod = compose(
+  option(false),
+  map(_ => true),
+  chain(
+    find(
+      and(
+        propEq('name', 'event'),
+        propSatisfies('x-provides', not(isEmpty))
+      )
+    )
+  ),
+  getPath(['tags'])
 )
 
 const isEventMethod = compose(
@@ -120,6 +143,22 @@ const eventsOrEmptyArray = compose(
   getMethods
 )
 
+// Pick providers out of the methods array
+const providersOrEmptyArray = compose(
+  option([]),
+  map(filter(validEvent)),
+  // Maintain the side effect of process.exit here if someone is violating the rules
+  map(map(e => {
+    if (!e.name.match(/on[A-Z]/)) {
+      console.error(`ERROR: ${e.name} method is tagged as an event, but does not match the pattern "on[A-Z]"`)
+      process.exit(1) // Non-zero exit since we don't want to continue. Useful for CI/CD pipelines.
+    }
+    return e
+  })),
+  map(filter(isProviderMethod)),
+  getMethods
+)
+
 // Pick deprecated methods out of the methods array
 const deprecatedOrEmptyArray = compose(
   option([]),
@@ -138,6 +177,7 @@ const getModuleName = json => {
 }
 
 const makeEventName = x => x.name[2].toLowerCase() + x.name.substr(3) // onFooBar becomes fooBar
+const makeProviderMethod = x => x.name["onRequest".length].toLowerCase() + x.name.substr("onRequest".length + 1) // onRequestChallenge becomes challenge
 
 //import { default as platform } from '../Platform/defaults'
 const generateAggregateMacros = (modules = {}) => Object.values(modules)
@@ -288,9 +328,16 @@ function generateDefaults(json = {}) {
 const generateImports = json => {
   let imports = ''
 
-  if (eventsOrEmptyArray(json).length) {
+  if (eventsOrEmptyArray(json).length || providersOrEmptyArray(json).length) {
     imports += `import Events from '../Events'\n`
+  }
+
+  if (eventsOrEmptyArray(json).length) {
     imports += `import { registerEvents } from \'../Events\'\n`
+  }
+
+  if (providersOrEmptyArray(json).length) {
+    imports += `import { registerProviderMethods } from \'../Events\'\n`
   }
   if (props(json).length) {
     imports += `import Prop from '../Prop'\n`
@@ -299,7 +346,7 @@ const generateImports = json => {
   return imports
 }
 
-const generateInitialization = json => generateEventInitialization(json) + '\n' + generateDeprecatedInitialization(json)
+const generateInitialization = json => generateEventInitialization(json) + '\n' + generateProviderInitialization(json) + '\n' + generateDeprecatedInitialization(json)
 
 
 const generateEventInitialization = json => compose(
@@ -312,9 +359,24 @@ const generateEventInitialization = json => compose(
       return acc  
     }
     return `
-registerEvents('${getModuleName(json)}', Object.values(${JSON.stringify(acc)}))\n`
-    }, ''),
+    registerEvents('${getModuleName(json)}', Object.values(${JSON.stringify(acc)}))\n`
+  }, ''),
   eventsOrEmptyArray
+)(json)
+
+const generateProviderInitialization = json => compose(
+  reduce((acc, method, i, arr) => {
+    if (i === 0) {
+      acc = []
+    }
+    acc.push(makeProviderMethod(method))
+    if (i < arr.length-1) {
+      return acc  
+    }
+    return `
+    registerProviderMethods('${getModuleName(json)}', Object.values(${JSON.stringify(acc)}))\n`
+  }, ''),
+  providersOrEmptyArray
 )(json)
 
 const generateDeprecatedInitialization = json => compose(
@@ -342,13 +404,18 @@ function generateMethodList(json = {}) {
     getMethods
   )(json)
   const eventMethods = eventsOrEmptyArray(json)
+  const providerMethods = providersOrEmptyArray(json)
 
-  let result = notEventMethods.map(m => m.name).join(',\n  ')
+  const nem = notEventMethods.map(m => m.name)
+  let all = [...nem]
   if (eventMethods.length) {
-    result += ',\n  listen,\n  once,\n  clear'
+    all = all.concat(['listen', 'once', 'clear'])
+  }
+  if (providerMethods.length) {
+    all.push('provide')
   }
 
-  return result
+  return all.join(',\n  ')
 }
 
 function generateMethods(json = {}, templates = {}, onlyEvents = false) {
@@ -356,6 +423,7 @@ function generateMethods(json = {}, templates = {}, onlyEvents = false) {
   
   // Two arrays that represent two codegen flows
   const eventMethods = eventsOrEmptyArray(json)
+  const providerMethods = providersOrEmptyArray(json)
   const notEventMethods = compose(
     option([]),
     map(filter(not(isEventMethod))),
@@ -415,27 +483,36 @@ function generateMethods(json = {}, templates = {}, onlyEvents = false) {
       return acc
     }, '', notEventMethods)
 
-  // Code to generate for methods that ARE events
-  const eventMethodReducer = reduce((_) => {
-    return `
-function listen(...args) {
-  return Events.listen('${moduleName}', ...args)
-} 
+    // Code to generate for methods that ARE events
+    const eventMethodReducer = reduce((_) => {
+      return `
+  function listen(...args) {
+    return Events.listen('${moduleName}', ...args)
+  } 
+  
+  function once(...args) {
+    return Events.once('${moduleName}', ...args)
+  }
+  
+  function clear(...args) {
+    return Events.clear('${moduleName}', ...args)
+  }
+  `
+    }, '', eventMethods)
 
-function once(...args) {
-  return Events.once('${moduleName}', ...args)
-}
-
-function clear(...args) {
-  return Events.clear('${moduleName}', ...args)
-}
-`
-  }, '', eventMethods)
+    // Code to generate for methods that ARE events
+    const providerMethodReducer = reduce((_) => {
+      return `  
+  function provide(...args) {
+    return Events.provide('${moduleName}', ...args)
+  }
+  `
+    }, '', providerMethods)
   
   if (onlyEvents) {
-    return eventMethodReducer
+    return eventMethodReducer.concat(providerMethodReducer)
   }
-  return nonEventMethodReducer.concat(eventMethodReducer)
+  return nonEventMethodReducer.concat(eventMethodReducer.concat(providerMethodReducer))
 }
 
 export {

@@ -24,6 +24,10 @@ ${if.events}
  - [Events](#events)
 ${toc.events}
 ${end.if.events}
+${if.providers}
+ - [Providers](#providers)
+${toc.providers}
+${end.if.providers}
  - [Schemas](#schemas)
 ${toc.schemas}
 
@@ -58,6 +62,14 @@ For more information, follow the links under the "Documentation" column.
 ${additionalEvents}
 
 ${end.if.events}
+
+${if.providers}
+
+## Providers
+
+${providers}
+
+${end.if.providers}
 
 ${if.schemas}
 
