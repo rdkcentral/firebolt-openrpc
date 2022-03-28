@@ -31,7 +31,6 @@ const enabledEvents = {}
 
 const oncers = []
 const validEvents = {}
-const validProviderMethods = {}
 let transportInitialized = false
 
 export const emit = (module, event, value) => {
@@ -41,10 +40,6 @@ export const emit = (module, event, value) => {
 
 export const registerEvents = (module, events) => {
   validEvents[module.toLowerCase()] = events.concat()
-}
-
-export const registerProviderMethods = (module, methods) => {
-  validProviderMethods[module.toLowerCase()] = methods.concat()
 }
 
 const callCallbacks = (cbs, args) => {
@@ -123,12 +118,6 @@ const getListenArgs = function(...args) {
   return [module, event, callback]
 }
 
-const getProviderArgs = function(...args) {
-  const provider = args.pop()
-  const module = args[0].toLowerCase() || '*'
-  return [module, provider]
-}
-
 const once = function(...args) {
   const [module, event, callback] = getListenArgs(...args)
   return doListen(module, event, callback, true)
@@ -138,34 +127,6 @@ const listen = function(...args) {
   init()
   const [module, event, callback] = getListenArgs(...args)
   return doListen(module, event, callback, false)
-}
-
-const provide = function(...args) {
-  const [module, provider] = getProviderArgs(...args)
-  const methods = Object.getOwnPropertyNames(Object.getPrototypeOf(provider)).filter(item => {
-    return typeof provider[item] === 'function' && item != 'constructor'
-  })
-  const pms = validProviderMethods[module]
-  for (let i = 0; i < methods.length; i++) {
-    const name = methods[i].charAt(0).toUpperCase() + methods[i].slice(1);
-    if (pms.indexOf(methods[i]) !== -1) {
-      listen(module, 'request' + name, async function (req) {
-        const fn = provider[methods[i]]
-        const providerCallArgs = [req.request, resp => {
-          Transport.send(module, methods[i] + 'Response', {
-            correlationId: req.correlationId,
-            response: resp
-          })
-        }]
-        await fn.apply(provider, providerCallArgs)
-        Transport.send(module, methods[i] + 'Ready', {
-          correlationId: req.correlationId
-        })
-      })
-    } else {
-      console.warn("Ignoring unknown provider method '" + module + '.' + methods[i] + "'")
-    }
-  }
 }
 
 const init = () => {
@@ -179,7 +140,6 @@ const init = () => {
 export default {
   listen: listen,
   once: once,
-  provide,
   // TODO: clear needs to go through Transport Layer
   clear(moduleOrId = false, event = false) {
     if (typeof moduleOrId === 'number') {

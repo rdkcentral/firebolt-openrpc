@@ -32,7 +32,7 @@ var pkg = JSON.parse(fs.readFileSync('./package.json', 'utf8'));
 
 
 const PROVIDER_PREF = "onRequest"
-const PROVIDER_PREF_LEN = "onRequest".length
+const PROVIDER_PREF_LEN = PROVIDER_PREF.length
 
 /**
  * TODO

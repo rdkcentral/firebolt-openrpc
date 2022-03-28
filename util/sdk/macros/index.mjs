@@ -328,16 +328,14 @@ function generateDefaults(json = {}) {
 const generateImports = json => {
   let imports = ''
 
-  if (eventsOrEmptyArray(json).length || providersOrEmptyArray(json).length) {
-    imports += `import Events from '../Events'\n`
-  }
-
   if (eventsOrEmptyArray(json).length) {
+    imports += `import Events from '../Events'\n`
     imports += `import { registerEvents } from \'../Events\'\n`
   }
 
   if (providersOrEmptyArray(json).length) {
-    imports += `import { registerProviderMethods } from \'../Events\'\n`
+    imports += `import Capabilities from '../Capabilities'\n`
+    imports += `import { registerProviderMethods } from \'../Capabilities\'\n`
   }
   if (props(json).length) {
     imports += `import Prop from '../Prop'\n`
@@ -504,7 +502,7 @@ function generateMethods(json = {}, templates = {}, onlyEvents = false) {
     const providerMethodReducer = reduce((_) => {
       return `  
   function provide(...args) {
-    return Events.provide('${moduleName}', ...args)
+    return Capabilities.provide('${moduleName}', ...args)
   }
   `
     }, '', providerMethods)
