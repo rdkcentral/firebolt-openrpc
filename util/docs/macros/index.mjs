@@ -30,6 +30,10 @@ import safe from 'crocks/Maybe/safe.js'
 
 var pkg = JSON.parse(fs.readFileSync('./package.json', 'utf8'));
 
+
+const PROVIDER_PREF = "onRequest"
+const PROVIDER_PREF_LEN = PROVIDER_PREF.length
+
 /**
  * TODO
  * - add See also, or enum input for schemas (e.g. ProgramType used by Discovery)
@@ -49,9 +53,19 @@ const insertAggregateMacrosOnly = () => false
 const getTitle = json => json.info ? json.info.title : json.title
 
 const hasEventAttribute = (method, attribute) => method.tags && method.tags.find(t => t.name === 'event').hasOwnProperty(attribute)
+const hasNonEmptyEventAttribute = (method, attribute) => {
+    if (!method.tags) return false
+    const tag = method.tags.find(t => t.name === 'event')
+    return tag[attribute] && tag[attribute].length
+} 
 const isEvent = method => hasTag(method, 'event')
+const isProviderMethod = method => isEvent(method) && hasNonEmptyEventAttribute(method, 'x-provides')
 const isFullyDocumentedEvent = method => isEvent(method) && !hasTag('rpc-only') && !hasEventAttribute(method, 'x-alternative') && !hasEventAttribute(method, 'x-pulls-for')
 const isSetter = method => method.tags && method.tags.find(t => t['x-setter-for'])
+
+const providerMethodName = m => m.name.startsWith(PROVIDER_PREF) 
+    ? m.name[PROVIDER_PREF_LEN].toLowerCase() + m.name.substr(PROVIDER_PREF_LEN + 1)
+    : ''
 
 function hasTag (method, tag) {
     return method.tags && method.tags.filter(t => (t.name === tag)).length > 0
@@ -64,9 +78,12 @@ export {
 
 function insertMacros(data = '', moduleJson = {}, templates = {}, schemas = {}, options = {}, version = {}) {
     let match, regex
-    const methods = moduleJson.methods && moduleJson.methods.filter( method => !isEvent(method) && !isSetter(method) || isEvent(method) && isFullyDocumentedEvent(method))
-    const additionalEvents = moduleJson.methods && moduleJson.methods.filter( method => isEvent(method) && !isFullyDocumentedEvent(method))
-    const hasEvents = (additionalEvents && additionalEvents.length > 0) || (methods && methods.find(m => isEvent(m)))
+    const methods = moduleJson.methods && moduleJson.methods.filter( method => !isEvent(method) && !isSetter(method) || (isEvent(method) && isFullyDocumentedEvent(method)) || isProviderMethod(method))
+    const additionalEvents = moduleJson.methods && moduleJson.methods.filter( method => isEvent(method) && !isFullyDocumentedEvent(method) && !isProviderMethod(m))
+    
+    const hasEvents = (additionalEvents && additionalEvents.length > 0) || (methods && methods.find(m => isEvent(m) && !isProviderMethod(m)))
+    const providerMethods = moduleJson.methods && moduleJson.methods.filter( method => isProviderMethod(method))
+    const hasProviderMethods = (providerMethods && providerMethods.length > 0)
 
     if (methods) {
         methods.sort( (a, b) => (a.name.toLowerCase() > b.name.toLowerCase()) ? 1 : -1 )
@@ -74,11 +91,21 @@ function insertMacros(data = '', moduleJson = {}, templates = {}, schemas = {}, 
         if (match = data.match(regex)) {
             let events = ''
             methods.forEach(method => {
-                if (method.tags && method.tags.find(t => t.name === 'event')) {
+                if (isEvent(method) && !isProviderMethod(method)) {
                     events += insertMethodMacros(match[0], method, moduleJson, schemas, templates, options)
                 }
             })
             data = data.replace(regex, events)
+        }
+        regex = /\$\{providers\}/
+        if (match = data.match(regex)) {
+            let providers = ''
+            methods.forEach(method => {
+                if (isProviderMethod(method)) {
+                    providers += insertMethodMacros(match[0], method, moduleJson, schemas, templates, options)
+                }
+            })
+            data = data.replace(regex, providers)
         }
 
         if (hasEvents) {
@@ -115,6 +142,35 @@ function insertMacros(data = '', moduleJson = {}, templates = {}, schemas = {}, 
         }
         else {
             data = data.replace(/\$\{if\.events\}.*?\{end\.if\.events\}/gms, '')
+        }
+
+        if (hasProviderMethods) {
+
+            const providerTemplate = 
+            {
+                name: 'provide',
+                tags: [
+                ],
+                summary: 'Register a provider from this module',
+                params: [
+                    {
+                        name: 'provider',
+                        required: true,
+                        schema: {
+                            type: 'object'
+                        }
+                    }
+                ],
+                result: {
+                    name: 'success',
+                    schema: {
+                        const: 'null'
+                    }
+                }
+            }
+            methods.push(providerTemplate)
+        } else {
+            data = data.replace(/\$\{if\.providers\}.*?\{end\.if\.providers\}/gms, '')
         }
 
         regex = /\$\{methods\}/
@@ -201,7 +257,8 @@ function insertMacros(data = '', moduleJson = {}, templates = {}, schemas = {}, 
     if (methods) {
         data = data
             .replace(/\$\{toc.methods\}/g, methods.filter(m => !m.name.match(/^on[A-Z]/)).map(m => '    - [' + m.name + '](#' + m.name.toLowerCase() + ')').join('\n'))
-            .replace(/\$\{toc.events\}/g, methods.filter(m => m.name.match(/^on[A-Z]/)).map(m => '    - [' + m.name[2].toLowerCase() + m.name.substr(3) + '](#' + m.name.substr(2).toLowerCase() + ')').join('\n'))
+            .replace(/\$\{toc.events\}/g, methods.filter(m => isEvent(m) && !isProviderMethod(m)).map(m => '    - [' + m.name[2].toLowerCase() + m.name.substr(3) + '](#' + m.name.substr(2).toLowerCase() + ')').join('\n'))
+            .replace(/\$\{toc.providers\}/g, methods.filter(m => isProviderMethod(m)).map(m => '    - [' + providerMethodName(m) + '](#' + providerMethodName(m).toLowerCase() + ')').join('\n'))
     }
 
     data = data
@@ -226,6 +283,9 @@ function insertMethodMacros(data, method, moduleJson = {}, schemas = {}, templat
     let template = method.tags && method.tags.map(t=>t.name).find(t => Object.keys(templates).includes('methods/' + t + '.md')) || 'default'
     if (hasTag(method, 'property') || hasTag(method, 'property:readonly') || hasTag(method, 'property:immutable')) {
         template = 'polymorphic-property'
+    }
+    if (isProviderMethod(method)) {
+        template = 'provider'
     }
     data = templates[`methods/${template}.md`]
     data = iterateSignatures(data, method, moduleJson, schemas, templates, options)
@@ -263,6 +323,7 @@ function insertMethodMacros(data, method, moduleJson = {}, schemas = {}, templat
     method_data = method_data
         .replace(/\$\{method.name\}/g, method.name)
         .replace(/\$\{event.name\}/g, method.name.length > 3 ? method.name[2].toLowerCase() + method.name.substr(3): method.name)
+        .replace(/\$\{provider.name\}/g, providerMethodName(method))
         .replace(/\$\{event.javascript\}/g, method.tags && method.tags.find(t => t.name === 'rpc-only') ? '_NA_' : eventJsName)
         .replace(/\$\{event.rpc\}/g, method.name)
         .replace(/\$\{method.summary\}/g, method.summary)
@@ -598,12 +659,16 @@ function insertExampleMacros(data, method, moduleJson = {}, templates = {}) {
     method.examples && method.examples.forEach(example => {
         
         let params = example.params.map(p => JSON.stringify(p.value, null, '  ')).join(',\n').split('\n').join('\n' + ' '.repeat(moduleName.length + method.name.length + 2))
-        
+        const responseMethod = moduleJson.methods.find(m => m.name === providerMethodName(method) + 'Response')
+        const providerResponse = responseMethod && responseMethod.examples && responseMethod.examples.length ? responseMethod.examples[0] : ''
+        const providerRespParam = providerResponse.params && providerResponse.params.length ? providerResponse.params[0] : null
         let example_data = data
             .replace(/\$\{example.title\}/g, example.name)
             .replace(/\$\{example.javascript\}/g, generateJavaScriptExample(example, method, moduleJson, templates))
             .replace(/\$\{example.result\}/g, generateJavaScriptExampleResult(example))
             .replace(/\$\{example.params\}/g, params)
+            .replace(/\$\{example.providerMethod\}/g, providerMethodName(method))
+            .replace(/\$\{example.providerResponse\}/g, JSON.stringify(providerRespParam ? providerRespParam.value.response : null))
             .replace(/\$\{example.jsonrpc\}/g, generateRPCExample(example, method, moduleJson))
             .replace(/\$\{example.response\}/g, generateRPCExampleResult(example))
             .replace(/\$\{callback.jsonrpc\}/g, generateRPCCallbackExample(example, method, moduleJson))
@@ -684,8 +749,11 @@ function getExternalSchemaLinks(json = {}, schemas = {}, options = {}) {
 
 function generateJavaScriptExample(example, m, moduleJson = {}, templates = {}) {
     if (m.name.match(/^on[A-Z]/)) {
-        const eventExample = generateEventExample(m, moduleJson)
-        return eventExample
+        if (isProviderMethod(m)) {
+            return generateProviderExample(m, moduleJson, templates)
+        } else {
+            return generateEventExample(m, moduleJson)
+        }
     }
 
     const formatParams = (params, delimit, pretty = false) => params.map(p => JSON.stringify((example.params.find(x => x.name === p.name) || { value: null }).value, null, pretty ? '  ' : null)).join(delimit)
@@ -809,4 +877,8 @@ function generateEventExample(m, moduleJson = {}) {
     typescript += `  console.log(${m.result.name})\n`
     typescript += '})'
     return typescript
+}
+
+function generateProviderExample(m, moduleJson = {}, templates) {
+    return templates[`examples/provider.md`]
 }
