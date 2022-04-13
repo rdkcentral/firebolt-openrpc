@@ -56,7 +56,7 @@ const run = ({
   // Set up the ajv instance
   const ajv = new Ajv()
   addFormats(ajv)
-  const errorCounter = 0
+  let errorCounter = 0
 
   const combinedSchemas = combineStreamObjects(schemaFetcher(sharedSchemasFolder), schemaFetcher(schemasFolder), schemaFetcher(externalFolder))
   const allModules = localModules(modulesFolder, markdownFolder, disableTransforms, false) // Validate private modules

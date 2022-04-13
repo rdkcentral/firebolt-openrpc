@@ -75,7 +75,8 @@ const run = ({
     }
     else {
         const specification = JSON.parse(JSON.stringify(base))
-        specification.apis = sdks.methods.filter(hasAnyCapabilities).map( method => {
+        specification.apis = specification.apis || []
+        specification.apis.push(...sdks.methods.filter(hasAnyCapabilities).map( method => {
             const methodInfo = {
             "method": method.name,
             "type": "firebolt"
@@ -94,10 +95,19 @@ const run = ({
             }
 
             return methodInfo
-        })
+        }))
 
         const orderedCompare = (a, b, order) => order.indexOf(a) - order.indexOf(b)
-        const typeCompare = (a ,b) => orderedCompare(a.type, b.type, ['firebolt', 'external', 'w3c'])
+        const typeCompare = (a ,b) => {
+            if (a.isExtension && b.isExtension)
+                return 0
+            else if (a.isExtension)
+                return 1
+            else if (b.isExtension)
+                return -1
+            else
+                return 0
+        }
         
         const levelCompare = (a ,b) => {
             const result = orderedCompare(a.level, b.level, ['must', 'should', 'could'])
@@ -115,12 +125,21 @@ const run = ({
                 return levelCompare(a, b)
             }
             else {
-                result
+                return result
             }
         }
 
+        const methodCompare = (a, b) => {
+            const result = orderedCompare(a.type, b.type, ['firebolt', 'w3c', 'extension'])
+
+            if (result === 0)
+                return a.method.localeCompare(b.method)
+            else
+                return result
+        }
+
         specification.capabilities.sort( capabilityCompare )
-        specification.apis.sort( (a, b) => a.method.localeCompare(b.method) )
+        specification.apis.sort( methodCompare )
 
         fs.writeFileSync(output, JSON.stringify(specification, null, '\t'))
         console.log('\nWrote Firebolt Specification:\n' + output)

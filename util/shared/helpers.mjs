@@ -52,24 +52,29 @@ const logHeader = message => console.log(`\x1b[0m\x1b[7m\x1b[32m${message}\x1b[0
 // TODO: Convert to "stream" style fs functions
 const recursiveFileDirectoryList = dirOrFile => {
   return h((push, next) => {
-    fs.stat(dirOrFile, (err, stat) => {
-      if (!stat || stat.isFile()) {
-        stat && push(err, dirOrFile)
-        push(null, h.nil)
-      } else {
-        // Add the directory itself to the ouput stream.
-        push(null, dirOrFile)
-        fs.readdir(dirOrFile, (_err, files) => {
-          next(h(files)
-            .map(file => {
-              file = path.join(dirOrFile, file)
-              return recursiveFileDirectoryList(file)
-            })
-            .merge()
-          )
-        })
-      }
-    })
+    if (!dirOrFile) {
+      push(null, h.nil)
+    }
+    else {
+      fs.stat(dirOrFile, (err, stat) => {
+        if (!stat || stat.isFile()) {
+          stat && push(err, dirOrFile)
+          push(null, h.nil)
+        } else {
+          // Add the directory itself to the ouput stream.
+          push(null, dirOrFile)
+          fs.readdir(dirOrFile, (_err, files) => {
+            next(h(files)
+              .map(file => {
+                file = path.join(dirOrFile, file)
+                return recursiveFileDirectoryList(file)
+              })
+              .merge()
+            )
+          })
+        }
+      })
+    }
   })
 }
 
