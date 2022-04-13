@@ -101,11 +101,12 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
           structure.push(getSchemaShape(moduleJson, {type: type}, schemas, safeName(prop), {descriptions: descriptions, level: level+1}))
         })
       }
+      else if (json.additionalProperties && (typeof json.additionalProperties === 'object')) {
+        let type = getSchemaType(moduleJson, json.additionalProperties, schemas)
+        structure.push(getSchemaShape(moduleJson, {type: type}, schemas, '[property: string]', {descriptions: descriptions, level: level+1}))
+      }
       else if (json.patternProperties) {
-        Object.entries(json.patternProperties).forEach(([pattern, schema]) => {
-          let type = getSchemaType(moduleJson, schema, schemas)
-          structure.push(getSchemaShape(moduleJson, {type: type}, schemas, '\'/'+pattern+'/\'', {descriptions: descriptions, level: level+1}))
-        })        
+        throw "patternProperties are not supported by Firebolt"
       }
   
       structure.push('  '.repeat(level) + '}')

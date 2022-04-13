@@ -79,9 +79,9 @@ export {
 function insertMacros(data = '', moduleJson = {}, templates = {}, schemas = {}, options = {}, version = {}) {
     let match, regex
     const methods = moduleJson.methods && moduleJson.methods.filter( method => !isEvent(method) && !isSetter(method) || (isEvent(method) && isFullyDocumentedEvent(method)) || isProviderMethod(method))
-    const additionalEvents = moduleJson.methods && moduleJson.methods.filter( method => isEvent(method) && !isFullyDocumentedEvent(method) && !isProviderMethod(m))
+    const additionalEvents = moduleJson.methods && moduleJson.methods.filter( method => isEvent(method) && !isFullyDocumentedEvent(method) && !isProviderMethod(method))
     
-    const hasEvents = (additionalEvents && additionalEvents.length > 0) || (methods && methods.find(m => isEvent(m) && !isProviderMethod(m)))
+    const hasEvents = (additionalEvents && additionalEvents.length > 0) || (methods && methods.find(method => isEvent(method) && !isProviderMethod(method)))
     const providerMethods = moduleJson.methods && moduleJson.methods.filter( method => isProviderMethod(method))
     const hasProviderMethods = (providerMethods && providerMethods.length > 0)
 
