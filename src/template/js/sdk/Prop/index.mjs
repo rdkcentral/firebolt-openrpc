@@ -1,5 +1,5 @@
-import Transport from "../Transport"
-import Events from "../Events"
+import Transport from "../Transport/index.mjs"
+import Events from "../Events/index.mjs"
 
 function prop(moduleName, key, args, immutable, readonly) {
   if (args.length === 0) {

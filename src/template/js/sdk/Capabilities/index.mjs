@@ -16,8 +16,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import Transport from '../Transport'
-import Events from '../Events'
+import Transport from '../Transport/index.mjs'
+import Events from '../Events/index.mjs'
 const validProviderMethods = {}
 
 export const registerProviderMethods = (module, methods) => {

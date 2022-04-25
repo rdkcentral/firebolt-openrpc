@@ -16,12 +16,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import mock from './mock.js'
-import Queue from './queue.js'
-import Settings, { initSettings } from '../Settings/index.js'
-import LegacyTransport from './LegacyTransport.js'
-import win from '../Transport/global'
-import WebsocketTransport from './WebsocketTransport.js'
+import mock from './mock.mjs'
+import Queue from './queue.mjs'
+import Settings, { initSettings } from '../Settings/index.mjs'
+import LegacyTransport from './LegacyTransport.mjs'
+import win from '../Transport/global.mjs'
+import WebsocketTransport from './WebsocketTransport.mjs'
 
 const LEGACY_TRANSPORT_SERVICE_NAME = 'com.comcast.BridgeObject_1'
 let moduleInstance = null

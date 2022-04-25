@@ -18,8 +18,8 @@
 
 /* ${MOCK_IMPORTS} */
 
-import { default as win } from '../Transport/global'
-import Transport from './'
+import { default as win } from '../Transport/global.mjs'
+import Transport from './index.mjs'
 
 let listener
 export const setMockListener = func => { listener = func }

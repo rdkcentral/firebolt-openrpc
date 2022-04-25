@@ -78,7 +78,7 @@ const recursiveFileDirectoryList = dirOrFile => {
 // has the filepath and the contents of the file.
 // DOES NOT DEAL WITH ERRORS
 const loadFileContent = suffix => fileStream => fileStream
-  .filter(filepath => path.extname(filepath) === suffix)
+  .filter(filepath => ((path.extname(filepath) === suffix) || (suffix.includes && suffix.includes(path.extname(filepath)))))
   .flatMap(filepath => fsReadFile(filepath)
     .map(buf => [filepath, bufferToString(buf)]))
 

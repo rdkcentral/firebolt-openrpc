@@ -167,7 +167,9 @@ const getPath = (uri = '', moduleJson = {}, schemas = {}) => {
 const getExternalPath = (uri = '', schemas = {}, localize = true, replace = true) => {
   const [mainPath, subPath] = uri.split('#')
   const json = schemas[mainPath] || schemas[mainPath + '/']
-  const result = subPath ? getPathOr(null, subPath.slice(1).split('/'), json) : json
+  // copy to avoid side effects
+  const result = JSON.parse(JSON.stringify(subPath ? getPathOr(null, subPath.slice(1).split('/'), json) : json))
+
   if (localize) {
     result && localizeDependencies(result, json, schemas)
   }
@@ -322,10 +324,7 @@ const getExternalSchemas = (json = {}, schemas = {}) => {
       
       if (!resolvedSchema) {
         // rename it so the while loop ends
-        console.log("UNRESOLVED: " + ref + `(${json.info.title})`)
-        resolvedSchema = { "$REF": ref}
-        json = setPath(path, resolvedSchema, json)
-        unresolvedRefs.push([...path])
+        throw "Unresolved schema: " + ref
       }
       // replace the ref so we can recursively grab more refs if needed...
       else if (path.length) {

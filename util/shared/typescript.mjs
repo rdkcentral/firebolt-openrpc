@@ -40,6 +40,7 @@ function getMethodSignatureParams(module, method, schemas = {}) {
 const safeName = prop => prop.match(/[.+]/) ? '"' + prop + '"' : prop
 
 function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', options = {level: 0, descriptions: true}) {
+    json = JSON.parse(JSON.stringify(json))
     let level = options.level 
     let descriptions = options.descriptions
     let structure = []
@@ -88,7 +89,11 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
       else if (json.propertyNames && json.propertyNames.enum) {
         json.propertyNames.enum.forEach(prop => {
           let type = 'any'
-  
+
+          if (json.additionalProperties && (typeof json.additionalProperties === 'object')) {
+            type = getSchemaType(moduleJson, json.additionalProperties, schemas)
+          }          
+
           if (json.patternProperties) {
             Object.entries(json.patternProperties).forEach(([pattern, schema]) => {
               let regex = new RegExp(pattern)
@@ -123,6 +128,7 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
         union.title = json.title
       }
       delete union['$ref']
+
       return getSchemaShape(moduleJson, union, schemas, name, options)
     }
     else if (json.type || json.const) {

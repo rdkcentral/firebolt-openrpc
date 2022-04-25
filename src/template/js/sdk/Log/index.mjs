@@ -16,7 +16,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import Settings from '../Settings'
+import Settings from '../Settings/index.mjs'
 
 const prepLog = (type, args) => {
   const colors = {
