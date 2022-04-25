@@ -182,8 +182,8 @@ const makeProviderMethod = x => x.name["onRequest".length].toLowerCase() + x.nam
 //import { default as platform } from '../Platform/defaults'
 const generateAggregateMacros = (modules = {}) => Object.values(modules)
   .reduce((acc, module) => {
-    acc.exports += `export { default as ${getModuleName(module)} } from './${getModuleName(module)}'\n`
-    acc.mockImports += `import { default as ${getModuleName(module).toLowerCase()} } from '../${getModuleName(module)}/defaults'\n`
+    acc.exports += `export { default as ${getModuleName(module)} } from './${getModuleName(module)}/index.mjs'\n`
+    acc.mockImports += `import { default as ${getModuleName(module).toLowerCase()} } from '../${getModuleName(module)}/defaults.mjs'\n`
     acc.mockObjects += `  ${getModuleName(module).toLowerCase()}: ${getModuleName(module).toLowerCase()},\n`
     return acc
   }, {exports: '', mockImports: '', mockObjects: ''})
@@ -329,16 +329,16 @@ const generateImports = json => {
   let imports = ''
 
   if (eventsOrEmptyArray(json).length) {
-    imports += `import Events from '../Events'\n`
-    imports += `import { registerEvents } from \'../Events\'\n`
+    imports += `import Events from '../Events/index.mjs'\n`
+    imports += `import { registerEvents } from \'../Events/index.mjs\'\n`
   }
 
   if (providersOrEmptyArray(json).length) {
-    imports += `import Capabilities from '../Capabilities'\n`
-    imports += `import { registerProviderMethods } from \'../Capabilities\'\n`
+    imports += `import Capabilities from '../Capabilities/index.mjs'\n`
+    imports += `import { registerProviderMethods } from \'../Capabilities/index.mjs\'\n`
   }
   if (props(json).length) {
-    imports += `import Prop from '../Prop'\n`
+    imports += `import Prop from '../Prop/index.mjs'\n`
   }
 
   return imports
