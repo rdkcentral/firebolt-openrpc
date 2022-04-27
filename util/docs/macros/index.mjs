@@ -418,6 +418,7 @@ function generatePropertySignatures (m) {
 function iterateSignatures(data, method, moduleJson = {}, schemas = {}, templates = {}, options = {}) {
     // we're hacking the schema here... make a copy!
     method = JSON.parse(JSON.stringify(method))
+    const module = moduleJson.info.title
     let signatures = [method]
     if (hasTag(method, 'property') || hasTag(method, 'property:readonly') || hasTag(method, 'property:immutable')) {
         signatures = generatePropertySignatures(method)
@@ -789,7 +790,7 @@ function generateRPCExample(example, m, moduleJson = {}) {
         return generatePropertyChangedRPCExample(example, m, moduleJson)
     }
     else if (m.tags && m.tags.filter(t => (t.name === 'property-set')).length) {
-        return generatePropertySetRPCExample(example, m, moduleJson)
+        return generatePropertySetRPCExample(example, m, moduleJson.info.title)
     }
     let request = {
         "jsonrpc": "2.0",

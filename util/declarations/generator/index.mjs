@@ -220,12 +220,12 @@ const setter = (json, val, schemas = {}) => {
 
   acc += `
  *
- * @param {${getSchemaType(val.result.schema)}} value The new ${val.name} value.
+ * @param {${getSchemaType(json, val.result.schema, schemas)}} value The new ${val.name} value.
  */
 `
   const type = val.name[0].toUpperCase() + val.name.substr(1)
 
-  acc += `function ${val.name}(value: ${getSchemaType(val.result.schema)}): Promise<void>\n`
+  acc += `function ${val.name}(value: ${getSchemaType(json, val.result.schema, schemas)}): Promise<void>\n`
     
   return acc
 }

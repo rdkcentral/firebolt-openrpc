@@ -16,7 +16,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { fsWriteFile, logSuccess, fsMkDirP, logHeader, combineStreamObjects, schemaFetcher, localModules } from '../shared/helpers.mjs'
+import { fsWriteFile, logSuccess, fsMkDirP, logHeader, combineStreamObjects, schemaFetcher, localModules, trimPath } from '../shared/helpers.mjs'
 import { generateDeclarations } from './generator/index.mjs'
 import path from 'path'
 
@@ -55,7 +55,8 @@ const run = ({
       )
     )
     .tap(_ => {
-      logSuccess(`Wrote file: ${declarationsFile}`)
+      const filename = trimPath(declarationsFile)
+      logSuccess(`Wrote file: ${filename}`)
     })
 }
 
