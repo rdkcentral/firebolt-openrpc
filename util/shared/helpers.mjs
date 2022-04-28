@@ -130,11 +130,16 @@ const getLinkFromRef = (ref, schemas = {}, asPath) => path.join((asPath ? 'schem
 const fileCollectionReducer = (truncateBefore = '') => (acc = {}, payload = '') => {
   const [filepath, data] = payload
   if (truncateBefore !== '') {
-    const pieces = filepath.split(truncateBefore)
+    // If we can't find truncateBefore path, try backslashes in case windows.
+    // Probably a better way to do this with the path library, but this works.
+    let tb = filepath.indexOf(truncateBefore) !== -1 ? truncateBefore : truncateBefore.replace(/\//g, '\\')
+    const pieces = filepath.split(tb)
     const truncatedFilepath = pieces[1]
-    acc[truncatedFilepath] = data
+    if (truncatedFilepath) {
+      acc[truncatedFilepath.replace(/\\/g, '/')] = data
+    }
   } else {
-    acc[filepath] = data
+    acc[filepath.replace(/\\/g, '/')] = data
   }
   return acc
 }
