@@ -53,7 +53,7 @@ const run = ({
             const renamed = getMethods(module).map(method => {
               const { name, ...rest } = method
               return {
-                name: module.info.title + '.' + method.name,
+                name: module.info.title.toLowerCase() + '.' + method.name,
                 ...rest
               }
             })
