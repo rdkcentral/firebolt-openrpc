@@ -18,24 +18,42 @@
 
 import Transport from '../Transport/index.mjs'
 import Events from '../Events/index.mjs'
-const validProviderMethods = {}
 
-export const registerProviderMethods = (module, methods) => {
-  validProviderMethods[module.toLowerCase()] = methods.concat()
+const providerInterfaces = {}
+
+export const registerProviderInterface = (capability, module, methods) => {
+  if (providerInterfaces[capability]) {
+    throw `Capability ${capability} has multiple provider interfaces registered.`
+  }
+
+  methods.forEach(m => m.name = `${module}.${m.name}`)
+  providerInterfaces[capability] = methods.concat()
 }
 
-const getProviderArgs = function(...args) {
-  const provider = args.pop()
-  const module = args[0].toLowerCase() || '*'
-  return [module, provider]
-}
-
-const provide = function(...args) {
-  const [module, provider] = getProviderArgs(...args)
+const provide = function(capability, provider) {
   const methods = Object.getOwnPropertyNames(Object.getPrototypeOf(provider)).filter(item => {
     return typeof provider[item] === 'function' && item != 'constructor'
   })
-  const pms = validProviderMethods[module]
+
+  const iface = providerInterfaces[capability]
+
+  iface.forEach(imethod => {
+    const parts = imethod.name.split('.')
+    const method = parts.pop();
+    const module = parts.pop().toLowerCase();
+
+    const defined = !!methods.find(m => method) 
+
+    Events.listen(module, `request${method}`, async function (request) {
+      await provider[method].apply(provider, [
+        request,
+        response => {
+          Transport.send(module)
+        }
+      ])
+    })
+  })
+
   for (let i = 0; i < methods.length; i++) {
     const name = methods[i].charAt(0).toUpperCase() + methods[i].slice(1);
     if (pms.indexOf(methods[i]) !== -1) {

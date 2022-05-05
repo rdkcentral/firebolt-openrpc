@@ -30,7 +30,7 @@ import predicates from 'crocks/predicates/index.js'
 import isNil from 'crocks/core/isNil.js'
 const { isObject, isArray, propEq, pathSatisfies, propSatisfies } = predicates
 
-import { isExcludedMethod, isRPCOnlyMethod } from '../../shared/modules.mjs'
+import { isExcludedMethod, isRPCOnlyMethod, isProviderMethod } from '../../shared/modules.mjs'
 import { getTemplateForMethod } from '../../shared/template.mjs'
 import { getMethodSignatureParams } from '../../shared/javascript.mjs'
 import isEmpty from 'crocks/core/isEmpty.js'
@@ -58,6 +58,7 @@ const getSchemas = compose(
   getPath(['components', 'schemas']) // Maybe any
 )
 
+// TODO: import from shared/modules.mjs
 const isDeprecatedMethod = compose(
   option(false),
   map(_ => true),
@@ -65,6 +66,7 @@ const isDeprecatedMethod = compose(
   getPath(['tags'])
 )
 
+// TODO: import from shared/modules.mjs
 const isPublicEventMethod = and(
   compose(
     option(true),
@@ -87,20 +89,7 @@ const isPublicEventMethod = and(
   )
 )
 
-const isProviderMethod = compose(
-  option(false),
-  map(_ => true),
-  chain(
-    find(
-      and(
-        propEq('name', 'event'),
-        propSatisfies('x-provides', not(isEmpty))
-      )
-    )
-  ),
-  getPath(['tags'])
-)
-
+// TODO: import from shared/modules.mjs
 const isEventMethod = compose(
   option(false),
   map(_ => true),

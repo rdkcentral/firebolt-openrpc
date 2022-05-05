@@ -21,7 +21,7 @@ import fs from 'fs'
 import path from 'path'
 import getPathOr from 'crocks/helpers/getPathOr.js'
 import { getSchema } from './json-schema.mjs'
-import { generatePropertyEvents, generatePropertySetters, generatePolymorphicPullEvents } from '../shared/modules.mjs'
+import { generatePropertyEvents, generatePropertySetters, generatePolymorphicPullEvents, generateProviderMethods } from '../shared/modules.mjs'
 import { getExternalMarkdownPaths } from '../shared/json-schema.mjs'
 import or from 'crocks/logic/or.js'
 import not from 'crocks/logic/not.js'
@@ -197,6 +197,7 @@ const localModules = (modulesFolder = '', markdownFolder = '', disableTransforms
           .map(generatePropertyEvents)
           .map(generatePropertySetters)
           .map(generatePolymorphicPullEvents)
+          .map(generateProviderMethods)
       })
       .filter(or(not(isFlagSet), hasPublicMethods)) // allows the validator to validate private modules
       .sortBy(alphabeticalSorter)

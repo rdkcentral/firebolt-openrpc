@@ -24,10 +24,12 @@ import getPath from 'crocks/Maybe/getPath.js'
 import pointfree from 'crocks/pointfree/index.js'
 const { chain, filter, option, map } = pointfree
 import logic from 'crocks/logic/index.js'
-const { and } = logic
+import isEmpty from 'crocks/core/isEmpty.js'
+const { and, not } = logic
 import isString from 'crocks/core/isString.js'
 import predicates from 'crocks/predicates/index.js'
-const { isObject, isArray, propEq, pathSatisfies, hasProp } = predicates
+import { localizeDependencies } from './json-schema.mjs'
+const { isObject, isArray, propEq, pathSatisfies, hasProp, propSatisfies } = predicates
 
 // util for visually debugging crocks ADTs
 const inspector = obj => {
@@ -128,6 +130,20 @@ const isPolymorphicReducer = compose(
     chain(find(propEq('name', 'polymorphic-reducer'))),
     getPath(['tags'])
 )
+
+const isProviderMethod = compose(
+    option(false),
+    map(_ => true),
+    chain(
+      find(
+        and(
+          propEq('name', 'capabilities'),
+          propSatisfies('x-provides', not(isEmpty))
+        )
+      )
+    ),
+    getPath(['tags'])
+  )
 
 const hasTitle = compose(
     option(false),
@@ -303,6 +319,108 @@ const createSetterFromProperty = property => {
     return setter
 }
 
+const createReadyFromProvider = provider => {
+
+    if (provider.name.startsWith('onRequest')) {
+        const ready = JSON.parse(JSON.stringify(provider))
+        ready.name = ready.name.charAt(9).toLowerCase() + ready.name.substr(10) + 'Ready'
+        ready.summary = `Internal API for ${provider.name.substr(9)} Provider to notify when ready.`
+        const old_tags = ready.tags
+        ready.tags = [
+            {
+                'name': 'rpc-only',
+                'x-handshake-for': provider.name
+            }
+        ]
+
+        ready.params = []
+        ready.result = {
+            name: 'result',
+            schema: {
+                type: "null"
+            }
+        }
+
+        ready.examples = [
+            {
+                name: "Example",
+                params: [],
+                result: {
+                    name: "result",
+                    value: null
+                }
+            }
+        ]
+
+        return ready
+    }
+    else {
+        throw "Methods with the `x-provider` tag extension MUST start with 'onRequest'."
+    }
+}
+
+const createResponseFromProvider = (provider, json) => {
+
+    if (provider.name.startsWith('onRequest')) {
+        const response = JSON.parse(JSON.stringify(provider))
+        response.name = response.name.charAt(9).toLowerCase() + response.name.substr(10) + 'Response'
+        response.summary = `Internal API for ${provider.name.substr(9)} Provider to send back a response.`
+        const old_tags = response.tags
+        response.tags = [
+            {
+                'name': 'rpc-only',
+                'x-response-for': provider.name
+            }
+        ]
+
+        const paramExamples = []
+
+        if (provider.tags.find(t => t['x-response'])) {
+            response.params = [
+                {
+                    name: 'response',
+                    required: true,
+                    schema: provider.tags.find(t => t['x-response'])['x-response']
+                }
+            ]
+
+            const schema = localizeDependencies(provider.tags.find(t => t['x-response'])['x-response'], json)
+            paramExamples.push(... (schema.examples || []))
+            delete schema.examples
+        }
+        else {
+            response.params = []
+        }
+
+        response.result = {
+            name: 'result',
+            schema: {
+                type: 'null'
+            }
+        }
+
+        let n = 1
+        response.examples = paramExamples.map( param => ({
+            name: paramExamples.length === 1 ? "Example" : `Example #${n}`,
+            params: [
+                {
+                    name: 'response',
+                    value: param
+                }
+            ],
+            result: {
+                name: 'result',
+                value: null
+            }
+        }))
+
+        return response
+    }
+    else {
+        throw "Methods with the `x-provider` tag extension MUST start with 'onRequest'."
+    }
+}
+
 const generatePropertyEvents = json => {
     const properties = json.methods.filter( m => m.tags && m.tags.find( t => t.name == 'property')) || []
     const readonlies = json.methods.filter( m => m.tags && m.tags.find( t => t.name == 'property:readonly')) || []
@@ -325,6 +443,23 @@ const generatePolymorphicPullEvents = json => {
     const pushers = json.methods.filter( m => m.tags && m.tags.find( t => t.name == 'polymorphic-pull')) || []
 
     pushers.forEach(pusher => json.methods.push(createPullEventFromPush(pusher, json)))
+
+    return json
+}
+
+const generateProviderMethods = json => {
+    const providers = json.methods.filter( m => m.tags && m.tags.find( t => t.name == 'capabilities' && t['x-provides'])) || []
+
+    providers.forEach(provider => {
+        // only create the ready method for providers that require a handshake
+        if (provider.tags.find(t => t['x-handshake'])) {
+            json.methods.push(createReadyFromProvider(provider, json))
+        }
+    })
+
+    providers.forEach(provider => {
+        json.methods.push(createResponseFromProvider(provider, json))
+    })
 
     return json
 }
@@ -356,6 +491,7 @@ export {
     isPolymorphicPullMethod,
     isExcludedMethod,
     isRPCOnlyMethod,
+    isProviderMethod,
     hasExamples,
     hasTitle,
     getMethods,
@@ -369,4 +505,5 @@ export {
     generatePolymorphicPullEvents,
     generatePropertyEvents,
     generatePropertySetters,
+    generateProviderMethods
 }
