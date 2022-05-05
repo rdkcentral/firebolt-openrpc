@@ -59,7 +59,7 @@ const run = ({
     .concat(Object.entries(schemas))
     .flatMap(([_, module]) => {
       const documentOptions = {
-        asPath: false,
+        asPath: asPath,
         baseUrl: ''
       }
 
