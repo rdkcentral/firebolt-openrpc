@@ -146,7 +146,7 @@ export const validate = (json = {}, schemas = {}, ajvPackage = []) => {
               }
             }
           }
-          else {
+          else if (method.name !== 'rpc.discover') {
             valid = false
             errors.push({
               instancePath: `/methods/${i}/examples`,

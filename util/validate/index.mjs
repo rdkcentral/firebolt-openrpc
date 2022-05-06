@@ -120,6 +120,12 @@ const run = ({
         ajvPackage(ajv, jsonSchemaSpec) // Need to call this here for openrpc validation to work
         return combinedSchemas.flatMap(schemas => openRpc(jsonSchemaSpec)
           .flatMap(orSpec => validateSingleDocument(ajvPackage(ajv, orSpec))(schemas)(srcFolderArg)))
+          .tap(result => {
+            if (!result.valid) {
+              console.error(`\nExiting due to invalid document.\n`)
+              process.exit(-1)
+            }
+          })
       })
   }
 
@@ -134,7 +140,7 @@ const run = ({
             .collect() // collect them into an array
             .tap(invalidResults => {
               if (invalidResults.length > 0) {
-                console.error(`\nExiting with ${invalidResults.length} error${invalidResults.length === 1 ? '' : 's'}.\n`)
+                console.error(`\nExiting due to ${invalidResults.length} invalid document${invalidResults.length === 1 ? '' : 's'}.\n`)
                 process.exit(-1)
               }
             })
