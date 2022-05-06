@@ -47,6 +47,7 @@ const clearDirectory = dir => fsRemoveDirectory(dir, {recursive: true})
 const isFile = dir => fsStat(dir).map(statObj => statObj.isFile())
 
 const logSuccess = message => console.log(`\x1b[32m ✓ \x1b[0m\x1b[2m ${message}\x1b[0m`)
+const logError = message => console.log(`\x1b[31m ✗ \x1b[0m\x1b[2m ${message}\x1b[0m`)
 const logHeader = message => console.log(`\x1b[0m\x1b[7m\x1b[32m${message}\x1b[0m\n`)
 
 // TODO: Convert to "stream" style fs functions
@@ -222,6 +223,8 @@ const localModules = (modulesFolder = '', markdownFolder = '', disableTransforms
     .reduce({}, fileCollectionReducer('/modules/'))
   }
 
+  const trimPath = file => path.relative(process.cwd(), file)
+
 export {
   loadFilesIntoObject,
   schemaFetcher,
@@ -236,8 +239,10 @@ export {
   fsWriteFile,
   fsReadFile,
   logSuccess,
+  logError,
   logHeader,
   getFilename,
   getDirectory,
-  getLinkFromRef
+  getLinkFromRef,
+  trimPath
 }

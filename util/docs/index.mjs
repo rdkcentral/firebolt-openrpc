@@ -17,7 +17,7 @@
  */
 
 import h from 'highland'
-import { fsMkDirP, fsCopyFile, loadFilesIntoObject, combineStreamObjects, schemaFetcher, localModules, loadVersion } from '../shared/helpers.mjs'
+import { fsMkDirP, fsCopyFile, loadFilesIntoObject, combineStreamObjects, schemaFetcher, localModules, loadVersion, trimPath } from '../shared/helpers.mjs'
 import { clearDirectory, logSuccess, fsWriteFile } from '../shared/helpers.mjs'
 import { getDirectory, getFilename } from '../shared/helpers.mjs'
 import { insertMacros } from './macros/index.mjs'
@@ -83,10 +83,10 @@ const run = ({
     })
 
   return clearDirectory(outputFolder)
-    .tap(_ => logSuccess(`Removed ${outputFolder}`))
+    .tap(_ => logSuccess(`Removed ${trimPath(outputFolder)}`))
     .flatMap(fsMkDirP(path.join(outputFolder, 'schemas')))
     .flatMap(copyReadMe)
-    .tap(_ => logSuccess(`Created ${outputFolder}`))
+    .tap(_ => logSuccess(`Created ${trimPath(outputFolder)}`))
     .tap(_ => logSuccess(`Created index.md`))
     // This is basically a liftA4. This "lifts" a piece of synchronous data, the `insertMacros` function, indirectly through the `generateDocs` function,
     // into the context of 4 (A4 "arity 4") other pieces of asynchronous data: combinedTemplates, localModules, combinedSchemas, and loadVersion.
@@ -103,7 +103,10 @@ const run = ({
       console.log(err)
       push(null)
     })
-    .tap(file => logSuccess(`Created module doc: ${file}`))
+    .tap(file => {
+      const filename = trimPath(file, process.cwd())
+      logSuccess(`Created module doc: ${filename}`)
+    })
 }
 
 export default run

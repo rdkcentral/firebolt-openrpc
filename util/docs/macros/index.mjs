@@ -481,7 +481,7 @@ function iterateSignatures(data, method, moduleJson = {}, schemas = {}, template
             method.result.schema = possibleResults.find(s => s['$ref'] !== "https://meta.comcast.com/firebolt/types#/definitions/ListenResponse")
         }
         else {
-            console.log(`\nERROR: ${getTitle(module)}.${method.name} does not have two return types: both 'ListenResponse' and an event-specific payload\n`)
+            console.log(`\nERROR: ${getTitle(moduleJson.info.title)}.${method.name} does not have two return types: both 'ListenResponse' and an event-specific payload\n`)
             process.exit(1)
         }
     }
@@ -789,7 +789,7 @@ function generateRPCExample(example, m, moduleJson = {}) {
         return generatePropertyChangedRPCExample(example, m, moduleJson)
     }
     else if (m.tags && m.tags.filter(t => (t.name === 'property-set')).length) {
-        return generatePropertySetRPCExample(example, m, moduleJson)
+        return generatePropertySetRPCExample(example, m, moduleJson.info.title)
     }
     let request = {
         "jsonrpc": "2.0",

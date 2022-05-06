@@ -19,7 +19,7 @@
  */
 
 import h from 'highland'
-import { fsWriteFile, localModules, combineStreamObjects, schemaFetcher, loadFilesIntoObject, clearDirectory, fsMkDirP, logSuccess, logHeader, loadVersion } from '../shared/helpers.mjs'
+import { fsWriteFile, localModules, combineStreamObjects, schemaFetcher, loadFilesIntoObject, clearDirectory, fsMkDirP, logSuccess, logHeader, loadVersion, trimPath } from '../shared/helpers.mjs'
 import { insertMacros, insertAggregateMacrosOnly, generateMacros, generateAggregateMacros } from './macros/index.mjs'
 import path from 'path'
 
@@ -124,15 +124,15 @@ const run = ({
       })
       .map(([k, v]) => [path.join(outputFolderArg, k), v]) // <-- concat output folder arg with template path
       .tap(([file, _]) => {
-        logSuccess(`Creating file: ${file}`)
+        logSuccess(`Creating file: ${trimPath(file)}`)
       })
       .flatMap(([file, contents]) => fsMkDirP(path.dirname(file))
         .flatMap(_ => fsWriteFile(file, contents)))
   }
 
-  logHeader(`Generating SDK into: ${outputFolderArg}`)
+  logHeader(`Generating SDK into: ${trimPath(outputFolderArg)}`)
   return fsMkDirP(outputFolderArg)
-    .tap(_ => logSuccess(`Created folder: ${outputFolderArg}`))
+    .tap(_ => logSuccess(`Created folder: ${trimPath(outputFolderArg)}`))
     .flatMap(clearDirectory(outputFolderArg)
       .tap(_ => logSuccess("Cleared folder if it already existed."))
       .flatMap(_ => combinedSchemas
