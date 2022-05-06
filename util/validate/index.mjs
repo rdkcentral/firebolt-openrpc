@@ -56,7 +56,6 @@ const run = ({
   // Set up the ajv instance
   const ajv = new Ajv()
   addFormats(ajv)
-  let filesWithErrorCount = 0
 
   const combinedSchemas = combineStreamObjects(schemaFetcher(sharedSchemasFolder), schemaFetcher(schemasFolder), schemaFetcher(externalFolder))
   const allModules = localModules(modulesFolder, markdownFolder, disableTransforms, false) // Validate private modules
@@ -89,8 +88,6 @@ const run = ({
     if (result.valid) {
       logSuccess(`${moduleType}: ${result.title} is valid`)
     } else {
-      filesWithErrorCount++
-
       logError(`${moduleType}: ${result.title} failed validation with ${result.errors.length} errors:\n`)
 
       result.errors.forEach( error => {
@@ -133,11 +130,11 @@ const run = ({
         .flatMap(schemas => fn(schemas) // Schema validation occurs here, then...
           .concat(openRpc(jsonSchemaSpec)
             .flatMap(orSpec => validateModules(ajvPackage(ajv, orSpec))(schemas)))))) // ...module validation
-            .collect()
-            .tap(_ => {
-              if (filesWithErrorCount > 0) {
-                // new line for easy-reading
-                console.log()
+            .filter( result => !result.valid ) // check if any results are not valid
+            .collect() // collect them into an array
+            .tap(invalidResults => {
+              if (invalidResults.length > 0) {
+                console.error(`\nExiting with ${invalidResults.length} error${invalidResults.length === 1 ? '' : 's'}.\n`)
                 process.exit(-1)
               }
             })
