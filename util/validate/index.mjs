@@ -56,7 +56,6 @@ const run = ({
   // Set up the ajv instance
   const ajv = new Ajv()
   addFormats(ajv)
-  let filesWithErrorCount = 0
 
   const combinedSchemas = combineStreamObjects(schemaFetcher(sharedSchemasFolder), schemaFetcher(schemasFolder), schemaFetcher(externalFolder))
   const allModules = localModules(modulesFolder, markdownFolder, disableTransforms, false) // Validate private modules
@@ -89,12 +88,7 @@ const run = ({
     if (result.valid) {
       logSuccess(`${moduleType}: ${result.title} is valid`)
     } else {
-      filesWithErrorCount++
-
-      logError(`${moduleType}: ${result.title} failed validation with ${result.errors.length} errors:`)
-
-      // blank line for readablility
-      console.error()
+      logError(`${moduleType}: ${result.title} failed validation with ${result.errors.length} errors:\n`)
 
       result.errors.forEach( error => {
         displayError(error)
@@ -126,6 +120,12 @@ const run = ({
         ajvPackage(ajv, jsonSchemaSpec) // Need to call this here for openrpc validation to work
         return combinedSchemas.flatMap(schemas => openRpc(jsonSchemaSpec)
           .flatMap(orSpec => validateSingleDocument(ajvPackage(ajv, orSpec))(schemas)(srcFolderArg)))
+          .tap(result => {
+            if (!result.valid) {
+              console.error(`\nExiting due to invalid document.\n`)
+              process.exit(-1)
+            }
+          })
       })
   }
 
@@ -136,11 +136,11 @@ const run = ({
         .flatMap(schemas => fn(schemas) // Schema validation occurs here, then...
           .concat(openRpc(jsonSchemaSpec)
             .flatMap(orSpec => validateModules(ajvPackage(ajv, orSpec))(schemas)))))) // ...module validation
-            .collect()
-            .tap(_ => {
-              if (filesWithErrorCount > 0) {
-                // new line for easy-reading
-                console.log()
+            .filter( result => !result.valid ) // check if any results are not valid
+            .collect() // collect them into an array
+            .tap(invalidResults => {
+              if (invalidResults.length > 0) {
+                console.error(`\nExiting due to ${invalidResults.length} invalid document${invalidResults.length === 1 ? '' : 's'}.\n`)
                 process.exit(-1)
               }
             })

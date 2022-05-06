@@ -1,13 +1,13 @@
 {
   "name": "@firebolt-js/openrpc",
-  "version": "1.3.1-beta.1",
+  "version": "1.4.1",
   "description": "The Firebolt SDK Code & Doc Generator",
   "bin": {
     "firebolt-openrpc": "./src/cli.mjs"
   },
   "scripts": {
     "prepare": "npm run prepare:setup",
-    "prepare:setup": "mkdir -p ./dist/docs ./build/docs/markdown ./build/sdk/javascript/src",
+    "prepare:setup": "npx mkdirp ./dist/docs ./build/docs/markdown ./build/sdk/javascript/src",
     "test": "jest --config=jest.config.js --detectOpenHandles",
     "build": "npm run validate && npm run build:docs && npm run build:sdk",
     "validate": "node ./src/cli.mjs --task validate --source ./src --shared-schemas test/sharedSchemas && npm run build:openrpc && node ./src/cli.mjs --task validate --source ./dist --shared-schemas test/sharedSchemas",
@@ -48,6 +48,7 @@
     "deepmerge": "^4.2.2",
     "highland": "^2.13.5",
     "nopt": "^5.0.0",
-    "webpack": "^5.51.1"
+    "webpack": "^5.51.1",
+    "mkdirp": "^0.5.6"
   }
 }

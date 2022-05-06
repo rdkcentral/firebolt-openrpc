@@ -130,7 +130,7 @@ const run = ({
         .flatMap(_ => fsWriteFile(file, contents)))
   }
 
-  logHeader(`Generating SDK into: ${outputFolderArg}`)
+  logHeader(`Generating SDK into: ${trimPath(outputFolderArg)}`)
   return fsMkDirP(outputFolderArg)
     .tap(_ => logSuccess(`Created folder: ${trimPath(outputFolderArg)}`))
     .flatMap(clearDirectory(outputFolderArg)
