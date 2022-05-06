@@ -56,7 +56,6 @@ const run = ({
   // Set up the ajv instance
   const ajv = new Ajv()
   addFormats(ajv)
-  let filesWithErrorCount = 0
 
   const combinedSchemas = combineStreamObjects(schemaFetcher(sharedSchemasFolder), schemaFetcher(schemasFolder), schemaFetcher(externalFolder))
   const allModules = localModules(modulesFolder, markdownFolder, disableTransforms, false) // Validate private modules
@@ -101,20 +100,17 @@ const run = ({
 
   const validateSchemas = ajv => (schemas = {}) => h(Object.values(schemas))
     .map(module => validate(module, schemas, ajv))
-    .tap(result => filesWithErrorCount += result.valid ? 0 : 1)
     .tap(result => printResult(result, 'Schema'))
   
   const validateModules = ajv => (schemas = {}) => allModules
     .map(Object.values).flatten()
     .map(module => validate(module, schemas, ajv))
-    .tap(result => filesWithErrorCount += result.valid ? 0 : 1)
     .tap(result => printResult(result, 'Module'))
   
   const validateSingleDocument = ajv => (schemas = {}) => document => fsReadFile(document)
     .map(bufferToString)
     .map(JSON.parse)
     .map(module => validate(module, schemas, ajv, false))
-    .tap(result => filesWithErrorCount += result.valid ? 0 : 1)
     .tap(result => printResult(result, 'OpenRPC'))
 
   // If it's a single json file
@@ -138,8 +134,7 @@ const run = ({
             .collect() // collect them into an array
             .tap(invalidResults => {
               if (invalidResults.length > 0) {
-                // new line for easy-reading
-                console.error()
+                console.error(`\nExiting with ${invalidResults.length} error${invalidResults.length === 1 ? '' : 's'}.\n`)
                 process.exit(-1)
               }
             })
