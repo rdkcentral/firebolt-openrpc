@@ -84,7 +84,7 @@ const loadFileContent = suffix => fileStream => fileStream
     .map(buf => [filepath, bufferToString(buf)]))
 
 const jsonErrorHandler = filepath => (err, push) => {
-  console.error(`\u{1F494} Error: ${filepath}`)
+  console.error(`\n\u{1F494} Error: ${filepath}\n`)
   if (/JSON/.test(err.message)) {
     console.error('There was an error loading a .json file. Unable to continue.')
     console.error(err)
