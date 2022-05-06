@@ -223,7 +223,7 @@ const localModules = (modulesFolder = '', markdownFolder = '', disableTransforms
     .reduce({}, fileCollectionReducer('/modules/'))
   }
 
-  const trimPath = file => file.startsWith(process.cwd()) ? file.substr(process.cwd().length + 1) : file
+  const trimPath = file => path.relative(process.cwd(), file)
 
 export {
   loadFilesIntoObject,

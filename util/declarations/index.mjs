@@ -35,7 +35,7 @@ const run = ({
   const sharedSchemasFolder = sharedSchemasFolderArg
   const modulesFolder = path.join(source, 'modules')
   const markdownFolder = path.join(source, 'declarations')
-  logHeader(`Generating typescript declarations file: ${declarationsFile}`)
+  logHeader(`Generating typescript declarations file: ${trimPath(declarationsFile)}`)
   const combinedSchemas = combineStreamObjects(schemaFetcher(sharedSchemasFolder), schemaFetcher(schemasFolder))
   const allModules = localModules(modulesFolder, markdownFolder) // Default behavior. Transforms and no private modules
   return fsMkDirP(declarationsDir)

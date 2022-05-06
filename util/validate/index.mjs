@@ -91,10 +91,7 @@ const run = ({
     } else {
       filesWithErrorCount++
 
-      logError(`${moduleType}: ${result.title} failed validation with ${result.errors.length} errors:`)
-
-      // blank line for readablility
-      console.error()
+      logError(`${moduleType}: ${result.title} failed validation with ${result.errors.length} errors:\n`)
 
       result.errors.forEach( error => {
         displayError(error)

@@ -418,7 +418,6 @@ function generatePropertySignatures (m) {
 function iterateSignatures(data, method, moduleJson = {}, schemas = {}, templates = {}, options = {}) {
     // we're hacking the schema here... make a copy!
     method = JSON.parse(JSON.stringify(method))
-    const module = moduleJson.info.title
     let signatures = [method]
     if (hasTag(method, 'property') || hasTag(method, 'property:readonly') || hasTag(method, 'property:immutable')) {
         signatures = generatePropertySignatures(method)
@@ -482,7 +481,7 @@ function iterateSignatures(data, method, moduleJson = {}, schemas = {}, template
             method.result.schema = possibleResults.find(s => s['$ref'] !== "https://meta.comcast.com/firebolt/types#/definitions/ListenResponse")
         }
         else {
-            console.log(`\nERROR: ${getTitle(module)}.${method.name} does not have two return types: both 'ListenResponse' and an event-specific payload\n`)
+            console.log(`\nERROR: ${getTitle(moduleJson.info.title)}.${method.name} does not have two return types: both 'ListenResponse' and an event-specific payload\n`)
             process.exit(1)
         }
     }
