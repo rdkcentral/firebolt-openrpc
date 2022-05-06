@@ -1,4 +1,4 @@
-import Mock from "../Transport/mock.mjs"
+import Mock from "../Transport/MockTransport.mjs"
 
 const mocks = {}
 

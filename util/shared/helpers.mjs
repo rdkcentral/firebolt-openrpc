@@ -18,6 +18,7 @@
 
 import h from 'highland'
 import fs from 'fs'
+import fse from 'fs-extra'
 import path from 'path'
 import getPathOr from 'crocks/helpers/getPathOr.js'
 import { getSchema } from './json-schema.mjs'
@@ -35,14 +36,20 @@ const {
   stat
 } = fs
 
+const {
+  copy
+} = fse
+
 const fsStat = h.wrapCallback(stat)
 const fsCopyFile = h.wrapCallback(copyFile)
+const fsCopy = h.wrapCallback(copy)
 const fsMkDirP = h.wrapCallback((path, cb) => mkdir(path, { recursive: true }, cb))
 const fsRemoveDirectory = h.wrapCallback(rmdir)
 const fsWriteFile = h.wrapCallback(writeFile)
 const fsReadFile = h.wrapCallback(readFile)
 const bufferToString = buf => buf.toString()
 
+const copyDirectory = dir => h.wrapCallback(copy)
 const clearDirectory = dir => fsRemoveDirectory(dir, {recursive: true})
 const isFile = dir => fsStat(dir).map(statObj => statObj.isFile())
 
@@ -232,6 +239,7 @@ export {
   clearDirectory,
   loadVersion,
   fsMkDirP,
+  fsCopy,
   fsCopyFile,
   fsWriteFile,
   fsReadFile,
