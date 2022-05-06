@@ -85,7 +85,7 @@ const run = ({
       return orSpec
     })
 
-  const printResult = (result, moduleType, errors) => {
+  const printResult = (result, moduleType) => {
     if (result.valid) {
       logSuccess(`${moduleType}: ${result.title} is valid`)
     } else {
@@ -102,20 +102,20 @@ const run = ({
   const validateSchemas = ajv => (schemas = {}) => h(Object.values(schemas))
     .map(module => validate(module, schemas, ajv))
     .tap(result => filesWithErrorCount += result.valid ? 0 : 1)
-    .tap(result => printResult(result, 'Schema', filesWithErrorCount))
+    .tap(result => printResult(result, 'Schema'))
   
   const validateModules = ajv => (schemas = {}) => allModules
     .map(Object.values).flatten()
     .map(module => validate(module, schemas, ajv))
     .tap(result => filesWithErrorCount += result.valid ? 0 : 1)
-    .tap(result => printResult(result, 'Module', filesWithErrorCount))
+    .tap(result => printResult(result, 'Module'))
   
   const validateSingleDocument = ajv => (schemas = {}) => document => fsReadFile(document)
     .map(bufferToString)
     .map(JSON.parse)
     .map(module => validate(module, schemas, ajv, false))
     .tap(result => filesWithErrorCount += result.valid ? 0 : 1)
-    .tap(result => printResult(result, 'OpenRPC', filesWithErrorCount))
+    .tap(result => printResult(result, 'OpenRPC'))
 
   // If it's a single json file
   if (path.extname(srcFolderArg) === '.json') {
@@ -134,11 +134,12 @@ const run = ({
         .flatMap(schemas => fn(schemas) // Schema validation occurs here, then...
           .concat(openRpc(jsonSchemaSpec)
             .flatMap(orSpec => validateModules(ajvPackage(ajv, orSpec))(schemas)))))) // ...module validation
-            .collect()
-            .tap(_ => {
-              if (filesWithErrorCount > 0) {
+            .filter( result => !result.valid ) // check if any results are not valid
+            .collect() // collect them into an array
+            .tap(invalidResults => {
+              if (invalidResults.length > 0) {
                 // new line for easy-reading
-                console.log()
+                console.error()
                 process.exit(-1)
               }
             })
