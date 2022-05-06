@@ -17,8 +17,8 @@
  */
 
 import h from 'highland'
-import { logSuccess, logHeader, schemaFetcher, combineStreamObjects, localModules, bufferToString, fsReadFile, jsonErrorHandler } from '../shared/helpers.mjs'
-import { validate } from './validation/index.mjs'
+import { logSuccess, logHeader, schemaFetcher, combineStreamObjects, localModules, bufferToString, fsReadFile, jsonErrorHandler, logError } from '../shared/helpers.mjs'
+import { displayError, validate } from './validation/index.mjs'
 import path from 'path'
 import https from 'https'
 
@@ -89,8 +89,11 @@ const run = ({
     if (result.valid) {
       logSuccess(`${moduleType}: ${result.title} is valid`)
     } else {
-      console.error(result)
-      console.error(`\nERROR, ${moduleType}: ${result.title} failed validation. There are ${errors} other errors`)
+      logError(`${moduleType}: ${result.title} failed validation with ${result.errors.length} errors:\n`)
+
+      result.errors.forEach( error => {
+        displayError(error)
+      })
     }
   }
 
@@ -131,6 +134,14 @@ const run = ({
         .flatMap(schemas => fn(schemas) // Schema validation occurs here, then...
           .concat(openRpc(jsonSchemaSpec)
             .flatMap(orSpec => validateModules(ajvPackage(ajv, orSpec))(schemas)))))) // ...module validation
+            .collect()
+            .tap(_ => {
+              if (filesWithErrorCount > 0) {
+                // new line for easy-reading
+                console.log()
+                process.exit(-1)
+              }
+            })
 }
 
 export default run
