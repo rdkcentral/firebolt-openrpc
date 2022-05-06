@@ -56,7 +56,7 @@ const run = ({
   // Set up the ajv instance
   const ajv = new Ajv()
   addFormats(ajv)
-  let errorCounter = 0
+  let filesWithErrorCount = 0
 
   const combinedSchemas = combineStreamObjects(schemaFetcher(sharedSchemasFolder), schemaFetcher(schemasFolder), schemaFetcher(externalFolder))
   const allModules = localModules(modulesFolder, markdownFolder, disableTransforms, false) // Validate private modules
@@ -85,13 +85,12 @@ const run = ({
       return orSpec
     })
 
-  const printResult = (result, moduleType) => {
+  const printResult = (result, moduleType, errors) => {
     if (result.valid) {
       logSuccess(`${moduleType}: ${result.title} is valid`)
     } else {
-      errorCounter++
       console.error(result)
-      console.error(`\nERROR, ${moduleType}: ${result.title} failed validation. There are ${errorCounter} other errors`)
+      console.error(`\nERROR, ${moduleType}: ${result.title} failed validation. There are ${errors} other errors`)
     }
   }
 
@@ -99,18 +98,21 @@ const run = ({
 
   const validateSchemas = ajv => (schemas = {}) => h(Object.values(schemas))
     .map(module => validate(module, schemas, ajv))
-    .tap(result => printResult(result, 'Schema'))
+    .tap(result => filesWithErrorCount += result.valid ? 0 : 1)
+    .tap(result => printResult(result, 'Schema', filesWithErrorCount))
   
   const validateModules = ajv => (schemas = {}) => allModules
     .map(Object.values).flatten()
     .map(module => validate(module, schemas, ajv))
-    .tap(result => printResult(result, 'Module'))
+    .tap(result => filesWithErrorCount += result.valid ? 0 : 1)
+    .tap(result => printResult(result, 'Module', filesWithErrorCount))
   
   const validateSingleDocument = ajv => (schemas = {}) => document => fsReadFile(document)
     .map(bufferToString)
     .map(JSON.parse)
     .map(module => validate(module, schemas, ajv, false))
-    .tap(result => printResult(result, 'OpenRPC'))
+    .tap(result => filesWithErrorCount += result.valid ? 0 : 1)
+    .tap(result => printResult(result, 'OpenRPC', filesWithErrorCount))
 
   // If it's a single json file
   if (path.extname(srcFolderArg) === '.json') {
