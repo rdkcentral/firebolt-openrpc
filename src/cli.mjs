@@ -29,7 +29,7 @@ const shortHands = {
 }
 // Last 2 arguments are the defaults.
 const parsedArgs = nopt(knownOpts, shortHands, process.argv, 2)
-const signOff = () => console.log('This has been a presentation of Firebolt \u{1F525} \u{1F529}')
+const signOff = () => console.log('\nThis has been a presentation of \x1b[38;5;202mFirebolt\x1b[0m \u{1F525} \u{1F529}\n')
 
 const util = parsedArgs.task
 
