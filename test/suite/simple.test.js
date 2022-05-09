@@ -16,8 +16,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { Simple } from '../../build/sdk/javascript/src/sdk.mjs'
 import Setup from '../Setup'
-import { Simple } from '../../dist/sdk.js'
 import { expect } from '@jest/globals';
 
 test('Basic', () => {
