@@ -28,7 +28,7 @@ import isEmpty from 'crocks/core/isEmpty.js'
 const { and, not } = logic
 import isString from 'crocks/core/isString.js'
 import predicates from 'crocks/predicates/index.js'
-import { localizeDependencies } from './json-schema.mjs'
+import { isNull, localizeDependencies } from './json-schema.mjs'
 const { isObject, isArray, propEq, pathSatisfies, hasProp, propSatisfies } = predicates
 
 // util for visually debugging crocks ADTs
@@ -161,6 +161,23 @@ const getParamsFromMethod = compose(
     option([]),
     getPath(['params'])
 )
+
+const getPayloadFromEvent = (event, json, schemas = {}) => {
+    return localizeDependencies((event.result.schema.anyOf || event.result.schema.oneOf).find(schema => !(schema['$ref'] === undefined || schema['$ref'].endsWith('/ListenResponse'))), json, schemas)
+}
+
+const providerHasNoParameters = (schema) => {
+    if (schema.allOf || schema.oneOf) {
+        return !!(schema.allOf || schema.oneOf).find(schema => providerHasNoParameters(schema))
+    }
+    else if (schema.properties && schema.properties.parameters) {
+        return isNull(schema.properties.parameters)
+    }
+    else {
+        console.dir(schema, {depth: 10})
+        throw "Invalid ProviderRequest"
+    }
+}
 
 const validEvent = and(
     pathSatisfies(['name'], isString),
@@ -501,9 +518,11 @@ export {
     getPublicEvents,
     getSchemas,
     getParamsFromMethod,
+    getPayloadFromEvent,
     getPathFromModule,
     generatePolymorphicPullEvents,
     generatePropertyEvents,
     generatePropertySetters,
-    generateProviderMethods
+    generateProviderMethods,
+    providerHasNoParameters
 }

@@ -31,48 +31,69 @@ export const registerProviderInterface = (capability, module, methods) => {
 }
 
 const provide = function(capability, provider) {
-  const methods = Object.getOwnPropertyNames(Object.getPrototypeOf(provider)).filter(item => {
-    return typeof provider[item] === 'function' && item != 'constructor'
-  })
-
+  const methods = []
   const iface = providerInterfaces[capability]
 
-  iface.forEach(imethod => {
-    const parts = imethod.name.split('.')
-    const method = parts.pop();
-    const module = parts.pop().toLowerCase();
+  if (provider.constructor.name !== 'Object') {
+    methods.push(...Object.getOwnPropertyNames(Object.getPrototypeOf(provider)).filter(item => typeof provider[item] === 'function' && item !== 'constructor'))
+  }
+  else {
+    methods.push(...Object.getOwnPropertyNames(provider).filter(item => typeof provider[item] === 'function'))
+  }
 
-    const defined = !!methods.find(m => method) 
+  if (iface) {
 
-    Events.listen(module, `request${method}`, async function (request) {
-      await provider[method].apply(provider, [
-        request,
-        response => {
-          Transport.send(module)
-        }
-      ])
-    })
-  })
+    // make sure every interfaced method exists in the providers methods list
+    const valid = iface.every(method => methods.find(m => m === method.name.split('.').pop()))
 
-  for (let i = 0; i < methods.length; i++) {
-    const name = methods[i].charAt(0).toUpperCase() + methods[i].slice(1);
-    if (pms.indexOf(methods[i]) !== -1) {
-      Events.listen(module, 'request' + name, async function (req) {
-        const fn = provider[methods[i]]
-        const providerCallArgs = [req.request, resp => {
-          Transport.send(module, methods[i] + 'Response', {
-            correlationId: req.correlationId,
-            response: resp
+    if (valid) {
+      iface.forEach(imethod => {
+        const parts = imethod.name.split('.')
+        const method = parts.pop();
+        const module = parts.pop().toLowerCase();
+
+        const defined = !!methods.find(m => m === method) 
+
+        if (defined) {
+          Events.listen(module, `request${method.charAt(0).toUpperCase() + method.substr(1)}`, function (request) {
+
+            const providerCallArgs = []
+            
+            // only pass in parameters object if schema exists
+            if (imethod.parameters) {
+              providerCallArgs.push(request.parameters)
+            }
+
+            // only pass in the ready handshake if needed
+            if (imethod.handshake) {
+              providerCallArgs.push( _ => {
+                Transport.send(module, `${method}Ready`, {
+                  correlationId: request.correlationId
+                })
+              })
+            }
+
+            const response = {
+              correlationId: request.correlationId
+            }
+
+            const result = provider[method].apply(provider, providerCallArgs).then(result => {
+              if (imethod.response) {
+                response.result = result
+              }
+  
+              Transport.send(module, `${method}Response`, response)
+            })
           })
-        }]
-        await fn.apply(provider, providerCallArgs)
-        Transport.send(module, methods[i] + 'Ready', {
-          correlationId: req.correlationId
-        })
+        }
       })
-    } else {
-      console.warn("Ignoring unknown provider method '" + module + '.' + methods[i] + "'")
     }
+    else {
+      throw `Provider that doesn not fully implement ${capability}:\n\t${iface.map(m=>m.name.split('.').pop()).join('\n\t')}`
+    }
+  }
+  else {
+    throw "Ignoring unknown provider capability."
   }
 }
 

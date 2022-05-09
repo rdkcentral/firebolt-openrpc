@@ -129,10 +129,13 @@ export const validate = (json = {}, schemas = {}, ajvPackage = []) => {
                   const param = localizeDependencies(p.schema, json, schemas)
                   param.title = method.name + ' param \'' + p.name + '\''
                   param.examples = method.examples.map(ex => (ex.params.find(x => x.name === p.name) || { value: null }).value)
-                  valid = valid && validateExamples(param, root, ajvPackage, `/methods/${i}/examples`, `/params/${j}`, json)
+                  const exampleParamsResult = validateExamples(param, root, ajvPackage, `/methods/${i}/examples`, `/params/${j}`, json)
+                  valid = valid && exampleParamsResult.valid
+                  if (!exampleParamsResult.valid) {
+                    errors.push(...exampleParamsResult.errors)
+                  }
                 }
               }
-
               // validate result schema/examples
               result.title = method.name + ' result'
               result.examples = examples
@@ -179,8 +182,6 @@ const validateExamples = (schema, root, ajvPackage = [], prefix = '', postfix = 
     schema.examples.forEach(example => {
       if (example && !localValidator(example)) {
         valid = false
-        console.error(`${root} - ${schema.title} example ${index} failed!`)
-
         localValidator.errors.forEach(error => {
           error.value = example
           error.instancePath = prefix + `/${index}` + error.instancePath + postfix
@@ -206,10 +207,6 @@ const validateExamples = (schema, root, ajvPackage = [], prefix = '', postfix = 
       message: 'must have at least one example'
     })
   }
-
-  errors.forEach(error => {
-    displayError(error)
-  })
 
   return { valid: valid, errors: errors }
 }

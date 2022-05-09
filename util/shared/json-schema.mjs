@@ -19,6 +19,10 @@
 import crocks from 'crocks'
 const { setPath, getPathOr } = crocks
 
+const isNull = schema => {
+  return (schema.type === 'null' || schema.const === null)
+}
+
 const getExternalMarkdownPaths = obj => {
   return objectPaths(obj)
     .filter(x => /\/\$ref$/.test(x))
@@ -365,6 +369,7 @@ export {
   getExternalPath,
   hasTitle,
   isDefinitionReferencedBySchema,
+  isNull,
   localizeDependencies,
   replaceUri,
   replaceRef,

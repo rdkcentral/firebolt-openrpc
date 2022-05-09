@@ -30,7 +30,7 @@ import predicates from 'crocks/predicates/index.js'
 import isNil from 'crocks/core/isNil.js'
 const { isObject, isArray, propEq, pathSatisfies, propSatisfies } = predicates
 
-import { isExcludedMethod, isRPCOnlyMethod, isProviderMethod } from '../../shared/modules.mjs'
+import { isExcludedMethod, isRPCOnlyMethod, isProviderMethod, getPayloadFromEvent, providerHasNoParameters } from '../../shared/modules.mjs'
 import { getTemplateForMethod } from '../../shared/template.mjs'
 import { getMethodSignatureParams } from '../../shared/javascript.mjs'
 import isEmpty from 'crocks/core/isEmpty.js'
@@ -129,6 +129,15 @@ const eventsOrEmptyArray = compose(
     return e
   })),
   map(filter(isPublicEventMethod)),
+  getMethods
+)
+
+// Find all provided capabilities
+const providedCapabilitiesOrEmptyArray = compose(
+  option([]),
+  map(caps => [... new Set(caps)]),
+  map(map(m => m.tags.find(t => t['x-provides'])['x-provides'])), // grab the capabilty it provides
+  map(filter(isProviderMethod)),
   getMethods
 )
 
@@ -324,8 +333,9 @@ const generateImports = json => {
 
   if (providersOrEmptyArray(json).length) {
     imports += `import Capabilities from '../Capabilities/index.mjs'\n`
-    imports += `import { registerProviderMethods } from \'../Capabilities/index.mjs\'\n`
+    imports += `import { registerProviderInterface } from \'../Capabilities/index.mjs\'\n`
   }
+
   if (props(json).length) {
     imports += `import Prop from '../Prop/index.mjs'\n`
   }
@@ -345,25 +355,26 @@ const generateEventInitialization = json => compose(
     if (i < arr.length-1) {
       return acc  
     }
-    return `
-    registerEvents('${getModuleName(json)}', Object.values(${JSON.stringify(acc)}))\n`
+    return `registerEvents('${getModuleName(json)}', Object.values(${JSON.stringify(acc)}))\n`
   }, ''),
   eventsOrEmptyArray
 )(json)
 
+const getProviderInterfaceNameFromRPC = name => name.charAt(9).toLowerCase() + name.substr(10) // Drop onRequest prefix
+
 const generateProviderInitialization = json => compose(
-  reduce((acc, method, i, arr) => {
-    if (i === 0) {
-      acc = []
-    }
-    acc.push(makeProviderMethod(method))
-    if (i < arr.length-1) {
-      return acc  
-    }
-    return `
-    registerProviderMethods('${getModuleName(json)}', Object.values(${JSON.stringify(acc)}))\n`
+  reduce((acc, capability, i, arr) => {
+    const methods = providersOrEmptyArray(json)
+      .filter(m => m.tags.find(t => t['x-provides'] === capability))
+      .map(m => ({
+        name: getProviderInterfaceNameFromRPC(m.name),
+        handshake: ((m.tags.find(t => t['x-handshake']) || { 'x-handshake': false })['x-handshake']),
+        response:  ((m.tags.find(t => t['x-response']) || { 'x-response': null })['x-response']) !== null,
+        parameters: !providerHasNoParameters(getPayloadFromEvent(m, json))
+      }))
+    return acc + `registerProviderInterface('${capability}', '${getModuleName(json)}', ${JSON.stringify(methods)})\n`
   }, ''),
-  providersOrEmptyArray
+  providedCapabilitiesOrEmptyArray
 )(json)
 
 const generateDeprecatedInitialization = json => compose(
@@ -490,8 +501,8 @@ function generateMethods(json = {}, templates = {}, onlyEvents = false) {
     // Code to generate for methods that ARE events
     const providerMethodReducer = reduce((_) => {
       return `  
-  function provide(...args) {
-    return Capabilities.provide('${moduleName}', ...args)
+  function provide(capability, provider) {
+    return Capabilities.provide(capability, provider)
   }
   `
     }, '', providerMethods)
