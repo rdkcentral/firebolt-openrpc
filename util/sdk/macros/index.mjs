@@ -181,7 +181,7 @@ const makeProviderMethod = x => x.name["onRequest".length].toLowerCase() + x.nam
 const generateAggregateMacros = (modules = {}) => Object.values(modules)
   .reduce((acc, module) => {
     acc.exports += `export { default as ${getModuleName(module)} } from './${getModuleName(module)}/index.mjs'\n`
-    acc.mockImports += `import { default as ${getModuleName(module).toLowerCase()} } from '../${getModuleName(module)}/defaults.mjs'\n`
+    acc.mockImports += `import { default as ${getModuleName(module).toLowerCase()} } from './${getModuleName(module)}/defaults.mjs'\n`
     acc.mockObjects += `  ${getModuleName(module).toLowerCase()}: ${getModuleName(module).toLowerCase()},\n`
     return acc
   }, {exports: '', mockImports: '', mockObjects: ''})

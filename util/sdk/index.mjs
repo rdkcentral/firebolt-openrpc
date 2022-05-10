@@ -19,7 +19,7 @@
  */
 
 import h from 'highland'
-import { fsWriteFile, localModules, combineStreamObjects, schemaFetcher, loadFilesIntoObject, clearDirectory, fsMkDirP, logSuccess, logHeader, loadVersion, trimPath } from '../shared/helpers.mjs'
+import { fsWriteFile, fsCopy, localModules, combineStreamObjects, schemaFetcher, loadFilesIntoObject, clearDirectory, fsMkDirP, logSuccess, logHeader, loadVersion, trimPath } from '../shared/helpers.mjs'
 import { insertMacros, insertAggregateMacrosOnly, generateMacros, generateAggregateMacros } from './macros/index.mjs'
 import path from 'path'
 
@@ -52,6 +52,7 @@ const run = ({
   const schemasFolder = path.join(srcFolderArg, 'schemas')
   const sdkTemplateFolder = path.join(templateFolderArg)
   const sharedSdkTemplateFolder = path.join(__dirname, '..', '..', 'src', 'template', 'js', 'sdk')
+  const staticSdkCodeFolder = path.join(__dirname, '..', '..', 'src', 'js', 'shared')
 
   const allModules = localModules(modulesFolder, markdownFolder)
   const combinedSchemas = combineStreamObjects(schemaFetcher(sharedSchemasFolder), schemaFetcher(schemasFolder)) // Used to 
@@ -135,6 +136,8 @@ const run = ({
     .tap(_ => logSuccess(`Created folder: ${trimPath(outputFolderArg)}`))
     .flatMap(clearDirectory(outputFolderArg)
       .tap(_ => logSuccess("Cleared folder if it already existed."))
+      .flatMap(_ => fsCopy(staticSdkCodeFolder, outputFolderArg))
+      .tap(_ => logSuccess("Copied static code into it."))
       .flatMap(_ => combinedSchemas
         .map(macroOrchestrator)
         .flatMap(fnWithSchemas => allModules

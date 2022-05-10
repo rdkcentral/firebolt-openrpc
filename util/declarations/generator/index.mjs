@@ -233,6 +233,7 @@ const setter = (json, val, schemas = {}) => {
 
 const generateMethods = (json, schemas = {}) => compose(
   reduce((acc, val, i, arr) => {
+
     if (val.summary) {
       acc += `/**
  * ${val.summary}`

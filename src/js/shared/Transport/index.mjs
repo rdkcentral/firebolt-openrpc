@@ -16,7 +16,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import mock from './mock.mjs'
+import mock from './MockTransport.mjs'
 import Queue from './queue.mjs'
 import Settings, { initSettings } from '../Settings/index.mjs'
 import LegacyTransport from './LegacyTransport.mjs'
