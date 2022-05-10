@@ -184,7 +184,7 @@ const validateExamples = (schema, root, ajvPackage = [], prefix = '', postfix = 
         valid = false
         localValidator.errors.forEach(error => {
           error.value = example
-          error.instancePath = prefix + `/${index}` + error.instancePath + postfix
+          error.instancePath = prefix + `/${index}` + postfix + error.instancePath
           error = addPrettyPath(error, json)
         })
 

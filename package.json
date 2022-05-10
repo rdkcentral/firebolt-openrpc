@@ -7,16 +7,16 @@
     "firebolt-openrpc": "./src/cli.mjs"
   },
   "scripts": {
-    "prepare": "npm run prepare:setup",
+    "prepare": "npm run prepare:setup && npm run dist",
     "prepare:setup": "npx mkdirp ./dist/docs ./build/docs/markdown ./build/sdk/javascript/src",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --config=jest.config.json --detectOpenHandles",
     "build": "npm run validate && npm run build:docs && npm run build:sdk",
-    "validate": "node ./src/cli.mjs --task validate --source ./src --shared-schemas test/sharedSchemas && npm run build:openrpc && node ./src/cli.mjs --task validate --source ./dist --shared-schemas test/sharedSchemas",
-    "build:openrpc": "node ./src/cli.mjs --task openrpc --source ./src --template ./src/template/openrpc/template.json --output ./dist/sdk-open-rpc.json --shared-schemas test/sharedSchemas",
+    "validate": "node ./src/cli.mjs --task validate --source ./src --shared-schemas node_modules/@firebolt-js/schemas/src/schemas/ && npm run build:openrpc && node ./src/cli.mjs --task validate --source ./build/sdk-open-rpc.json --shared-schemas node_modules/@firebolt-js/schemas/src/schemas/",
+    "build:openrpc": "node ./src/cli.mjs --task openrpc --source ./src --template ./src/template/openrpc/template.json --output ./build/sdk-open-rpc.json --shared-schemas node_modules/@firebolt-js/schemas/src/schemas/",
     "build:sdk": "node ./src/cli.mjs --task sdk --source ./src/ --template ./src/local/template/js --output ./build/sdk/javascript/src --shared-schemas node_modules/@firebolt-js/schemas/src/schemas",
     "build:docs": "node ./src/cli.mjs --task docs --source ./src/ --template ./src/template/markdown --output ./build/docs/markdown --shared-schemas test/sharedSchemas --as-path",
     "build:wiki": "node ./src/cli.mjs --task docs --source ./src/ --template ./src/template/markdown --output ./build/docs/markdown --shared-schemas test/sharedSchemas",
-    "dist": "npm run validate && npm run build:sdk && npm run build:docs && npm run pack && npm run test"
+    "dist": "npm run validate && npm run build:sdk && npm run build:docs && npm run test"
   },
   "repository": {
     "type": "git",
@@ -29,7 +29,6 @@
   "homepage": "https://github.com/rdkcentral/firebolt-core-sdk/blob/main/src/modules//ottx/firebolt-openrpc#readme",
   "devDependencies": {
     "jest": "^27.3.1",
-    "webpack-cli": "^4.8.0",
     "@firebolt-js/schemas": "../firebolt-schemas"
   },
   "keywords": [

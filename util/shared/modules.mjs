@@ -404,11 +404,33 @@ const createResponseFromProvider = (provider, json) => {
         ]
 
         const schema = localizeDependencies(provider.tags.find(t => t['x-response'])['x-response'], json)
-        paramExamples.push(... (schema.examples || []))
+        let n = 1
+        paramExamples.push(... (schema.examples.map( param => ({
+            name: paramExamples.length === 1 ? "Example" : `Example #${n++}`,
+            params: [
+                {
+                    name: 'response',
+                    value: param
+                }
+            ],
+            result: {
+                name: 'result',
+                value: null
+            }
+        }))  || []))
         delete schema.examples
     }
     else {
         response.params = []
+        paramExamples.push(
+            {
+                name: 'Example 1',
+                params: [],
+                result: {
+                    name: 'result',
+                    value: null
+                }
+            })
     }
 
     response.result = {
@@ -418,20 +440,7 @@ const createResponseFromProvider = (provider, json) => {
         }
     }
 
-    let n = 1
-    response.examples = paramExamples.map( param => ({
-        name: paramExamples.length === 1 ? "Example" : `Example #${n++}`,
-        params: [
-            {
-                name: 'response',
-                value: param
-            }
-        ],
-        result: {
-            name: 'result',
-            value: null
-        }
-    }))
+    response.examples = paramExamples
 
     return response
 }
