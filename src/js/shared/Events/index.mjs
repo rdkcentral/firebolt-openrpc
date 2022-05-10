@@ -17,7 +17,7 @@
  */
 
 import Transport from '../Transport/index.mjs'
-import { setMockListener } from '../Transport/mock.mjs'
+import { setMockListener } from '../Transport/MockTransport.mjs'
 
 let listenerId = 0
 
