@@ -41,60 +41,57 @@ const provide = function(capability, provider) {
     methods.push(...Object.getOwnPropertyNames(provider).filter(item => typeof provider[item] === 'function'))
   }
 
-  if (iface) {
+  // make sure every interfaced method exists in the providers methods list
+  const valid = iface.every(method => methods.find(m => m === method.name.split('.').pop()))
 
-    // make sure every interfaced method exists in the providers methods list
-    const valid = iface.every(method => methods.find(m => m === method.name.split('.').pop()))
-
-    if (valid) {
-      iface.forEach(imethod => {
-        const parts = imethod.name.split('.')
-        const method = parts.pop();
-        const module = parts.pop().toLowerCase();
-
-        const defined = !!methods.find(m => m === method) 
-
-        if (defined) {
-          Events.listen(module, `request${method.charAt(0).toUpperCase() + method.substr(1)}`, function (request) {
-
-            const providerCallArgs = []
-            
-            // only pass in parameters object if schema exists
-            if (imethod.parameters) {
-              providerCallArgs.push(request.parameters)
-            }
-
-            // only pass in the ready handshake if needed
-            if (imethod.handshake) {
-              providerCallArgs.push( _ => {
-                Transport.send(module, `${method}Ready`, {
-                  correlationId: request.correlationId
-                })
-              })
-            }
-
-            const response = {
-              correlationId: request.correlationId
-            }
-
-            const result = provider[method].apply(provider, providerCallArgs).then(result => {
-              if (imethod.response) {
-                response.result = result
-              }
-  
-              Transport.send(module, `${method}Response`, response)
-            })
-          })
-        }
-      })
-    }
-    else {
-      throw `Provider that doesn not fully implement ${capability}:\n\t${iface.map(m=>m.name.split('.').pop()).join('\n\t')}`
-    }
-  }
-  else {
+  if (!iface) {
     throw "Ignoring unknown provider capability."
   }
+
+  if (!valid) {
+    throw `Provider that does not fully implement ${capability}:\n\t${iface.map(m=>m.name.split('.').pop()).join('\n\t')}`
+  }
+
+  iface.forEach(imethod => {
+    const parts = imethod.name.split('.')
+    const method = parts.pop();
+    const module = parts.pop().toLowerCase();
+    const defined = !!methods.find(m => m === method) 
+
+    if (!defined) {
+      return // returns from this cycle of iface.forEach
+    }
+
+    Events.listen(module, `request${method.charAt(0).toUpperCase() + method.substr(1)}`, function (request) {
+      const providerCallArgs = []
+      
+      // only pass in parameters object if schema exists
+      if (imethod.parameters) {
+        providerCallArgs.push(request.parameters)
+      }
+
+      // only pass in the ready handshake if needed
+      if (imethod.handshake) {
+        providerCallArgs.push( _ => {
+          Transport.send(module, `${method}Ready`, {
+            correlationId: request.correlationId
+          })
+        })
+      }
+
+      const response = {
+        correlationId: request.correlationId
+      }
+
+      const result = provider[method].apply(provider, providerCallArgs).then(result => {
+        if (imethod.response) {
+          response.result = result
+        }
+
+        Transport.send(module, `${method}Response`, response)
+      })
+    })
+  })
 }
 
 export default {

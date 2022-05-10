@@ -338,104 +338,102 @@ const createSetterFromProperty = property => {
 
 const createReadyFromProvider = provider => {
 
-    if (provider.name.startsWith('onRequest')) {
-        const ready = JSON.parse(JSON.stringify(provider))
-        ready.name = ready.name.charAt(9).toLowerCase() + ready.name.substr(10) + 'Ready'
-        ready.summary = `Internal API for ${provider.name.substr(9)} Provider to notify when ready.`
-        const old_tags = ready.tags
-        ready.tags = [
-            {
-                'name': 'rpc-only',
-                'x-handshake-for': provider.name
-            }
-        ]
-
-        ready.params = []
-        ready.result = {
-            name: 'result',
-            schema: {
-                type: "null"
-            }
-        }
-
-        ready.examples = [
-            {
-                name: "Example",
-                params: [],
-                result: {
-                    name: "result",
-                    value: null
-                }
-            }
-        ]
-
-        return ready
-    }
-    else {
+    if (!provider.name.startsWith('onRequest')) {
         throw "Methods with the `x-provider` tag extension MUST start with 'onRequest'."
     }
+    
+    const ready = JSON.parse(JSON.stringify(provider))
+    ready.name = ready.name.charAt(9).toLowerCase() + ready.name.substr(10) + 'Ready'
+    ready.summary = `Internal API for ${provider.name.substr(9)} Provider to notify when ready.`
+    const old_tags = ready.tags
+    ready.tags = [
+        {
+            'name': 'rpc-only',
+            'x-handshake-for': provider.name
+        }
+    ]
+
+    ready.params = []
+    ready.result = {
+        name: 'result',
+        schema: {
+            type: "null"
+        }
+    }
+
+    ready.examples = [
+        {
+            name: "Example",
+            params: [],
+            result: {
+                name: "result",
+                value: null
+            }
+        }
+    ]
+
+    return ready
 }
 
 const createResponseFromProvider = (provider, json) => {
 
-    if (provider.name.startsWith('onRequest')) {
-        const response = JSON.parse(JSON.stringify(provider))
-        response.name = response.name.charAt(9).toLowerCase() + response.name.substr(10) + 'Response'
-        response.summary = `Internal API for ${provider.name.substr(9)} Provider to send back a response.`
-        const old_tags = response.tags
-        response.tags = [
+    if (!provider.name.startsWith('onRequest')) {
+        throw "Methods with the `x-provider` tag extension MUST start with 'onRequest'."
+    }
+
+    const response = JSON.parse(JSON.stringify(provider))
+    response.name = response.name.charAt(9).toLowerCase() + response.name.substr(10) + 'Response'
+    response.summary = `Internal API for ${provider.name.substr(9)} Provider to send back a response.`
+    const old_tags = response.tags
+    response.tags = [
+        {
+            'name': 'rpc-only',
+            'x-response-for': provider.name
+        }
+    ]
+
+    const paramExamples = []
+
+    if (provider.tags.find(t => t['x-response'])) {
+        response.params = [
             {
-                'name': 'rpc-only',
-                'x-response-for': provider.name
+                name: 'response',
+                required: true,
+                schema: provider.tags.find(t => t['x-response'])['x-response']
             }
         ]
 
-        const paramExamples = []
-
-        if (provider.tags.find(t => t['x-response'])) {
-            response.params = [
-                {
-                    name: 'response',
-                    required: true,
-                    schema: provider.tags.find(t => t['x-response'])['x-response']
-                }
-            ]
-
-            const schema = localizeDependencies(provider.tags.find(t => t['x-response'])['x-response'], json)
-            paramExamples.push(... (schema.examples || []))
-            delete schema.examples
-        }
-        else {
-            response.params = []
-        }
-
-        response.result = {
-            name: 'result',
-            schema: {
-                type: 'null'
-            }
-        }
-
-        let n = 1
-        response.examples = paramExamples.map( param => ({
-            name: paramExamples.length === 1 ? "Example" : `Example #${n}`,
-            params: [
-                {
-                    name: 'response',
-                    value: param
-                }
-            ],
-            result: {
-                name: 'result',
-                value: null
-            }
-        }))
-
-        return response
+        const schema = localizeDependencies(provider.tags.find(t => t['x-response'])['x-response'], json)
+        paramExamples.push(... (schema.examples || []))
+        delete schema.examples
     }
     else {
-        throw "Methods with the `x-provider` tag extension MUST start with 'onRequest'."
+        response.params = []
     }
+
+    response.result = {
+        name: 'result',
+        schema: {
+            type: 'null'
+        }
+    }
+
+    let n = 1
+    response.examples = paramExamples.map( param => ({
+        name: paramExamples.length === 1 ? "Example" : `Example #${n++}`,
+        params: [
+            {
+                name: 'response',
+                value: param
+            }
+        ],
+        result: {
+            name: 'result',
+            value: null
+        }
+    }))
+
+    return response
 }
 
 const generatePropertyEvents = json => {
