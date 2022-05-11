@@ -2,7 +2,8 @@
   "name": "@firebolt-js/openrpc",
   "version": "1.4.1",
   "description": "The Firebolt SDK Code & Doc Generator",
-  "entrypoint": "src/js/sdk/index.mjs",
+  "main": "src/js/sdk/index.mjs",
+  "type": "module",
   "bin": {
     "firebolt-openrpc": "./src/cli.mjs"
   },
@@ -11,9 +12,9 @@
     "prepare:setup": "npx mkdirp ./dist/docs ./build/docs/markdown ./build/sdk/javascript/src",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --config=jest.config.json --detectOpenHandles",
     "build": "npm run validate && npm run build:docs && npm run build:sdk",
-    "validate": "node ./src/cli.mjs --task validate --source ./src --shared-schemas node_modules/@firebolt-js/schemas/src/schemas/ && npm run build:openrpc && node ./src/cli.mjs --task validate --source ./build/sdk-open-rpc.json --shared-schemas node_modules/@firebolt-js/schemas/src/schemas/",
-    "build:openrpc": "node ./src/cli.mjs --task openrpc --source ./src --template ./src/template/openrpc/template.json --output ./build/sdk-open-rpc.json --shared-schemas node_modules/@firebolt-js/schemas/src/schemas/",
-    "build:sdk": "node ./src/cli.mjs --task sdk --source ./src/ --template ./src/local/template/js --output ./build/sdk/javascript/src --shared-schemas node_modules/@firebolt-js/schemas/src/schemas",
+    "validate": "node ./src/cli.mjs --task validate --source ./src --shared-schemas test/sharedSchemas && npm run build:openrpc && node ./src/cli.mjs --task validate --source ./build/sdk-open-rpc.json --shared-schemas test/sharedSchemas",
+    "build:openrpc": "node ./src/cli.mjs --task openrpc --source ./src --template ./src/template/openrpc/template.json --output ./dist/sdk-open-rpc.json --shared-schemas test/sharedSchemas",
+    "build:sdk": "node ./src/cli.mjs --task sdk --source ./src/ --template ./src/local/template/js --output ./build/sdk/javascript/src --shared-schemas test/sharedSchemas",
     "build:docs": "node ./src/cli.mjs --task docs --source ./src/ --template ./src/template/markdown --output ./build/docs/markdown --shared-schemas test/sharedSchemas --as-path",
     "build:wiki": "node ./src/cli.mjs --task docs --source ./src/ --template ./src/template/markdown --output ./build/docs/markdown --shared-schemas test/sharedSchemas",
     "dist": "npm run validate && npm run build:sdk && npm run build:docs && npm run test"
@@ -28,8 +29,7 @@
   },
   "homepage": "https://github.com/rdkcentral/firebolt-core-sdk/blob/main/src/modules//ottx/firebolt-openrpc#readme",
   "devDependencies": {
-    "jest": "^27.3.1",
-    "@firebolt-js/schemas": "../firebolt-schemas"
+    "jest": "^27.3.1"
   },
   "keywords": [
     "firebolt",
