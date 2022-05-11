@@ -41,12 +41,12 @@ const provide = function(capability, provider) {
     methods.push(...Object.getOwnPropertyNames(provider).filter(item => typeof provider[item] === 'function'))
   }
 
-  // make sure every interfaced method exists in the providers methods list
-  const valid = iface.every(method => methods.find(m => m === method.name.split('.').pop()))
-
   if (!iface) {
     throw "Ignoring unknown provider capability."
   }
+
+  // make sure every interfaced method exists in the providers methods list
+  const valid = iface.every(method => methods.find(m => m === method.name.split('.').pop()))
 
   if (!valid) {
     throw `Provider that does not fully implement ${capability}:\n\t${iface.map(m=>m.name.split('.').pop()).join('\n\t')}`
