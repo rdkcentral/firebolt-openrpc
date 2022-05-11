@@ -106,7 +106,7 @@ export const validate = (json = {}, schemas = {}, ajvPackage = []) => {
         let key = keys[i]
         const definition = localizeDependencies(getPathOr({}, ['definitions', key], json), json, schemas)
         if (Array.isArray(definition.examples)) {
-          const exampleResult = validateExamples(definition, root, ajvPackage, `/definitions/${key}`, ``, json)
+          const exampleResult = validateExamples(definition, root, ajvPackage, `/definitions/${key}/examples`, ``, json)
           valid = valid && exampleResult.valid
           if (!exampleResult.valid) {
             errors.push(...exampleResult.errors)
@@ -157,7 +157,7 @@ export const validate = (json = {}, schemas = {}, ajvPackage = []) => {
           }
         }
         catch (e) {
-          console.log('ERROR: ' + e)
+          throw e
         }
       }
     }
@@ -196,6 +196,7 @@ const validateExamples = (schema, root, ajvPackage = [], prefix = '', postfix = 
   catch (err) {
     valid = false
     console.error(`\n${err.message}\n`)
+    throw e
   }
 
   if (schema.examples.length === 0) {
