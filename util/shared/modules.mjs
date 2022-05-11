@@ -336,20 +336,20 @@ const createSetterFromProperty = property => {
     return setter
 }
 
-const createReadyFromProvider = provider => {
+const createFocusFromProvider = provider => {
 
     if (!provider.name.startsWith('onRequest')) {
         throw "Methods with the `x-provider` tag extension MUST start with 'onRequest'."
     }
     
     const ready = JSON.parse(JSON.stringify(provider))
-    ready.name = ready.name.charAt(9).toLowerCase() + ready.name.substr(10) + 'Ready'
-    ready.summary = `Internal API for ${provider.name.substr(9)} Provider to notify when ready.`
+    ready.name = ready.name.charAt(9).toLowerCase() + ready.name.substr(10) + 'Focus'
+    ready.summary = `Internal API for ${provider.name.substr(9)} Provider to request focus for UX purposes.`
     const old_tags = ready.tags
     ready.tags = [
         {
             'name': 'rpc-only',
-            'x-handshake-for': provider.name
+            'x-allow-focus-for': provider.name
         }
     ]
 
@@ -476,8 +476,8 @@ const generateProviderMethods = json => {
 
     providers.forEach(provider => {
         // only create the ready method for providers that require a handshake
-        if (provider.tags.find(t => t['x-handshake'])) {
-            json.methods.push(createReadyFromProvider(provider, json))
+        if (provider.tags.find(t => t['x-allow-focus'])) {
+            json.methods.push(createFocusFromProvider(provider, json))
         }
     })
 

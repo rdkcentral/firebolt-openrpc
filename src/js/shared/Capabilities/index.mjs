@@ -69,21 +69,38 @@ const provide = function(capability, provider) {
       if (imethod.parameters) {
         providerCallArgs.push(request.parameters)
       }
+      else {
+        providerCallArgs.push(null)
+      }
 
-      // only pass in the ready handshake if needed
-      if (imethod.handshake) {
-        providerCallArgs.push( _ => {
-          Transport.send(module, `${method}Ready`, {
+      const session = {
+        correlationId: () => {
+          return request.correlationId
+        }
+      }
+      
+      // only pass in the focus handshake if needed
+      if (imethod.focus) {
+        session.focus = () => {
+          Transport.send(module, `${method}Focus`, {
             correlationId: request.correlationId
           })
-        })
+        }
       }
+
+      providerCallArgs.push(session)
 
       const response = {
         correlationId: request.correlationId
       }
 
-      const result = provider[method].apply(provider, providerCallArgs).then(result => {
+      const result = provider[method].apply(provider, providerCallArgs)
+
+      if (!(result instanceof Promise)) {
+        throw `Provider method ${method} did not return a Promise.`
+      }
+      
+      result.then(result => {
         if (imethod.response) {
           response.result = result
         }

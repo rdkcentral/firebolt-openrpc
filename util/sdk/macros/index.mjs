@@ -368,7 +368,7 @@ const generateProviderInitialization = json => compose(
       .filter(m => m.tags.find(t => t['x-provides'] === capability))
       .map(m => ({
         name: getProviderInterfaceNameFromRPC(m.name),
-        handshake: ((m.tags.find(t => t['x-handshake']) || { 'x-handshake': false })['x-handshake']),
+        focus: ((m.tags.find(t => t['x-allow-focus']) || { 'x-allow-focus': false })['x-allow-focus']),
         response:  ((m.tags.find(t => t['x-response']) || { 'x-response': null })['x-response']) !== null,
         parameters: !providerHasNoParameters(getPayloadFromEvent(m, json))
       }))

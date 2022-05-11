@@ -81,8 +81,8 @@ test('Provider method request dispatched', () => {
     expect(providerMethodRequestDispatched).toBe(true)
 })
 
-test('Provide method called with zero args', () => {
-    expect(numberOfArgs).toBe(0)
+test('Provide method called with two args', () => {
+    expect(numberOfArgs).toBe(2)
 })
 
 test('Provider response used correct correlationId', () => {

@@ -23,6 +23,8 @@ let providerMethodNotificationRegistered = false
 let providerMethodRequestDispatched = false
 let providerMethodResultSent = false
 let numberOfArgs = -1
+let methodParameters
+let methodSession
 let value
 let responseCorrelationId
 
@@ -31,6 +33,8 @@ beforeAll( () => {
 
     class SimpleProvider {
         simpleMethod(...args) {
+            methodParameters = args[0]
+            methodSession = args[1]
             numberOfArgs = args.length
             return Promise.resolve('a value!')
         }
@@ -81,8 +85,20 @@ test('Provider method request dispatched', () => {
     expect(providerMethodRequestDispatched).toBe(true)
 })
 
-test('Provide method called with zero args', () => {
-    expect(numberOfArgs).toBe(0)
+test('Provide method called with two args', () => {
+    expect(numberOfArgs).toBe(2)
+})
+
+test('Provide method parameters arg is null', () => {
+    expect(methodParameters).toBe(null)
+})
+
+test('Provide method session arg has correlationId', () => {
+    expect(methodSession.correlationId()).toBe(123)
+})
+
+test('Provide method session arg DOES NOT have focus', () => {
+    expect(methodSession.hasOwnProperty('focus')).toBe(false)
 })
 
 test('Provider response used correct correlationId', () => {

@@ -23,6 +23,7 @@ let providerMethodNotificationRegistered = false
 let providerMethodRequestDispatched = false
 let providerMethodResultSent = false
 let providerMethodReadySent = false
+let methodSession
 let numberOfArgs = -1
 let value
 let responseCorrelationId
@@ -33,8 +34,9 @@ beforeAll( () => {
     class SimpleProvider {
         handshakeMethod(...args) {
             numberOfArgs = args.length
-            // call 'ready'
-            args[0]()
+            methodSession = args[1]
+            // call 'focus'
+            methodSession.focus()
             return Promise.resolve('a value!')
         }
     }
@@ -57,7 +59,7 @@ beforeAll( () => {
                 })
             })
         }
-        else if (json.method === 'provider.handshakeMethodReady') {
+        else if (json.method === 'provider.handshakeMethodFocus') {
             providerMethodReadySent = true
         }
         else if (json.method === 'provider.handshakeMethodResponse') {
@@ -91,8 +93,12 @@ test('Provider called ready method', () => {
     expect(providerMethodReadySent).toBe(true)
 })
 
-test('Provide method called with one arg (ready)', () => {
-    expect(numberOfArgs).toBe(1)
+test('Provide method called with two args (parameters, session)', () => {
+    expect(numberOfArgs).toBe(2)
+})
+
+test('Provide method session arg DOES have focus', () => {
+    expect(methodSession.hasOwnProperty('focus')).toBe(true)
 })
 
 test('Provider response used correct correlationId', () => {

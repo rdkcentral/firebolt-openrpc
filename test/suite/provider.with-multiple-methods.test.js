@@ -23,6 +23,8 @@ let providerMethodOneNotificationRegistered = false
 let providerMethodOneRequestDispatched = false
 let providerMethodOneResultSent = false
 let numberOfArgsMethodOne = -1
+let methodOneParameters
+let methodOneSession
 let valueOne
 let responseCorrelationIdOne
 
@@ -30,6 +32,8 @@ let providerMethodTwoNotificationRegistered = false
 let providerMethodTwoRequestDispatched = false
 let providerMethodTwoResultSent = false
 let numberOfArgsMethodTwo = -1
+let methodTwoParameters
+let methodTwoSession
 let valueTwo
 let responseCorrelationIdTwo
 
@@ -39,11 +43,15 @@ beforeAll( () => {
     class MultiProvider {
         multiMethodOne(...args) {
             numberOfArgsMethodOne = args.length
+            methodOneParameters = args[0]
+            methodOneSession = args[1]
             return Promise.resolve('a value!')
         }
 
         multiMethodTwo(...args) {
             numberOfArgsMethodTwo = args.length
+            methodTwoParameters = args[0]
+            methodTwoSession = args[1]
             return Promise.resolve('another value!')
         }
     }
@@ -115,8 +123,20 @@ test('Provider method 1 request dispatched', () => {
     expect(providerMethodOneRequestDispatched).toBe(true)
 })
 
-test('Provide method 1 called with zero args', () => {
-    expect(numberOfArgsMethodOne).toBe(0)
+test('Provide method 1 called with two args', () => {
+    expect(numberOfArgsMethodOne).toBe(2)
+})
+
+test('Provide method 1 parameters arg is null', () => {
+    expect(methodOneParameters).toBe(null)
+})
+
+test('Provide method 1 session arg has correlationId', () => {
+    expect(methodOneSession.correlationId()).toBe(123)
+})
+
+test('Provide method 1 session arg DOES NOT have focus', () => {
+    expect(methodOneSession.hasOwnProperty('focus')).toBe(false)
 })
 
 test('Provider response 1 used correct correlationId', () => {
@@ -135,8 +155,20 @@ test('Provider method 2 request dispatched', () => {
     expect(providerMethodTwoRequestDispatched).toBe(true)
 })
 
-test('Provide method 2 called with zero args', () => {
-    expect(numberOfArgsMethodTwo).toBe(0)
+test('Provide method 2 called with two args', () => {
+    expect(numberOfArgsMethodTwo).toBe(2)
+})
+
+test('Provide method 2 parameters arg is null', () => {
+    expect(methodTwoParameters).toBe(null)
+})
+
+test('Provide method 2 session arg has correlationId', () => {
+    expect(methodTwoSession.correlationId()).toBe(456)
+})
+
+test('Provide method 2 session arg DOES NOT have focus', () => {
+    expect(methodTwoSession.hasOwnProperty('focus')).toBe(false)
 })
 
 test('Provider response 2 used correct correlationId', () => {
