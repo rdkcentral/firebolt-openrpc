@@ -24,10 +24,12 @@ import getPath from 'crocks/Maybe/getPath.js'
 import pointfree from 'crocks/pointfree/index.js'
 const { chain, filter, option, map } = pointfree
 import logic from 'crocks/logic/index.js'
-const { and } = logic
+import isEmpty from 'crocks/core/isEmpty.js'
+const { and, not } = logic
 import isString from 'crocks/core/isString.js'
 import predicates from 'crocks/predicates/index.js'
-const { isObject, isArray, propEq, pathSatisfies, hasProp } = predicates
+import { isNull, localizeDependencies } from './json-schema.mjs'
+const { isObject, isArray, propEq, pathSatisfies, hasProp, propSatisfies } = predicates
 
 // util for visually debugging crocks ADTs
 const inspector = obj => {
@@ -129,6 +131,20 @@ const isPolymorphicReducer = compose(
     getPath(['tags'])
 )
 
+const isProviderMethod = compose(
+    option(false),
+    map(_ => true),
+    chain(
+      find(
+        and(
+          propEq('name', 'capabilities'),
+          propSatisfies('x-provides', not(isEmpty))
+        )
+      )
+    ),
+    getPath(['tags'])
+  )
+
 const hasTitle = compose(
     option(false),
     map(isString),
@@ -145,6 +161,23 @@ const getParamsFromMethod = compose(
     option([]),
     getPath(['params'])
 )
+
+const getPayloadFromEvent = (event, json, schemas = {}) => {
+    return localizeDependencies((event.result.schema.anyOf || event.result.schema.oneOf).find(schema => !(schema['$ref'] === undefined || schema['$ref'].endsWith('/ListenResponse'))), json, schemas)
+}
+
+const providerHasNoParameters = (schema) => {
+    if (schema.allOf || schema.oneOf) {
+        return !!(schema.allOf || schema.oneOf).find(schema => providerHasNoParameters(schema))
+    }
+    else if (schema.properties && schema.properties.parameters) {
+        return isNull(schema.properties.parameters)
+    }
+    else {
+        console.dir(schema, {depth: 10})
+        throw "Invalid ProviderRequest"
+    }
+}
 
 const validEvent = and(
     pathSatisfies(['name'], isString),
@@ -303,6 +336,115 @@ const createSetterFromProperty = property => {
     return setter
 }
 
+const createFocusFromProvider = provider => {
+
+    if (!provider.name.startsWith('onRequest')) {
+        throw "Methods with the `x-provider` tag extension MUST start with 'onRequest'."
+    }
+    
+    const ready = JSON.parse(JSON.stringify(provider))
+    ready.name = ready.name.charAt(9).toLowerCase() + ready.name.substr(10) + 'Focus'
+    ready.summary = `Internal API for ${provider.name.substr(9)} Provider to request focus for UX purposes.`
+    const old_tags = ready.tags
+    ready.tags = [
+        {
+            'name': 'rpc-only',
+            'x-allow-focus-for': provider.name
+        }
+    ]
+
+    ready.params = []
+    ready.result = {
+        name: 'result',
+        schema: {
+            type: "null"
+        }
+    }
+
+    ready.examples = [
+        {
+            name: "Example",
+            params: [],
+            result: {
+                name: "result",
+                value: null
+            }
+        }
+    ]
+
+    return ready
+}
+
+const createResponseFromProvider = (provider, json) => {
+
+    if (!provider.name.startsWith('onRequest')) {
+        throw "Methods with the `x-provider` tag extension MUST start with 'onRequest'."
+    }
+
+    const response = JSON.parse(JSON.stringify(provider))
+    response.name = response.name.charAt(9).toLowerCase() + response.name.substr(10) + 'Response'
+    response.summary = `Internal API for ${provider.name.substr(9)} Provider to send back a response.`
+    const old_tags = response.tags
+    response.tags = [
+        {
+            'name': 'rpc-only',
+            'x-response-for': provider.name
+        }
+    ]
+
+    const paramExamples = []
+
+    if (provider.tags.find(t => t['x-response'])) {
+        response.params = [
+            {
+                name: 'response',
+                required: true,
+                schema: provider.tags.find(t => t['x-response'])['x-response']
+            }
+        ]
+
+        const schema = localizeDependencies(provider.tags.find(t => t['x-response'])['x-response'], json)
+        let n = 1
+        paramExamples.push(... (schema.examples.map( param => ({
+            name: paramExamples.length === 1 ? "Example" : `Example #${n++}`,
+            params: [
+                {
+                    name: 'response',
+                    value: param
+                }
+            ],
+            result: {
+                name: 'result',
+                value: null
+            }
+        }))  || []))
+        delete schema.examples
+    }
+    else {
+        response.params = []
+        paramExamples.push(
+            {
+                name: 'Example 1',
+                params: [],
+                result: {
+                    name: 'result',
+                    value: null
+                }
+            })
+    }
+
+    response.result = {
+        name: 'result',
+        schema: {
+            type: 'null'
+        }
+    }
+
+    response.examples = paramExamples
+
+    return response
+}
+
 const generatePropertyEvents = json => {
     const properties = json.methods.filter( m => m.tags && m.tags.find( t => t.name == 'property')) || []
     const readonlies = json.methods.filter( m => m.tags && m.tags.find( t => t.name == 'property:readonly')) || []
@@ -325,6 +467,23 @@ const generatePolymorphicPullEvents = json => {
     const pushers = json.methods.filter( m => m.tags && m.tags.find( t => t.name == 'polymorphic-pull')) || []
 
     pushers.forEach(pusher => json.methods.push(createPullEventFromPush(pusher, json)))
+
+    return json
+}
+
+const generateProviderMethods = json => {
+    const providers = json.methods.filter( m => m.tags && m.tags.find( t => t.name == 'capabilities' && t['x-provides'])) || []
+
+    providers.forEach(provider => {
+        // only create the ready method for providers that require a handshake
+        if (provider.tags.find(t => t['x-allow-focus'])) {
+            json.methods.push(createFocusFromProvider(provider, json))
+        }
+    })
+
+    providers.forEach(provider => {
+        json.methods.push(createResponseFromProvider(provider, json))
+    })
 
     return json
 }
@@ -356,6 +515,7 @@ export {
     isPolymorphicPullMethod,
     isExcludedMethod,
     isRPCOnlyMethod,
+    isProviderMethod,
     hasExamples,
     hasTitle,
     getMethods,
@@ -365,8 +525,11 @@ export {
     getPublicEvents,
     getSchemas,
     getParamsFromMethod,
+    getPayloadFromEvent,
     getPathFromModule,
     generatePolymorphicPullEvents,
     generatePropertyEvents,
     generatePropertySetters,
+    generateProviderMethods,
+    providerHasNoParameters
 }

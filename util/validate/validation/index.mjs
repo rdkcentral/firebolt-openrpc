@@ -104,10 +104,9 @@ export const validate = (json = {}, schemas = {}, ajvPackage = []) => {
       const keys = Object.keys(json.definitions)
       for (let i=0; i<keys.length; i++) {
         let key = keys[i]
-        const definition = JSON.parse(JSON.stringify(getPathOr({}, ['definitions', key], json)))
+        const definition = localizeDependencies(getPathOr({}, ['definitions', key], json), json, schemas)
         if (Array.isArray(definition.examples)) {
-          localizeDependencies(definition, json, schemas)
-          const exampleResult = validateExamples(definition, root, ajvPackage, `/definitions/${key}`, ``, json)
+          const exampleResult = validateExamples(definition, root, ajvPackage, `/definitions/${key}/examples`, ``, json)
           valid = valid && exampleResult.valid
           if (!exampleResult.valid) {
             errors.push(...exampleResult.errors)
@@ -120,23 +119,24 @@ export const validate = (json = {}, schemas = {}, ajvPackage = []) => {
         let method = json.methods[i]
         try {
           if (method.examples) {
-            const result = JSON.parse(JSON.stringify(method.result.schema))
+            const result = localizeDependencies(method.result.schema, json, schemas)
             let examples = method.examples.map( ex => ex.result.value)
             if (Array.isArray(examples)) {
               // validate each param schema/examples
               if (method.params && method.params.length) {
                 for (let j=0; j<method.params.length; j++) {
                   const p = method.params[j]
-                  const param = JSON.parse(JSON.stringify(p.schema))
-                  localizeDependencies(param, json, schemas)
+                  const param = localizeDependencies(p.schema, json, schemas)
                   param.title = method.name + ' param \'' + p.name + '\''
                   param.examples = method.examples.map(ex => (ex.params.find(x => x.name === p.name) || { value: null }).value)
-                  valid = valid && validateExamples(param, root, ajvPackage, `/methods/${i}/examples`, `/params/${j}`, json)
+                  const exampleParamsResult = validateExamples(param, root, ajvPackage, `/methods/${i}/examples`, `/params/${j}`, json)
+                  valid = valid && exampleParamsResult.valid
+                  if (!exampleParamsResult.valid) {
+                    errors.push(...exampleParamsResult.errors)
+                  }
                 }
               }
-
               // validate result schema/examples
-              localizeDependencies(result, json, schemas)
               result.title = method.name + ' result'
               result.examples = examples
               const exampleResult = validateExamples(result, root, ajvPackage, `/methods/${i}/examples`, `/result`, json)
@@ -157,7 +157,7 @@ export const validate = (json = {}, schemas = {}, ajvPackage = []) => {
           }
         }
         catch (e) {
-          console.log('ERROR: ' + e)
+          throw e
         }
       }
     }
@@ -182,11 +182,9 @@ const validateExamples = (schema, root, ajvPackage = [], prefix = '', postfix = 
     schema.examples.forEach(example => {
       if (example && !localValidator(example)) {
         valid = false
-        console.error(`${root} - ${schema.title} example ${index} failed!`)
-
         localValidator.errors.forEach(error => {
           error.value = example
-          error.instancePath = prefix + `/${index}` + error.instancePath + postfix
+          error.instancePath = prefix + `/${index}` + postfix + error.instancePath
           error = addPrettyPath(error, json)
         })
 
@@ -198,6 +196,7 @@ const validateExamples = (schema, root, ajvPackage = [], prefix = '', postfix = 
   catch (err) {
     valid = false
     console.error(`\n${err.message}\n`)
+    throw e
   }
 
   if (schema.examples.length === 0) {
@@ -209,10 +208,6 @@ const validateExamples = (schema, root, ajvPackage = [], prefix = '', postfix = 
       message: 'must have at least one example'
     })
   }
-
-  errors.forEach(error => {
-    displayError(error)
-  })
 
   return { valid: valid, errors: errors }
 }

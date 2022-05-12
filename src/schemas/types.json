@@ -1,0 +1,157 @@
+{
+    "$id": "https://meta.comcast.com/firebolt/types",
+    "title": "Types",
+    "anyOf": [
+        {
+            "$ref": "#/definitions/SemanticVersion"
+        },
+        {
+            "$ref": "#/definitions/BooleanMap"
+        },
+        {
+            "$ref": "#/definitions/AudioProfile"
+        },
+        {
+            "$ref": "#/definitions/LocalizedString"
+        }
+    ],
+    "definitions": {
+        "SemanticVersion": {
+            "title": "SemanticVersion",
+            "type": "object",
+            "properties": {
+                "major": {
+                    "type": "integer",
+                    "minimum": 0
+                },
+                "minor": {
+                    "type": "integer",
+                    "minimum": 0
+                },
+                "patch": {
+                    "type": "integer",
+                    "minimum": 0
+                },
+                "readable": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "major",
+                "minor",
+                "patch",
+                "readable"
+            ],
+            "additionalProperties": false
+        },
+        "AudioProfile": {
+            "title": "AudioProfile",
+            "type": "string",
+            "enum": [
+                "stereo",
+                "dolbyDigital5.1",
+                "dolbyDigital7.1",
+                "dolbyDigital5.1+",
+                "dolbyDigital7.1+",
+                "dolbyAtmos"
+            ]
+        },
+        "BooleanMap": {
+            "type": "object",
+            "additionalProperties": {
+                "type": "boolean"
+            }
+        },
+        "FlatMap": {
+            "type": "object",
+            "additionalProperties": {
+                "oneOf": [
+                    {
+                        "type": "string"
+                    },
+                    {
+                        "type": "number"
+                    },
+                    {
+                        "type": "boolean"
+                    }
+                ]
+            }
+        },
+        "LocalizedString": {
+            "title": "LocalizedString",
+            "description": "Localized string supports either a simple `string` or a Map<string, string> of language codes to strings. When using a simple `string`, the current preferred langauge from `Localization.langauge()` is assumed.",
+            "oneOf": [
+                {
+                    "type": "string"
+                },
+                {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                }
+            ],
+            "examples": [
+                "A simple string, with no language code",
+                {
+                    "en": "This is english",
+                    "es": "esto es español"
+                }
+            ]
+        },
+        "ListenResponse": {
+            "title": "ListenResponse",
+            "type": "object",
+            "required": [
+                "event",
+                "listening"
+            ],
+            "properties": {
+                "event": {
+                    "type": "string",
+                    "pattern": "[a-zA-Z]+\\.on[A-Z][a-zA-Z]+"
+                },
+                "listening": {
+                    "type": "boolean"
+                }
+            },
+            "additionalProperties": false
+        },
+        "ProviderRequest": {
+            "title": "ProviderRequest",
+            "type": "object",
+            "required": [
+                "correlationId"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "correlationId": {
+                    "type": "string",
+                    "description": "The id that was passed in to the event that triggered a provider method to be called"
+                },
+                "parameters": {
+                    "description": "The result of the provider response.",
+                    "type": "object"
+                }
+            }
+        },
+        "ProviderResponse": {
+            "title": "ProviderResponse",
+            "type": "object",
+            "required": [
+                "correlationId"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "correlationId": {
+                    "type": "string",
+                    "description": "The id that was passed in to the event that triggered a provider method to be called"
+                },
+                "result": {
+                    "description": "The result of the provider response."
+                }
+            }
+        }
+    }
+}

@@ -19,6 +19,10 @@
 import crocks from 'crocks'
 const { setPath, getPathOr } = crocks
 
+const isNull = schema => {
+  return (schema.type === 'null' || schema.const === null)
+}
+
 const getExternalMarkdownPaths = obj => {
   return objectPaths(obj)
     .filter(x => /\/\$ref$/.test(x))
@@ -168,10 +172,10 @@ const getExternalPath = (uri = '', schemas = {}, localize = true, replace = true
   const [mainPath, subPath] = uri.split('#')
   const json = schemas[mainPath] || schemas[mainPath + '/']
   // copy to avoid side effects
-  const result = JSON.parse(JSON.stringify(subPath ? getPathOr(null, subPath.slice(1).split('/'), json) : json))
+  let result = JSON.parse(JSON.stringify(subPath ? getPathOr(null, subPath.slice(1).split('/'), json) : json))
 
   if (localize) {
-    result && localizeDependencies(result, json, schemas)
+    result && (result = localizeDependencies(result, json, schemas))
   }
   else if (replace) {
     result && replaceUri('', mainPath, result)
@@ -301,10 +305,7 @@ const localizeDependencies = (def, schema, schemas = {}, externalOnly=false) => 
     delete node['$REF']
   })
 
-  Object.keys(def).forEach( key => delete def[key])
-  Object.assign(def, definition)
-
-  return def
+  return definition
 }
 
 const getExternalSchemas = (json = {}, schemas = {}) => {
@@ -368,6 +369,7 @@ export {
   getExternalPath,
   hasTitle,
   isDefinitionReferencedBySchema,
+  isNull,
   localizeDependencies,
   replaceUri,
   replaceRef,

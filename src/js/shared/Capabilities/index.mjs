@@ -18,44 +18,97 @@
 
 import Transport from '../Transport/index.mjs'
 import Events from '../Events/index.mjs'
-const validProviderMethods = {}
 
-export const registerProviderMethods = (module, methods) => {
-  validProviderMethods[module.toLowerCase()] = methods.concat()
-}
+const providerInterfaces = {}
 
-const getProviderArgs = function(...args) {
-  const provider = args.pop()
-  const module = args[0].toLowerCase() || '*'
-  return [module, provider]
-}
-
-const provide = function(...args) {
-  const [module, provider] = getProviderArgs(...args)
-  const methods = Object.getOwnPropertyNames(Object.getPrototypeOf(provider)).filter(item => {
-    return typeof provider[item] === 'function' && item != 'constructor'
-  })
-  const pms = validProviderMethods[module]
-  for (let i = 0; i < methods.length; i++) {
-    const name = methods[i].charAt(0).toUpperCase() + methods[i].slice(1);
-    if (pms.indexOf(methods[i]) !== -1) {
-      Events.listen(module, 'request' + name, async function (req) {
-        const fn = provider[methods[i]]
-        const providerCallArgs = [req.request, resp => {
-          Transport.send(module, methods[i] + 'Response', {
-            correlationId: req.correlationId,
-            response: resp
-          })
-        }]
-        await fn.apply(provider, providerCallArgs)
-        Transport.send(module, methods[i] + 'Ready', {
-          correlationId: req.correlationId
-        })
-      })
-    } else {
-      console.warn("Ignoring unknown provider method '" + module + '.' + methods[i] + "'")
-    }
+export const registerProviderInterface = (capability, module, methods) => {
+  if (providerInterfaces[capability]) {
+    throw `Capability ${capability} has multiple provider interfaces registered.`
   }
+
+  methods.forEach(m => m.name = `${module}.${m.name}`)
+  providerInterfaces[capability] = methods.concat()
+}
+
+const provide = function(capability, provider) {
+  const methods = []
+  const iface = providerInterfaces[capability]
+
+  if (provider.constructor.name !== 'Object') {
+    methods.push(...Object.getOwnPropertyNames(Object.getPrototypeOf(provider)).filter(item => typeof provider[item] === 'function' && item !== 'constructor'))
+  }
+  else {
+    methods.push(...Object.getOwnPropertyNames(provider).filter(item => typeof provider[item] === 'function'))
+  }
+
+  if (!iface) {
+    throw "Ignoring unknown provider capability."
+  }
+
+  // make sure every interfaced method exists in the providers methods list
+  const valid = iface.every(method => methods.find(m => m === method.name.split('.').pop()))
+
+  if (!valid) {
+    throw `Provider that does not fully implement ${capability}:\n\t${iface.map(m=>m.name.split('.').pop()).join('\n\t')}`
+  }
+
+  iface.forEach(imethod => {
+    const parts = imethod.name.split('.')
+    const method = parts.pop();
+    const module = parts.pop().toLowerCase();
+    const defined = !!methods.find(m => m === method) 
+
+    if (!defined) {
+      return // returns from this cycle of iface.forEach
+    }
+
+    Events.listen(module, `request${method.charAt(0).toUpperCase() + method.substr(1)}`, function (request) {
+      const providerCallArgs = []
+      
+      // only pass in parameters object if schema exists
+      if (imethod.parameters) {
+        providerCallArgs.push(request.parameters)
+      }
+      else {
+        providerCallArgs.push(null)
+      }
+
+      const session = {
+        correlationId: () => {
+          return request.correlationId
+        }
+      }
+      
+      // only pass in the focus handshake if needed
+      if (imethod.focus) {
+        session.focus = () => {
+          Transport.send(module, `${method}Focus`, {
+            correlationId: request.correlationId
+          })
+        }
+      }
+
+      providerCallArgs.push(session)
+
+      const response = {
+        correlationId: request.correlationId
+      }
+
+      const result = provider[method].apply(provider, providerCallArgs)
+
+      if (!(result instanceof Promise)) {
+        throw `Provider method ${method} did not return a Promise.`
+      }
+      
+      result.then(result => {
+        if (imethod.response) {
+          response.result = result
+        }
+
+        Transport.send(module, `${method}Response`, response)
+      })
+    })
+  })
 }
 
 export default {

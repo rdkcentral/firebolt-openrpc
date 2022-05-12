@@ -16,12 +16,5 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { Simple } from '../../build/sdk/javascript/src/sdk.mjs'
-import Setup from '../Setup'
-import { expect } from '@jest/globals';
-
-test('Basic', () => {
-    Simple.method(true).then(result => {
-        expect(result.foo).toBe("here's foo")
-    })
-});
+export { default as Provider } from './Provider/index.mjs'
+export { default as Simple } from './Simple/index.mjs'

@@ -1,0 +1,303 @@
+{
+    "openrpc": "1.2.4",
+    "info": {
+        "title": "Provider",
+        "description": "A module for testing Provider interfaces.",
+        "version": "0.0.0"
+    },
+    "methods": [
+        {
+            "name": "onRequestSimpleMethod",
+            "tags": [
+                {
+                    "name": "capabilities",
+                    "x-provides": "xrn:firebolt:capability:simple:provider",
+                    "x-allow-focus": false,
+                    "x-response": {
+                        "$ref": "#/components/schemas/SimpleProviderResponse"
+                    }
+                },
+                {
+                    "name": "events"
+                }
+            ],
+            "summary": "Dispatches a request for the simple method to the simple provider.",
+            "params": [
+                {
+                    "name": "listen",
+                    "summary": "Whether or not to listen for requests to this interface method.",
+                    "schema": {
+                        "type": "boolean"
+                    }
+                }
+            ],
+            "result": {
+                "name": "result",
+                "schema": {
+                    "oneOf": [
+                        {
+                            "$ref": "https://meta.comcast.com/firebolt/types#/definitions/ListenResponse"
+                        },
+                        {
+                            "$ref": "#/components/schemas/SimpleProviderRequest"
+                        }
+                    ]
+                }
+            },
+            "examples": [
+                {
+                    "name": "Get simple",
+                    "params": [],
+                    "result": {
+                        "name": "result",
+                        "value": null
+                    }
+                }
+            ]
+        },
+        {
+            "name": "onRequestHandshakeMethod",
+            "tags": [
+                {
+                    "name": "capabilities",
+                    "x-provides": "xrn:firebolt:capability:handshake:provider",
+                    "x-allow-focus": true,
+                    "x-response": {
+                        "$ref": "#/components/schemas/SimpleProviderResponse"
+                    }
+                },
+                {
+                    "name": "events"
+                }
+            ],
+            "summary": "Dispatches a request for the simple method, with a handshake, to the simple provider.",
+            "params": [
+                {
+                    "name": "listen",
+                    "summary": "Whether or not to listen for requests to this interface method.",
+                    "schema": {
+                        "type": "boolean"
+                    }
+                }
+            ],
+            "result": {
+                "name": "result",
+                "schema": {
+                    "oneOf": [
+                        {
+                            "$ref": "https://meta.comcast.com/firebolt/types#/definitions/ListenResponse"
+                        },
+                        {
+                            "$ref": "#/components/schemas/SimpleProviderRequest"
+                        }
+                    ]
+                }
+            },
+            "examples": [
+                {
+                    "name": "Get simple",
+                    "params": [],
+                    "result": {
+                        "name": "result",
+                        "value": null
+                    }
+                }
+            ]
+        },
+        {
+            "name": "onRequestMultiMethodOne",
+            "tags": [
+                {
+                    "name": "capabilities",
+                    "x-provides": "xrn:firebolt:capability:multi:provider",
+                    "x-allow-focus": false,
+                    "x-response": {
+                        "$ref": "#/components/schemas/SimpleProviderResponse"
+                    }
+                },
+                {
+                    "name": "events"
+                }
+            ],
+            "summary": "Dispatches a request for the simple method one to the simple provider.",
+            "params": [
+                {
+                    "name": "listen",
+                    "summary": "Whether or not to listen for requests to this interface method.",
+                    "schema": {
+                        "type": "boolean"
+                    }
+                }
+            ],
+            "result": {
+                "name": "result",
+                "schema": {
+                    "oneOf": [
+                        {
+                            "$ref": "https://meta.comcast.com/firebolt/types#/definitions/ListenResponse"
+                        },
+                        {
+                            "$ref": "#/components/schemas/SimpleProviderRequest"
+                        }
+                    ]
+                }
+            },
+            "examples": [
+                {
+                    "name": "Get simple",
+                    "params": [],
+                    "result": {
+                        "name": "result",
+                        "value": null
+                    }
+                }
+            ]
+        },
+        {
+            "name": "onRequestMultiMethodTwo",
+            "tags": [
+                {
+                    "name": "capabilities",
+                    "x-provides": "xrn:firebolt:capability:multi:provider",
+                    "x-allow-focus": false,
+                    "x-response": {
+                        "$ref": "#/components/schemas/SimpleProviderResponse"
+                    }
+                },
+                {
+                    "name": "events"
+                }
+            ],
+            "summary": "Dispatches a request for the simple method two to the simple provider.",
+            "params": [
+                {
+                    "name": "listen",
+                    "summary": "Whether or not to listen for requests to this interface method.",
+                    "schema": {
+                        "type": "boolean"
+                    }
+                }
+            ],
+            "result": {
+                "name": "result",
+                "schema": {
+                    "oneOf": [
+                        {
+                            "$ref": "https://meta.comcast.com/firebolt/types#/definitions/ListenResponse"
+                        },
+                        {
+                            "$ref": "#/components/schemas/SimpleProviderRequest"
+                        }
+                    ]
+                }
+            },
+            "examples": [
+                {
+                    "name": "Get simple",
+                    "params": [],
+                    "result": {
+                        "name": "result",
+                        "value": null
+                    }
+                }
+            ]
+        },
+        {
+            "name": "onRequestNoResponseMethod",
+            "tags": [
+                {
+                    "name": "capabilities",
+                    "x-provides": "xrn:firebolt:capability:noresponse:provider",
+                    "x-allow-focus": false
+                },
+                {
+                    "name": "events"
+                }
+            ],
+            "summary": "Dispatches a request for the simple method to the simple provider.",
+            "params": [
+                {
+                    "name": "listen",
+                    "summary": "Whether or not to listen for requests to this interface method.",
+                    "schema": {
+                        "type": "boolean"
+                    }
+                }
+            ],
+            "result": {
+                "name": "result",
+                "schema": {
+                    "oneOf": [
+                        {
+                            "$ref": "https://meta.comcast.com/firebolt/types#/definitions/ListenResponse"
+                        },
+                        {
+                            "$ref": "#/components/schemas/SimpleProviderRequest"
+                        }
+                    ]
+                }
+            },
+            "examples": [
+                {
+                    "name": "Get simple",
+                    "params": [],
+                    "result": {
+                        "name": "result",
+                        "value": null
+                    }
+                }
+            ]
+        }
+    ],
+    "components": {
+        "schemas": {
+            "SimpleProviderRequest": {
+                "title": "SimpleProviderRequest",
+                "allOf": [
+                    {
+                        "$ref": "https://meta.comcast.com/firebolt/types#/definitions/ProviderRequest"
+                    },
+                    {
+                        "type": "object",
+                        "properties": {
+                            "parameters": {
+                                "const": null
+                            }
+                        }
+                    }
+                ],
+                "examples": [
+                    {
+                        "correlationId": "abc"
+                    }
+                ]
+            },
+            "SimpleProviderResponse": {
+                "title": "SimpleProviderResponse",
+                "allOf": [
+                    {
+                        "$ref": "https://meta.comcast.com/firebolt/types#/definitions/ProviderResponse"
+                    },
+                    {
+                        "type": "object",
+                        "required": [
+                            "result"
+                        ],
+                        "properties": {
+                            "result": {
+                                "description": "The result of the provider response, containing nothing.",
+                                "type": "string"
+                            }
+                        }
+                    }
+                ],
+                "examples": [
+                    {
+                        "correlationId": "abc",
+                        "result": "here's a value!"
+                    }
+                ]
+            }
+        }
+    }
+}
