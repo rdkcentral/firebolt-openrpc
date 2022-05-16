@@ -68,11 +68,11 @@ function getProviderInterface(module, capability, schemas = {}) {
 
       method.result = {
         "name": "result",
-        "schema": result.properties.result
+        "schema": result
       }
 
       if (result.examples && result.examples[0]) {
-        exampleResult = result.examples[0].result
+        exampleResult = result.examples[0]
       }
     }
     else {

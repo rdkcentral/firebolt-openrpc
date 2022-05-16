@@ -17,7 +17,10 @@
                 {
                     "name": "event",
                     "x-response": {
-                        "$ref": "#/components/schemas/SimpleProviderResponse"
+                        "type": "string",
+                        "examples": [
+                            "a value!"
+                        ]
                     }
                 }
             ],
@@ -69,7 +72,10 @@
                 {
                     "name": "event",
                     "x-response": {
-                        "$ref": "#/components/schemas/SimpleProviderResponse"
+                        "type": "string",
+                        "examples": [
+                            "a value for handshake!"
+                        ]
                     }
                 }
             ],
@@ -121,7 +127,10 @@
                 {
                     "name": "event",
                     "x-response": {
-                        "$ref": "#/components/schemas/SimpleProviderResponse"
+                        "type": "string",
+                        "examples": [
+                            "a first value!"
+                        ]
                     }
                 }
             ],
@@ -173,7 +182,10 @@
                 {
                     "name": "event",
                     "x-response": {
-                        "$ref": "#/components/schemas/AnotherProviderResponse"
+                        "type": "string",
+                        "examples": [
+                            "a second value!"
+                        ]
                     }
                 }
             ],
@@ -324,58 +336,6 @@
                 "examples": [
                     {
                         "correlationId": "abc"
-                    }
-                ]
-            },            
-            "SimpleProviderResponse": {
-                "title": "SimpleProviderResponse",
-                "allOf": [
-                    {
-                        "$ref": "https://meta.comcast.com/firebolt/types#/definitions/ProviderResponse"
-                    },
-                    {
-                        "type": "object",
-                        "required": [
-                            "result"
-                        ],
-                        "properties": {
-                            "result": {
-                                "description": "The result of the provider response, containing nothing.",
-                                "type": "string"
-                            }
-                        }
-                    }
-                ],
-                "examples": [
-                    {
-                        "correlationId": "abc",
-                        "result": "here's a value!"
-                    }
-                ]
-            },
-            "AnotherProviderResponse": {
-                "title": "SimpleProviderResponse",
-                "allOf": [
-                    {
-                        "$ref": "https://meta.comcast.com/firebolt/types#/definitions/ProviderResponse"
-                    },
-                    {
-                        "type": "object",
-                        "required": [
-                            "result"
-                        ],
-                        "properties": {
-                            "result": {
-                                "description": "The result of the provider response, containing nothing.",
-                                "type": "string"
-                            }
-                        }
-                    }
-                ],
-                "examples": [
-                    {
-                        "correlationId": "def",
-                        "result": "here's another value!"
                     }
                 ]
             }

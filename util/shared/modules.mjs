@@ -28,7 +28,7 @@ import isEmpty from 'crocks/core/isEmpty.js'
 const { and, not } = logic
 import isString from 'crocks/core/isString.js'
 import predicates from 'crocks/predicates/index.js'
-import { isNull, localizeDependencies } from './json-schema.mjs'
+import { getSchema, isNull, localizeDependencies } from './json-schema.mjs'
 const { isObject, isArray, propEq, pathSatisfies, hasProp, propSatisfies } = predicates
 
 // util for visually debugging crocks ADTs
@@ -410,26 +410,64 @@ const createResponseFromProvider = (provider, json) => {
             {
                 name: 'response',
                 required: true,
-                schema: provider.tags.find(t => t['x-response'])['x-response']
+                schema: {
+                    allOf: [
+                        {
+                            "$ref": "https://meta.comcast.com/firebolt/types#/definitions/ProviderResponse"
+                        },
+                        {
+                            "type": "object",
+                            "properties": {
+                                "result": provider.tags.find(t => t['x-response'])['x-response']
+                            }
+                        }
+                    ]
+                }
             }
         ]
 
         const schema = localizeDependencies(provider.tags.find(t => t['x-response'])['x-response'], json)
+
         let n = 1
-        paramExamples.push(... ((schema.examples || []).map( param => ({
-            name: paramExamples.length === 1 ? "Example" : `Example #${n++}`,
-            params: [
-                {
-                    name: 'response',
-                    value: param
+        if (schema.examples && schema.examples.length) {
+            paramExamples.push(... (schema.examples.map( param => ({
+                name: schema.examples.length === 1 ? "Example" : `Example #${n++}`,
+                params: [
+                    {
+                        name: 'response',
+                        value: {
+                            correlationId: "123",
+                            result: param
+                        }
+                    }
+                ],
+                result: {
+                    name: 'result',
+                    value: null
                 }
-            ],
-            result: {
-                name: 'result',
-                value: null
-            }
-        }))  || []))
-        delete schema.examples
+            }))  || []))
+            delete schema.examples    
+        }
+        else if (schema['$ref']) {
+            paramExamples.push({
+                name: 'Generated Example',
+                params: [
+                    {
+                        name: 'response',
+                        value: {
+                            correlationId: "123",
+                            result: {
+                                '$ref': schema['$ref'] + '/examples/0'
+                            }
+                        }
+                    }
+                ],
+                result: {
+                    name: 'result',
+                    value: null
+                }
+            })
+        }
     }
     else {
         response.params = []

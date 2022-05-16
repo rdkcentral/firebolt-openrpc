@@ -381,17 +381,36 @@ function insertProviderInterfaceMacros(data, capability, moduleJson = {}, schema
         // insert the granular method details for any ${provider.method.start} loops
         while (match = result.match(regex)) {
             let methodsBlock = ''
-            let i = 1
     
-            iface.forEach(method => {
+            const indent = (str, padding) => {
+                let first = true
+                return str.split('\n').map(line => {
+                    if (first) {
+                        first = false
+                        return line
+                    }
+                    else {
+                        return padding + line
+                    }
+                }).join('\n')
+            }
 
-                console.log(method.examples[0])
+            let i = 1
+            iface.forEach(method => {
 
                 methodsBlock += match[0].replace(/\$\{provider\.interface\.name\}/g, method.name)
                                         .replace(/\$\{provider\.interface\.Name\}/g, method.name.charAt(0).toUpperCase() + method.name.substr(1))
-                                        .replace(/\$\{provider\.interface\.example.result\}/g, JSON.stringify(method.examples[0].result.value))
-                                        .replace(/\$\{provider\.interface\.example.parameters\}/g, JSON.stringify(method.examples[0].params[0].value))
-                                        .replace(/\$\{provider\.interface\.example.correlationId\}/g, JSON.stringify(method.examples[0].params[1].value.correlationId))
+
+                                        // first check for indented lines, and do the fancy indented replacement
+                                        .replace(/^([ \t]+)(.*?)\$\{provider\.interface\.example\.result\}/gm, '$1$2' + indent(JSON.stringify(method.examples[0].result.value, null, '    '), '$1'))
+                                        .replace(/^([ \t]+)(.*?)\$\{provider\.interface\.example\.parameters\}/gm, '$1$2' + indent(JSON.stringify(method.examples[0].params[0].value, null, '    '), '$1'))
+                                        // okay now just do the basic replacement (a single regex for both was not fun)
+                                        .replace(/\$\{provider\.interface\.example\.result\}/g, JSON.stringify(method.examples[0].result.value))
+                                        .replace(/\$\{provider\.interface\.example\.parameters\}/g, JSON.stringify(method.examples[0].params[0].value))
+
+                                        .replace(/\$\{provider\.interface\.example\.correlationId\}/g, JSON.stringify(method.examples[0].params[1].value.correlationId))
+
+                                        // a set of up to three RPC "id" values for generating intersting examples with matching ids
                                         .replace(/\$\{provider\.interface\.i\}/g, i)
                                         .replace(/\$\{provider\.interface\.j\}/g, (i+iface.length))
                                         .replace(/\$\{provider\.interface\.k\}/g, (i+2*iface.length))
@@ -399,7 +418,6 @@ function insertProviderInterfaceMacros(data, capability, moduleJson = {}, schema
                 i++
             })
             methodsBlock = methodsBlock.replace(/\$\{provider\.interface\.[a-zA-Z]+\}/g, '')
-
             result = result.replace(regex, methodsBlock)
         }        
     }

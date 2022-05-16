@@ -159,7 +159,7 @@ export const validate = (json = {}, schemas = {}, ajvPackage = [], additionalPac
       })
 
       for (let i=0; i<json.methods.length; i++) {
-        let method = json.methods[i]
+        let method = localizeDependencies(json.methods[i], json)
         try {
           if (method.examples) {
             const result = localizeDependencies(method.result.schema, json, schemas)
