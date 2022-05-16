@@ -54,6 +54,29 @@ const getMethods = compose(
     getPath(['methods'])
 )
 
+const isProviderMethod = compose(
+    option(false),
+    map(_ => true),
+    chain(
+      find(
+        and(
+          propEq('name', 'capabilities'),
+          propSatisfies('x-provides', not(isEmpty))
+        )
+      )
+    ),
+    getPath(['tags'])
+  )
+
+const getProvidedCapabilities = (json) => {
+    return Array.from(new Set([...getMethods(json).filter(isProviderMethod).map(method => method.tags.find(tag => tag['x-provides'])['x-provides'])]))
+}
+
+const getMethodsThatProvide = (capability, json) => {
+    return getMethods(json).filter(method => method.tags && method.tags.find(tag => tag['x-provides'] === capability))
+}
+  
+
 const addMissingTitles = ([k, v]) => {
     if (v && !v.hasOwnProperty('title')) {
         v.title = k
@@ -131,20 +154,6 @@ const isPolymorphicReducer = compose(
     getPath(['tags'])
 )
 
-const isProviderMethod = compose(
-    option(false),
-    map(_ => true),
-    chain(
-      find(
-        and(
-          propEq('name', 'capabilities'),
-          propSatisfies('x-provides', not(isEmpty))
-        )
-      )
-    ),
-    getPath(['tags'])
-  )
-
 const hasTitle = compose(
     option(false),
     map(isString),
@@ -163,7 +172,9 @@ const getParamsFromMethod = compose(
 )
 
 const getPayloadFromEvent = (event, json, schemas = {}) => {
-    return localizeDependencies((event.result.schema.anyOf || event.result.schema.oneOf).find(schema => !(schema['$ref'] === undefined || schema['$ref'].endsWith('/ListenResponse'))), json, schemas)
+    const choices = (event.result.schema.oneOf || event.result.schema.anyOf)
+    const choice = choices.find(schema => schema.title !== 'ListenResponse' && !(schema['$ref'] || '').endsWith('/ListenResponse'))
+    return localizeDependencies(choice, json, schemas)
 }
 
 const providerHasNoParameters = (schema) => {
@@ -405,7 +416,7 @@ const createResponseFromProvider = (provider, json) => {
 
         const schema = localizeDependencies(provider.tags.find(t => t['x-response'])['x-response'], json)
         let n = 1
-        paramExamples.push(... (schema.examples.map( param => ({
+        paramExamples.push(... ((schema.examples || []).map( param => ({
             name: paramExamples.length === 1 ? "Example" : `Example #${n++}`,
             params: [
                 {
@@ -519,6 +530,8 @@ export {
     hasExamples,
     hasTitle,
     getMethods,
+    getMethodsThatProvide,
+    getProvidedCapabilities,
     getEnums,
     getTypes,
     getEvents,

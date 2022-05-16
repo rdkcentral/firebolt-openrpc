@@ -11,14 +11,14 @@
             "tags": [
                 {
                     "name": "capabilities",
-                    "x-provides": "xrn:firebolt:capability:simple:provider",
-                    "x-allow-focus": false,
+                    "x-provides": "xrn:firebolt:capability:test:simple",
+                    "x-allow-focus": false
+                },
+                {
+                    "name": "event",
                     "x-response": {
                         "$ref": "#/components/schemas/SimpleProviderResponse"
                     }
-                },
-                {
-                    "name": "events"
                 }
             ],
             "summary": "Dispatches a request for the simple method to the simple provider.",
@@ -50,7 +50,10 @@
                     "params": [],
                     "result": {
                         "name": "result",
-                        "value": null
+                        "value": {
+                            "correlationId": 123,
+                            "parameters": null
+                        }
                     }
                 }
             ]
@@ -60,14 +63,14 @@
             "tags": [
                 {
                     "name": "capabilities",
-                    "x-provides": "xrn:firebolt:capability:handshake:provider",
-                    "x-allow-focus": true,
+                    "x-provides": "xrn:firebolt:capability:test:handshake",
+                    "x-allow-focus": true
+                },
+                {
+                    "name": "event",
                     "x-response": {
                         "$ref": "#/components/schemas/SimpleProviderResponse"
                     }
-                },
-                {
-                    "name": "events"
                 }
             ],
             "summary": "Dispatches a request for the simple method, with a handshake, to the simple provider.",
@@ -95,11 +98,14 @@
             },
             "examples": [
                 {
-                    "name": "Get simple",
+                    "name": "Get handshake",
                     "params": [],
                     "result": {
                         "name": "result",
-                        "value": null
+                        "value": {
+                            "correlationId": 123,
+                            "parameters": null
+                        }
                     }
                 }
             ]
@@ -109,14 +115,14 @@
             "tags": [
                 {
                     "name": "capabilities",
-                    "x-provides": "xrn:firebolt:capability:multi:provider",
-                    "x-allow-focus": false,
+                    "x-provides": "xrn:firebolt:capability:test:multi",
+                    "x-allow-focus": false
+                },
+                {
+                    "name": "event",
                     "x-response": {
                         "$ref": "#/components/schemas/SimpleProviderResponse"
                     }
-                },
-                {
-                    "name": "events"
                 }
             ],
             "summary": "Dispatches a request for the simple method one to the simple provider.",
@@ -148,7 +154,10 @@
                     "params": [],
                     "result": {
                         "name": "result",
-                        "value": null
+                        "value": {
+                            "correlationId": 123,
+                            "parameters": null
+                        }
                     }
                 }
             ]
@@ -158,14 +167,14 @@
             "tags": [
                 {
                     "name": "capabilities",
-                    "x-provides": "xrn:firebolt:capability:multi:provider",
-                    "x-allow-focus": false,
-                    "x-response": {
-                        "$ref": "#/components/schemas/SimpleProviderResponse"
-                    }
+                    "x-provides": "xrn:firebolt:capability:test:multi",
+                    "x-allow-focus": false
                 },
                 {
-                    "name": "events"
+                    "name": "event",
+                    "x-response": {
+                        "$ref": "#/components/schemas/AnotherProviderResponse"
+                    }
                 }
             ],
             "summary": "Dispatches a request for the simple method two to the simple provider.",
@@ -197,7 +206,10 @@
                     "params": [],
                     "result": {
                         "name": "result",
-                        "value": null
+                        "value": {
+                            "correlationId": 456,
+                            "parameters": null
+                        }
                     }
                 }
             ]
@@ -207,11 +219,11 @@
             "tags": [
                 {
                     "name": "capabilities",
-                    "x-provides": "xrn:firebolt:capability:noresponse:provider",
+                    "x-provides": "xrn:firebolt:capability:test:noresponse",
                     "x-allow-focus": false
                 },
                 {
-                    "name": "events"
+                    "name": "event"
                 }
             ],
             "summary": "Dispatches a request for the simple method to the simple provider.",
@@ -232,7 +244,7 @@
                             "$ref": "https://meta.comcast.com/firebolt/types#/definitions/ListenResponse"
                         },
                         {
-                            "$ref": "#/components/schemas/SimpleProviderRequest"
+                            "$ref": "#/components/schemas/NoResponseProviderRequest"
                         }
                     ]
                 }
@@ -243,7 +255,10 @@
                     "params": [],
                     "result": {
                         "name": "result",
-                        "value": null
+                        "value": {
+                            "correlationId": 123,
+                            "parameters": null
+                        }
                     }
                 }
             ]
@@ -261,6 +276,7 @@
                         "type": "object",
                         "properties": {
                             "parameters": {
+                                "title": "SimpleProviderParameters",
                                 "const": null
                             }
                         }
@@ -272,6 +288,45 @@
                     }
                 ]
             },
+            "NoResponseProviderRequest": {
+                "title": "SimpleProviderRequest",
+                "allOf": [
+                    {
+                        "$ref": "https://meta.comcast.com/firebolt/types#/definitions/ProviderRequest"
+                    },
+                    {
+                        "type": "object",
+                        "properties": {
+                            "parameters": {
+                                "title": "NoResponseParametes",
+                                "properties": {
+                                    "first": {
+                                        "type": "boolean"
+                                    },
+                                    "second": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "integer"
+                                        }
+                                    },
+                                    "last": {
+                                        "type": "string",
+                                        "enum": [
+                                            "foo",
+                                            "bar"
+                                        ]
+                                    }
+                                }
+                            }
+                        }
+                    }
+                ],
+                "examples": [
+                    {
+                        "correlationId": "abc"
+                    }
+                ]
+            },            
             "SimpleProviderResponse": {
                 "title": "SimpleProviderResponse",
                 "allOf": [
@@ -295,6 +350,32 @@
                     {
                         "correlationId": "abc",
                         "result": "here's a value!"
+                    }
+                ]
+            },
+            "AnotherProviderResponse": {
+                "title": "SimpleProviderResponse",
+                "allOf": [
+                    {
+                        "$ref": "https://meta.comcast.com/firebolt/types#/definitions/ProviderResponse"
+                    },
+                    {
+                        "type": "object",
+                        "required": [
+                            "result"
+                        ],
+                        "properties": {
+                            "result": {
+                                "description": "The result of the provider response, containing nothing.",
+                                "type": "string"
+                            }
+                        }
+                    }
+                ],
+                "examples": [
+                    {
+                        "correlationId": "def",
+                        "result": "here's another value!"
                     }
                 ]
             }

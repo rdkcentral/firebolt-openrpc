@@ -16,6 +16,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import deepmerge from 'deepmerge'
 import crocks from 'crocks'
 const { setPath, getPathOr } = crocks
 
@@ -238,19 +239,29 @@ function getSchemaConstraints(json, module, schemas = {}, options = { delimiter:
     return constraints.join(options.delimiter)    
   }
   else if (json.oneOf || json.anyOf) {
-    return 'See OpenRPC Schema for `oneOf` and `anyOf` details'
+    return '' //See OpenRPC Schema for `oneOf` and `anyOf` details'
   }
   else {
     return ''
   }
 }
 
-const localizeDependencies = (def, schema, schemas = {}, externalOnly=false) => {
+const defaultLocalizeOptions = {
+  externalOnly: false,  // true: only localizes refs pointing to other documents, false: localizes all refs into this def
+  mergeAllOfs: false    // true: does a deep merge on all `allOf` arrays, since this is possible w/out refs, and allows for **much** easier programatic inspection of schemas
+}
+
+const localizeDependencies = (def, schema, schemas = {}, options = defaultLocalizeOptions) => {
+  if (typeof options === 'boolean') {
+    // if we got a boolean, then inject it into the default options for the externalOnly value (for backwards compatibility)
+    options = Object.assign(JSON.parse(JSON.stringify(defaultLocalizeOptions)), { externalOnly: options })
+  }
+
   let definition = JSON.parse(JSON.stringify(def))
   let refs = localRefPaths(definition)
   let unresolvedRefs = []
 
-  if (!externalOnly) {
+  if (!options.externalOnly) {
     while (refs.length > 0) {
       for (let i=0; i<refs.length; i++) {
         let path = refs[i]      
@@ -304,6 +315,36 @@ const localizeDependencies = (def, schema, schemas = {}, externalOnly=false) => 
     node['$ref'] = node['$REF']
     delete node['$REF']
   })
+
+  if (options.mergeAllOfs) {
+    const findAndMergeAllOfs = pointer => {
+      if ((typeof pointer) !== 'object' || !pointer) {
+        return
+      }
+
+      Object.keys(pointer).forEach( key => {
+
+        if (Array.isArray(pointer) && key === 'length') {
+          return
+        }
+        // do a depth-first search for `allOfs` to reduce complexity of merges
+        if ((key !== 'allOf') && (typeof pointer[key] === 'object')) {
+          findAndMergeAllOfs(pointer[key])
+        }
+        else if (key === 'allOf' && Array.isArray(pointer[key])) {
+          const union = deepmerge.all(pointer.allOf.reverse()) // reversing so lower `title` attributes will win
+          const title = pointer.title
+          Object.assign(pointer, union)
+          if (title) {
+            pointer.title = title
+          }
+          delete pointer.allOf
+        }
+      })
+    }
+
+    findAndMergeAllOfs(definition)
+  }
 
   return definition
 }

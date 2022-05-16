@@ -1,0 +1,568 @@
+{
+    "$id": "https://meta.comcast.com/firebolt/openrpc",
+    "title": "FireboltOpenRPC",
+    "oneOf": [
+        {
+            "$ref": "#/definitions/Document"
+        }
+    ],
+    "definitions": {
+        "Document": {
+            "type": "object",
+            "properties": {
+                "openrpc": {
+                    "type": "string"
+                },
+                "info": {
+                    "type": "object",
+                    "propertyNames": {
+                        "type": "string",
+                        "enum": ["title", "description", "version"]
+                    },
+                    "additionalProperties": true
+                },
+                "methods": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Method"
+                    }
+                },
+                "components": {
+                    "type": "object",
+                    "propertyNames": {
+                        "type": "string",
+                        "enum": ["contentDescriptors", "schemas", "examples", "links", "errors", "examplePairingObjects", "tags"]
+                    }
+                }
+            }        
+        },
+        "Method": {
+            "allOf": [
+                {
+                    "type": "object",
+                    "required": [
+                        "examples"
+                    ],
+                    "properties": {
+                        "examples": {
+                            "type": "array",
+                            "minItems": 1
+                        }
+                    },
+                    "additionalProperties": true
+                },
+                {
+                    "oneOf": [
+                        {
+                            "$ref": "#/definitions/TaglessMethod"
+                        },
+                        {
+                            "$ref": "#/definitions/TaggedMethod"
+                        }
+                    ]
+                }
+            ]
+        },
+        "TaglessMethod": {
+            "type": "object",
+            "required": ["name"],
+            "propertyNames": {
+                "enum": [
+                    "name",
+                    "summary",
+                    "description",
+                    "params",
+                    "result",
+                    "examples"
+                ]
+            }
+        },
+        "TaggedMethod": {
+            "allOf": [
+                {
+                    "type": "object",
+                    "required": ["name", "tags"],
+                    "propertyNames": {
+                        "enum": [
+                            "name",
+                            "summary",
+                            "description",
+                            "params",
+                            "result",
+                            "examples",
+                            "tags"
+                        ]
+                    }
+                },
+                {
+                    "oneOf": [
+                        {
+                            "$ref": "#/definitions/PropertyMethod"
+                        },
+                        {
+                            "$ref": "#/definitions/ProviderMethod"
+                        },
+                        {
+                            "$ref": "#/definitions/EventMethod"
+                        },
+                        {
+                            "$ref": "#/definitions/RpcOnlyMethod"
+                        },
+                        {
+                            "$ref": "#/definitions/SynchronousMethod"
+                        },
+                        {
+                            "$ref": "#/definitions/PolymorphicPullMethod"
+                        },
+                        {
+                            "$ref": "#/definitions/PolymorphicReducerMethod"
+                        },
+                        {
+                            "$ref": "#/definitions/CallsMetricsMethod"
+                        },
+                        {
+                            "$ref": "#/definitions/ExcludeMethod"
+                        },
+                        {
+                            "$ref": "#/definitions/DeprecatedMethod"
+                        }
+                    ]
+                }
+            ]
+
+        },
+        "DeprecatedMethod": {
+            "type": "object",
+            "required": ["tags"],
+            "properties": {
+                "tags": {
+                    "type": "array",
+                    "contains": {
+                        "type": "object",
+                        "required": ["name"],
+                        "properties": {
+                            "name": {
+                                "const": "deprecated"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "RpcOnlyMethod": {
+            "type": "object",
+            "properties": {
+                "tags": {
+                    "allOf": [
+                        {
+                            "type": "array",
+                            "minItems": 1,
+                            "maxItems": 1,
+                            "items": {
+                                "type": "object"
+                            }
+                        },
+                        {
+                            "type": "array",
+                            "contains": {
+                                "$ref": "#/definitions/RpcOnlyTag"
+                            }
+                        }
+                    ]
+                }
+            }
+        },
+        "SynchronousMethod": {
+            "type": "object",
+            "properties": {
+                "tags": {
+                    "allOf": [
+                        {
+                            "type": "array",
+                            "contains": {
+                                "$ref": "#/definitions/SynchronousTag"
+                            }
+                        }
+                    ]
+                }
+            }
+        },
+        "EventMethod": {
+            "type": "object",
+            "properties": {
+                "tags": {
+                    "allOf": [
+                        {
+                            "type": "array",
+                            "minItems": 1,
+                            "maxItems": 1,
+                            "items": {
+                                "type": "object",
+                                "maxProperties": 1
+                            }
+                        },
+                        {
+                            "type": "array",
+                            "contains": {
+                                "$ref": "#/definitions/EventTag"
+                            }
+                        }
+                    ]
+                }
+            }
+        },
+        "ProviderMethod": {
+            "type": "object",
+            "required": [
+                "tags"
+            ],
+            "properties": {
+                "tags": {
+                    "allOf": [
+                        {
+                            "type": "array",
+                            "contains": {
+                                "$ref": "#/definitions/CapabilitiesTagForProviderMethod"
+                            }
+                        },
+                        {
+                            "type": "array",
+                            "contains": {
+                                "$ref": "#/definitions/EventTag"
+                            }
+                        }
+                    ]
+                }
+            }
+        },
+        "PropertyMethod": {
+            "type": "object",
+            "required": [
+                "tags"
+            ],
+            "properties": {
+                "tags": {
+                    "type": "array",
+                    "contains": {
+                        "$ref": "#/definitions/PropertyTag"
+                    }
+                }
+            }
+        },
+        "PolymorphicPullMethod": {
+            "type": "object",
+            "properties": {
+                "tags": {
+                    "allOf": [
+                        {
+                            "type": "array",
+                            "minItems": 1,
+                            "maxItems": 1,
+                            "items": {
+                                "type": "object"
+                            }
+                        },
+                        {
+                            "type": "array",
+                            "contains": {
+                                "$ref": "#/definitions/PolymorphicPullTag"
+                            }
+                        }
+                    ]
+                }
+            }
+        },
+        "PolymorphicReducerMethod": {
+            "type": "object",
+            "properties": {
+                "tags": {
+                    "allOf": [
+                        {
+                            "type": "array",
+                            "minItems": 1,
+                            "maxItems": 1,
+                            "items": {
+                                "type": "object"
+                            }
+                        },
+                        {
+                            "type": "array",
+                            "contains": {
+                                "$ref": "#/definitions/PolymorphicReducerTag"
+                            }
+                        }
+                    ]
+                }
+            }
+        },
+        "CallsMetricsMethod": {
+            "type": "object",
+            "properties": {
+                "tags": {
+                    "allOf": [
+                        {
+                            "type": "array",
+                            "minItems": 1,
+                            "maxItems": 1,
+                            "items": {
+                                "type": "object"
+                            }
+                        },
+                        {
+                            "type": "array",
+                            "contains": {
+                                "$ref": "#/definitions/CallsMetricsTag"
+                            }
+                        }
+                    ]
+                }
+            }
+        },
+        "ExcludeMethod": {
+            "type": "object",
+            "properties": {
+                "tags": {
+                    "allOf": [
+                        {
+                            "type": "array",
+                            "minItems": 1,
+                            "maxItems": 1,
+                            "items": {
+                                "type": "object"
+                            }
+                        },
+                        {
+                            "type": "array",
+                            "contains": {
+                                "$ref": "#/definitions/ExcludeTag"
+                            }
+                        }
+                    ]
+                }
+            }
+        },
+        "Capability": {
+            "type": "string",
+            "pattern": "^xrn:firebolt:capability:"
+        },
+        "Tag": {
+            "type": "object",
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "enum": [
+                        "event",
+                        "rpc-only",
+                        "polymorphic-pull",
+                        "polymorphic-reducer",
+                        "capabilities",
+                        "exclude-from-sdk",
+                        "synchronous",
+                        "calls-metrics",
+                        "property",
+                        "property:immutable",
+                        "property:readonly"
+                    ]
+                }
+            },
+            "propertyNames": {
+                "type": "string",
+                "enum": [
+                    "name",
+                    "x-provides",
+                    "x-allow-focus",
+                    "x-allow-focus-for",
+                    "x-response",
+                    "x-response-for",
+                    "x-alternative",
+                    "x-since",
+                    "x-deprecated",
+                    "x-pulls-for",
+                    "x-setter-for",
+                    "x-manages",
+                    "x-uses"
+                ]
+            }
+        },
+        "EventTag": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/Tag"
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "name": {
+                            "const": "event"
+                        }
+                    }
+                }
+            ]
+        },
+        "PropertyTag": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/Tag"
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "name": {
+                            "type": "string",
+                            "enum": [
+                                "property",
+                                "property:readonly",
+                                "property:immutable"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        "SynchronousTag": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/Tag"
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "name": {
+                            "const": "synchronous"
+                        }
+                    }
+                }
+            ]
+        },
+        "RpcOnlyTag": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/Tag"
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "name": {
+                            "const": "rpc-only"
+                        }
+                    },
+                    "additionalProperties": false
+                }
+            ]
+        },
+        "PolymorphicPullTag": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/Tag"
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "name": {
+                            "const": "polymorphic-pull"
+                        }
+                    },
+                    "additionalProperties": false
+                }
+            ]
+        },
+        "PolymorphicReducerTag": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/Tag"
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "name": {
+                            "const": "polymorphic-reducer"
+                        }
+                    },
+                    "additionalProperties": false
+                }
+            ]
+        },
+        "CallsMetricsTag": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/Tag"
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "name": {
+                            "const": "calls-metrics"
+                        }
+                    },
+                    "additionalProperties": false
+                }
+            ]
+        },
+        "ExcludeTag": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/Tag"
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "name": {
+                            "const": "exclude-from-sdk"
+                        }
+                    },
+                    "additionalProperties": false
+                }
+            ]
+        },
+        "CapabilitiesTag": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/Tag"
+                },
+                {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "name": {
+                            "const": "capabilities"
+                        },
+                        "x-provides": {
+                            "$ref": "#/definitions/Capability"
+                        },
+                        "x-uses": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Capability"
+                            }
+                        },
+                        "x-manages": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Capability"
+                            }
+                        },
+                        "x-allow-focus": {
+                            "type": "boolean"
+                        }
+                    }
+                }
+            ]
+        },
+        "CapabilitiesTagForProviderMethod": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/CapabilitiesTag"
+                },
+                {
+                    "type": "object",
+                    "required": [
+                        "x-provides"
+                    ]
+                }
+            ]
+        }
+    }
+}

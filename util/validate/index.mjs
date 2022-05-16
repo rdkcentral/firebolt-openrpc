@@ -27,6 +27,7 @@ import url from 'url'
 import Ajv from 'ajv'
 import addFormats from 'ajv-formats'
 import { flattenSchemas } from '../shared/json-schema.mjs'
+import { readFileSync } from 'fs'
 const __dirname = url.fileURLToPath(new URL('.', import.meta.url))
 
 /************************************************************************************************/
@@ -37,7 +38,7 @@ const __dirname = url.fileURLToPath(new URL('.', import.meta.url))
 const run = ({
   'shared-schemas': sharedSchemasFolderArg,
   source: srcFolderArg,
-  'disable-transforms': disableTransforms = false // UNDOCUMENTED ARGUMENT!
+  'disable-transforms': disableTransforms = true // UNDOCUMENTED ARGUMENT!
 }) => {
   logHeader(` VALIDATING... `)
 
@@ -73,7 +74,7 @@ const run = ({
   .errors(jsonErrorHandler(url))
   
   const jsonSchema = getJsonFromUrl('https://meta.json-schema.tools')
-  
+
   // flatten JSON-Schema into OpenRPC
   //  - OpenRPC uses `additionalItems` when `items` is not an array of schemas. This fails strict validate, so we remove it
   //  - AJV can't seem to handle having a property's schema be the entire JSON-Schema spec, so we need to merge OpenRPC & JSON-Schema into one schema
@@ -96,21 +97,23 @@ const run = ({
     }
   }
 
+  const fireboltRpc = JSON.parse(bufferToString(readFileSync(path.join(__dirname, '../../src/schemas/firebolt-openrpc.json'))))
+
   const ajvPackage = (ajv, spec) => [ajv.compile(spec), ajv] // tupling it up for convenience. downstream code needs the instance reference.
 
-  const validateSchemas = ajv => (schemas = {}) => h(Object.values(schemas))
-    .map(module => validate(module, schemas, ajv))
+  const validateSchemas = ajvtuple => (schemas = {}) => h(Object.values(schemas))
+    .map(module => validate(module, schemas, ajvtuple))
     .tap(result => printResult(result, 'Schema'))
   
-  const validateModules = ajv => (schemas = {}) => allModules
+  const validateModules = ajvtuple => (schemas = {}) => allModules
     .map(Object.values).flatten()
-    .map(module => validate(module, schemas, ajv))
+    .map(module => validate(module, schemas, ajvtuple, [ajv.compile(fireboltRpc)]))
     .tap(result => printResult(result, 'Module'))
   
-  const validateSingleDocument = ajv => (schemas = {}) => document => fsReadFile(document)
+  const validateSingleDocument = ajvtuple => (schemas = {}) => document => fsReadFile(document)
     .map(bufferToString)
     .map(JSON.parse)
-    .map(module => validate(module, schemas, ajv, false))
+    .map(module => validate(module, schemas, ajvtuple))
     .tap(result => printResult(result, 'OpenRPC'))
 
   // If it's a single json file

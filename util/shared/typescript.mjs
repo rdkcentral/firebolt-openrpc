@@ -20,6 +20,7 @@ import { getPath, getSchema } from './json-schema.mjs'
 import deepmerge from 'deepmerge'
 import { localizeDependencies } from './json-schema.mjs'
 import { getLinkFromRef } from './helpers.mjs'
+import { getMethodsThatProvide, getPayloadFromEvent } from './modules.mjs'
 
 const isSynchronous = m => !m.tags ? false : m.tags.map(t => t.name).find(s => s === 'synchronous')
 
@@ -35,6 +36,82 @@ function getMethodSignature(module, method, schemas = {}, options={ isInterface:
 
 function getMethodSignatureParams(module, method, schemas = {}) {
     return method.params.map( param => param.name + (!param.required ? '?' : '') + ': ' + getSchemaType(module, param, schemas, {title: true})).join(', ')
+}
+
+function getProviderInterface(module, capability, schemas = {}) {
+  module = JSON.parse(JSON.stringify(module))
+  const iface = getMethodsThatProvide(capability, module).map(method => localizeDependencies(method, module, schemas, { mergeAllOfs: true }))
+
+  iface.forEach(method => {
+    const payload = getPayloadFromEvent(method, module, schemas)
+
+    // remove `onRequest`
+    method.name = method.name.charAt(9).toLowerCase() + method.name.substr(10)
+
+    method.params = [
+      {
+        "name": "parameters",
+        "schema": payload.properties.parameters
+      },
+      {
+        "name": "session",
+        "schema": {
+          "type": "ProviderSession"
+        }
+      }
+    ]
+
+    let exampleResult = null
+
+    if (method.tags.find(tag => tag['x-response'])) {
+      const result = method.tags.find(tag => tag['x-response'])['x-response']
+
+      method.result = {
+        "name": "result",
+        "schema": result.properties.result
+      }
+
+      if (result.examples && result.examples[0]) {
+        exampleResult = result.examples[0].result
+      }
+    }
+    else {
+      method.result = {
+        "name": "result",
+        "schema": {
+          "const": null
+        }
+      }
+    }
+
+    method.examples = method.examples.map( example => (
+      {
+        params: [
+          {
+            name: "parameters",
+            value: example.result.value.parameters
+          },
+          {
+            name: "session",
+            value: {
+              correlationId: example.result.value.correlationId
+            }
+          }
+        ],
+        result: {
+          name: "result",
+          value: exampleResult
+        }
+      }
+    ))
+
+    // remove event tag
+    method.tags = method.tags.filter(tag => tag.name !== 'event')
+  })
+
+
+  return iface
+  //module.methods && module.methods.filter(method => method.tags && method.tags.find(tag => tag['x-provides]'] === capability))
 }
 
 const safeName = prop => prop.match(/[.+]/) ? '"' + prop + '"' : prop
@@ -61,6 +138,9 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
         const someJson = getPath(json['$ref'], moduleJson, schemas)
         return getSchemaShape(moduleJson, someJson, schemas, name, options)
       }
+    }
+    else if (json.hasOwnProperty('const')) {
+      return '  '.repeat(level) + `${prefix}${title}${operator} ` + json.const
     }
     else if (options.title && json.title) {
       let summary = ''
@@ -220,6 +300,9 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
         return wrap(json.title, options.code ? '`' : '')
       }
     }
+    else if (json.const) {
+      return (typeof json.const === 'string' ? `'${json.const}'` : json.const)
+    }
     else if (json.type === 'string' && json.enum) {
       let type = json.enum.map(e => wrap(e, '\'')).join(' | ')
       if (options.code) {
@@ -262,8 +345,11 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
         return getSchemaType(module, (json.oneOf || json.anyOf)[0], schemas, options)
       }
       else {
-        return (json.oneOf || json.anyOf)
-        .map(s => getSchemaType(module, s, schemas, options)).join(' | ')
+        const newOptions = JSON.parse(JSON.stringify(options))
+        newOptions.code = false
+        const result = (json.oneOf || json.anyOf).map(s => getSchemaType(module, s, schemas, newOptions)).join(' | ')
+
+        return options.code ? wrap(result, '`') : result
       }
     }
     else if (json.type === 'object' && json.title) {
@@ -327,6 +413,7 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
   export {
       getMethodSignature,
       getMethodSignatureParams,
+      getProviderInterface,
       getSchemaShape,
       getSchemaType,
       generateEnum
