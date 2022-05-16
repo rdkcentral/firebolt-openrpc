@@ -20,7 +20,7 @@ import crocksHelpers from 'crocks/helpers/index.js'
 const { getPathOr, compose, tap } = crocksHelpers
 
 import { getLinkFromRef } from '../../shared/helpers.mjs'
-import { getMethodSignature, getMethodSignatureParams ,getSchemaType, getSchemaShape, getProviderInterface } from '../../shared/typescript.mjs'
+import { getMethodSignature, getMethodSignatureParams ,getSchemaType, getSchemaShape, getProviderInterface, getProviderName } from '../../shared/typescript.mjs'
 import { getPath, getExternalPath, getExternalSchemaPaths, getSchemaConstraints, isDefinitionReferencedBySchema, localizeDependencies } from '../../shared/json-schema.mjs'
 import fs from 'fs'
 import pointfree from 'crocks/pointfree/index.js'
@@ -289,19 +289,6 @@ function insertMacros(data = '', moduleJson = {}, templates = {}, schemas = {}, 
     data = data.replace(/\$\{[a-zA-Z.]+\}\s*\n?/g, '') // remove left-over macros
 
     return data
-}
-
-function getProviderName(capability, moduleJson, schemas) {
-    const capitalize = str => str[0].toUpperCase() + str.substr(1)
-    const uglyName = capability.split(":").slice(-2).map(capitalize).reverse().join('') + "Provider"
-
-    if (!moduleJson) {
-        return uglyName
-    }
-
-    const iface = getProviderInterface(moduleJson, capability, schemas)//.map(method => { method.name = method.name.charAt(9).toLowerCase() + method.name.substr(10); return method } )
-    const name = iface.length === 1 ? iface[0].name.charAt(0).toUpperCase() + iface[0].name.substr(1) + "Provider" : uglyName
-    return name
 }
 
 function insertProviderInterfaceMacros(data, capability, moduleJson = {}, schemas = {}, templates = {}, options = {}) {

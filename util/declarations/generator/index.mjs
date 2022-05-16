@@ -23,8 +23,8 @@ const { filter, reduce } = pointfree
 import logic from 'crocks/logic/index.js'
 const { not } = logic
 
-import { getMethods, getTypes, isEventMethod, isPublicEventMethod, isPolymorphicPullMethod, getEnums, isRPCOnlyMethod } from '../../shared/modules.mjs'
-import { getSchemaType, getSchemaShape, getMethodSignature, generateEnum } from '../../shared/typescript.mjs'
+import { getMethods, getTypes, isEventMethod, isPublicEventMethod, isPolymorphicPullMethod, getEnums, isRPCOnlyMethod, getProvidedCapabilities } from '../../shared/modules.mjs'
+import { getSchemaType, getSchemaShape, getMethodSignature, generateEnum, getProviderInterface, getProviderName } from '../../shared/typescript.mjs'
 import { getExternalSchemas } from '../../shared/json-schema.mjs'
 
 const getModuleName = getPathOr('missing', ['info', 'title'])
@@ -39,6 +39,7 @@ const generateDeclarations = (obj = {}, schemas = {}) => {
   code.push(generateEvents(obj))
   code.push(generateEnums(obj))
   code.push(generateMethodsWithListeners(obj, schemas))
+  code.push(generateProviders(obj, schemas))
   code.push(`}`)
 
   return code.join('\n')
@@ -156,6 +157,37 @@ const generateListeners = (json, schemas = {}) => compose(
   }, ''),
   filter(isEventMethod),
   getMethods
+)(json)
+
+const generateProviders = (json, schemas = {}) => compose(
+  reduce ((acc, val, i, arr) => {
+    const iface = getProviderInterface(json, val, schemas)
+    const className = getProviderName(val, json, schemas)
+
+    acc += `
+  interface ${className} {\n`
+
+    iface.forEach(method => {
+      const parametersType = getSchemaType(json, method.params[0].schema)
+      const resultType = getSchemaType(json, method.result.schema)
+      console.dir(method.params[0].schema)
+
+      acc += `      ${method.name}(parameters: ${parametersType}, session: object):Promise<${resultType}>\n`
+    })
+
+    acc += `}\n`
+
+    acc += `
+  /**
+   * Provide the '${val}' Capability
+   * @param {string} capability The Capability to provide
+   * @param {object} provider The object providing the capability interface
+   */
+  function provide(capability: '${val}', provider: ${className}): Promise<void>
+`
+    return acc
+  }, ''),
+  getProvidedCapabilities
 )(json)
 
 const polymorphicPull = (json, val, schemas = {}) => {

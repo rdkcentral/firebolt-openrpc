@@ -38,6 +38,20 @@ function getMethodSignatureParams(module, method, schemas = {}) {
     return method.params.map( param => param.name + (!param.required ? '?' : '') + ': ' + getSchemaType(module, param, schemas, {title: true})).join(', ')
 }
 
+
+function getProviderName(capability, moduleJson, schemas) {
+  const capitalize = str => str[0].toUpperCase() + str.substr(1)
+  const uglyName = capability.split(":").slice(-2).map(capitalize).reverse().join('') + "Provider"
+
+  if (!moduleJson) {
+      return uglyName
+  }
+
+  const iface = getProviderInterface(moduleJson, capability, schemas)//.map(method => { method.name = method.name.charAt(9).toLowerCase() + method.name.substr(10); return method } )
+  const name = iface.length === 1 ? iface[0].name.charAt(0).toUpperCase() + iface[0].name.substr(1) + "Provider" : uglyName
+  return name
+}
+
 function getProviderInterface(module, capability, schemas = {}) {
   module = JSON.parse(JSON.stringify(module))
   const iface = getMethodsThatProvide(capability, module).map(method => localizeDependencies(method, module, schemas, { mergeAllOfs: true }))
@@ -372,7 +386,7 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
       }
     }
     else if (json.type) {
-      const type = getTypeScriptType(json.type)
+      const type = getTypeScriptType(Array.isArray(json.type) ? json.type.find(t => t !== 'null') : json.type)
       return wrap(type, options.code ? '`' : '')
     }
     else {
@@ -414,6 +428,7 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
       getMethodSignature,
       getMethodSignatureParams,
       getProviderInterface,
+      getProviderName,
       getSchemaShape,
       getSchemaType,
       generateEnum
