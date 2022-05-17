@@ -13,7 +13,7 @@
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --config=jest.config.json --detectOpenHandles",
     "build": "npm run validate && npm run build:docs && npm run build:sdk",
     "validate": "node ./src/cli.mjs --task validate --source ./src --shared-schemas test/sharedSchemas && npm run build:openrpc && node ./src/cli.mjs --task validate --source ./build/sdk-open-rpc.json --shared-schemas test/sharedSchemas",
-    "build:openrpc": "node ./src/cli.mjs --task openrpc --source ./src --template ./src/template/openrpc/template.json --output ./dist/sdk-open-rpc.json --shared-schemas test/sharedSchemas",
+    "build:openrpc": "node ./src/cli.mjs --task openrpc --source ./src --template ./src/template/openrpc/template.json --output ./build/sdk-open-rpc.json --shared-schemas test/sharedSchemas",
     "build:sdk": "node ./src/cli.mjs --task sdk --source ./src/ --template ./src/local/template/js --output ./build/sdk/javascript/src --shared-schemas test/sharedSchemas",
     "build:docs": "node ./src/cli.mjs --task docs --source ./src/ --template ./src/template/markdown --output ./build/docs/markdown --shared-schemas test/sharedSchemas --as-path",
     "build:wiki": "node ./src/cli.mjs --task docs --source ./src/ --template ./src/template/markdown --output ./build/docs/markdown --shared-schemas test/sharedSchemas",

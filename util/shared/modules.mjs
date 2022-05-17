@@ -154,6 +154,20 @@ const isPolymorphicReducer = compose(
     getPath(['tags'])
 )
 
+const isProviderMethod = compose(
+    option(false),
+    map(_ => true),
+    chain(
+      find(
+        and(
+          propEq('name', 'capabilities'),
+          propSatisfies('x-provides', not(isEmpty))
+        )
+      )
+    ),
+    getPath(['tags'])
+  )
+
 const hasTitle = compose(
     option(false),
     map(isString),
