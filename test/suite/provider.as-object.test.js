@@ -56,7 +56,7 @@ beforeAll( () => {
         }
     })
 
-    Provider.provide('xrn:firebolt:capability:simple:provider', {
+    Provider.provide('xrn:firebolt:capability:test:simple', {
         simpleMethod: (...args) => {
             numberOfArgs = args.length
             methodParameters = args[0]

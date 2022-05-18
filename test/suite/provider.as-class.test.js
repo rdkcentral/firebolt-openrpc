@@ -65,7 +65,7 @@ beforeAll( () => {
         }
     })
 
-    Provider.provide('xrn:firebolt:capability:simple:provider', new SimpleProvider())    
+    Provider.provide('xrn:firebolt:capability:test:simple', new SimpleProvider())    
 
     return new Promise( (resolve, reject) => {
         setTimeout(resolve, 100)

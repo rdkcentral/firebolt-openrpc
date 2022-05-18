@@ -69,7 +69,7 @@ beforeAll( () => {
         }
     })
 
-    Provider.provide('xrn:firebolt:capability:handshake:provider', new SimpleProvider())    
+    Provider.provide('xrn:firebolt:capability:test:handshake', new SimpleProvider())    
 
     return new Promise( (resolve, reject) => {
         setTimeout(resolve, 100)

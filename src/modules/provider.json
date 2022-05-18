@@ -54,7 +54,7 @@
                     "result": {
                         "name": "result",
                         "value": {
-                            "correlationId": 123,
+                            "correlationId": "123",
                             "parameters": null
                         }
                     }
@@ -109,7 +109,7 @@
                     "result": {
                         "name": "result",
                         "value": {
-                            "correlationId": 123,
+                            "correlationId": "123",
                             "parameters": null
                         }
                     }
@@ -164,7 +164,7 @@
                     "result": {
                         "name": "result",
                         "value": {
-                            "correlationId": 123,
+                            "correlationId": "123",
                             "parameters": null
                         }
                     }
@@ -219,7 +219,7 @@
                     "result": {
                         "name": "result",
                         "value": {
-                            "correlationId": 456,
+                            "correlationId": "456",
                             "parameters": null
                         }
                     }
@@ -268,7 +268,7 @@
                     "result": {
                         "name": "result",
                         "value": {
-                            "correlationId": 123,
+                            "correlationId": "123",
                             "parameters": null
                         }
                     }

@@ -103,7 +103,7 @@ beforeAll( () => {
         }
     })
 
-    Provider.provide('xrn:firebolt:capability:multi:provider', new MultiProvider())    
+    Provider.provide('xrn:firebolt:capability:test:multi', new MultiProvider())    
 
     return new Promise( (resolve, reject) => {
         setTimeout(resolve, 100)
