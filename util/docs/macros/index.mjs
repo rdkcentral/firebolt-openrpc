@@ -184,6 +184,7 @@ function insertMacros(data = '', moduleJson = {}, templates = {}, schemas = {}, 
                 }
             }
             methods.push(providerTemplate)
+            methods.sort( (a, b) => (a.name.toLowerCase() > b.name.toLowerCase()) ? 1 : -1 )
         } else {
             data = data.replace(/\$\{if\.providers\}.*?\{end\.if\.providers\}/gms, '')
         }

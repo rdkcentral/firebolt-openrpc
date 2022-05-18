@@ -18,7 +18,7 @@ ${provider.methods}
 **Register your app to provide the `${capability}` capability.**
 
 ```javascript
-import { ${info.title} } from '@firebolt-js/sdk'
+import { ${info.title} } from '${package.name}'
 
 class My${provider} {
 ${provider.interface.start}

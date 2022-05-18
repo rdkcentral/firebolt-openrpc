@@ -267,7 +267,7 @@ const localizeDependencies = (def, schema, schemas = {}, options = defaultLocali
         let path = refs[i]      
         const ref = getPathOr(null, path, definition)
         path.pop() // drop ref
-        let resolvedSchema = getPathOr(null, refToPath(ref), schema)
+        let resolvedSchema = JSON.parse(JSON.stringify(getPathOr(null, refToPath(ref), schema)))
         
         if (!resolvedSchema) {
           resolvedSchema = { "$REF": ref}
@@ -275,6 +275,10 @@ const localizeDependencies = (def, schema, schemas = {}, options = defaultLocali
         }
 
         if (path.length) {
+          // don't loose examples from original object w/ $ref
+          // todo: should we preserve other things, like title?
+          const examples = getPathOr(null, [...path, 'examples'], definition)
+          resolvedSchema.examples = examples || resolvedSchema.examples
           definition = setPath(path, resolvedSchema, definition)
         }
         else {
@@ -300,6 +304,10 @@ const localizeDependencies = (def, schema, schemas = {}, options = defaultLocali
       }
 
       if (path.length) {
+        // don't loose examples from original object w/ $ref
+        // todo: should we preserve other things, like title?
+        const examples = getPathOr(null, [...path, 'examples'], definition)
+        resolvedSchema.examples = examples || resolvedSchema.examples
         definition = setPath(path, resolvedSchema, definition)
       }
       else {

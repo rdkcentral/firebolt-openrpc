@@ -170,7 +170,6 @@ const generateProviders = (json, schemas = {}) => compose(
     iface.forEach(method => {
       const parametersType = getSchemaType(json, method.params[0].schema)
       const resultType = getSchemaType(json, method.result.schema)
-      console.dir(method.params[0].schema)
 
       acc += `      ${method.name}(parameters: ${parametersType}, session: object):Promise<${resultType}>\n`
     })
