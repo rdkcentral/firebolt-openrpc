@@ -1,50 +1,30 @@
-### ${provider.name}
+#### ${method.name}
+
 ${method.description}
 
-${if.javascript}
+```typescript
+${method.signature}
+```
 
-See also: [provide()](#provide).
-${end.if.javascript}
+Provider methods always have two arguments:
 
-Event value:
+| Param                  | Type                 | Required                 | Summary                 |
+| ---------------------- | -------------------- | ------------------------ | ----------------------- |
+| `${method.param.name}` | ${method.param.type} | ${method.param.required} | ${method.param.summary} ${method.param.constraints} |
+
+
+${if.provider.params}
+
+| Parameters Property    | Type                 | Required                 | Summary                 |
+| ---------------------- | -------------------- | ------------------------ | ----------------------- |
+| `${provider.param.name}` | ${provider.param.type} | ${provider.param.required} | ${provider.param.summary} ${provider.param.constraints} |
+
+```typescript
+${parameters.shape}
+```
+
+${end.if.provider.params}
+
+Promise resolution:
 
 ${method.result}
-
-**Examples**
-
-${example.title}:
-
-${if.javascript}
-JavaScript:
-
-```javascript
-${example.javascript}
-```
-Value of `${method.result.name}`
-
-```javascript
-${example.result}
-```
-
-${end.if.javascript}
-
-<details>
-  <summary>JSON-RPC:</summary>
-
-Request:
-
-```json
-${example.jsonrpc}
-```
-
-Response:
-
-```json
-${example.response}
-```
-
-</details>
-
-${end.example}
-
----

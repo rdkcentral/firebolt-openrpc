@@ -20,13 +20,14 @@ import crocksHelpers from 'crocks/helpers/index.js'
 const { getPathOr, compose, tap } = crocksHelpers
 
 import { getLinkFromRef } from '../../shared/helpers.mjs'
-import { getMethodSignature, getMethodSignatureParams ,getSchemaType, getSchemaShape } from '../../shared/typescript.mjs'
+import { getMethodSignature, getMethodSignatureParams ,getSchemaType, getSchemaShape, getProviderInterface, getProviderName } from '../../shared/typescript.mjs'
 import { getPath, getExternalPath, getExternalSchemaPaths, getSchemaConstraints, isDefinitionReferencedBySchema, localizeDependencies } from '../../shared/json-schema.mjs'
 import fs from 'fs'
 import pointfree from 'crocks/pointfree/index.js'
 const { filter, option, map } = pointfree
 import isArray from 'crocks/predicates/isArray.js'
 import safe from 'crocks/Maybe/safe.js'
+import { getProvidedCapabilities } from '../../shared/modules.mjs'
 
 var pkg = JSON.parse(fs.readFileSync('./package.json', 'utf8'));
 
@@ -55,13 +56,16 @@ const getTitle = json => json.info ? json.info.title : json.title
 const hasEventAttribute = (method, attribute) => method.tags && method.tags.find(t => t.name === 'event').hasOwnProperty(attribute)
 const hasNonEmptyEventAttribute = (method, attribute) => {
     if (!method.tags) return false
-    const tag = method.tags.find(t => t.name === 'event')
-    return tag[attribute] && tag[attribute].length
+    const tag = method.tags.find(t => t[attribute])
+    return !!tag
 } 
 const isEvent = method => hasTag(method, 'event')
+const isProviderFocusMethod = method => method.tags && method.tags.find(t => t['x-allow-focus-for'])
+const isProviderResponseMethod = method => method.tags && method.tags.find(t => t['x-response-for'])
 const isProviderMethod = method => isEvent(method) && hasNonEmptyEventAttribute(method, 'x-provides')
 const isFullyDocumentedEvent = method => isEvent(method) && !hasTag('rpc-only') && !hasEventAttribute(method, 'x-alternative') && !hasEventAttribute(method, 'x-pulls-for')
 const isSetter = method => method.tags && method.tags.find(t => t['x-setter-for'])
+const isTocMethod = method => !isEvent(method) && !isProviderFocusMethod(method) && !isProviderResponseMethod(method)
 
 const providerMethodName = m => m.name.startsWith(PROVIDER_PREF) 
     ? m.name[PROVIDER_PREF_LEN].toLowerCase() + m.name.substr(PROVIDER_PREF_LEN + 1)
@@ -85,6 +89,19 @@ function insertMacros(data = '', moduleJson = {}, templates = {}, schemas = {}, 
     const providerMethods = moduleJson.methods && moduleJson.methods.filter( method => isProviderMethod(method))
     const hasProviderMethods = (providerMethods && providerMethods.length > 0)
 
+    const capabilities = moduleJson.methods && getProvidedCapabilities(moduleJson)
+
+    if (capabilities) {
+        regex = /\$\{providers\}/
+        if (match = data.match(regex)) {
+            let providers = ''
+            capabilities.forEach(capability => {
+                providers += insertProviderInterfaceMacros(match[0], capability, moduleJson, schemas, templates, options)
+            })
+            data = data.replace(regex, providers)
+        }
+    }
+
     if (methods) {
         methods.sort( (a, b) => (a.name.toLowerCase() > b.name.toLowerCase()) ? 1 : -1 )
         regex = /\$\{events\}/
@@ -96,16 +113,6 @@ function insertMacros(data = '', moduleJson = {}, templates = {}, schemas = {}, 
                 }
             })
             data = data.replace(regex, events)
-        }
-        regex = /\$\{providers\}/
-        if (match = data.match(regex)) {
-            let providers = ''
-            methods.forEach(method => {
-                if (isProviderMethod(method)) {
-                    providers += insertMethodMacros(match[0], method, moduleJson, schemas, templates, options)
-                }
-            })
-            data = data.replace(regex, providers)
         }
 
         if (hasEvents) {
@@ -151,20 +158,28 @@ function insertMacros(data = '', moduleJson = {}, templates = {}, schemas = {}, 
                 name: 'provide',
                 tags: [
                 ],
-                summary: 'Register a provider from this module',
+                summary: 'Register to provide a capability from this module.\n\nSee [Provider Interfaces](#provider-interfaces), for more info.',
                 params: [
                     {
                         name: 'provider',
+                        summary: 'An Object or Class that implements all of the provider interface methods.',
                         required: true,
                         schema: {
-                            type: 'object'
+                            oneOf: [
+                                {
+                                    type: 'object'
+                                },
+                                {
+                                    type: 'class'
+                                }
+                            ]
                         }
                     }
                 ],
                 result: {
-                    name: 'success',
+                    name: 'result',
                     schema: {
-                        const: 'null'
+                        const: null
                     }
                 }
             }
@@ -177,7 +192,7 @@ function insertMacros(data = '', moduleJson = {}, templates = {}, schemas = {}, 
         while (match = data.match(regex)) {
             let methodsStr = ''
             methods.forEach(method => {
-                if (!method.tags || (!method.tags.find(t => t.name === 'event'))) {
+                if (isTocMethod(method)) {
                     methodsStr += insertMethodMacros(match[0], method, moduleJson, schemas, templates, options)
                 }
             })
@@ -256,9 +271,10 @@ function insertMacros(data = '', moduleJson = {}, templates = {}, schemas = {}, 
 
     if (methods) {
         data = data
-            .replace(/\$\{toc.methods\}/g, methods.filter(m => !m.name.match(/^on[A-Z]/)).map(m => '    - [' + m.name + '](#' + m.name.toLowerCase() + ')').join('\n'))
+            .replace(/\$\{toc.methods\}/g, methods.filter(isTocMethod).map(m => '    - [' + m.name + '](#' + m.name.toLowerCase() + ')').join('\n'))
             .replace(/\$\{toc.events\}/g, methods.filter(m => isEvent(m) && !isProviderMethod(m)).map(m => '    - [' + m.name[2].toLowerCase() + m.name.substr(3) + '](#' + m.name.substr(2).toLowerCase() + ')').join('\n'))
-            .replace(/\$\{toc.providers\}/g, methods.filter(m => isProviderMethod(m)).map(m => '    - [' + providerMethodName(m) + '](#' + providerMethodName(m).toLowerCase() + ')').join('\n'))
+//            .replace(/\$\{toc.providers\}/g, methods.filter(m => isProviderMethod(m)).map(m => '    - [' + providerMethodName(m) + '](#' + providerMethodName(m).toLowerCase() + ')').join('\n'))
+            .replace(/\$\{toc.providers\}/g, capabilities.map(c => `    - [${getProviderName(c, moduleJson, schemas)}](#${getProviderName(c, moduleJson, schemas).toLowerCase})`).join('\n'))
     }
 
     data = data
@@ -275,6 +291,136 @@ function insertMacros(data = '', moduleJson = {}, templates = {}, schemas = {}, 
     return data
 }
 
+function insertProviderInterfaceMacros(data, capability, moduleJson = {}, schemas = {}, templates = {}, options = {}) {
+    let result = ''
+
+    if (!data) return result
+
+    result = templates['provider-interface.md']
+
+    const iface = getProviderInterface(moduleJson, capability, schemas)//.map(method => { method.name = method.name.charAt(9).toLowerCase() + method.name.substr(10); return method } )
+
+    const capitalize = str => str[0].toUpperCase() + str.substr(1)
+    const uglyName = capability.split(":").slice(-2).map(capitalize).reverse().join('') + "Provider"
+    const name = iface.length === 1 ? iface[0].name.charAt(0).toUpperCase() + iface[0].name.substr(1) + "Provider" : uglyName
+
+    let interfaceShape = ''
+    interfaceShape += `interface ${name} {\n`
+    interfaceShape += iface.map(method => `\t${getMethodSignature(moduleJson, method, schemas, { isInterface: true })}`).join('\n')
+    interfaceShape += '\n}\n'
+
+    let propertiesShape = ''
+    propertiesShape += `{\n`
+    propertiesShape += iface.map(method => `\t${getMethodSignature(moduleJson, method, schemas, { isInterface: false })}`).map(str => str.replace(/function (.*?)\(/, '$1: function(')).join('\n')
+    propertiesShape += '\n}\n'
+
+    // todo generate example vanilla JS class that returns example result wrapped in promise
+    let exampleClass = ''
+    exampleClass += `interface ${name} {\n`
+    exampleClass += iface.map(method => `\t${getMethodSignature(moduleJson, method, schemas, { isInterface: true })}`).join('\n')
+    exampleClass += '\n}\n'
+
+    if (iface.length === 0) {
+        result = result.replace(/\$\{provider\.methods\}/gms, '')
+    }
+    else {
+        let regex = /\$\{provider\.methods\}/gms
+        let match = result.match(regex)
+
+        let methodsBlock = ''
+     
+        // insert the standard method templates for each provider
+        if (match) {
+            iface.forEach(method => {
+                // add a tag to pick the correct template
+                method.tags.unshift({
+                    name: 'provider'
+                })
+                const parametersSchema = method.params[0].schema
+                const parametersShape = getSchemaShape(moduleJson, parametersSchema, schemas)
+                let methodBlock = insertMethodMacros(match[0], method, moduleJson, schemas, templates, options)
+                methodBlock = methodBlock.replace(/\${parameters\.shape\}/g, parametersShape)
+                const hasProviderParameters = parametersSchema && parametersSchema.properties && Object.keys(parametersSchema.properties).length > 0
+                if (hasProviderParameters) {
+                    const lines = methodBlock.split('\n')
+                    for (let i = lines.length - 1; i >= 0; i--) {
+                        if (lines[i].match(/\$\{provider\.param\.[a-zA-Z]+\}/)) {
+                            let line = lines[i]
+                            lines.splice(i, 1)
+                            line = insertProviderParameterMacros(line, method.params[0].schema, moduleJson, schemas, options)
+                            lines.splice(i++, 0, line)
+                        }
+                    }
+                    methodBlock = lines.join('\n')    
+                }
+                else {
+                    methodBlock = methodBlock.replace(/\$\{if\.provider\.params\}.*?\$\{end\.if\.provider\.params\}/gms, '')
+                }
+                methodsBlock += methodBlock
+            })
+
+            match = result.match(regex)
+            result = result.replace(regex, methodsBlock)
+        }
+
+        regex = /\$\{provider\.interface\.start\}.*?\$\{provider\.interface\.end\}/s
+        
+        // insert the granular method details for any ${provider.method.start} loops
+        while (match = result.match(regex)) {
+            let methodsBlock = ''
+    
+            const indent = (str, padding) => {
+                let first = true
+                return str.split('\n').map(line => {
+                    if (first) {
+                        first = false
+                        return line
+                    }
+                    else {
+                        return padding + line
+                    }
+                }).join('\n')
+            }
+
+            let i = 1
+            iface.forEach(method => {
+
+                methodsBlock += match[0].replace(/\$\{provider\.interface\.name\}/g, method.name)
+                                        .replace(/\$\{provider\.interface\.Name\}/g, method.name.charAt(0).toUpperCase() + method.name.substr(1))
+
+                                        // first check for indented lines, and do the fancy indented replacement
+                                        .replace(/^([ \t]+)(.*?)\$\{provider\.interface\.example\.result\}/gm, '$1$2' + indent(JSON.stringify(method.examples[0].result.value, null, '    '), '$1'))
+                                        .replace(/^([ \t]+)(.*?)\$\{provider\.interface\.example\.parameters\}/gm, '$1$2' + indent(JSON.stringify(method.examples[0].params[0].value, null, '    '), '$1'))
+                                        // okay now just do the basic replacement (a single regex for both was not fun)
+                                        .replace(/\$\{provider\.interface\.example\.result\}/g, JSON.stringify(method.examples[0].result.value))
+                                        .replace(/\$\{provider\.interface\.example\.parameters\}/g, JSON.stringify(method.examples[0].params[0].value))
+
+                                        .replace(/\$\{provider\.interface\.example\.correlationId\}/g, JSON.stringify(method.examples[0].params[1].value.correlationId))
+
+                                        // a set of up to three RPC "id" values for generating intersting examples with matching ids
+                                        .replace(/\$\{provider\.interface\.i\}/g, i)
+                                        .replace(/\$\{provider\.interface\.j\}/g, (i+iface.length))
+                                        .replace(/\$\{provider\.interface\.k\}/g, (i+2*iface.length))
+
+                i++
+            })
+            methodsBlock = methodsBlock.replace(/\$\{provider\.interface\.[a-zA-Z]+\}/g, '')
+            result = result.replace(regex, methodsBlock)
+        }        
+    }
+
+    // TODO: JSON-RPC examples need to use ${provider.interface} macros, but we're replacing them globally instead of each block
+    // there's examples of this in methods, i think
+
+    result = result.replace(/\$\{provider\}/g, name)
+    result = result.replace(/\$\{interface\}/g, interfaceShape)
+    result = result.replace(/\$\{properties\}/g, propertiesShape)
+    result = result.replace(/\$\{capability\}/g, capability)
+
+
+    return result
+}
+
 function insertMethodMacros(data, method, moduleJson = {}, schemas = {}, templates = {}, options = {}) {
     let result = ''
 
@@ -284,10 +430,8 @@ function insertMethodMacros(data, method, moduleJson = {}, schemas = {}, templat
     if (hasTag(method, 'property') || hasTag(method, 'property:readonly') || hasTag(method, 'property:immutable')) {
         template = 'polymorphic-property'
     }
-    if (isProviderMethod(method)) {
-        template = 'provider'
-    }
     data = templates[`methods/${template}.md`]
+
     data = iterateSignatures(data, method, moduleJson, schemas, templates, options)
 
     if (method.params.length === 0) {
@@ -483,7 +627,7 @@ function iterateSignatures(data, method, moduleJson = {}, schemas = {}, template
         }
         else {
             console.log(`\nERROR: ${getTitle(moduleJson.info.title)}.${method.name} does not have two return types: both 'ListenResponse' and an event-specific payload\n`)
-            process.exit(1)
+            process.exit(-1)
         }
     }
 
@@ -647,6 +791,34 @@ function insertParamMacros(data = '', param, module = {}, schemas = {}, options 
         .replace(/\$\{method.param.constraints\}/, constraints) //getType(param))
 }
 
+function insertProviderParameterMacros(data = '', parameters, module = {}, schemas = {}, options = {}) {
+
+    if (!parameters || !parameters.properties) {
+        return ''
+    }
+
+    let result = ''
+
+    Object.entries(parameters.properties).forEach(([name, param]) => {
+        let constraints = getSchemaConstraints(param, module, schemas)
+        let type = getSchemaType(module, param, schemas, { code: true, link: true, title: true, asPath: options.asPath, baseUrl: options.baseUrl })
+
+        if (constraints && type) {
+            constraints = '<br/>' + constraints
+        }
+
+        result += data
+            .replace(/\$\{provider.param.name\}/, name)
+            .replace(/\$\{provider.param.summary\}/, param.description || '')
+            .replace(/\$\{provider.param.required\}/, (parameters.required && parameters.required.includes(name)) || 'false')
+            .replace(/\$\{provider.param.type\}/, type)
+            .replace(/\$\{provider.param.constraints\}/, constraints) + '\n'
+    })
+
+    return result
+}
+
+
 function insertExampleMacros(data, method, moduleJson = {}, templates = {}) {
     let result = ''
     let first = true
@@ -723,8 +895,13 @@ function getSchemaTypeTable(module, moduleJson = {}, schemas = {}, options = {})
         const obj = moduleJson.oneOf ? moduleJson.oneOf[0] : moduleJson
         const path = obj['$ref']
         const ref = path ? getPath(path, module, schemas) : moduleJson
+        const schemaType = getSchemaType(module, moduleJson, schemas, { code: true, link: true, event: options.event, title: true, asPath: options.asPath, baseUrl: options.baseUrl })
     
-        type += `| ${getSchemaType(module, moduleJson, schemas, { code: true, link: true, event: options.event, title: true, asPath: options.asPath, baseUrl: options.baseUrl }).replace('|', '\\|')} | ${moduleJson.description || ref.description || summary || ''} |\n`
+        if (schemaType === '`void`') {
+            return '```javascript\nvoid\n```'
+        }
+
+        type += `| ${schemaType.replace('|', '\\|')} | ${moduleJson.description || ref.description || summary || ''} |\n`
 
         return type
 

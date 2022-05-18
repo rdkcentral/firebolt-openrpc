@@ -1,4 +1,5 @@
 ### ${method.name}
+
 ${method.description}
 
 ${if.javascript}
@@ -20,6 +21,7 @@ Promise resolution:
 
 ${method.result}
 
+${if.examples}
 **Examples**
 
 ${example.title}
@@ -56,6 +58,8 @@ ${example.response}
 </details>
 
 ${end.example}
+
+${end.if.examples}
 
 ---
 ${end.method}

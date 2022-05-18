@@ -28,7 +28,7 @@ import isEmpty from 'crocks/core/isEmpty.js'
 const { and, not } = logic
 import isString from 'crocks/core/isString.js'
 import predicates from 'crocks/predicates/index.js'
-import { isNull, localizeDependencies } from './json-schema.mjs'
+import { getSchema, isNull, localizeDependencies } from './json-schema.mjs'
 const { isObject, isArray, propEq, pathSatisfies, hasProp, propSatisfies } = predicates
 
 // util for visually debugging crocks ADTs
@@ -53,6 +53,29 @@ const getMethods = compose(
     chain(safe(isArray)),
     getPath(['methods'])
 )
+
+const isProviderMethod = compose(
+    option(false),
+    map(_ => true),
+    chain(
+      find(
+        and(
+          propEq('name', 'capabilities'),
+          propSatisfies('x-provides', not(isEmpty))
+        )
+      )
+    ),
+    getPath(['tags'])
+  )
+
+const getProvidedCapabilities = (json) => {
+    return Array.from(new Set([...getMethods(json).filter(isProviderMethod).map(method => method.tags.find(tag => tag['x-provides'])['x-provides'])]))
+}
+
+const getMethodsThatProvide = (capability, json) => {
+    return getMethods(json).filter(method => method.tags && method.tags.find(tag => tag['x-provides'] === capability))
+}
+  
 
 const addMissingTitles = ([k, v]) => {
     if (v && !v.hasOwnProperty('title')) {
@@ -163,7 +186,9 @@ const getParamsFromMethod = compose(
 )
 
 const getPayloadFromEvent = (event, json, schemas = {}) => {
-    return localizeDependencies((event.result.schema.anyOf || event.result.schema.oneOf).find(schema => !(schema['$ref'] === undefined || schema['$ref'].endsWith('/ListenResponse'))), json, schemas)
+    const choices = (event.result.schema.oneOf || event.result.schema.anyOf)
+    const choice = choices.find(schema => schema.title !== 'ListenResponse' && !(schema['$ref'] || '').endsWith('/ListenResponse'))
+    return localizeDependencies(choice, json, schemas)
 }
 
 const providerHasNoParameters = (schema) => {
@@ -399,26 +424,64 @@ const createResponseFromProvider = (provider, json) => {
             {
                 name: 'response',
                 required: true,
-                schema: provider.tags.find(t => t['x-response'])['x-response']
+                schema: {
+                    allOf: [
+                        {
+                            "$ref": "https://meta.comcast.com/firebolt/types#/definitions/ProviderResponse"
+                        },
+                        {
+                            "type": "object",
+                            "properties": {
+                                "result": provider.tags.find(t => t['x-response'])['x-response']
+                            }
+                        }
+                    ]
+                }
             }
         ]
 
         const schema = localizeDependencies(provider.tags.find(t => t['x-response'])['x-response'], json)
+
         let n = 1
-        paramExamples.push(... (schema.examples.map( param => ({
-            name: paramExamples.length === 1 ? "Example" : `Example #${n++}`,
-            params: [
-                {
-                    name: 'response',
-                    value: param
+        if (schema.examples && schema.examples.length) {
+            paramExamples.push(... (schema.examples.map( param => ({
+                name: schema.examples.length === 1 ? "Example" : `Example #${n++}`,
+                params: [
+                    {
+                        name: 'response',
+                        value: {
+                            correlationId: "123",
+                            result: param
+                        }
+                    }
+                ],
+                result: {
+                    name: 'result',
+                    value: null
                 }
-            ],
-            result: {
-                name: 'result',
-                value: null
-            }
-        }))  || []))
-        delete schema.examples
+            }))  || []))
+            delete schema.examples    
+        }
+        else if (schema['$ref']) {
+            paramExamples.push({
+                name: 'Generated Example',
+                params: [
+                    {
+                        name: 'response',
+                        value: {
+                            correlationId: "123",
+                            result: {
+                                '$ref': schema['$ref'] + '/examples/0'
+                            }
+                        }
+                    }
+                ],
+                result: {
+                    name: 'result',
+                    value: null
+                }
+            })
+        }
     }
     else {
         response.params = []
@@ -519,6 +582,8 @@ export {
     hasExamples,
     hasTitle,
     getMethods,
+    getMethodsThatProvide,
+    getProvidedCapabilities,
     getEnums,
     getTypes,
     getEvents,

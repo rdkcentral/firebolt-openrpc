@@ -25,7 +25,7 @@ ${if.events}
 ${toc.events}
 ${end.if.events}
 ${if.providers}
- - [Providers](#providers)
+ - [Provider Interfaces](#provider-interfaces)
 ${toc.providers}
 ${end.if.providers}
  - [Schemas](#schemas)
@@ -65,7 +65,10 @@ ${end.if.events}
 
 ${if.providers}
 
-## Providers
+## Provider Interfaces
+Providers are interfaces that your app can implement in order to provide certain capabilties back to the platform.
+
+To register a provider, use the [`provide()`](#provide) method.
 
 ${providers}
 
