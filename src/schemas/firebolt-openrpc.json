@@ -92,6 +92,45 @@
                             "examples",
                             "tags"
                         ]
+                    },
+                    "properties": {
+                        "tags": {
+                            "type": "array",
+                            "items": {
+                                "oneOf": [
+                                    {
+                                        "$ref": "#/definitions/CapabilitiesTag"
+                                    },
+                                    {
+                                        "$ref": "#/definitions/EventTag"
+                                    },
+                                    {
+                                        "$ref": "#/definitions/PropertyTag"
+                                    },
+                                    {
+                                        "$ref": "#/definitions/PolymorphicPullTag"
+                                    },
+                                    {
+                                        "$ref": "#/definitions/PolymorphicReducerTag"
+                                    },
+                                    {
+                                        "$ref": "#/definitions/SynchronousTag"
+                                    },
+                                    {
+                                        "$ref": "#/definitions/CallsMetricsTag"
+                                    },
+                                    {
+                                        "$ref": "#/definitions/ExcludeTag"
+                                    },
+                                    {
+                                        "$ref": "#/definitions/RpcOnlyTag"
+                                    },
+                                    {
+                                        "$ref": "#/definitions/DeprecatedTag"
+                                    }
+                                ]
+                            }
+                        }
                     }
                 },
                 {
@@ -350,24 +389,6 @@
             "required": [
                 "name"
             ],
-            "properties": {
-                "name": {
-                    "type": "string",
-                    "enum": [
-                        "event",
-                        "rpc-only",
-                        "polymorphic-pull",
-                        "polymorphic-reducer",
-                        "capabilities",
-                        "exclude-from-sdk",
-                        "synchronous",
-                        "calls-metrics",
-                        "property",
-                        "property:immutable",
-                        "property:readonly"
-                    ]
-                }
-            },
             "propertyNames": {
                 "type": "string",
                 "enum": [
@@ -379,7 +400,6 @@
                     "x-response-for",
                     "x-alternative",
                     "x-since",
-                    "x-deprecated",
                     "x-pulls-for",
                     "x-setter-for",
                     "x-manages",
@@ -398,6 +418,39 @@
                         "name": {
                             "const": "event"
                         }
+                    },
+                    "propertyNames": {
+                        "type": "string",
+                        "enum": [
+                            "name",
+                            "x-response",
+                            "x-alternative",
+                            "x-since",
+                            "x-pulls-for"
+                        ]
+                    }
+                }
+            ]
+        },
+        "DeprecatedTag": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/Tag"
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "name": {
+                            "const": "deprecated"
+                        }
+                    },
+                    "propertyNames": {
+                        "type": "string",
+                        "enum": [
+                            "name",
+                            "x-alternative",
+                            "x-since"
+                        ]
                     }
                 }
             ]
@@ -418,6 +471,15 @@
                                 "property:immutable"
                             ]
                         }
+                    },
+                    "propertyNames": {
+                        "type": "string",
+                        "enum": [
+                            "name",
+                            "x-alternative",
+                            "x-since",
+                            "x-setter-for"
+                        ]
                     }
                 }
             ]
@@ -433,6 +495,14 @@
                         "name": {
                             "const": "synchronous"
                         }
+                    },
+                    "propertyNames": {
+                        "type": "string",
+                        "enum": [
+                            "name",
+                            "x-alternative",
+                            "x-since"
+                        ]
                     }
                 }
             ]
@@ -449,7 +519,16 @@
                             "const": "rpc-only"
                         }
                     },
-                    "additionalProperties": false
+                    "propertyNames": {
+                        "type": "string",
+                        "enum": [
+                            "name",
+                            "x-alternative",
+                            "x-since",
+                            "x-pulls-for",
+                            "x-setter-for"
+                        ]
+                    }        
                 }
             ]
         },
@@ -465,7 +544,14 @@
                             "const": "polymorphic-pull"
                         }
                     },
-                    "additionalProperties": false
+                    "propertyNames": {
+                        "type": "string",
+                        "enum": [
+                            "name",
+                            "x-alternative",
+                            "x-since"
+                        ]
+                    }        
                 }
             ]
         },
@@ -481,7 +567,14 @@
                             "const": "polymorphic-reducer"
                         }
                     },
-                    "additionalProperties": false
+                    "propertyNames": {
+                        "type": "string",
+                        "enum": [
+                            "name",
+                            "x-alternative",
+                            "x-since"
+                        ]
+                    }        
                 }
             ]
         },
@@ -497,7 +590,14 @@
                             "const": "calls-metrics"
                         }
                     },
-                    "additionalProperties": false
+                    "propertyNames": {
+                        "type": "string",
+                        "enum": [
+                            "name",
+                            "x-alternative",
+                            "x-since"
+                        ]
+                    }        
                 }
             ]
         },
@@ -513,7 +613,14 @@
                             "const": "exclude-from-sdk"
                         }
                     },
-                    "additionalProperties": false
+                    "propertyNames": {
+                        "type": "string",
+                        "enum": [
+                            "name",
+                            "x-alternative",
+                            "x-since"
+                        ]
+                    }        
                 }
             ]
         },
