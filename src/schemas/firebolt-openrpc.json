@@ -247,13 +247,18 @@
                             }
                         }
                     ]
+                },
+                "result": {
+                    "$ref": "#/definitions/EventResult"
                 }
             }
         },
         "ProviderMethod": {
             "type": "object",
             "required": [
-                "tags"
+                "tags",
+                "result",
+                "examples"
             ],
             "properties": {
                 "tags": {
@@ -271,6 +276,15 @@
                             }
                         }
                     ]
+                },
+                "result": {
+                    "$ref": "#/definitions/EventResult"
+                },
+                "examples": {
+                    "type": "array",
+                    "contains": {
+                        "$ref": "#/definitions/ProviderRequestExample"
+                    }
                 }
             }
         },
@@ -670,6 +684,78 @@
                     ]
                 }
             ]
+        },
+        "EventResult": {
+            "type": "object",
+            "required": [
+                "schema"
+            ],
+            "properties": {
+                "schema": {
+                    "type": "object",
+                    "required": [
+                        "oneOf"
+                    ],
+                    "properties": {
+                        "oneOf": {
+                            "type": "array",
+                            "minItems": 2,
+                            "maxItems": 2,
+                            "contains": {
+                                "type": "object",
+                                "required": [
+                                    "$ref"
+                                ],
+                                "properties": {
+                                    "$ref": {
+                                        "type": "string",
+                                        "pattern": "^https://meta\\.comcast\\.com/firebolt/types/?#/definitions/ListenResponse$"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }            
+        },
+        "ProviderRequestExample": {
+            "type": "object",
+            "description": "Leveraging the fact that all examples MUST match their method schemas, we can assert that all Provider methods return something that 'looks' like a ProviderRequest by looking at their example result, without dealing with all of the compositional $ref tags that are typically used to implement ProviderRequest schemas.",
+            "required": [
+                "result"
+            ],
+            "properties": {
+                "result": {
+                    "type": "object",
+                    "required": [
+                        "value"
+                    ],
+                    "properties": {
+                        "value": {
+                            "type": "object",
+                            "required": [
+                                "correlationId",
+                                "parameters"
+                            ],
+                            "properties": {
+                                "correlationId": {
+                                    "type": "string"
+                                },
+                                "parameters": {
+                                    "oneOf": [
+                                        {
+                                            "const": null
+                                        },
+                                        {
+                                            "type": "object"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }
