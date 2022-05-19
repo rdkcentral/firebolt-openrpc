@@ -97,8 +97,9 @@ test('Provide method called with two args (parameters, session)', () => {
     expect(numberOfArgs).toBe(2)
 })
 
-test('Provide method session arg DOES have focus', () => {
+test('Provide method session arg DOES have focus()', () => {
     expect(methodSession.hasOwnProperty('focus')).toBe(true)
+    expect(typeof methodSession.focus === 'function')
 })
 
 test('Provider response used correct correlationId', () => {

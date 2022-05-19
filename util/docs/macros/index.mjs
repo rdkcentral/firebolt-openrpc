@@ -20,7 +20,7 @@ import crocksHelpers from 'crocks/helpers/index.js'
 const { getPathOr, compose, tap } = crocksHelpers
 
 import { getLinkFromRef } from '../../shared/helpers.mjs'
-import { getMethodSignature, getMethodSignatureParams ,getSchemaType, getSchemaShape, getProviderInterface, getProviderName } from '../../shared/typescript.mjs'
+import { getMethodSignature, getMethodSignatureParams ,getSchemaType, getSchemaShape, getProviderInterface, getProviderName, getProviderSessionInterface } from '../../shared/typescript.mjs'
 import { getPath, getExternalPath, getExternalSchemaPaths, getSchemaConstraints, isDefinitionReferencedBySchema, localizeDependencies } from '../../shared/json-schema.mjs'
 import fs from 'fs'
 import pointfree from 'crocks/pointfree/index.js'
@@ -278,6 +278,8 @@ function insertMacros(data = '', moduleJson = {}, templates = {}, schemas = {}, 
             .replace(/\$\{toc.providers\}/g, capabilities.map(c => `    - [${getProviderName(c, moduleJson, schemas)}](#${getProviderName(c, moduleJson, schemas).toLowerCase})`).join('\n'))
     }
 
+    const providerSessionInterface = getProviderSessionInterface(moduleJson)
+
     data = data
         .replace(/\$\{module}/g, getTitle(moduleJson).toLowerCase() + '.json')
         .replace(/\$\{info.title}/g, getTitle(moduleJson))
@@ -286,6 +288,7 @@ function insertMacros(data = '', moduleJson = {}, templates = {}, schemas = {}, 
         .replace(/\$\{package.repository.name}/g, pkg.repository && pkg.repository.url && pkg.repository.url.split("/").slice(3,5).join("/") || '')
         .replace(/\$\{info.version}/g, version.readable)
         .replace(/\$\{info.description}/g, moduleJson.info && moduleJson.info.description || '')
+        .replace(/\$\{provider\.session}/g, providerSessionInterface)
 
     data = data.replace(/\$\{[a-zA-Z.]+\}\s*\n?/g, '') // remove left-over macros
 

@@ -8,7 +8,7 @@ ${interface}
 Usage:
 
 ```typescript
-${info.title}.provide('${capability}', provider: ${provider} | Object)
+${info.title}.provide('${capability}', provider: ${provider} | object)
 ```
 
 ${provider.methods}

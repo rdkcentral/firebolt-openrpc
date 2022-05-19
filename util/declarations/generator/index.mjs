@@ -24,7 +24,7 @@ import logic from 'crocks/logic/index.js'
 const { not } = logic
 
 import { getMethods, getTypes, isEventMethod, isPublicEventMethod, isPolymorphicPullMethod, getEnums, isRPCOnlyMethod, getProvidedCapabilities } from '../../shared/modules.mjs'
-import { getSchemaType, getSchemaShape, getMethodSignature, generateEnum, getProviderInterface, getProviderName } from '../../shared/typescript.mjs'
+import { getSchemaType, getSchemaShape, getMethodSignature, generateEnum, getProviderInterface, getProviderName, getProviderSessionInterface } from '../../shared/typescript.mjs'
 import { getExternalSchemas } from '../../shared/json-schema.mjs'
 
 const getModuleName = getPathOr('missing', ['info', 'title'])
@@ -39,10 +39,15 @@ const generateDeclarations = (obj = {}, schemas = {}) => {
   code.push(generateEvents(obj))
   code.push(generateEnums(obj))
   code.push(generateMethodsWithListeners(obj, schemas))
+  code.push(generateSDKInterfaces(obj))
   code.push(generateProviders(obj, schemas))
   code.push(`}`)
 
   return code.join('\n')
+}
+
+const generateSDKInterfaces = json => {
+  return getProviderSessionInterface(json)
 }
 
 const generateTypes = (json, schemas = {}) => compose(
@@ -170,8 +175,9 @@ const generateProviders = (json, schemas = {}) => compose(
     iface.forEach(method => {
       const parametersType = getSchemaType(json, method.params[0].schema)
       const resultType = getSchemaType(json, method.result.schema)
+      const focusable = !!method.tags.find(t => t['x-allow-focus'])
 
-      acc += `      ${method.name}(parameters: ${parametersType}, session: object):Promise<${resultType}>\n`
+      acc += `      ${method.name}(parameters: ${parametersType}, session: ${(focusable ? 'Focusable' : '')}ProviderSession):Promise<${resultType}>\n`
     })
 
     acc += `}\n`
@@ -180,9 +186,9 @@ const generateProviders = (json, schemas = {}) => compose(
   /**
    * Provide the '${val}' Capability
    * @param {string} capability The Capability to provide
-   * @param {object} provider The object providing the capability interface
+   * @param {${className}} provider The object providing the capability interface
    */
-  function provide(capability: '${val}', provider: ${className}): Promise<void>
+  function provide(capability: '${val}', provider: ${className} | object): Promise<void>
 `
     return acc
   }, ''),
