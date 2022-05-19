@@ -38,7 +38,6 @@ function getMethodSignatureParams(module, method, schemas = {}) {
     return method.params.map( param => param.name + (!param.required ? '?' : '') + ': ' + getSchemaType(module, param, schemas, {title: true})).join(', ')
 }
 
-
 function getProviderName(capability, moduleJson, schemas) {
   const capitalize = str => str[0].toUpperCase() + str.substr(1)
   const uglyName = capability.split(":").slice(-2).map(capitalize).reverse().join('') + "Provider"
@@ -52,12 +51,41 @@ function getProviderName(capability, moduleJson, schemas) {
   return name
 }
 
+function getProviderSessionInterface(module) {
+  if (!module.methods) {
+    return ''
+  }
+
+  const providers = module.methods.filter( m => m.tags && m.tags.find( t => t.name == 'capabilities' && t['x-provides'])) || []
+  const focusable = providers.filter(m => m.tags.find(t => t['x-allow-focus'])) || []
+
+
+  const allowFocus = focusable.length > 0
+
+  if (providers.length === 0) {
+    return ''
+  }
+
+  return `
+interface ProviderSession {
+    correlationId(): string        // Returns the correlation id of the current provider session
+}
+
+` + (allowFocus ? `
+interface FocusableProviderSession extends ProviderSession {
+    focus(): Promise<void>         // Requests that the provider app be moved into focus to prevent a user experience
+}
+` : '')
+}
+
+
 function getProviderInterface(module, capability, schemas = {}) {
   module = JSON.parse(JSON.stringify(module))
   const iface = getMethodsThatProvide(capability, module).map(method => localizeDependencies(method, module, schemas, { mergeAllOfs: true }))
 
   iface.forEach(method => {
     const payload = getPayloadFromEvent(method, module, schemas)
+    const focusable = method.tags.find(t => t['x-allow-focus'])
 
     // remove `onRequest`
     method.name = method.name.charAt(9).toLowerCase() + method.name.substr(10)
@@ -70,7 +98,7 @@ function getProviderInterface(module, capability, schemas = {}) {
       {
         "name": "session",
         "schema": {
-          "type": "ProviderSession"
+          "type": focusable ? "FocusableProviderSession" : "ProviderSession"
         }
       }
     ]
@@ -125,7 +153,6 @@ function getProviderInterface(module, capability, schemas = {}) {
 
 
   return iface
-  //module.methods && module.methods.filter(method => method.tags && method.tags.find(tag => tag['x-provides]'] === capability))
 }
 
 const safeName = prop => prop.match(/[.+]/) ? '"' + prop + '"' : prop
@@ -431,5 +458,6 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
       getProviderName,
       getSchemaShape,
       getSchemaType,
-      generateEnum
+      generateEnum,
+      getProviderSessionInterface
   }

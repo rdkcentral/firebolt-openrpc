@@ -70,6 +70,18 @@ Providers are interfaces that your app can implement in order to provide certain
 
 To register a provider, use the [`provide()`](#provide) method.
 
+Every provider interface method has the following signature:
+
+```typescript
+(parameters: object | void, session: ProviderSession) => {}
+```
+
+`ProviderSession` has the following interface:
+
+```typescript
+${provider.session}
+```
+
 ${providers}
 
 ${end.if.providers}
