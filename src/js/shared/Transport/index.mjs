@@ -98,7 +98,63 @@ export default class Transport {
   }
 
   _send (module, method, params) {
-    const p = new Promise((resolve, reject) => {
+    if (Array.isArray(module) && !method && !params) {
+      return this._batch(module)
+    }
+
+    const {promise, json, id } = this._processRequest(module, method, params)
+    const msg = JSON.stringify(json)
+    if (Settings.getLogLevel() === 'DEBUG') {
+      console.debug('Sending message to transport: ' + msg)
+    }
+    this._transport.send(msg)
+
+    return promise
+  }
+
+  _batch (requests) {
+    const results = []
+    const json = []
+
+    requests.forEach( ({module, method, params}) => {
+      const result = this._processRequest(module, method, params)
+      results.push({
+        promise: result.promise,
+        id: result.id
+      })
+      json.push(result.json)
+    })
+
+    const msg = JSON.stringify(json)
+    if (Settings.getLogLevel() === 'DEBUG') {
+      console.debug('Sending message to transport: ' + msg)
+    }
+    this._transport.send(msg)
+
+    return results
+  }
+
+  _processRequest (module, method, params) {
+    const p = this._addPromiseToQueue(module, method, params)
+    const json = this._createRequestJSON(module, method, params)
+
+    const result = {
+      promise: p,
+      json: json,
+      id: this._id
+    }
+
+    this._id++
+
+    return result
+  }
+
+  _createRequestJSON (module, method, params) {
+    return { jsonrpc: '2.0', method: module + '.' + method, params: params, id: this._id }
+  }
+
+  _addPromiseToQueue (module, method, params) {
+    return new Promise((resolve, reject) => {
       this._promises[this._id] = {}
       this._promises[this._id].promise = this
       this._promises[this._id].resolve = resolve
@@ -123,17 +179,6 @@ export default class Transport {
         }
       }
     })
-
-    const json = { jsonrpc: '2.0', method: module + '.' + method, params: params, id: this._id }
-    this._id++
-
-    const msg = JSON.stringify(json)
-    if (Settings.getLogLevel() === 'DEBUG') {
-      console.debug('Sending message to transport: ' + msg)
-    }
-    this._transport.send(msg)
-
-    return p
   }
 
   static getEventMap () {
