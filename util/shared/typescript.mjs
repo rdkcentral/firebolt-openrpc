@@ -39,6 +39,10 @@ function getMethodSignatureParams(module, method, schemas = {}) {
 }
 
 function getProviderName(capability, moduleJson, schemas) {
+  if (!capability) {
+    return ''
+  }
+  
   const capitalize = str => str[0].toUpperCase() + str.substr(1)
   const uglyName = capability.split(":").slice(-2).map(capitalize).reverse().join('') + "Provider"
 
@@ -335,7 +339,7 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
     }
     else if (options.title && json.title) {
       if (options.link) {
-       return '[' + wrap(json.title, options.code ? '`' : '') + '](#' + json.title.toLowerCase() + ')'
+        return '[' + wrap(json.title, options.code ? '`' : '') + '](#' + json.title.toLowerCase() + ')'
       }
       else {
         return wrap(json.title, options.code ? '`' : '')
@@ -375,7 +379,7 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
       }
     }
     else if (json.allOf) {
-      let union = deepmerge.all([...json.allOf.map(x => x['$ref'] ? getPath(x['$ref'], module, schemas) || x : x), options])
+      let union = deepmerge.all([...json.allOf.map(x => x['$ref'] ? getPath(x['$ref'], module, schemas) || x : x)])
       if (json.title) {
         union.title = json.title
       }

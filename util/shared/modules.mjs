@@ -322,6 +322,11 @@ const createTemporalEventMethod = (method, json, name) => {
     // copy the array items schema to the main result for individual events
     event.result.schema.oneOf[1] = method.result.schema.items
 
+    event.tags = event.tags.filter(t => t.name !== 'temporal-set')
+    event.tags.push({
+        name: "rpc-only"
+    })
+
     event.params.unshift({
         name: "correlationId",
         required: true,
@@ -367,6 +372,9 @@ const createTemporalStopMethod = (method, jsoname) => {
     stop.name = 'stop' + method.name.charAt(0).toUpperCase() + method.name.substr(1)
 
     stop.tags = stop.tags.filter(tag => tag.name !== 'temporal-set')
+    stop.tags.push({
+        name: "rpc-only"
+    })
 
     // copy the array items schema to the main result for individual events
     stop.result.name = "result"
@@ -623,6 +631,11 @@ const generateProviderMethods = json => {
     const providers = json.methods.filter( m => m.tags && m.tags.find( t => t.name == 'capabilities' && t['x-provides'])) || []
 
     providers.forEach(provider => {
+        if (! isRPCOnlyMethod(provider)) {
+            provider.tags.push({
+                "name": "rpc-only"
+            })
+        }
         // only create the ready method for providers that require a handshake
         if (provider.tags.find(t => t['x-allow-focus'])) {
             json.methods.push(createFocusFromProvider(provider, json))
