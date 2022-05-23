@@ -275,7 +275,7 @@ function insertMacros(data = '', moduleJson = {}, templates = {}, schemas = {}, 
             .replace(/\$\{toc.methods\}/g, methods.filter(isTocMethod).map(m => '    - [' + m.name + '](#' + m.name.toLowerCase() + ')').join('\n'))
             .replace(/\$\{toc.events\}/g, methods.filter(m => isEvent(m) && !isProviderMethod(m)).map(m => '    - [' + m.name[2].toLowerCase() + m.name.substr(3) + '](#' + m.name.substr(2).toLowerCase() + ')').join('\n'))
 //            .replace(/\$\{toc.providers\}/g, methods.filter(m => isProviderMethod(m)).map(m => '    - [' + providerMethodName(m) + '](#' + providerMethodName(m).toLowerCase() + ')').join('\n'))
-            .replace(/\$\{toc.providers\}/g, capabilities.map(c => `    - [${getProviderName(c, moduleJson, schemas)}](#${getProviderName(c, moduleJson, schemas).toLowerCase})`).join('\n'))
+            .replace(/\$\{toc.providers\}/g, capabilities.map(c => `    - [${getProviderName(c, moduleJson, schemas)}](#${getProviderName(c, moduleJson, schemas).toLowerCase()})`).join('\n'))
     }
 
     const providerSessionInterface = getProviderSessionInterface(moduleJson)
