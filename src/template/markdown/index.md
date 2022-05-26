@@ -20,9 +20,15 @@ You can see this API in the [${module}](${package.repository}/blob/main/src/modu
  - [Usage](#usage)
  - [Methods](#methods)
 ${toc.methods}
+${if.additionalMethods}
+    - [Additional Methods](#additional-methods)    
+${end.if.additionalMethods}
 ${if.events}
  - [Events](#events)
 ${toc.events}
+${if.additionalEvents}
+    - [Additional Events](#additional-events)
+${end.if.additionalEvents}
 ${end.if.events}
 ${if.providers}
  - [Provider Interfaces](#provider-interfaces)
@@ -46,11 +52,25 @@ ${end.if.javascript}
 ## Methods
 ${methods}
 
+${if.additionalMethods}
+### Additional methods
+The following methods are documented as part of a related set of method APIs.
+
+For more information, follow the links under the "Documentation" column.
+
+| JavaScript | RPC | Parameters | Documentation |
+|------------|-----|------------|---------------|
+${additionalMethods}
+
+${end.if.additionalMethods}
+
 ${if.events}
 
 ## Events
 
 ${events}
+
+${if.additionalEvents}
 
 ### Additional events
 The following events are documented as part of a related set of method APIs.
@@ -58,8 +78,10 @@ The following events are documented as part of a related set of method APIs.
 For more information, follow the links under the "Documentation" column.
 
 | JavaScript | RPC | Payload | Documentation |
-|-------|---------|----------|-------------|
+|------------|-----|---------|---------------|
 ${additionalEvents}
+
+${end.if.additionalEvents}
 
 ${end.if.events}
 

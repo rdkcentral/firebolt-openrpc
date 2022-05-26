@@ -34,6 +34,13 @@ if (win.__firebolt && win.__firebolt.testHarness) {
 
 function send(message) {
   let json = JSON.parse(message)
+
+  // handle bulk sends
+  if (Array.isArray(json)) {
+    json.forEach(j => send(JSON.stringify(j)))
+    return
+  }
+
   let [module, method] = json.method.split('.')
 
   if (testHarness && testHarness.onSend) {
@@ -53,11 +60,10 @@ function send(message) {
     }
   }
 
-
-    if (mock)
-      handle(json)
-    else
-      pending.push(json)
+  if (mock)
+    handle(json)
+  else
+    pending.push(json)
 }
 
 function handle(json) {

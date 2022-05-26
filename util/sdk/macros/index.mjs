@@ -30,10 +30,11 @@ import predicates from 'crocks/predicates/index.js'
 import isNil from 'crocks/core/isNil.js'
 const { isObject, isArray, propEq, pathSatisfies, propSatisfies } = predicates
 
-import { isExcludedMethod, isRPCOnlyMethod, isProviderMethod, getPayloadFromEvent, providerHasNoParameters } from '../../shared/modules.mjs'
+import { isExcludedMethod, isRPCOnlyMethod, isProviderMethod, getPayloadFromEvent, providerHasNoParameters, isTemporalSetMethod, generateTemporalSetMethods } from '../../shared/modules.mjs'
 import { getTemplateForMethod } from '../../shared/template.mjs'
 import { getMethodSignatureParams } from '../../shared/javascript.mjs'
 import isEmpty from 'crocks/core/isEmpty.js'
+import { localizeDependencies } from '../../shared/json-schema.mjs'
 
 // util for visually debugging crocks ADTs
 const _inspector = obj => {
@@ -130,6 +131,12 @@ const eventsOrEmptyArray = compose(
   })),
   map(filter(isPublicEventMethod)),
   getMethods
+)
+
+const temporalSets = compose(
+  option([]),
+  map(filter(isTemporalSetMethod)),
+  getMethods  
 )
 
 // Find all provided capabilities
@@ -340,6 +347,10 @@ const generateImports = json => {
     imports += `import Prop from '../Prop/index.mjs'\n`
   }
 
+  if (temporalSets(json).length) {
+    imports += `import TemporalSet from '../TemporalSet/index.mjs'\n`
+  }
+
   return imports
 }
 
@@ -467,12 +478,18 @@ function generateMethods(json = {}, templates = {}, onlyEvents = false) {
       if (isPropertyMethod(methodObj)) {
         template = templates['methods/polymorphic-property.js']
       }
+
+      const temporalItemName = isTemporalSetMethod(methodObj) ? methodObj.result.schema.items && methodObj.result.schema.items.title || 'Item' : ''
+      const temporalAddName = isTemporalSetMethod(methodObj) ? `on${temporalItemName}Available` : ''
+      const temporalRemoveName = isTemporalSetMethod(methodObj) ? `on${temporalItemName}Unvailable` : ''
       const javascript = template.replace(/\$\{method\.name\}/g, method.name)
         .replace(/\$\{method\.params\}/g, method.params)
         .replace(/\$\{method\.Name\}/g, method.name[0].toUpperCase() + method.name.substr(1))
         .replace(/\$\{info\.title\}/g, info.title)
         .replace(/\$\{method\.property\.immutable\}/g, hasTag(methodObj, 'property:immutable'))
         .replace(/\$\{method\.property\.readonly\}/g, hasTag(methodObj, 'property:immutable') || hasTag(methodObj, 'property:readonly'))
+        .replace(/\$\{method\.temporalset\.add\}/g, temporalAddName)
+        .replace(/\$\{method\.temporalset\.remove\}/g, temporalRemoveName)
 
       acc = acc.concat(javascript)
 

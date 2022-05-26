@@ -117,6 +117,13 @@ const isPolymorphicPullMethod = compose(
     getPath(['tags'])
 )
 
+const isTemporalSetMethod = compose(
+    option(false),
+    map(_ => true),
+    chain(find(propEq('name', 'temporal-set'))),
+    getPath(['tags'])
+)
+
 const isPublicEventMethod = and(
     compose(
         option(true),
@@ -307,6 +314,95 @@ const createPullEventFromPush = (pusher, json) => {
     })
 
     return event
+}
+
+const createTemporalEventMethod = (method, json, name) => {
+    const event = createEventFromMethod(method, json, name, 'x-temporal-for', ['temporal-set'])
+
+    // copy the array items schema to the main result for individual events
+    event.result.schema.oneOf[1] = method.result.schema.items
+
+    event.tags = event.tags.filter(t => t.name !== 'temporal-set')
+    event.tags.push({
+        name: "rpc-only"
+    })
+
+    event.params.unshift({
+        name: "correlationId",
+        required: true,
+        schema: {
+            type: "string"
+        }
+    })
+
+    event.examples && event.examples.forEach(example => {
+        example.params.unshift({
+            name: "correlationId",
+            value: "xyz"
+        })
+        example.result.value = example.result.value[0]
+    })
+
+    return event
+}
+
+const createEventFromMethod = (method, json, name, correlationExtension, tagsToRemove = []) => {
+    const event = eventDefaults(JSON.parse(JSON.stringify(method)))
+    event.name = 'on' + name
+    const old_tags = method.tags.concat()
+
+    event.tags[0][correlationExtension] = method.name
+    event.tags.push({
+        name: 'rpc-only'
+    })
+
+    old_tags.forEach(t => {
+        if (!tagsToRemove.find(t => tagsToRemove.includes(t.name)))
+        {
+            event.tags.push(t)
+        }
+    })
+
+    return event
+}
+
+const createTemporalStopMethod = (method, jsoname) => {
+    const stop = JSON.parse(JSON.stringify(method))
+
+    stop.name = 'stop' + method.name.charAt(0).toUpperCase() + method.name.substr(1)
+
+    stop.tags = stop.tags.filter(tag => tag.name !== 'temporal-set')
+    stop.tags.push({
+        name: "rpc-only"
+    })
+
+    // copy the array items schema to the main result for individual events
+    stop.result.name = "result"
+    stop.result.schema = {
+        type: "null"
+    }
+
+    stop.params = [{
+        name: "correlationId",
+        required: true,
+        schema: {
+            type: "string"
+        }
+    }]
+
+    stop.examples && stop.examples.forEach(example => {
+        example.params = [{
+            name: "correlationId",
+            value: "xyz"
+        }]
+
+        example.result = {
+            name: "result",
+            value: null
+        }
+    })
+
+    return stop
 }
 
 const createSetterFromProperty = property => {
@@ -520,10 +616,26 @@ const generatePolymorphicPullEvents = json => {
     return json
 }
 
+const generateTemporalSetMethods = json => {
+    const temporals = json.methods.filter( m => m.tags && m.tags.find( t => t.name == 'temporal-set')) || []
+
+    temporals.forEach(temporal => json.methods.push(createTemporalEventMethod(temporal, json, (temporal.result.schema.items.title || 'Item') + 'Available')))
+    temporals.forEach(temporal => json.methods.push(createTemporalEventMethod(temporal, json, (temporal.result.schema.items.title || 'Item') + 'Unavailable')))
+    temporals.forEach(temporal => json.methods.push(createTemporalStopMethod(temporal, json)))
+
+    return json
+}
+
+
 const generateProviderMethods = json => {
     const providers = json.methods.filter( m => m.tags && m.tags.find( t => t.name == 'capabilities' && t['x-provides'])) || []
 
     providers.forEach(provider => {
+        if (! isRPCOnlyMethod(provider)) {
+            provider.tags.push({
+                "name": "rpc-only"
+            })
+        }
         // only create the ready method for providers that require a handshake
         if (provider.tags.find(t => t['x-allow-focus'])) {
             json.methods.push(createFocusFromProvider(provider, json))
@@ -562,6 +674,7 @@ export {
     isPublicEventMethod,
     isPolymorphicReducer,
     isPolymorphicPullMethod,
+    isTemporalSetMethod,
     isExcludedMethod,
     isRPCOnlyMethod,
     isProviderMethod,
@@ -582,5 +695,6 @@ export {
     generatePropertyEvents,
     generatePropertySetters,
     generateProviderMethods,
+    generateTemporalSetMethods,
     providerHasNoParameters
 }
