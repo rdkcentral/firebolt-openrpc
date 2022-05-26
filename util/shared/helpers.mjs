@@ -152,7 +152,8 @@ const fileCollectionReducer = (truncateBefore = '') => (acc = {}, payload = '') 
   return acc
 }
 
-const hasPublicMethods = json => json.methods && json.methods.filter(m => !m.tags || !m.tags.map(t=>t.name).includes('rpc-only')).length > 0
+const hasPublicInterfaces = json => json.methods && json.methods.filter(m => m.tags && m.tags.find(t=>t['x-provides'])).length > 0
+const hasPublicMethods = json => hasPublicInterfaces(json) || (json.methods && json.methods.filter(m => !m.tags || !m.tags.map(t=>t.name).includes('rpc-only')).length > 0)
 const alphabeticalSorter = (a, b) => a.info.title > b.info.title ? 1 : b.info.title > a.info.title ? -1 : 0
 const combineStreamObjects = (...xs) => h([...xs]).flatten().collect().map(xs => Object.assign({}, ...xs))
 const schemaMapper = ([_filepath, parsed]) => {

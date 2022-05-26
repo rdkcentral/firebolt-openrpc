@@ -40,8 +40,6 @@ const run = ({
 }) => {
   // Important file/directory locations
 
-  console.log('asPath: ' + asPath)
-
   const changeLog = path.join('CHANGELOG.md')
   const apiIndex = path.join(__dirname, '..', '..', 'src', 'template', 'markdown', 'api.md')
   const packageJsonFile = path.join(srcFolderArg, '..', 'package.json')
@@ -60,7 +58,7 @@ const run = ({
   const combinedSchemas = combineStreamObjects(schemaFetcher(sharedSchemasFolder), schemaFetcher(schemasFolder))
   
   const generateDocs = templates => modules => schemas => version => h(Object.entries(modules))
-    .concat(Object.entries(schemas))
+  .concat(Object.entries(schemas))
     .flatMap(([_, module]) => {
       const documentOptions = {
         asPath: asPath,
