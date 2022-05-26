@@ -292,6 +292,11 @@ function insertMacros(data = '', moduleJson = {}, templates = {}, schemas = {}, 
 
     data = data.replace(/\$\{[a-zA-Z.]+\}\s*\n?/g, '') // remove left-over macros
 
+    if (!options.asPath) {
+        // remove title headers
+        data = data.replace(/^---\ntitle\:.*?\n---\n\n# .*?\n---\n/g, '')
+    }
+
     return data
 }
 

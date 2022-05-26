@@ -39,7 +39,10 @@ const run = ({
   'as-path': asPath = false,
 }) => {
   // Important file/directory locations
-  const readMe = path.join('README.md')
+
+  console.log('asPath: ' + asPath)
+
+  const changeLog = path.join('CHANGELOG.md')
   const apiIndex = path.join(__dirname, '..', '..', 'src', 'template', 'markdown', 'api.md')
   const packageJsonFile = path.join(srcFolderArg, '..', 'package.json')
   const sharedSchemasFolder = sharedSchemasFolderArg
@@ -49,7 +52,8 @@ const run = ({
   const templateFolder = path.join(templateFolderArg)
   const sharedTemplateFolder = path.join(__dirname, '..', '..', 'src', 'template', 'markdown')
   const outputFolder = path.join(outputFolderArg)
-  const copyReadMe = _ => asPath ? fsCopyFile(apiIndex, path.join(outputFolder, 'index.md')) : fsCopyFile(readMe, path.join(outputFolder, 'index.md'))
+  const copyReadMe = _ => asPath ? fsCopyFile(apiIndex, path.join(outputFolder, 'index.md')) : fsCopyFile(changeLog, path.join(outputFolder, 'Home.md'))
+  const createDirectories = _ => asPath ? fsMkDirP(path.join(outputFolder, 'schemas')) : fsMkDirP(outputFolder)
 
   // All the streams we care about.
   const combinedTemplates = combineStreamObjects(loadFilesIntoObject(sharedTemplateFolder, '.md', '/template/markdown/'), loadFilesIntoObject(templateFolder, '.md', '/template/markdown/'))
@@ -84,7 +88,7 @@ const run = ({
 
   return clearDirectory(outputFolder)
     .tap(_ => logSuccess(`Removed ${trimPath(outputFolder)}`))
-    .flatMap(fsMkDirP(path.join(outputFolder, 'schemas')))
+    .flatMap(createDirectories)
     .flatMap(copyReadMe)
     .tap(_ => logSuccess(`Created ${trimPath(outputFolder)}`))
     .tap(_ => logSuccess(`Created index.md`))

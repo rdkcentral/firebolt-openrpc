@@ -269,7 +269,13 @@
                         "name": "result",
                         "value": {
                             "correlationId": "123",
-                            "parameters": null
+                            "parameters": {
+                                "first": true,
+                                "second": [
+                                    1
+                                ],
+                                "last": "foo"
+                            }
                         }
                     }
                 }
@@ -301,7 +307,7 @@
                 ]
             },
             "NoResponseProviderRequest": {
-                "title": "SimpleProviderRequest",
+                "title": "NoResponseProviderRequest",
                 "allOf": [
                     {
                         "$ref": "https://meta.comcast.com/firebolt/types#/definitions/ProviderRequest"
@@ -311,6 +317,7 @@
                         "properties": {
                             "parameters": {
                                 "title": "NoResponseParametes",
+                                "type": "object",
                                 "properties": {
                                     "first": {
                                         "type": "boolean"
