@@ -23,7 +23,7 @@ const { filter, reduce } = pointfree
 import logic from 'crocks/logic/index.js'
 const { not } = logic
 
-import { getMethods, getTypes, isEventMethod, isPublicEventMethod, isPolymorphicPullMethod, getEnums, isRPCOnlyMethod, getProvidedCapabilities } from '../../shared/modules.mjs'
+import { getMethods, getTypes, isEventMethod, isPublicEventMethod, isPolymorphicPullMethod, getEnums, isRPCOnlyMethod, getProvidedCapabilities, isTemporalSetMethod } from '../../shared/modules.mjs'
 import { getSchemaType, getSchemaShape, getMethodSignature, generateEnum, getProviderInterface, getProviderName, getProviderSessionInterface } from '../../shared/typescript.mjs'
 import { getExternalSchemas } from '../../shared/json-schema.mjs'
 
@@ -195,6 +195,7 @@ const generateProviders = (json, schemas = {}) => compose(
   getProvidedCapabilities
 )(json)
 
+
 const polymorphicPull = (json, val, schemas = {}) => {
   let acc = ''
 
@@ -288,7 +289,18 @@ const generateMethods = (json, schemas = {}) => compose(
       acc += `
  */
 `
-    acc += getMethodSignature(json, val, schemas, { isInterface: false }) + '\n'
+    let sig = getMethodSignature(json, val, schemas, { isInterface: false })
+
+    if (isTemporalSetMethod(val)) {
+      const itemType = getSchemaType(json, val.result.schema.items)
+      sig = sig.substring(0, sig.lastIndexOf(')'))
+      if (val.params && val.params.length) {
+        sig += ', '
+      }
+      sig += `add: (item: ${itemType}) => void, remove: (item: ${itemType}) => void): { stop: () => {} }`
+    }
+
+    acc += sig + '\n'
 
     if (val.tags && val.tags.find(t => t.name == 'polymorphic-pull')) {
       acc += polymorphicPull(json, val, schemas)

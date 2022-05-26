@@ -73,8 +73,14 @@
                     "description",
                     "params",
                     "result",
+                    "tags",
                     "examples"
                 ]
+            },
+            "properties": {
+                "tags": {
+                    "const": []
+                }
             }
         },
         "TaggedMethod": {
@@ -109,6 +115,9 @@
                                     },
                                     {
                                         "$ref": "#/definitions/PolymorphicPullTag"
+                                    },
+                                    {
+                                        "$ref": "#/definitions/TemporalSetTag"
                                     },
                                     {
                                         "$ref": "#/definitions/PolymorphicReducerTag"
@@ -152,6 +161,9 @@
                         },
                         {
                             "$ref": "#/definitions/PolymorphicPullMethod"
+                        },
+                        {
+                            "$ref": "#/definitions/TemporalSetMethod"
                         },
                         {
                             "$ref": "#/definitions/PolymorphicReducerMethod"
@@ -299,6 +311,29 @@
                     "contains": {
                         "$ref": "#/definitions/PropertyTag"
                     }
+                }
+            }
+        },
+        "TemporalSetMethod": {
+            "type": "object",
+            "properties": {
+                "tags": {
+                    "allOf": [
+                        {
+                            "type": "array",
+                            "minItems": 1,
+                            "maxItems": 1,
+                            "items": {
+                                "type": "object"
+                            }
+                        },
+                        {
+                            "type": "array",
+                            "contains": {
+                                "$ref": "#/definitions/TemporalSetTag"
+                            }
+                        }
+                    ]
                 }
             }
         },
@@ -541,6 +576,29 @@
                             "x-since",
                             "x-pulls-for",
                             "x-setter-for"
+                        ]
+                    }        
+                }
+            ]
+        },
+        "TemporalSetTag": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/Tag"
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "name": {
+                            "const": "temporal-set"
+                        }
+                    },
+                    "propertyNames": {
+                        "type": "string",
+                        "enum": [
+                            "name",
+                            "x-alternative",
+                            "x-since"
                         ]
                     }        
                 }

@@ -27,7 +27,7 @@ import pointfree from 'crocks/pointfree/index.js'
 const { filter, option, map } = pointfree
 import isArray from 'crocks/predicates/isArray.js'
 import safe from 'crocks/Maybe/safe.js'
-import { getProvidedCapabilities } from '../../shared/modules.mjs'
+import { getProvidedCapabilities, isRPCOnlyMethod, isTemporalSetMethod } from '../../shared/modules.mjs'
 
 var pkg = JSON.parse(fs.readFileSync('./package.json', 'utf8'));
 
@@ -63,7 +63,7 @@ const isEvent = method => hasTag(method, 'event')
 const isProviderFocusMethod = method => method.tags && method.tags.find(t => t['x-allow-focus-for'])
 const isProviderResponseMethod = method => method.tags && method.tags.find(t => t['x-response-for'])
 const isProviderMethod = method => isEvent(method) && hasNonEmptyEventAttribute(method, 'x-provides')
-const isFullyDocumentedEvent = method => isEvent(method) && !hasTag('rpc-only') && !hasEventAttribute(method, 'x-alternative') && !hasEventAttribute(method, 'x-pulls-for')
+const isFullyDocumentedEvent = method => isEvent(method) && !hasTag(method, 'rpc-only') && !hasEventAttribute(method, 'x-alternative') && !hasEventAttribute(method, 'x-pulls-for')
 const isSetter = method => method.tags && method.tags.find(t => t['x-setter-for'])
 const isTocMethod = method => !isEvent(method) && !isProviderFocusMethod(method) && !isProviderResponseMethod(method)
 
@@ -82,10 +82,12 @@ export {
 
 function insertMacros(data = '', moduleJson = {}, templates = {}, schemas = {}, options = {}, version = {}) {
     let match, regex
-    const methods = moduleJson.methods && moduleJson.methods.filter( method => !isEvent(method) && !isSetter(method) || (isEvent(method) && isFullyDocumentedEvent(method)) || isProviderMethod(method))
-    const additionalEvents = moduleJson.methods && moduleJson.methods.filter( method => isEvent(method) && !isFullyDocumentedEvent(method) && !isProviderMethod(method))
-    
-    const hasEvents = (additionalEvents && additionalEvents.length > 0) || (methods && methods.find(method => isEvent(method) && !isProviderMethod(method)))
+
+    const methods = moduleJson.methods && moduleJson.methods.filter( method => !isEvent(method) && !isRPCOnlyMethod(method) )
+    const events = moduleJson.methods && moduleJson.methods.filter( method => isEvent(method) && isFullyDocumentedEvent(method))
+    const additionalEvents = moduleJson.methods && moduleJson.methods.filter( method => isEvent(method) && !isFullyDocumentedEvent(method))
+    const additionalMethods = moduleJson.methods && moduleJson.methods.filter( method => !isEvent(method) && isRPCOnlyMethod(method) )
+    const hasEvents = (additionalEvents && additionalEvents.length > 0) || (events && events.length > 0)  //(methods && methods.find(method => isEvent(method) && !isProviderMethod(method)))
     const providerMethods = moduleJson.methods && moduleJson.methods.filter( method => isProviderMethod(method))
     const hasProviderMethods = (providerMethods && providerMethods.length > 0)
 
@@ -102,93 +104,92 @@ function insertMacros(data = '', moduleJson = {}, templates = {}, schemas = {}, 
         }
     }
 
-    if (methods) {
-        methods.sort( (a, b) => (a.name.toLowerCase() > b.name.toLowerCase()) ? 1 : -1 )
+    if (events && events.length > 0) {
+        events.sort( (a, b) => (a.name.toLowerCase() > b.name.toLowerCase()) ? 1 : -1 )
         regex = /\$\{events\}/
         if (match = data.match(regex)) {
-            let events = ''
-            methods.forEach(method => {
-                if (isEvent(method) && !isProviderMethod(method)) {
-                    events += insertMethodMacros(match[0], method, moduleJson, schemas, templates, options)
-                }
+            let eventsBlock = ''
+            events.forEach(method => {
+                eventsBlock += insertMethodMacros(match[0], method, moduleJson, schemas, templates, options)
             })
-            data = data.replace(regex, events)
+            data = data.replace(regex, eventsBlock)
         }
+    }
 
-        if (hasEvents) {
+    if (hasEvents) {
+        const listenerTemplate = 
+        {
+            name: 'listen',
+            tags: [
+                {
+                    name: 'listener'
+                }
+            ],
+            summary: 'Listen for events from this module.',
+            params: [
+                {
+                    name: 'event',
 
-            const listenerTemplate = 
-            {
-                name: 'listen',
-                tags: [
-                    {
-                        name: 'listener'
-                    }
-                ],
-                summary: 'Listen for events from this module.',
-                params: [
-                    {
-                        name: 'event',
-
-                        schema: {
-                            type: 'string'
-                        }
-                    }
-                ],
-                result: {
-                    name: 'success',
                     schema: {
-                        type: 'boolean'
+                        type: 'string'
                     }
                 }
-            }
-
-            methods.push(listenerTemplate)
-            methods.push(Object.assign({}, listenerTemplate, { name: "once", summary: "Listen for only one occurance of an event from this module. The callback will be cleared after one event." }))
-            methods.sort( (a, b) => (a.name.toLowerCase() > b.name.toLowerCase()) ? 1 : -1 )
-        }
-        else {
-            data = data.replace(/\$\{if\.events\}.*?\{end\.if\.events\}/gms, '')
-        }
-
-        if (hasProviderMethods) {
-
-            const providerTemplate = 
-            {
-                name: 'provide',
-                tags: [
-                ],
-                summary: 'Register to provide a capability from this module.\n\nSee [Provider Interfaces](#provider-interfaces), for more info.',
-                params: [
-                    {
-                        name: 'provider',
-                        summary: 'An Object or Class that implements all of the provider interface methods.',
-                        required: true,
-                        schema: {
-                            oneOf: [
-                                {
-                                    type: 'object'
-                                },
-                                {
-                                    type: 'class'
-                                }
-                            ]
-                        }
-                    }
-                ],
-                result: {
-                    name: 'result',
-                    schema: {
-                        const: null
-                    }
+            ],
+            result: {
+                name: 'success',
+                schema: {
+                    type: 'boolean'
                 }
             }
-            methods.push(providerTemplate)
-            methods.sort( (a, b) => (a.name.toLowerCase() > b.name.toLowerCase()) ? 1 : -1 )
-        } else {
-            data = data.replace(/\$\{if\.providers\}.*?\{end\.if\.providers\}/gms, '')
         }
 
+        methods.push(listenerTemplate)
+        methods.push(Object.assign({}, listenerTemplate, { name: "once", summary: "Listen for only one occurance of an event from this module. The callback will be cleared after one event." }))
+        methods.sort( (a, b) => (a.name.toLowerCase() > b.name.toLowerCase()) ? 1 : -1 )
+    }
+    else {
+        data = data.replace(/\$\{if\.events\}.*?\{end\.if\.events\}/gms, '')
+    }
+
+    if (hasProviderMethods) {
+
+        const providerTemplate = 
+        {
+            name: 'provide',
+            tags: [
+            ],
+            summary: 'Register to provide a capability from this module.\n\nSee [Provider Interfaces](#provider-interfaces), for more info.',
+            params: [
+                {
+                    name: 'provider',
+                    summary: 'An Object or Class that implements all of the provider interface methods.',
+                    required: true,
+                    schema: {
+                        oneOf: [
+                            {
+                                type: 'object'
+                            },
+                            {
+                                type: 'class'
+                            }
+                        ]
+                    }
+                }
+            ],
+            result: {
+                name: 'result',
+                schema: {
+                    const: null
+                }
+            }
+        }
+        methods.push(providerTemplate)
+        methods.sort( (a, b) => (a.name.toLowerCase() > b.name.toLowerCase()) ? 1 : -1 )
+    } else {
+        data = data.replace(/\$\{if\.providers\}.*?\{end\.if\.providers\}/gms, '')
+    }
+
+    if (methods && methods.length > 0) {
         regex = /\$\{methods\}/
         while (match = data.match(regex)) {
             let methodsStr = ''
@@ -235,6 +236,29 @@ function insertMacros(data = '', moduleJson = {}, templates = {}, schemas = {}, 
             data = data.replace(regex, additionalStr)
         }
     }
+    else {
+        data = data.replace(/\$\{if\.additionalEvents\}.*?\{end\.if\.additionalEvents\}/gms, '')
+    }
+
+    if (additionalMethods && additionalMethods.length > 0) {
+        regex = /\$\{additionalMethods\}/
+        while (match = data.match(regex)) {
+            let additionalStr = ''
+            additionalMethods.forEach(method => {
+                // copy it
+                method = JSON.parse(JSON.stringify(method))
+                method.tags = method.tags || []
+                method.tags.push({
+                    name: "additional-method"
+                })
+                additionalStr += insertMethodMacros(match[0], method, moduleJson, schemas, templates, options)
+            })
+            data = data.replace(regex, additionalStr)
+        }
+    }
+    else {
+        data = data.replace(/\$\{if\.additionalMethods\}.*?\{end\.if\.additionalMethods\}/gms, '')
+    }
 
     let local_schemas, prefix
 
@@ -274,7 +298,6 @@ function insertMacros(data = '', moduleJson = {}, templates = {}, schemas = {}, 
         data = data
             .replace(/\$\{toc.methods\}/g, methods.filter(isTocMethod).map(m => '    - [' + m.name + '](#' + m.name.toLowerCase() + ')').join('\n'))
             .replace(/\$\{toc.events\}/g, methods.filter(m => isEvent(m) && !isProviderMethod(m)).map(m => '    - [' + m.name[2].toLowerCase() + m.name.substr(3) + '](#' + m.name.substr(2).toLowerCase() + ')').join('\n'))
-//            .replace(/\$\{toc.providers\}/g, methods.filter(m => isProviderMethod(m)).map(m => '    - [' + providerMethodName(m) + '](#' + providerMethodName(m).toLowerCase() + ')').join('\n'))
             .replace(/\$\{toc.providers\}/g, capabilities.map(c => `    - [${getProviderName(c, moduleJson, schemas)}](#${getProviderName(c, moduleJson, schemas).toLowerCase()})`).join('\n'))
     }
 
@@ -290,7 +313,7 @@ function insertMacros(data = '', moduleJson = {}, templates = {}, schemas = {}, 
         .replace(/\$\{info.description}/g, moduleJson.info && moduleJson.info.description || '')
         .replace(/\$\{provider\.session}/g, providerSessionInterface)
 
-    data = data.replace(/\$\{[a-zA-Z.]+\}\s*\n?/g, '') // remove left-over macros
+    data = data.replace(/\$\{[a-zA-Z.]+\}\n?/g, '') // remove left-over macros
 
     return data
 }
@@ -425,6 +448,24 @@ function insertProviderInterfaceMacros(data, capability, moduleJson = {}, schema
     return result
 }
 
+function getSeeAlsoLink(method, moduleJson, schemas) {
+    const getExtensionValue = (method, ext) => {
+        const tag = method.tags && method.tags.find(t => t[ext])
+
+        return tag && tag[ext] || ''
+    }
+
+    const alternative = getExtensionValue(method, 'x-alternative')
+    const pullsFor = getExtensionValue(method, 'x-pulls-for')
+    const sets = getExtensionValue(method, 'x-setter-for')
+    const respondsTo = moduleJson.methods.find(m => m.name === getExtensionValue(method, 'x-response-for'))
+    const provides = respondsTo && getProviderName(getExtensionValue(respondsTo, 'x-provides'), moduleJson, schemas)
+
+    const seeAlso = alternative || pullsFor || provides || sets
+
+    return `[${seeAlso}](#${seeAlso.toLowerCase()})`
+}
+
 function insertMethodMacros(data, method, moduleJson = {}, schemas = {}, templates = {}, options = {}) {
     let result = ''
 
@@ -449,10 +490,7 @@ function insertMethodMacros(data, method, moduleJson = {}, schemas = {}, templat
     }
 
     let method_data = data
-    const alternative = method.tags && method.tags.find( t => t['x-alternative']) || { 'x-alternative': ''}
-    const pullsFor = method.tags && method.tags.find( t => t['x-pulls-for']) || { 'x-pulls-for': ''}
-    const seeAlso = alternative['x-alternative'] || pullsFor['x-pulls-for']
-    const seeAlsoLink = `[${seeAlso}](#${seeAlso.toLowerCase()})`
+    const seeAlsoLink = getSeeAlsoLink(method, moduleJson, schemas)
     const eventJsName = method.name.length > 3 ? method.name[2].toLowerCase() + method.name.substr(3) : method.name
 
     const deprecated = method.tags && method.tags.find( t => t.name === 'deprecated')
@@ -683,10 +721,21 @@ function insertSignatureMacros(block, sig, moduleJson = {}, schemas = {}, templa
         }
     }
 
+    let extraParams = ''
+    let itemName = ''
+
+    if (isTemporalSetMethod(sig)) {
+        extraParams += (sig.params.length ? ', ' : '') + 'add: function, remove: function'
+        itemName = sig.result.schema.items.title || 'item'
+        itemName = itemName.charAt(0).toLowerCase() + itemName.substring(1)
+    }
+
     block = lines.join('\n')
 
     block = block.replace(/\$\{method.signature\}/g, getMethodSignature(moduleJson, sig, schemas, { isInterface: false }))
         .replace(/\$\{method.params\}/g, getMethodSignatureParams(moduleJson, sig, schemas))
+        .replace(/\$\{method.extraParams\}/g, extraParams)
+        .replace(/\$\{method.item\}/g, itemName)
         .replace(/\$\{method.paramNames\}/g, sig.params.map(p => p.name).join(', '))
         .replace(/\$\{method.result.name\}/g, sig.result.name)
         .replace(/\$\{method.result.summary\}/g, sig.result.summary)
