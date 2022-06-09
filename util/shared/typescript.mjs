@@ -427,7 +427,7 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
   
   function getTypeScriptType(jsonType) {
     if (jsonType === 'integer') {
-      return 'bigint'
+      return 'Number'
     }
     else {
       return jsonType
