@@ -185,7 +185,7 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
       }
     }
     else if (json.hasOwnProperty('const')) {
-      return '  '.repeat(level) + `${prefix}${title}${operator} ` + json.const
+      return '  '.repeat(level) + `${prefix}${title}${operator} ` + JSON.stringify(json.const)
     }
     else if (options.title && json.title) {
       let summary = ''
