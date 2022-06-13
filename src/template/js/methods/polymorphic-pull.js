@@ -1,7 +1,7 @@
 
 let ${method.name}HasCallback = false
 
-function ${method.name} (${method.params}) {
+function ${method.name} (data) {
   if (arguments.length === 1 && typeof arguments[0] === 'function') {
     if (${method.name}HasCallback) {
       return Promise.reject('Cannot register more than one ${method.name} handler.')
@@ -16,7 +16,7 @@ function ${method.name} (${method.params}) {
         const result = callback(request.parameters).then(result => {
           const params = {
             correlationId: request.correlationId,
-            result: result
+            data: result
           }
           Transport.send('${info.title}', '${method.name}', params).catch(error => {
             const msg = typeof error === 'string' ? error : error.message || 'Unknown Error'
@@ -34,6 +34,6 @@ function ${method.name} (${method.params}) {
     })
   }
   else {
-    return Transport.send('${info.title}', '${method.name}', { ${method.params} })
+    return Transport.send('${info.title}', '${method.name}', { correlationId: null, data: data })
   }
 }
