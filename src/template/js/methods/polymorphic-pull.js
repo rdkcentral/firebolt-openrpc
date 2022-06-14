@@ -16,24 +16,24 @@ function ${method.name} (data) {
         const result = callback(request.parameters).then(result => {
           const params = {
             correlationId: request.correlationId,
-            data: result
+            result: result
           }
           Transport.send('${info.title}', '${method.name}', params).catch(error => {
             const msg = typeof error === 'string' ? error : error.message || 'Unknown Error'
-            InternalMetrics.sdk.error(`Failed to send ${method.name} pull response through Transport Layer: ${msg}`, parseInt(error.code) || 500, false, request.parameters)
+            console.error(`Failed to send ${method.name} pull response through Transport Layer: ${msg}`)
           })
         }).catch(error => {
           const msg = typeof error === 'string' ? error : error.message || 'Unknown Error'
-          InternalMetrics.sdk.error(`App '${method.name}' callback failed: ${msg}`, parseInt(error.code) || 500, false, request.parameters)
+          console.error(`App '${method.name}' callback failed: ${msg}`)
         })
       }
       catch (error) {
         const msg = typeof error === 'string' ? error : error.message || 'Unknown Error'
-        InternalMetrics.sdk.error(`App '${method.name}' callback failed: ${msg}`, parseInt(error.code) || 500, false, request.parameters)
+        console.error(`App '${method.name}' callback failed: ${msg}`)
     }
     })
   }
   else {
-    return Transport.send('${info.title}', '${method.name}', { correlationId: null, data: data })
+    return Transport.send('${info.title}', '${method.name}', { correlationId: null, result: data })
   }
 }
