@@ -309,7 +309,7 @@ function insertMacros(data = '', moduleJson = {}, templates = {}, schemas = {}, 
         .replace(/\$\{package.name}/g, pkg.name)
         .replace(/\$\{package.repository}/g, pkg.repository && pkg.repository.url && pkg.repository.url.split("git+").pop().split("/blob").shift() || '')
         .replace(/\$\{package.repository.name}/g, pkg.repository && pkg.repository.url && pkg.repository.url.split("/").slice(3,5).join("/") || '')
-        .replace(/\$\{info.version}/g, version.readable)
+        .replace(/\$\{info.version}/g, version.original)
         .replace(/\$\{info.description}/g, moduleJson.info && moduleJson.info.description || '')
         .replace(/\$\{provider\.session}/g, providerSessionInterface)
 

@@ -122,13 +122,13 @@ const generateListeners = (json, schemas = {}) => compose(
   * Listen to all ${getModuleName(json)} events.
   * @param {Function} listener The listener function to handle the events.
   */
-  function listen(listener: (event: string, data: object) => void): Promise<bigint>
+  function listen(listener: (event: string, data: object) => void): Promise<number>
 
   /**
   * Listen to one and only one instance of any ${getModuleName(json)} event (whichever is first).
   * @param {Function} listener The listener function to handle the events.
   */
-  function once(listener: (event: string, data: object) => void): Promise<bigint>
+  function once(listener: (event: string, data: object) => void): Promise<number>
 `
   }
 
@@ -141,14 +141,14 @@ const generateListeners = (json, schemas = {}) => compose(
    * @param {Event} event The Event to listen to.
    * @param {Function} listener The listener function to handle the event.
    */
-  function listen(event: '${val.name[2].toLowerCase() + val.name.substr(3)}', listener: (data: ${getSchemaType(json, result, schemas, {title: true})}) => void): Promise<bigint>
+  function listen(event: '${val.name[2].toLowerCase() + val.name.substr(3)}', listener: (data: ${getSchemaType(json, result, schemas, {title: true})}) => void): Promise<number>
 
   /**
    * Listen to one and only one instance of a specific ${getModuleName(json)} event.
    * @param {Event} event The Event to listen to.
    * @param {Function} listener The listener function to handle the event.
    */
-  function once(event: '${val.name[2].toLowerCase() + val.name.substr(3)}', listener: (data: ${getSchemaType(json, result, schemas, {title: true})}) => void): Promise<bigint>
+  function once(event: '${val.name[2].toLowerCase() + val.name.substr(3)}', listener: (data: ${getSchemaType(json, result, schemas, {title: true})}) => void): Promise<number>
 
 `
   acc += `
@@ -156,7 +156,7 @@ const generateListeners = (json, schemas = {}) => compose(
    * Clear all ${getModuleName(json)} listeners, or just the listener for a specific Id.
    * @param {id} optional id of the listener to clear.
    */
-  function clear(id?: bigint): boolean
+  function clear(id?: number): boolean
 `
     return acc
   }, ''),
@@ -241,7 +241,7 @@ const subscriber = (json, val, schemas) => {
 `
   const type = val.name[0].toUpperCase() + val.name.substr(1)
 
-  acc += `function ${val.name}(subscriber: (${val.result.name}: ${getSchemaType(json, val.result.schema, schemas)}) => void): Promise<bigint>\n`
+  acc += `function ${val.name}(subscriber: (${val.result.name}: ${getSchemaType(json, val.result.schema, schemas)}) => void): Promise<number>\n`
     
   return acc
 }
