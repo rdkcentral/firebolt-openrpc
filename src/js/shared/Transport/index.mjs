@@ -27,19 +27,6 @@ const LEGACY_TRANSPORT_SERVICE_NAME = 'com.comcast.BridgeObject_1'
 let moduleInstance = null
 
 const isEventSuccess = x => x && (typeof x.event === 'string') && (typeof x.listening === 'boolean')
-const stringifyHelper = (key, value) => {
-  if (typeof value === 'bigint') {
-    if (value <= Number.MAX_SAFE_INTEGER) {
-      return Number(value)
-    }
-    else {
-      throw "bigint value is too large to serialize to JSON"
-    }
-  }
-  else {
-    return value
-  }
-}
 
 export default class Transport {
   constructor () {
@@ -116,7 +103,7 @@ export default class Transport {
     }
 
     const {promise, json, id } = this._processRequest(module, method, params)
-    const msg = JSON.stringify(json, stringifyHelper)
+    const msg = JSON.stringify(json)
     if (Settings.getLogLevel() === 'DEBUG') {
       console.debug('Sending message to transport: ' + msg)
     }
@@ -138,7 +125,7 @@ export default class Transport {
       json.push(result.json)
     })
 
-    const msg = JSON.stringify(json, stringifyHelper)
+    const msg = JSON.stringify(json)
     if (Settings.getLogLevel() === 'DEBUG') {
       console.debug('Sending message to transport: ' + msg)
     }
