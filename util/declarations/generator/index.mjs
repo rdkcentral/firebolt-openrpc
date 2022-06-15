@@ -224,6 +224,37 @@ const polymorphicPull = (json, val, schemas = {}) => {
   return acc
 }
 
+const polymorphicPush = (json, val, schemas = {}) => {
+  let acc = ''
+
+  if (val.summary) {
+    acc += `/**
+ * ${val.summary}`
+  }
+
+  acc += deprecatedMessage(val)
+
+  const params = JSON.parse(JSON.stringify(val.params))
+  params.pop()
+
+  if (val.params && val.params.length) {
+    acc += `
+ *`
+    val.params.forEach(p => acc += `
+ * @param {${getSchemaType(json, p.schema, schemas)}} ${p.name} ${p.summary}`)
+  }
+
+    acc += `
+ */
+`
+
+  const type = val.name[0].toUpperCase() + val.name.substr(1)
+
+  acc += `function ${val.name}(data: ${type}Result): Promise<boolean>\n`
+    
+  return acc
+}
+
 const subscriber = (json, val, schemas) => {
   let acc = ''
 
@@ -300,11 +331,12 @@ const generateMethods = (json, schemas = {}) => compose(
       sig += `add: (item: ${itemType}) => void, remove: (item: ${itemType}) => void): { stop: () => {} }`
     }
 
-    acc += sig + '\n'
-
     if (val.tags && val.tags.find(t => t.name == 'polymorphic-pull')) {
-      acc += polymorphicPull(json, val, schemas)
+      sig = polymorphicPush(json, val, schemas)
+      sig += '\n' + polymorphicPull(json, val, schemas)
     }
+
+    acc += sig + '\n'
 
     const needsSubscriber = val.tags && (val.tags.find(t => t.name === 'property') || val.tags.find(t => t.name === 'property:readonly')) != undefined
     const needsSetter = val.tags && val.tags.find(t => t.name === 'property') != undefined
