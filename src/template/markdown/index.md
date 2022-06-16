@@ -20,12 +20,18 @@ You can see this API in the [${module}](${package.repository}/blob/main/src/modu
  - [Usage](#usage)
  - [Methods](#methods)
 ${toc.methods}
+${if.additionalMethods}
+    - [Additional Methods](#additional-methods)    
+${end.if.additionalMethods}
 ${if.events}
  - [Events](#events)
 ${toc.events}
+${if.additionalEvents}
+    - [Additional Events](#additional-events)
+${end.if.additionalEvents}
 ${end.if.events}
 ${if.providers}
- - [Providers](#providers)
+ - [Provider Interfaces](#provider-interfaces)
 ${toc.providers}
 ${end.if.providers}
  - [Schemas](#schemas)
@@ -46,11 +52,25 @@ ${end.if.javascript}
 ## Methods
 ${methods}
 
+${if.additionalMethods}
+### Additional methods
+The following methods are documented as part of a related set of method APIs.
+
+For more information, follow the links under the "Documentation" column.
+
+| JavaScript | RPC | Parameters | Documentation |
+|------------|-----|------------|---------------|
+${additionalMethods}
+
+${end.if.additionalMethods}
+
 ${if.events}
 
 ## Events
 
 ${events}
+
+${if.additionalEvents}
 
 ### Additional events
 The following events are documented as part of a related set of method APIs.
@@ -58,14 +78,31 @@ The following events are documented as part of a related set of method APIs.
 For more information, follow the links under the "Documentation" column.
 
 | JavaScript | RPC | Payload | Documentation |
-|-------|---------|----------|-------------|
+|------------|-----|---------|---------------|
 ${additionalEvents}
+
+${end.if.additionalEvents}
 
 ${end.if.events}
 
 ${if.providers}
 
-## Providers
+## Provider Interfaces
+Providers are interfaces that your app can implement in order to provide certain capabilties back to the platform.
+
+To register a provider, use the [`provide()`](#provide) method.
+
+Every provider interface method has the following signature:
+
+```typescript
+(parameters: object | void, session: ProviderSession) => {}
+```
+
+`ProviderSession` has the following interface:
+
+```typescript
+${provider.session}
+```
 
 ${providers}
 

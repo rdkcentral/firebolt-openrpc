@@ -17,7 +17,7 @@
  */
 
 import h from 'highland'
-import { fsMkDirP, fsCopyFile, loadFilesIntoObject, combineStreamObjects, schemaFetcher, localModules, loadVersion } from '../shared/helpers.mjs'
+import { fsMkDirP, fsCopyFile, loadFilesIntoObject, combineStreamObjects, schemaFetcher, localModules, loadVersion, trimPath } from '../shared/helpers.mjs'
 import { clearDirectory, logSuccess, fsWriteFile } from '../shared/helpers.mjs'
 import { getDirectory, getFilename } from '../shared/helpers.mjs'
 import { insertMacros } from './macros/index.mjs'
@@ -39,7 +39,8 @@ const run = ({
   'as-path': asPath = false,
 }) => {
   // Important file/directory locations
-  const readMe = path.join('README.md')
+
+  const changeLog = path.join('CHANGELOG.md')
   const apiIndex = path.join(__dirname, '..', '..', 'src', 'template', 'markdown', 'api.md')
   const packageJsonFile = path.join(srcFolderArg, '..', 'package.json')
   const sharedSchemasFolder = sharedSchemasFolderArg
@@ -49,17 +50,18 @@ const run = ({
   const templateFolder = path.join(templateFolderArg)
   const sharedTemplateFolder = path.join(__dirname, '..', '..', 'src', 'template', 'markdown')
   const outputFolder = path.join(outputFolderArg)
-  const copyReadMe = _ => asPath ? fsCopyFile(apiIndex, path.join(outputFolder, 'index.md')) : fsCopyFile(readMe, path.join(outputFolder, 'index.md'))
+  const copyReadMe = _ => asPath ? fsCopyFile(apiIndex, path.join(outputFolder, 'index.md')) : fsCopyFile(changeLog, path.join(outputFolder, 'Home.md'))
+  const createDirectories = _ => asPath ? fsMkDirP(path.join(outputFolder, 'schemas')) : fsMkDirP(outputFolder)
 
   // All the streams we care about.
   const combinedTemplates = combineStreamObjects(loadFilesIntoObject(sharedTemplateFolder, '.md', '/template/markdown/'), loadFilesIntoObject(templateFolder, '.md', '/template/markdown/'))
   const combinedSchemas = combineStreamObjects(schemaFetcher(sharedSchemasFolder), schemaFetcher(schemasFolder))
   
   const generateDocs = templates => modules => schemas => version => h(Object.entries(modules))
-    .concat(Object.entries(schemas))
+  .concat(Object.entries(schemas))
     .flatMap(([_, module]) => {
       const documentOptions = {
-        asPath: false,
+        asPath: asPath,
         baseUrl: ''
       }
 
@@ -83,10 +85,10 @@ const run = ({
     })
 
   return clearDirectory(outputFolder)
-    .tap(_ => logSuccess(`Removed ${outputFolder}`))
-    .flatMap(fsMkDirP(path.join(outputFolder, 'schemas')))
+    .tap(_ => logSuccess(`Removed ${trimPath(outputFolder)}`))
+    .flatMap(createDirectories)
     .flatMap(copyReadMe)
-    .tap(_ => logSuccess(`Created ${outputFolder}`))
+    .tap(_ => logSuccess(`Created ${trimPath(outputFolder)}`))
     .tap(_ => logSuccess(`Created index.md`))
     // This is basically a liftA4. This "lifts" a piece of synchronous data, the `insertMacros` function, indirectly through the `generateDocs` function,
     // into the context of 4 (A4 "arity 4") other pieces of asynchronous data: combinedTemplates, localModules, combinedSchemas, and loadVersion.
@@ -103,7 +105,10 @@ const run = ({
       console.log(err)
       push(null)
     })
-    .tap(file => logSuccess(`Created module doc: ${file}`))
+    .tap(file => {
+      const filename = trimPath(file, process.cwd())
+      logSuccess(`Created module doc: ${filename}`)
+    })
 }
 
 export default run

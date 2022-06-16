@@ -24,10 +24,12 @@ import getPath from 'crocks/Maybe/getPath.js'
 import pointfree from 'crocks/pointfree/index.js'
 const { chain, filter, option, map } = pointfree
 import logic from 'crocks/logic/index.js'
-const { and } = logic
+import isEmpty from 'crocks/core/isEmpty.js'
+const { and, not } = logic
 import isString from 'crocks/core/isString.js'
 import predicates from 'crocks/predicates/index.js'
-const { isObject, isArray, propEq, pathSatisfies, hasProp } = predicates
+import { getSchema, isNull, localizeDependencies } from './json-schema.mjs'
+const { isObject, isArray, propEq, pathSatisfies, hasProp, propSatisfies } = predicates
 
 // util for visually debugging crocks ADTs
 const inspector = obj => {
@@ -51,6 +53,29 @@ const getMethods = compose(
     chain(safe(isArray)),
     getPath(['methods'])
 )
+
+const isProviderMethod = compose(
+    option(false),
+    map(_ => true),
+    chain(
+      find(
+        and(
+          propEq('name', 'capabilities'),
+          propSatisfies('x-provides', not(isEmpty))
+        )
+      )
+    ),
+    getPath(['tags'])
+  )
+
+const getProvidedCapabilities = (json) => {
+    return Array.from(new Set([...getMethods(json).filter(isProviderMethod).map(method => method.tags.find(tag => tag['x-provides'])['x-provides'])]))
+}
+
+const getMethodsThatProvide = (capability, json) => {
+    return getMethods(json).filter(method => method.tags && method.tags.find(tag => tag['x-provides'] === capability))
+}
+  
 
 const addMissingTitles = ([k, v]) => {
     if (v && !v.hasOwnProperty('title')) {
@@ -89,6 +114,13 @@ const isPolymorphicPullMethod = compose(
     option(false),
     map(_ => true),
     chain(find(hasProp('x-pulls-for'))),
+    getPath(['tags'])
+)
+
+const isTemporalSetMethod = compose(
+    option(false),
+    map(_ => true),
+    chain(find(propEq('name', 'temporal-set'))),
     getPath(['tags'])
 )
 
@@ -145,6 +177,25 @@ const getParamsFromMethod = compose(
     option([]),
     getPath(['params'])
 )
+
+const getPayloadFromEvent = (event, json, schemas = {}) => {
+    const choices = (event.result.schema.oneOf || event.result.schema.anyOf)
+    const choice = choices.find(schema => schema.title !== 'ListenResponse' && !(schema['$ref'] || '').endsWith('/ListenResponse'))
+    return localizeDependencies(choice, json, schemas)
+}
+
+const providerHasNoParameters = (schema) => {
+    if (schema.allOf || schema.oneOf) {
+        return !!(schema.allOf || schema.oneOf).find(schema => providerHasNoParameters(schema))
+    }
+    else if (schema.properties && schema.properties.parameters) {
+        return isNull(schema.properties.parameters)
+    }
+    else {
+        console.dir(schema, {depth: 10})
+        throw "Invalid ProviderRequest"
+    }
+}
 
 const validEvent = and(
     pathSatisfies(['name'], isString),
@@ -265,6 +316,95 @@ const createPullEventFromPush = (pusher, json) => {
     return event
 }
 
+const createTemporalEventMethod = (method, json, name) => {
+    const event = createEventFromMethod(method, json, name, 'x-temporal-for', ['temporal-set'])
+
+    // copy the array items schema to the main result for individual events
+    event.result.schema.oneOf[1] = method.result.schema.items
+
+    event.tags = event.tags.filter(t => t.name !== 'temporal-set')
+    event.tags.push({
+        name: "rpc-only"
+    })
+
+    event.params.unshift({
+        name: "correlationId",
+        required: true,
+        schema: {
+            type: "string"
+        }
+    })
+
+    event.examples && event.examples.forEach(example => {
+        example.params.unshift({
+            name: "correlationId",
+            value: "xyz"
+        })
+        example.result.value = example.result.value[0]
+    })
+
+    return event
+}
+
+const createEventFromMethod = (method, json, name, correlationExtension, tagsToRemove = []) => {
+    const event = eventDefaults(JSON.parse(JSON.stringify(method)))
+    event.name = 'on' + name
+    const old_tags = method.tags.concat()
+
+    event.tags[0][correlationExtension] = method.name
+    event.tags.push({
+        name: 'rpc-only'
+    })
+
+    old_tags.forEach(t => {
+        if (!tagsToRemove.find(t => tagsToRemove.includes(t.name)))
+        {
+            event.tags.push(t)
+        }
+    })
+
+    return event
+}
+
+const createTemporalStopMethod = (method, jsoname) => {
+    const stop = JSON.parse(JSON.stringify(method))
+
+    stop.name = 'stop' + method.name.charAt(0).toUpperCase() + method.name.substr(1)
+
+    stop.tags = stop.tags.filter(tag => tag.name !== 'temporal-set')
+    stop.tags.push({
+        name: "rpc-only"
+    })
+
+    // copy the array items schema to the main result for individual events
+    stop.result.name = "result"
+    stop.result.schema = {
+        type: "null"
+    }
+
+    stop.params = [{
+        name: "correlationId",
+        required: true,
+        schema: {
+            type: "string"
+        }
+    }]
+
+    stop.examples && stop.examples.forEach(example => {
+        example.params = [{
+            name: "correlationId",
+            value: "xyz"
+        }]
+
+        example.result = {
+            name: "result",
+            value: null
+        }
+    })
+
+    return stop
+}
+
 const createSetterFromProperty = property => {
     const setter = JSON.parse(JSON.stringify(property))
     setter.name = 'set' + setter.name.charAt(0).toUpperCase() + setter.name.substr(1)
@@ -276,7 +416,10 @@ const createSetterFromProperty = property => {
         }
     ]
 
-    setter.params.push(setter.result)
+    const param = setter.result
+    param.required = true
+    setter.params.push(param)
+    
     setter.result = {
         name: 'result',
         schema: {
@@ -285,10 +428,10 @@ const createSetterFromProperty = property => {
     }
 
     setter.examples && setter.examples.forEach(example => {
-        example.params[0] = {
-            name: 'value',
+        example.params.push({
+            name: param.name,
             value: example.result.value
-        }
+        })
 
         example.result.value = null
     })
@@ -301,6 +444,153 @@ const createSetterFromProperty = property => {
     })
 
     return setter
+}
+
+const createFocusFromProvider = provider => {
+
+    if (!provider.name.startsWith('onRequest')) {
+        throw "Methods with the `x-provider` tag extension MUST start with 'onRequest'."
+    }
+    
+    const ready = JSON.parse(JSON.stringify(provider))
+    ready.name = ready.name.charAt(9).toLowerCase() + ready.name.substr(10) + 'Focus'
+    ready.summary = `Internal API for ${provider.name.substr(9)} Provider to request focus for UX purposes.`
+    const old_tags = ready.tags
+    ready.tags = [
+        {
+            'name': 'rpc-only',
+            'x-allow-focus-for': provider.name
+        }
+    ]
+
+    ready.params = []
+    ready.result = {
+        name: 'result',
+        schema: {
+            type: "null"
+        }
+    }
+
+    ready.examples = [
+        {
+            name: "Example",
+            params: [],
+            result: {
+                name: "result",
+                value: null
+            }
+        }
+    ]
+
+    return ready
+}
+
+const createResponseFromProvider = (provider, json) => {
+
+    if (!provider.name.startsWith('onRequest')) {
+        throw "Methods with the `x-provider` tag extension MUST start with 'onRequest'."
+    }
+
+    const response = JSON.parse(JSON.stringify(provider))
+    response.name = response.name.charAt(9).toLowerCase() + response.name.substr(10) + 'Response'
+    response.summary = `Internal API for ${provider.name.substr(9)} Provider to send back a response.`
+    const old_tags = response.tags
+    response.tags = [
+        {
+            'name': 'rpc-only',
+            'x-response-for': provider.name
+        }
+    ]
+
+    const paramExamples = []
+
+    if (provider.tags.find(t => t['x-response'])) {
+        response.params = [
+            {
+                name: 'response',
+                required: true,
+                schema: {
+                    allOf: [
+                        {
+                            "$ref": "https://meta.comcast.com/firebolt/types#/definitions/ProviderResponse"
+                        },
+                        {
+                            "type": "object",
+                            "properties": {
+                                "result": provider.tags.find(t => t['x-response'])['x-response']
+                            }
+                        }
+                    ]
+                }
+            }
+        ]
+
+        const schema = localizeDependencies(provider.tags.find(t => t['x-response'])['x-response'], json)
+
+        let n = 1
+        if (schema.examples && schema.examples.length) {
+            paramExamples.push(... (schema.examples.map( param => ({
+                name: schema.examples.length === 1 ? "Example" : `Example #${n++}`,
+                params: [
+                    {
+                        name: 'response',
+                        value: {
+                            correlationId: "123",
+                            result: param
+                        }
+                    }
+                ],
+                result: {
+                    name: 'result',
+                    value: null
+                }
+            }))  || []))
+            delete schema.examples    
+        }
+        else if (schema['$ref']) {
+            paramExamples.push({
+                name: 'Generated Example',
+                params: [
+                    {
+                        name: 'response',
+                        value: {
+                            correlationId: "123",
+                            result: {
+                                '$ref': schema['$ref'] + '/examples/0'
+                            }
+                        }
+                    }
+                ],
+                result: {
+                    name: 'result',
+                    value: null
+                }
+            })
+        }
+    }
+    else {
+        response.params = []
+        paramExamples.push(
+            {
+                name: 'Example 1',
+                params: [],
+                result: {
+                    name: 'result',
+                    value: null
+                }
+            })
+    }
+
+    response.result = {
+        name: 'result',
+        schema: {
+            type: 'null'
+        }
+    }
+
+    response.examples = paramExamples
+
+    return response
 }
 
 const generatePropertyEvents = json => {
@@ -325,6 +615,39 @@ const generatePolymorphicPullEvents = json => {
     const pushers = json.methods.filter( m => m.tags && m.tags.find( t => t.name == 'polymorphic-pull')) || []
 
     pushers.forEach(pusher => json.methods.push(createPullEventFromPush(pusher, json)))
+
+    return json
+}
+
+const generateTemporalSetMethods = json => {
+    const temporals = json.methods.filter( m => m.tags && m.tags.find( t => t.name == 'temporal-set')) || []
+
+    temporals.forEach(temporal => json.methods.push(createTemporalEventMethod(temporal, json, (temporal.result.schema.items.title || 'Item') + 'Available')))
+    temporals.forEach(temporal => json.methods.push(createTemporalEventMethod(temporal, json, (temporal.result.schema.items.title || 'Item') + 'Unavailable')))
+    temporals.forEach(temporal => json.methods.push(createTemporalStopMethod(temporal, json)))
+
+    return json
+}
+
+
+const generateProviderMethods = json => {
+    const providers = json.methods.filter( m => m.tags && m.tags.find( t => t.name == 'capabilities' && t['x-provides'])) || []
+
+    providers.forEach(provider => {
+        if (! isRPCOnlyMethod(provider)) {
+            provider.tags.push({
+                "name": "rpc-only"
+            })
+        }
+        // only create the ready method for providers that require a handshake
+        if (provider.tags.find(t => t['x-allow-focus'])) {
+            json.methods.push(createFocusFromProvider(provider, json))
+        }
+    })
+
+    providers.forEach(provider => {
+        json.methods.push(createResponseFromProvider(provider, json))
+    })
 
     return json
 }
@@ -354,19 +677,27 @@ export {
     isPublicEventMethod,
     isPolymorphicReducer,
     isPolymorphicPullMethod,
+    isTemporalSetMethod,
     isExcludedMethod,
     isRPCOnlyMethod,
+    isProviderMethod,
     hasExamples,
     hasTitle,
     getMethods,
+    getMethodsThatProvide,
+    getProvidedCapabilities,
     getEnums,
     getTypes,
     getEvents,
     getPublicEvents,
     getSchemas,
     getParamsFromMethod,
+    getPayloadFromEvent,
     getPathFromModule,
     generatePolymorphicPullEvents,
     generatePropertyEvents,
     generatePropertySetters,
+    generateProviderMethods,
+    generateTemporalSetMethods,
+    providerHasNoParameters
 }

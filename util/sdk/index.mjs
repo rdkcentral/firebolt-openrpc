@@ -19,7 +19,7 @@
  */
 
 import h from 'highland'
-import { fsWriteFile, localModules, combineStreamObjects, schemaFetcher, loadFilesIntoObject, clearDirectory, fsMkDirP, logSuccess, logHeader, loadVersion } from '../shared/helpers.mjs'
+import { fsWriteFile, fsCopy, localModules, combineStreamObjects, schemaFetcher, loadFilesIntoObject, clearDirectory, fsMkDirP, logSuccess, logHeader, loadVersion, trimPath } from '../shared/helpers.mjs'
 import { insertMacros, insertAggregateMacrosOnly, generateMacros, generateAggregateMacros } from './macros/index.mjs'
 import path from 'path'
 
@@ -52,11 +52,12 @@ const run = ({
   const schemasFolder = path.join(srcFolderArg, 'schemas')
   const sdkTemplateFolder = path.join(templateFolderArg)
   const sharedSdkTemplateFolder = path.join(__dirname, '..', '..', 'src', 'template', 'js', 'sdk')
+  const staticSdkCodeFolder = path.join(__dirname, '..', '..', 'src', 'js', 'shared')
 
   const allModules = localModules(modulesFolder, markdownFolder)
   const combinedSchemas = combineStreamObjects(schemaFetcher(sharedSchemasFolder), schemaFetcher(schemasFolder)) // Used to 
-  const localTemplates = loadFilesIntoObject(sdkTemplateFolder, '.js', '/template/js/sdk/')
-  const allSharedTemplates = loadFilesIntoObject(path.join(sharedSdkTemplateFolder, '..'), '.js', '/template/js/') // For breaking down later
+  const localTemplates = loadFilesIntoObject(sdkTemplateFolder, ['.js', '.mjs'] , '/template/js/sdk/')
+  const allSharedTemplates = loadFilesIntoObject(path.join(sharedSdkTemplateFolder, '..'), ['.js', '.mjs'], '/template/js/') // For breaking down later
 
   const getStaticModules = compose(
     option([]),
@@ -97,9 +98,9 @@ const run = ({
 
         // Pick the index and defaults templates for each module.
         const indexTemplate = pickTemplateForModule(module.info.title, 'index.js', combinedTemplates)
-          .otherwise(h([[path.join(module.info.title, "index.js"), globalDefaults.find(([k, _]) => k === 'index.js')[1]]])) // <-- [['index.js', 'template content'], ...]. Find kv pair, then take index 1 for the content
+          .otherwise(h([[path.join(module.info.title, "index.mjs"), globalDefaults.find(([k, _]) => k === 'index.js')[1]]])) // <-- [['index.js', 'template content'], ...]. Find kv pair, then take index 1 for the content
         const defaultsTemplate = pickTemplateForModule(module.info.title, 'defaults.js', combinedTemplates)
-          .otherwise(h([[path.join(module.info.title, "defaults.js"), globalDefaults.find(([k, _]) => k === 'defaults.js')[1]]]))
+          .otherwise(h([[path.join(module.info.title, "defaults.mjs"), globalDefaults.find(([k, _]) => k === 'defaults.js')[1]]]))
         // Any other files for this module? You know b/c it will look like `<moduleTitle>/file.js`  in combinedTemplates
         const otherModuleFiles = h(combinedTemplates)
           .filter(([k, _v]) => {
@@ -124,17 +125,19 @@ const run = ({
       })
       .map(([k, v]) => [path.join(outputFolderArg, k), v]) // <-- concat output folder arg with template path
       .tap(([file, _]) => {
-        logSuccess(`Creating file: ${file}`)
+        logSuccess(`Creating file: ${trimPath(file)}`)
       })
       .flatMap(([file, contents]) => fsMkDirP(path.dirname(file))
         .flatMap(_ => fsWriteFile(file, contents)))
   }
 
-  logHeader(`Generating SDK into: ${outputFolderArg}`)
+  logHeader(`Generating SDK into: ${trimPath(outputFolderArg)}`)
   return fsMkDirP(outputFolderArg)
-    .tap(_ => logSuccess(`Created folder: ${outputFolderArg}`))
+    .tap(_ => logSuccess(`Created folder: ${trimPath(outputFolderArg)}`))
     .flatMap(clearDirectory(outputFolderArg)
       .tap(_ => logSuccess("Cleared folder if it already existed."))
+      .flatMap(_ => fsCopy(staticSdkCodeFolder, outputFolderArg))
+      .tap(_ => logSuccess("Copied static code into it."))
       .flatMap(_ => combinedSchemas
         .map(macroOrchestrator)
         .flatMap(fnWithSchemas => allModules

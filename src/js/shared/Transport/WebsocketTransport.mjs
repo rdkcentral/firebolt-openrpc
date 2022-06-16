@@ -35,7 +35,7 @@ export default class WebsocketTransport {
 
   _connect () {
     if (this._ws) return
-    this._ws = new WebSocket(this._endpoint)
+    this._ws = new WebSocket(this._endpoint, ['jsonrpc'])
     this._ws.addEventListener('message', message => {
       this._notifyCallbacks(message.data)
     })

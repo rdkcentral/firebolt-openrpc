@@ -16,7 +16,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { loadVersion, logHeader, fsReadFile, combineStreamObjects, schemaFetcher, localModules, bufferToString, fsWriteFile, logSuccess, fsMkDirP } from '../shared/helpers.mjs'
+import { loadVersion, logHeader, fsReadFile, combineStreamObjects, schemaFetcher, localModules, bufferToString, fsWriteFile, logSuccess, fsMkDirP, trimPath } from '../shared/helpers.mjs'
 import path from 'path'
 import url from 'url'
 import { getMethods, getSchemas } from '../shared/modules.mjs'
@@ -35,7 +35,7 @@ const run = ({
   const modulesFolder = path.join(srcFolderArg, 'modules')
   const markdownFolder = path.join(srcFolderArg, 'descriptions')
 
-  logHeader(`MERGING into: ${outputArg}`)
+  logHeader(`MERGING into: ${trimPath(outputArg)}`)
 
   const templateFile = fsReadFile(templateArg).map(bufferToString).map(JSON.parse)
   const versionObj = loadVersion(path.join(srcFolderArg, '..', 'package.json'))
@@ -53,7 +53,7 @@ const run = ({
             const renamed = getMethods(module).map(method => {
               const { name, ...rest } = method
               return {
-                name: module.info.title + '.' + method.name,
+                name: module.info.title.toLowerCase() + '.' + method.name,
                 ...rest
               }
             })

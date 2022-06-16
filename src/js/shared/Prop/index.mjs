@@ -1,5 +1,5 @@
-import Transport from "../Transport"
-import Events from "../Events"
+import Transport from "../Transport/index.mjs"
+import Events from "../Events/index.mjs"
 
 function prop(moduleName, key, args, immutable, readonly) {
   if (args.length === 0) {
@@ -19,7 +19,7 @@ function prop(moduleName, key, args, immutable, readonly) {
     if (readonly) {
       throw new Error('Cannot set a value to a readonly property')
     }
-    return Transport.send(moduleName, key, {
+    return Transport.send(moduleName, 'set' + key[0].toUpperCase() + key.substring(1), {
       value: args[0]
     })
   }

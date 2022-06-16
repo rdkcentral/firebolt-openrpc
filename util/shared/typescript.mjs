@@ -20,6 +20,7 @@ import { getPath, getSchema } from './json-schema.mjs'
 import deepmerge from 'deepmerge'
 import { localizeDependencies } from './json-schema.mjs'
 import { getLinkFromRef } from './helpers.mjs'
+import { getMethodsThatProvide, getPayloadFromEvent } from './modules.mjs'
 
 const isSynchronous = m => !m.tags ? false : m.tags.map(t => t.name).find(s => s === 'synchronous')
 
@@ -37,9 +38,131 @@ function getMethodSignatureParams(module, method, schemas = {}) {
     return method.params.map( param => param.name + (!param.required ? '?' : '') + ': ' + getSchemaType(module, param, schemas, {title: true})).join(', ')
 }
 
+function getProviderName(capability, moduleJson, schemas) {
+  if (!capability) {
+    return ''
+  }
+  
+  const capitalize = str => str[0].toUpperCase() + str.substr(1)
+  const uglyName = capability.split(":").slice(-2).map(capitalize).reverse().join('') + "Provider"
+
+  if (!moduleJson) {
+      return uglyName
+  }
+
+  const iface = getProviderInterface(moduleJson, capability, schemas)//.map(method => { method.name = method.name.charAt(9).toLowerCase() + method.name.substr(10); return method } )
+  const name = iface.length === 1 ? iface[0].name.charAt(0).toUpperCase() + iface[0].name.substr(1) + "Provider" : uglyName
+  return name
+}
+
+function getProviderSessionInterface(module) {
+  if (!module.methods) {
+    return ''
+  }
+
+  const providers = module.methods.filter( m => m.tags && m.tags.find( t => t.name == 'capabilities' && t['x-provides'])) || []
+  const focusable = providers.filter(m => m.tags.find(t => t['x-allow-focus'])) || []
+
+
+  const allowFocus = focusable.length > 0
+
+  if (providers.length === 0) {
+    return ''
+  }
+
+  return `
+interface ProviderSession {
+    correlationId(): string        // Returns the correlation id of the current provider session
+}
+
+` + (allowFocus ? `
+interface FocusableProviderSession extends ProviderSession {
+    focus(): Promise<void>         // Requests that the provider app be moved into focus to prevent a user experience
+}
+` : '')
+}
+
+
+function getProviderInterface(module, capability, schemas = {}) {
+  module = JSON.parse(JSON.stringify(module))
+  const iface = getMethodsThatProvide(capability, module).map(method => localizeDependencies(method, module, schemas, { mergeAllOfs: true }))
+
+  iface.forEach(method => {
+    const payload = getPayloadFromEvent(method, module, schemas)
+    const focusable = method.tags.find(t => t['x-allow-focus'])
+
+    // remove `onRequest`
+    method.name = method.name.charAt(9).toLowerCase() + method.name.substr(10)
+
+    method.params = [
+      {
+        "name": "parameters",
+        "schema": payload.properties.parameters
+      },
+      {
+        "name": "session",
+        "schema": {
+          "type": focusable ? "FocusableProviderSession" : "ProviderSession"
+        }
+      }
+    ]
+
+    let exampleResult = null
+
+    if (method.tags.find(tag => tag['x-response'])) {
+      const result = method.tags.find(tag => tag['x-response'])['x-response']
+
+      method.result = {
+        "name": "result",
+        "schema": result
+      }
+
+      if (result.examples && result.examples[0]) {
+        exampleResult = result.examples[0]
+      }
+    }
+    else {
+      method.result = {
+        "name": "result",
+        "schema": {
+          "const": null
+        }
+      }
+    }
+
+    method.examples = method.examples.map( example => (
+      {
+        params: [
+          {
+            name: "parameters",
+            value: example.result.value.parameters
+          },
+          {
+            name: "session",
+            value: {
+              correlationId: example.result.value.correlationId
+            }
+          }
+        ],
+        result: {
+          name: "result",
+          value: exampleResult
+        }
+      }
+    ))
+
+    // remove event tag
+    method.tags = method.tags.filter(tag => tag.name !== 'event')
+  })
+
+
+  return iface
+}
+
 const safeName = prop => prop.match(/[.+]/) ? '"' + prop + '"' : prop
 
 function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', options = {level: 0, descriptions: true}) {
+    json = JSON.parse(JSON.stringify(json))
     let level = options.level 
     let descriptions = options.descriptions
     let structure = []
@@ -60,6 +183,9 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
         const someJson = getPath(json['$ref'], moduleJson, schemas)
         return getSchemaShape(moduleJson, someJson, schemas, name, options)
       }
+    }
+    else if (json.hasOwnProperty('const')) {
+      return '  '.repeat(level) + `${prefix}${title}${operator} ` + JSON.stringify(json.const)
     }
     else if (options.title && json.title) {
       let summary = ''
@@ -88,7 +214,11 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
       else if (json.propertyNames && json.propertyNames.enum) {
         json.propertyNames.enum.forEach(prop => {
           let type = 'any'
-  
+
+          if (json.additionalProperties && (typeof json.additionalProperties === 'object')) {
+            type = getSchemaType(moduleJson, json.additionalProperties, schemas)
+          }          
+
           if (json.patternProperties) {
             Object.entries(json.patternProperties).forEach(([pattern, schema]) => {
               let regex = new RegExp(pattern)
@@ -101,11 +231,12 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
           structure.push(getSchemaShape(moduleJson, {type: type}, schemas, safeName(prop), {descriptions: descriptions, level: level+1}))
         })
       }
+      else if (json.additionalProperties && (typeof json.additionalProperties === 'object')) {
+        let type = getSchemaType(moduleJson, json.additionalProperties, schemas)
+        structure.push(getSchemaShape(moduleJson, {type: type}, schemas, '[property: string]', {descriptions: descriptions, level: level+1}))
+      }
       else if (json.patternProperties) {
-        Object.entries(json.patternProperties).forEach(([pattern, schema]) => {
-          let type = getSchemaType(moduleJson, schema, schemas)
-          structure.push(getSchemaShape(moduleJson, {type: type}, schemas, '\'/'+pattern+'/\'', {descriptions: descriptions, level: level+1}))
-        })        
+        throw "patternProperties are not supported by Firebolt"
       }
   
       structure.push('  '.repeat(level) + '}')
@@ -122,6 +253,7 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
         union.title = json.title
       }
       delete union['$ref']
+
       return getSchemaShape(moduleJson, union, schemas, name, options)
     }
     else if (json.type || json.const) {
@@ -207,11 +339,14 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
     }
     else if (options.title && json.title) {
       if (options.link) {
-       return '[' + wrap(json.title, options.code ? '`' : '') + '](#' + json.title.toLowerCase() + ')'
+        return '[' + wrap(json.title, options.code ? '`' : '') + '](#' + json.title.toLowerCase() + ')'
       }
       else {
         return wrap(json.title, options.code ? '`' : '')
       }
+    }
+    else if (json.const) {
+      return (typeof json.const === 'string' ? `'${json.const}'` : json.const)
     }
     else if (json.type === 'string' && json.enum) {
       let type = json.enum.map(e => wrap(e, '\'')).join(' | ')
@@ -244,7 +379,7 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
       }
     }
     else if (json.allOf) {
-      let union = deepmerge.all([...json.allOf.map(x => x['$ref'] ? getPath(x['$ref'], module, schemas) || x : x), options])
+      let union = deepmerge.all([...json.allOf.map(x => x['$ref'] ? getPath(x['$ref'], module, schemas) || x : x)])
       if (json.title) {
         union.title = json.title
       }
@@ -255,8 +390,11 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
         return getSchemaType(module, (json.oneOf || json.anyOf)[0], schemas, options)
       }
       else {
-        return (json.oneOf || json.anyOf)
-        .map(s => getSchemaType(module, s, schemas, options)).join(' | ')
+        const newOptions = JSON.parse(JSON.stringify(options))
+        newOptions.code = false
+        const result = (json.oneOf || json.anyOf).map(s => getSchemaType(module, s, schemas, newOptions)).join(' | ')
+
+        return options.code ? wrap(result, '`') : result
       }
     }
     else if (json.type === 'object' && json.title) {
@@ -279,7 +417,7 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
       }
     }
     else if (json.type) {
-      const type = getTypeScriptType(json.type)
+      const type = getTypeScriptType(Array.isArray(json.type) ? json.type.find(t => t !== 'null') : json.type)
       return wrap(type, options.code ? '`' : '')
     }
     else {
@@ -289,7 +427,7 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
   
   function getTypeScriptType(jsonType) {
     if (jsonType === 'integer') {
-      return 'bigint'
+      return 'number'
     }
     else {
       return jsonType
@@ -320,7 +458,10 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
   export {
       getMethodSignature,
       getMethodSignatureParams,
+      getProviderInterface,
+      getProviderName,
       getSchemaShape,
       getSchemaType,
-      generateEnum
+      generateEnum,
+      getProviderSessionInterface
   }

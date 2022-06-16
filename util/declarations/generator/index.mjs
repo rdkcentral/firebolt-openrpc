@@ -23,8 +23,8 @@ const { filter, reduce } = pointfree
 import logic from 'crocks/logic/index.js'
 const { not } = logic
 
-import { getMethods, getTypes, isEventMethod, isPublicEventMethod, isPolymorphicPullMethod, getEnums, isRPCOnlyMethod } from '../../shared/modules.mjs'
-import { getSchemaType, getSchemaShape, getMethodSignature, generateEnum } from '../../shared/typescript.mjs'
+import { getMethods, getTypes, isEventMethod, isPublicEventMethod, isPolymorphicPullMethod, getEnums, isRPCOnlyMethod, getProvidedCapabilities, isTemporalSetMethod } from '../../shared/modules.mjs'
+import { getSchemaType, getSchemaShape, getMethodSignature, generateEnum, getProviderInterface, getProviderName, getProviderSessionInterface } from '../../shared/typescript.mjs'
 import { getExternalSchemas } from '../../shared/json-schema.mjs'
 
 const getModuleName = getPathOr('missing', ['info', 'title'])
@@ -39,9 +39,15 @@ const generateDeclarations = (obj = {}, schemas = {}) => {
   code.push(generateEvents(obj))
   code.push(generateEnums(obj))
   code.push(generateMethodsWithListeners(obj, schemas))
+  code.push(generateSDKInterfaces(obj))
+  code.push(generateProviders(obj, schemas))
   code.push(`}`)
 
   return code.join('\n')
+}
+
+const generateSDKInterfaces = json => {
+  return getProviderSessionInterface(json)
 }
 
 const generateTypes = (json, schemas = {}) => compose(
@@ -116,13 +122,13 @@ const generateListeners = (json, schemas = {}) => compose(
   * Listen to all ${getModuleName(json)} events.
   * @param {Function} listener The listener function to handle the events.
   */
-  function listen(listener: (event: string, data: object) => {})
+  function listen(listener: (event: string, data: object) => void): Promise<number>
 
   /**
   * Listen to one and only one instance of any ${getModuleName(json)} event (whichever is first).
   * @param {Function} listener The listener function to handle the events.
   */
-  function once(listener: (event: string, data: object) => {})     
+  function once(listener: (event: string, data: object) => void): Promise<number>
 `
   }
 
@@ -135,21 +141,60 @@ const generateListeners = (json, schemas = {}) => compose(
    * @param {Event} event The Event to listen to.
    * @param {Function} listener The listener function to handle the event.
    */
-  function listen(event: '${val.name[2].toLowerCase() + val.name.substr(3)}', listener: (data: ${getSchemaType(json, result, schemas, {title: true})}) => {})
+  function listen(event: '${val.name[2].toLowerCase() + val.name.substr(3)}', listener: (data: ${getSchemaType(json, result, schemas, {title: true})}) => void): Promise<number>
 
   /**
    * Listen to one and only one instance of a specific ${getModuleName(json)} event.
    * @param {Event} event The Event to listen to.
    * @param {Function} listener The listener function to handle the event.
    */
-  function once(event: '${val.name[2].toLowerCase() + val.name.substr(3)}', listener: (data: ${getSchemaType(json, result, schemas, {title: true})}) => {})
+  function once(event: '${val.name[2].toLowerCase() + val.name.substr(3)}', listener: (data: ${getSchemaType(json, result, schemas, {title: true})}) => void): Promise<number>
 
+`
+  acc += `
+  /**
+   * Clear all ${getModuleName(json)} listeners, or just the listener for a specific Id.
+   * @param {id} optional id of the listener to clear.
+   */
+  function clear(id?: number): boolean
 `
     return acc
   }, ''),
   filter(isEventMethod),
   getMethods
 )(json)
+
+const generateProviders = (json, schemas = {}) => compose(
+  reduce ((acc, val, i, arr) => {
+    const iface = getProviderInterface(json, val, schemas)
+    const className = getProviderName(val, json, schemas)
+
+    acc += `
+  interface ${className} {\n`
+
+    iface.forEach(method => {
+      const parametersType = getSchemaType(json, method.params[0].schema)
+      const resultType = getSchemaType(json, method.result.schema)
+      const focusable = !!method.tags.find(t => t['x-allow-focus'])
+
+      acc += `      ${method.name}(parameters: ${parametersType}, session: ${(focusable ? 'Focusable' : '')}ProviderSession):Promise<${resultType}>\n`
+    })
+
+    acc += `}\n`
+
+    acc += `
+  /**
+   * Provide the '${val}' Capability
+   * @param {string} capability The Capability to provide
+   * @param {${className}} provider The object providing the capability interface
+   */
+  function provide(capability: '${val}', provider: ${className} | object): Promise<void>
+`
+    return acc
+  }, ''),
+  getProvidedCapabilities
+)(json)
+
 
 const polymorphicPull = (json, val, schemas = {}) => {
   let acc = ''
@@ -179,6 +224,37 @@ const polymorphicPull = (json, val, schemas = {}) => {
   return acc
 }
 
+const polymorphicPush = (json, val, schemas = {}) => {
+  let acc = ''
+
+  if (val.summary) {
+    acc += `/**
+ * ${val.summary}`
+  }
+
+  acc += deprecatedMessage(val)
+
+  const params = JSON.parse(JSON.stringify(val.params))
+  params.pop()
+
+  if (val.params && val.params.length) {
+    acc += `
+ *`
+    val.params.forEach(p => acc += `
+ * @param {${getSchemaType(json, p.schema, schemas)}} ${p.name} ${p.summary}`)
+  }
+
+    acc += `
+ */
+`
+
+  const type = val.name[0].toUpperCase() + val.name.substr(1)
+
+  acc += `function ${val.name}(data: ${type}Result): Promise<boolean>\n`
+    
+  return acc
+}
+
 const subscriber = (json, val, schemas) => {
   let acc = ''
 
@@ -196,7 +272,7 @@ const subscriber = (json, val, schemas) => {
 `
   const type = val.name[0].toUpperCase() + val.name.substr(1)
 
-  acc += `function ${val.name}(subscriber: (${val.result.name}: ${getSchemaType(json, val.result.schema, schemas)}) => void): Promise<integer>\n`
+  acc += `function ${val.name}(subscriber: (${val.result.name}: ${getSchemaType(json, val.result.schema, schemas)}) => void): Promise<number>\n`
     
   return acc
 }
@@ -213,12 +289,12 @@ const setter = (json, val, schemas = {}) => {
 
   acc += `
  *
- * @param {${getSchemaType(val.result.schema)}} value The new ${val.name} value.
+ * @param {${getSchemaType(json, val.result.schema, schemas)}} value The new ${val.name} value.
  */
 `
   const type = val.name[0].toUpperCase() + val.name.substr(1)
 
-  acc += `function ${val.name}(value: ${getSchemaType(val.result.schema)}): Promise<void>\n`
+  acc += `function ${val.name}(value: ${getSchemaType(json, val.result.schema, schemas)}): Promise<void>\n`
     
   return acc
 }
@@ -226,6 +302,7 @@ const setter = (json, val, schemas = {}) => {
 
 const generateMethods = (json, schemas = {}) => compose(
   reduce((acc, val, i, arr) => {
+
     if (val.summary) {
       acc += `/**
  * ${val.summary}`
@@ -243,11 +320,23 @@ const generateMethods = (json, schemas = {}) => compose(
       acc += `
  */
 `
-    acc += getMethodSignature(json, val, schemas, { isInterface: false }) + '\n'
+    let sig = getMethodSignature(json, val, schemas, { isInterface: false })
+
+    if (isTemporalSetMethod(val)) {
+      const itemType = getSchemaType(json, val.result.schema.items)
+      sig = sig.substring(0, sig.lastIndexOf(')'))
+      if (val.params && val.params.length) {
+        sig += ', '
+      }
+      sig += `add: (item: ${itemType}) => void, remove: (item: ${itemType}) => void): { stop: () => {} }`
+    }
 
     if (val.tags && val.tags.find(t => t.name == 'polymorphic-pull')) {
-      acc += polymorphicPull(json, val, schemas)
+      sig = polymorphicPush(json, val, schemas)
+      sig += '\n' + polymorphicPull(json, val, schemas)
     }
+
+    acc += sig + '\n'
 
     const needsSubscriber = val.tags && (val.tags.find(t => t.name === 'property') || val.tags.find(t => t.name === 'property:readonly')) != undefined
     const needsSetter = val.tags && val.tags.find(t => t.name === 'property') != undefined

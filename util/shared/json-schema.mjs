@@ -16,8 +16,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import deepmerge from 'deepmerge'
 import crocks from 'crocks'
 const { setPath, getPathOr } = crocks
+
+const isNull = schema => {
+  return (schema.type === 'null' || schema.const === null)
+}
 
 const getExternalMarkdownPaths = obj => {
   return objectPaths(obj)
@@ -167,9 +172,11 @@ const getPath = (uri = '', moduleJson = {}, schemas = {}) => {
 const getExternalPath = (uri = '', schemas = {}, localize = true, replace = true) => {
   const [mainPath, subPath] = uri.split('#')
   const json = schemas[mainPath] || schemas[mainPath + '/']
-  const result = subPath ? getPathOr(null, subPath.slice(1).split('/'), json) : json
+  // copy to avoid side effects
+  let result = JSON.parse(JSON.stringify(subPath ? getPathOr(null, subPath.slice(1).split('/'), json) : json))
+
   if (localize) {
-    result && localizeDependencies(result, json, schemas)
+    result && (result = localizeDependencies(result, json, schemas))
   }
   else if (replace) {
     result && replaceUri('', mainPath, result)
@@ -232,25 +239,35 @@ function getSchemaConstraints(json, module, schemas = {}, options = { delimiter:
     return constraints.join(options.delimiter)    
   }
   else if (json.oneOf || json.anyOf) {
-    return 'See OpenRPC Schema for `oneOf` and `anyOf` details'
+    return '' //See OpenRPC Schema for `oneOf` and `anyOf` details'
   }
   else {
     return ''
   }
 }
 
-const localizeDependencies = (def, schema, schemas = {}, externalOnly=false) => {
+const defaultLocalizeOptions = {
+  externalOnly: false,  // true: only localizes refs pointing to other documents, false: localizes all refs into this def
+  mergeAllOfs: false    // true: does a deep merge on all `allOf` arrays, since this is possible w/out refs, and allows for **much** easier programatic inspection of schemas
+}
+
+const localizeDependencies = (def, schema, schemas = {}, options = defaultLocalizeOptions) => {
+  if (typeof options === 'boolean') {
+    // if we got a boolean, then inject it into the default options for the externalOnly value (for backwards compatibility)
+    options = Object.assign(JSON.parse(JSON.stringify(defaultLocalizeOptions)), { externalOnly: options })
+  }
+
   let definition = JSON.parse(JSON.stringify(def))
   let refs = localRefPaths(definition)
   let unresolvedRefs = []
 
-  if (!externalOnly) {
+  if (!options.externalOnly) {
     while (refs.length > 0) {
       for (let i=0; i<refs.length; i++) {
         let path = refs[i]      
         const ref = getPathOr(null, path, definition)
         path.pop() // drop ref
-        let resolvedSchema = getPathOr(null, refToPath(ref), schema)
+        let resolvedSchema = JSON.parse(JSON.stringify(getPathOr(null, refToPath(ref), schema)))
         
         if (!resolvedSchema) {
           resolvedSchema = { "$REF": ref}
@@ -258,6 +275,10 @@ const localizeDependencies = (def, schema, schemas = {}, externalOnly=false) => 
         }
 
         if (path.length) {
+          // don't loose examples from original object w/ $ref
+          // todo: should we preserve other things, like title?
+          const examples = getPathOr(null, [...path, 'examples'], definition)
+          resolvedSchema.examples = examples || resolvedSchema.examples
           definition = setPath(path, resolvedSchema, definition)
         }
         else {
@@ -283,6 +304,10 @@ const localizeDependencies = (def, schema, schemas = {}, externalOnly=false) => 
       }
 
       if (path.length) {
+        // don't loose examples from original object w/ $ref
+        // todo: should we preserve other things, like title?
+        const examples = getPathOr(null, [...path, 'examples'], definition)
+        resolvedSchema.examples = examples || resolvedSchema.examples
         definition = setPath(path, resolvedSchema, definition)
       }
       else {
@@ -299,10 +324,37 @@ const localizeDependencies = (def, schema, schemas = {}, externalOnly=false) => 
     delete node['$REF']
   })
 
-  Object.keys(def).forEach( key => delete def[key])
-  Object.assign(def, definition)
+  if (options.mergeAllOfs) {
+    const findAndMergeAllOfs = pointer => {
+      if ((typeof pointer) !== 'object' || !pointer) {
+        return
+      }
 
-  return def
+      Object.keys(pointer).forEach( key => {
+
+        if (Array.isArray(pointer) && key === 'length') {
+          return
+        }
+        // do a depth-first search for `allOfs` to reduce complexity of merges
+        if ((key !== 'allOf') && (typeof pointer[key] === 'object')) {
+          findAndMergeAllOfs(pointer[key])
+        }
+        else if (key === 'allOf' && Array.isArray(pointer[key])) {
+          const union = deepmerge.all(pointer.allOf.reverse()) // reversing so lower `title` attributes will win
+          const title = pointer.title
+          Object.assign(pointer, union)
+          if (title) {
+            pointer.title = title
+          }
+          delete pointer.allOf
+        }
+      })
+    }
+
+    findAndMergeAllOfs(definition)
+  }
+
+  return definition
 }
 
 const getExternalSchemas = (json = {}, schemas = {}) => {
@@ -322,10 +374,7 @@ const getExternalSchemas = (json = {}, schemas = {}) => {
       
       if (!resolvedSchema) {
         // rename it so the while loop ends
-        console.log("UNRESOLVED: " + ref + `(${json.info.title})`)
-        resolvedSchema = { "$REF": ref}
-        json = setPath(path, resolvedSchema, json)
-        unresolvedRefs.push([...path])
+        throw "Unresolved schema: " + ref
       }
       // replace the ref so we can recursively grab more refs if needed...
       else if (path.length) {
@@ -369,6 +418,7 @@ export {
   getExternalPath,
   hasTitle,
   isDefinitionReferencedBySchema,
+  isNull,
   localizeDependencies,
   replaceUri,
   replaceRef,

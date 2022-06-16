@@ -15,7 +15,7 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-import MockProps from "../Prop/MockProps"
+import MockProps from "../Prop/MockProps.mjs"
 
 export default {
   /* ${DEFAULTS} */

@@ -140,8 +140,8 @@
                     "name": "Default Example",
                     "params": [
                         {
-                            "name": "parameter",
-                            "value": true
+                            "name": "title",
+                            "value": "test"
                         }
                     ],
                     "result": {

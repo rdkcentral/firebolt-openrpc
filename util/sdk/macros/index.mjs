@@ -30,10 +30,11 @@ import predicates from 'crocks/predicates/index.js'
 import isNil from 'crocks/core/isNil.js'
 const { isObject, isArray, propEq, pathSatisfies, propSatisfies } = predicates
 
-import { isExcludedMethod, isRPCOnlyMethod } from '../../shared/modules.mjs'
+import { isExcludedMethod, isRPCOnlyMethod, isProviderMethod, getPayloadFromEvent, providerHasNoParameters, isTemporalSetMethod, generateTemporalSetMethods } from '../../shared/modules.mjs'
 import { getTemplateForMethod } from '../../shared/template.mjs'
 import { getMethodSignatureParams } from '../../shared/javascript.mjs'
 import isEmpty from 'crocks/core/isEmpty.js'
+import { localizeDependencies } from '../../shared/json-schema.mjs'
 
 // util for visually debugging crocks ADTs
 const _inspector = obj => {
@@ -58,6 +59,7 @@ const getSchemas = compose(
   getPath(['components', 'schemas']) // Maybe any
 )
 
+// TODO: import from shared/modules.mjs
 const isDeprecatedMethod = compose(
   option(false),
   map(_ => true),
@@ -65,6 +67,7 @@ const isDeprecatedMethod = compose(
   getPath(['tags'])
 )
 
+// TODO: import from shared/modules.mjs
 const isPublicEventMethod = and(
   compose(
     option(true),
@@ -87,20 +90,7 @@ const isPublicEventMethod = and(
   )
 )
 
-const isProviderMethod = compose(
-  option(false),
-  map(_ => true),
-  chain(
-    find(
-      and(
-        propEq('name', 'event'),
-        propSatisfies('x-provides', not(isEmpty))
-      )
-    )
-  ),
-  getPath(['tags'])
-)
-
+// TODO: import from shared/modules.mjs
 const isEventMethod = compose(
   option(false),
   map(_ => true),
@@ -143,6 +133,21 @@ const eventsOrEmptyArray = compose(
   getMethods
 )
 
+const temporalSets = compose(
+  option([]),
+  map(filter(isTemporalSetMethod)),
+  getMethods  
+)
+
+// Find all provided capabilities
+const providedCapabilitiesOrEmptyArray = compose(
+  option([]),
+  map(caps => [... new Set(caps)]),
+  map(map(m => m.tags.find(t => t['x-provides'])['x-provides'])), // grab the capabilty it provides
+  map(filter(isProviderMethod)),
+  getMethods
+)
+
 // Pick providers out of the methods array
 const providersOrEmptyArray = compose(
   option([]),
@@ -182,8 +187,8 @@ const makeProviderMethod = x => x.name["onRequest".length].toLowerCase() + x.nam
 //import { default as platform } from '../Platform/defaults'
 const generateAggregateMacros = (modules = {}) => Object.values(modules)
   .reduce((acc, module) => {
-    acc.exports += `export { default as ${getModuleName(module)} } from './${getModuleName(module)}'\n`
-    acc.mockImports += `import { default as ${getModuleName(module).toLowerCase()} } from '../${getModuleName(module)}/defaults'\n`
+    acc.exports += `export { default as ${getModuleName(module)} } from './${getModuleName(module)}/index.mjs'\n`
+    acc.mockImports += `import { default as ${getModuleName(module).toLowerCase()} } from './${getModuleName(module)}/defaults.mjs'\n`
     acc.mockObjects += `  ${getModuleName(module).toLowerCase()}: ${getModuleName(module).toLowerCase()},\n`
     return acc
   }, {exports: '', mockImports: '', mockObjects: ''})
@@ -329,16 +334,21 @@ const generateImports = json => {
   let imports = ''
 
   if (eventsOrEmptyArray(json).length) {
-    imports += `import Events from '../Events'\n`
-    imports += `import { registerEvents } from \'../Events\'\n`
+    imports += `import Events from '../Events/index.mjs'\n`
+    imports += `import { registerEvents } from \'../Events/index.mjs\'\n`
   }
 
   if (providersOrEmptyArray(json).length) {
-    imports += `import Capabilities from '../Capabilities'\n`
-    imports += `import { registerProviderMethods } from \'../Capabilities\'\n`
+    imports += `import Capabilities from '../Capabilities/index.mjs'\n`
+    imports += `import { registerProviderInterface } from \'../Capabilities/index.mjs\'\n`
   }
+
   if (props(json).length) {
-    imports += `import Prop from '../Prop'\n`
+    imports += `import Prop from '../Prop/index.mjs'\n`
+  }
+
+  if (temporalSets(json).length) {
+    imports += `import TemporalSet from '../TemporalSet/index.mjs'\n`
   }
 
   return imports
@@ -356,25 +366,26 @@ const generateEventInitialization = json => compose(
     if (i < arr.length-1) {
       return acc  
     }
-    return `
-    registerEvents('${getModuleName(json)}', Object.values(${JSON.stringify(acc)}))\n`
+    return `registerEvents('${getModuleName(json)}', Object.values(${JSON.stringify(acc)}))\n`
   }, ''),
   eventsOrEmptyArray
 )(json)
 
+const getProviderInterfaceNameFromRPC = name => name.charAt(9).toLowerCase() + name.substr(10) // Drop onRequest prefix
+
 const generateProviderInitialization = json => compose(
-  reduce((acc, method, i, arr) => {
-    if (i === 0) {
-      acc = []
-    }
-    acc.push(makeProviderMethod(method))
-    if (i < arr.length-1) {
-      return acc  
-    }
-    return `
-    registerProviderMethods('${getModuleName(json)}', Object.values(${JSON.stringify(acc)}))\n`
+  reduce((acc, capability, i, arr) => {
+    const methods = providersOrEmptyArray(json)
+      .filter(m => m.tags.find(t => t['x-provides'] === capability))
+      .map(m => ({
+        name: getProviderInterfaceNameFromRPC(m.name),
+        focus: ((m.tags.find(t => t['x-allow-focus']) || { 'x-allow-focus': false })['x-allow-focus']),
+        response:  ((m.tags.find(t => t['x-response']) || { 'x-response': null })['x-response']) !== null,
+        parameters: !providerHasNoParameters(getPayloadFromEvent(m, json))
+      }))
+    return acc + `registerProviderInterface('${capability}', '${getModuleName(json)}', ${JSON.stringify(methods)})\n`
   }, ''),
-  providersOrEmptyArray
+  providedCapabilitiesOrEmptyArray
 )(json)
 
 const generateDeprecatedInitialization = json => compose(
@@ -467,12 +478,18 @@ function generateMethods(json = {}, templates = {}, onlyEvents = false) {
       if (isPropertyMethod(methodObj)) {
         template = templates['methods/polymorphic-property.js']
       }
+
+      const temporalItemName = isTemporalSetMethod(methodObj) ? methodObj.result.schema.items && methodObj.result.schema.items.title || 'Item' : ''
+      const temporalAddName = isTemporalSetMethod(methodObj) ? `on${temporalItemName}Available` : ''
+      const temporalRemoveName = isTemporalSetMethod(methodObj) ? `on${temporalItemName}Unvailable` : ''
       const javascript = template.replace(/\$\{method\.name\}/g, method.name)
         .replace(/\$\{method\.params\}/g, method.params)
         .replace(/\$\{method\.Name\}/g, method.name[0].toUpperCase() + method.name.substr(1))
         .replace(/\$\{info\.title\}/g, info.title)
         .replace(/\$\{method\.property\.immutable\}/g, hasTag(methodObj, 'property:immutable'))
         .replace(/\$\{method\.property\.readonly\}/g, hasTag(methodObj, 'property:immutable') || hasTag(methodObj, 'property:readonly'))
+        .replace(/\$\{method\.temporalset\.add\}/g, temporalAddName)
+        .replace(/\$\{method\.temporalset\.remove\}/g, temporalRemoveName)
 
       acc = acc.concat(javascript)
 
@@ -501,8 +518,8 @@ function generateMethods(json = {}, templates = {}, onlyEvents = false) {
     // Code to generate for methods that ARE events
     const providerMethodReducer = reduce((_) => {
       return `  
-  function provide(...args) {
-    return Capabilities.provide('${moduleName}', ...args)
+  function provide(capability, provider) {
+    return Capabilities.provide(capability, provider)
   }
   `
     }, '', providerMethods)

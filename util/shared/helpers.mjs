@@ -18,10 +18,11 @@
 
 import h from 'highland'
 import fs from 'fs'
+import fse from 'fs-extra'
 import path from 'path'
 import getPathOr from 'crocks/helpers/getPathOr.js'
 import { getSchema } from './json-schema.mjs'
-import { generatePropertyEvents, generatePropertySetters, generatePolymorphicPullEvents } from '../shared/modules.mjs'
+import { generatePropertyEvents, generatePropertySetters, generatePolymorphicPullEvents, generateProviderMethods, generateTemporalSetMethods } from '../shared/modules.mjs'
 import { getExternalMarkdownPaths } from '../shared/json-schema.mjs'
 import or from 'crocks/logic/or.js'
 import not from 'crocks/logic/not.js'
@@ -35,18 +36,25 @@ const {
   stat
 } = fs
 
+const {
+  copy
+} = fse
+
 const fsStat = h.wrapCallback(stat)
 const fsCopyFile = h.wrapCallback(copyFile)
+const fsCopy = h.wrapCallback(copy)
 const fsMkDirP = h.wrapCallback((path, cb) => mkdir(path, { recursive: true }, cb))
 const fsRemoveDirectory = h.wrapCallback(rmdir)
 const fsWriteFile = h.wrapCallback(writeFile)
 const fsReadFile = h.wrapCallback(readFile)
 const bufferToString = buf => buf.toString()
 
+const copyDirectory = dir => h.wrapCallback(copy)
 const clearDirectory = dir => fsRemoveDirectory(dir, {recursive: true})
 const isFile = dir => fsStat(dir).map(statObj => statObj.isFile())
 
 const logSuccess = message => console.log(`\x1b[32m ✓ \x1b[0m\x1b[2m ${message}\x1b[0m`)
+const logError = message => console.log(`\x1b[31m ✗ \x1b[0m\x1b[2m ${message}\x1b[0m`)
 const logHeader = message => console.log(`\x1b[0m\x1b[7m\x1b[32m${message}\x1b[0m\n`)
 
 // TODO: Convert to "stream" style fs functions
@@ -83,12 +91,12 @@ const recursiveFileDirectoryList = dirOrFile => {
 // has the filepath and the contents of the file.
 // DOES NOT DEAL WITH ERRORS
 const loadFileContent = suffix => fileStream => fileStream
-  .filter(filepath => path.extname(filepath) === suffix)
+  .filter(filepath => ((path.extname(filepath) === suffix) || (suffix.includes && suffix.includes(path.extname(filepath)))))
   .flatMap(filepath => fsReadFile(filepath)
     .map(buf => [filepath, bufferToString(buf)]))
 
 const jsonErrorHandler = filepath => (err, push) => {
-  console.error(`\u{1F494} Error: ${filepath}`)
+  console.error(`\n\u{1F494} Error: ${filepath}\n`)
   if (/JSON/.test(err.message)) {
     console.error('There was an error loading a .json file. Unable to continue.')
     console.error(err)
@@ -135,16 +143,22 @@ const getLinkFromRef = (ref, schemas = {}, asPath) => path.join((asPath ? 'schem
 const fileCollectionReducer = (truncateBefore = '') => (acc = {}, payload = '') => {
   const [filepath, data] = payload
   if (truncateBefore !== '') {
-    const pieces = filepath.split(truncateBefore)
+    // If we can't find truncateBefore path, try backslashes in case windows.
+    // Probably a better way to do this with the path library, but this works.
+    let tb = filepath.indexOf(truncateBefore) !== -1 ? truncateBefore : truncateBefore.replace(/\//g, '\\')
+    const pieces = filepath.split(tb)
     const truncatedFilepath = pieces[1]
-    acc[truncatedFilepath] = data
+    if (truncatedFilepath) {
+      acc[truncatedFilepath.replace(/\\/g, '/')] = data
+    }
   } else {
-    acc[filepath] = data
+    acc[filepath.replace(/\\/g, '/')] = data
   }
   return acc
 }
 
-const hasPublicMethods = json => json.methods && json.methods.filter(m => !m.tags || !m.tags.map(t=>t.name).includes('rpc-only')).length > 0
+const hasPublicInterfaces = json => json.methods && json.methods.filter(m => m.tags && m.tags.find(t=>t['x-provides'])).length > 0
+const hasPublicMethods = json => hasPublicInterfaces(json) || (json.methods && json.methods.filter(m => !m.tags || !m.tags.map(t=>t.name).includes('rpc-only')).length > 0)
 const alphabeticalSorter = (a, b) => a.info.title > b.info.title ? 1 : b.info.title > a.info.title ? -1 : 0
 const combineStreamObjects = (...xs) => h([...xs]).flatten().collect().map(xs => Object.assign({}, ...xs))
 const schemaMapper = ([_filepath, parsed]) => {
@@ -201,6 +215,8 @@ const localModules = (modulesFolder = '', markdownFolder = '', disableTransforms
           .map(generatePropertyEvents)
           .map(generatePropertySetters)
           .map(generatePolymorphicPullEvents)
+          .map(generateProviderMethods)
+          .map(generateTemporalSetMethods)
       })
       .filter(or(not(isFlagSet), hasPublicMethods)) // allows the validator to validate private modules
       .sortBy(alphabeticalSorter)
@@ -222,6 +238,8 @@ const localModules = (modulesFolder = '', markdownFolder = '', disableTransforms
     .reduce({}, fileCollectionReducer('/modules/'))
   }
 
+  const trimPath = file => path.relative(process.cwd(), file)
+
 export {
   loadFilesIntoObject,
   schemaFetcher,
@@ -232,12 +250,15 @@ export {
   clearDirectory,
   loadVersion,
   fsMkDirP,
+  fsCopy,
   fsCopyFile,
   fsWriteFile,
   fsReadFile,
   logSuccess,
+  logError,
   logHeader,
   getFilename,
   getDirectory,
-  getLinkFromRef
+  getLinkFromRef,
+  trimPath
 }

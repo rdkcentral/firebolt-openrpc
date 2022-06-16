@@ -4,22 +4,27 @@ ${method.description}
 
 ${if.javascript}
 ```typescript
-${method.signature}
+function ${method.name}(${method.params}${method.extraParams}): Promise<Process>
 ```
 ${end.if.javascript}
-${if.params}
 
 Parameters:
 
 | Param                  | Type                 | Required                 | Summary                 |
 | ---------------------- | -------------------- | ------------------------ | ----------------------- |
 | `${method.param.name}` | ${method.param.type} | ${method.param.required} | ${method.param.summary} ${method.param.constraints} |
+| add                    | `function`           | true                     | Callback to pass any `${method.result.type}` objects to, as they become available |
+| remove                 | `function`           | false                    | Callback to pass any `${method.result.type}` objects to, as they become unavailable |
 
-${end.if.params}
 
 Promise resolution:
 
-${method.result}
+```typescript
+interface Process {
+    stop(): void // Stops updating this temporal set with ${method.result.type} objects
+}
+```
+
 
 ${if.examples}
 **Examples**
@@ -32,7 +37,7 @@ JavaScript:
 ```javascript
 ${example.javascript}
 ```
-Value of `${method.result.name}`:
+Value of `${method.item}`:
 
 ```javascript
 ${example.result}
@@ -46,7 +51,16 @@ ${end.if.javascript}
 Request:
 
 ```json
-${example.jsonrpc}
+[
+    ${example.jsonrpc},
+    {
+        "id": 2,
+        "method": "on${method.item}Available",
+        "params": {
+            "listen": true
+        }
+    }
+]
 ```
 
 Response:

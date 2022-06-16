@@ -16,17 +16,14 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-/* ${MOCK_IMPORTS} */
-
-import { default as win } from '../Transport/global'
-import Transport from './'
+import { default as win } from '../Transport/global.mjs'
 
 let listener
 export const setMockListener = func => { listener = func }
 
-let mock = {
-  /* ${MOCK_OBJECTS} */
-}
+let mock
+const pending = []
+const eventMap = {}
 
 let callback
 let testHarness
@@ -36,7 +33,15 @@ if (win.__firebolt && win.__firebolt.testHarness) {
 }
 
 function send(message) {
+  console.debug('Sending message to transport: ' + message)
   let json = JSON.parse(message)
+
+  // handle bulk sends
+  if (Array.isArray(json)) {
+    json.forEach(j => send(JSON.stringify(j)))
+    return
+  }
+
   let [module, method] = json.method.split('.')
 
   if (testHarness && testHarness.onSend) {
@@ -44,7 +49,25 @@ function send(message) {
   }
 
   // store the ID of the first listen for each event
-  // TODO: what about wild cards?
+  if (method.match(/^on[A-Z]/)) {
+    if (json.params.listen) {
+      eventMap[json.id] = module.toLowerCase() + '.' + method[2].toLowerCase() + method.substr(3)
+    } else {
+      Object.keys(eventMap).forEach(key => {
+        if (eventMap[key] === module.toLowerCase() + '.' + method[2].toLowerCase() + method.substr(3)) {
+          delete eventMap[key]
+        }
+      })
+    }
+  }
+
+  if (mock)
+    handle(json)
+  else
+    pending.push(json)
+}
+
+function handle(json) {
   let result
   try {
     result = getResult(json.method, json.params)
@@ -79,7 +102,7 @@ function receive(_callback) {
 }
 
 function event(module, event, value) {
-  const listener = Object.entries(Transport.getEventMap()).find(([k, v]) => v.toLowerCase() === module.toLowerCase() + '.' + event.toLowerCase())
+ const listener = Object.entries(eventMap).find(([k, v]) => v.toLowerCase() === module.toLowerCase() + '.' + event.toLowerCase())
   if (listener) {
     let message = JSON.stringify({
       jsonrpc: '2.0',
@@ -112,6 +135,13 @@ function getResult(method, params) {
   if (typeof api === 'function') {
     return params == null ? api() : api(params)
   } else return api
+}
+
+export function setMockResponses(m) {
+  mock = m
+
+  pending.forEach(json => handle(json))
+  pending.length = 0
 }
 
 export default {

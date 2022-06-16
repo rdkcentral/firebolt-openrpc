@@ -16,8 +16,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import Transport from '../Transport'
-import { setMockListener } from '../Transport/mock.js'
+import Transport from '../Transport/index.mjs'
+import { setMockListener } from '../Transport/MockTransport.mjs'
 
 let listenerId = 0
 

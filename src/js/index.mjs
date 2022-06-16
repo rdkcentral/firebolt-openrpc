@@ -16,4 +16,4 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-/* ${EXPORTS} */
+export { default as Transport } from './shared/Transport/index.mjs'
