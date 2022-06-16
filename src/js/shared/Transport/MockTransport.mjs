@@ -33,6 +33,7 @@ if (win.__firebolt && win.__firebolt.testHarness) {
 }
 
 function send(message) {
+  console.debug('Sending message to transport: ' + message)
   let json = JSON.parse(message)
 
   // handle bulk sends
