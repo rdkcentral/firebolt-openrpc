@@ -26,6 +26,6 @@ if (typeof self !== 'undefined') {
 	g = Function('return this')();
 } 
 
-const global = g
+const globalObject = g
 
-export default global
+export default globalObject
