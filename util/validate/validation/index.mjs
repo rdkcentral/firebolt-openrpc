@@ -171,9 +171,39 @@ export const validate = (json = {}, schemas = {}, ajvPackage = [], additionalPac
                   const p = method.params[j]
                   const param = localizeDependencies(p.schema, json, schemas)
                   param.title = method.name + ' param \'' + p.name + '\''
-                  param.examples = method.examples.map(ex => (ex.params.find(x => x.name === p.name) || { value: null }).value)
+
+                  if (p.required) {
+                    try {
+                      param.examples = method.examples.map(ex => {
+                        const match = ex.params.find(x => x.name === p.name)
+                        if (match) {
+                          return match.value
+                        }
+                        else {
+                          throw `Missing required parameter ${p.name}`
+                        }
+                      })
+                    }
+                    catch (err) {
+                      // add an error about missing required params and
+                      // map missing params to null and run validation on the others
+                      param.examples = method.examples.map(ex => (ex.params.find(x => x.name === p.name) || { value: null }).value)
+                      valid = false
+                      errors.push({
+                        instancePath: `/methods/${i}/examples/${j}`,
+                        prettyPath: `/methods/${method.name}/examples/${j}`,
+                        document: root,
+                        message: err
+                      })
+                    }
+                  }
+                  else {
+                    param.examples = method.examples.map(ex => (ex.params.find(x => x.name === p.name) || { value: null }).value)
+                  }
+
                   const exampleParamsResult = validateExamples(param, root, ajvPackage, `/methods/${i}/examples`, `/params/${j}`, json)
                   valid = valid && exampleParamsResult.valid
+
                   if (!exampleParamsResult.valid) {
                     errors.push(...exampleParamsResult.errors)
                   }

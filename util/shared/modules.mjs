@@ -416,7 +416,10 @@ const createSetterFromProperty = property => {
         }
     ]
 
-    setter.params.push(setter.result)
+    const param = setter.result
+    param.required = true
+    setter.params.push(param)
+    
     setter.result = {
         name: 'result',
         schema: {
@@ -425,10 +428,10 @@ const createSetterFromProperty = property => {
     }
 
     setter.examples && setter.examples.forEach(example => {
-        example.params[0] = {
-            name: 'value',
+        example.params.push({
+            name: param.name,
             value: example.result.value
-        }
+        })
 
         example.result.value = null
     })
