@@ -60,6 +60,10 @@ const logHeader = message => console.log(`\x1b[0m\x1b[7m\x1b[32m${message}\x1b[0
 // TODO: Convert to "stream" style fs functions
 const recursiveFileDirectoryList = dirOrFile => {
   return h((push, next) => {
+    if (!dirOrFile) {
+      push(null, h.nil)
+      return
+    }
     fs.stat(dirOrFile, (err, stat) => {
       if (!stat || stat.isFile()) {
         stat && push(err, dirOrFile)
