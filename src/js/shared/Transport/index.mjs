@@ -190,6 +190,20 @@ export default class Transport {
    * @returns {Transport}
    */
   static get () {
+    /** Set up singleton and initialize it */
+    win.__firebolt = win.__firebolt || {}
+    if ((win.__firebolt.transport == null) && (moduleInstance == null)) {
+      const transport = new Transport()
+      transport.init()
+      if (transport.isMock) {
+        /** We should use the mock transport built with the SDK, not a global */
+        moduleInstance = transport
+      } else {
+        win.__firebolt = win.__firebolt || {}
+        win.__firebolt.transport = transport
+      }
+      win.__firebolt.setTransportLayer = transport.setTransportLayer.bind(transport)
+    }
     return win.__firebolt.transport ? win.__firebolt.transport : moduleInstance
   }
 
@@ -235,18 +249,7 @@ export default class Transport {
     }
   }
 }
-
-/** Set up singleton and initialize it */
 win.__firebolt = win.__firebolt || {}
-if ((win.__firebolt.transport == null) && (moduleInstance == null)) {
-  const transport = new Transport()
-  transport.init()
-  if (transport.isMock) {
-    /** We should use the mock transport built with the SDK, not a global */
-    moduleInstance = transport
-  } else {
-    win.__firebolt = win.__firebolt || {}
-    win.__firebolt.transport = transport
-  }
-  win.__firebolt.setTransportLayer = transport.setTransportLayer.bind(transport)
+win.__firebolt.setTransportLayer = transport => {
+  Transport.get().setTransportLayer(transport)
 }
