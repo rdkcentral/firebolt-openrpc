@@ -211,7 +211,7 @@
                         {
                             "type": "array",
                             "minItems": 1,
-                            "maxItems": 1,
+                            "maxItems": 2,
                             "items": {
                                 "type": "object"
                             }
@@ -475,7 +475,8 @@
                     "x-pulls-for",
                     "x-setter-for",
                     "x-manages",
-                    "x-uses"
+                    "x-uses",
+                    "x-uses-operator"
                 ]
             }
         },
@@ -739,6 +740,14 @@
                             "items": {
                                 "$ref": "#/definitions/Capability"
                             }
+                        },
+                        "x-uses-operator": {
+                            "type": "string",
+                            "enum": [
+                                "anyOf",
+                                "allOf",
+                                "oneOf"
+                            ]
                         },
                         "x-manages": {
                             "type": "array",

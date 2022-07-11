@@ -57,7 +57,9 @@ const run = ({
   // Set up the ajv instance
   const ajv = new Ajv()
   addFormats(ajv)
-
+  // explicitly add our custom extensions so we can keep strict mode on (TODO: put these in a JSON config?)
+  ajv.addVocabulary(['x-method', 'x-this-param', 'x-additional-params'])
+  
   const combinedSchemas = combineStreamObjects(schemaFetcher(sharedSchemasFolder), schemaFetcher(schemasFolder), schemaFetcher(externalFolder))
   const allModules = localModules(modulesFolder, markdownFolder, disableTransforms, false) // Validate private modules
   

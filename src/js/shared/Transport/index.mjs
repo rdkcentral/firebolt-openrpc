@@ -22,6 +22,7 @@ import Settings, { initSettings } from '../Settings/index.mjs'
 import LegacyTransport from './LegacyTransport.mjs'
 import win from '../Transport/global.mjs'
 import WebsocketTransport from './WebsocketTransport.mjs'
+import Results from '../Results/index.mjs'
 
 const LEGACY_TRANSPORT_SERVICE_NAME = 'com.comcast.BridgeObject_1'
 let moduleInstance = null
@@ -92,17 +93,17 @@ export default class Transport {
     this._queue.flush(tl)
   }
 
-  static send (module, method, params) {
+  static send (module, method, params, transforms) {
     /** Transport singleton across all SDKs to keep single id map */
-    return Transport.get()._send(module, method, params)
+    return Transport.get()._send(module, method, params, transforms)
   }
 
-  _send (module, method, params) {
+  _send (module, method, params, transforms) {
     if (Array.isArray(module) && !method && !params) {
       return this._batch(module)
     }
 
-    const {promise, json, id } = this._processRequest(module, method, params)
+    const {promise, json, id } = this._processRequest(module, method, params, transforms)
     const msg = JSON.stringify(json)
     if (Settings.getLogLevel() === 'DEBUG') {
       console.debug('Sending message to transport: ' + msg)
@@ -116,8 +117,8 @@ export default class Transport {
     const results = []
     const json = []
 
-    requests.forEach( ({module, method, params}) => {
-      const result = this._processRequest(module, method, params)
+    requests.forEach( ({module, method, params, transforms}) => {
+      const result = this._processRequest(module, method, params, transforms)
       results.push({
         promise: result.promise,
         id: result.id
@@ -134,8 +135,9 @@ export default class Transport {
     return results
   }
 
-  _processRequest (module, method, params) {
-    const p = this._addPromiseToQueue(module, method, params)
+  _processRequest (module, method, params, transforms) {
+
+    const p = this._addPromiseToQueue(module, method, params, transforms)
     const json = this._createRequestJSON(module, method, params)
 
     const result = {
@@ -153,12 +155,13 @@ export default class Transport {
     return { jsonrpc: '2.0', method: module + '.' + method, params: params, id: this._id }
   }
 
-  _addPromiseToQueue (module, method, params) {
+  _addPromiseToQueue (module, method, params, transforms) {
     return new Promise((resolve, reject) => {
       this._promises[this._id] = {}
       this._promises[this._id].promise = this
       this._promises[this._id].resolve = resolve
       this._promises[this._id].reject = reject
+      this._promises[this._id].transforms = transforms
 
       const deprecated = this._deprecated[module.toLowerCase() + '.' + method.toLowerCase()]
       if (deprecated) {
@@ -203,7 +206,19 @@ export default class Transport {
     if (p) {
       if (json.error) p.reject(json.error)
       else {
-        p.resolve(json.result)
+        // Do any module-specific transforms on the result
+        let result = json.result
+
+        if (p.transforms) {
+          if (Array.isArray(json.result)) {
+            result = result.map(x => Results.transform(x, p.transforms))
+          }
+          else {
+            result = Results.transform(result, p.transforms)
+          }
+        }
+        
+        p.resolve(result)
       }
       delete this._promises[json.id]
     }
