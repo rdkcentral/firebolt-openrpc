@@ -179,8 +179,7 @@
                         "aMethod": {
                             "type": "string",
                             "x-method": "Simple.method",
-                            "x-this-param": "accessory",
-                            "x-additional-params": ["foo", "bar"]
+                            "x-this-param": "accessory"
                         }
                     }
                 }

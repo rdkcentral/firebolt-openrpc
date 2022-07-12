@@ -350,7 +350,6 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
     }
     else if (json['x-method']) {
       const target = JSON.parse(JSON.stringify(module.methods.find(m => m.name === json['x-method'].split('.').pop())))
-      target.params = target.params.filter(p => (p.name !== json['x-this-param']))
 
       // transform the method copy params to be in the order of the x-additional-params array (and leave out any we don't want)
       if (json['x-additional-params']) {
