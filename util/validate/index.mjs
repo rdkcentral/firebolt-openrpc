@@ -26,7 +26,7 @@ import https from 'https'
 import url from 'url'
 import Ajv from 'ajv'
 import addFormats from 'ajv-formats'
-import { flattenSchemas } from '../shared/json-schema.mjs'
+import { flattenSchemas, removeIgnoredAdditionalItems, replaceUri } from '../shared/json-schema.mjs'
 import { readFileSync } from 'fs'
 const __dirname = url.fileURLToPath(new URL('.', import.meta.url))
 
@@ -57,10 +57,9 @@ const run = ({
   // Set up the ajv instance
   const ajv = new Ajv()
   addFormats(ajv)
-
-  const combinedSchemas = combineStreamObjects(schemaFetcher(sharedSchemasFolder), schemaFetcher(schemasFolder), schemaFetcher(externalFolder))
-  const allModules = localModules(modulesFolder, markdownFolder, disableTransforms, false) // Validate private modules
-  
+  // explicitly add our custom extensions so we can keep strict mode on (TODO: put these in a JSON config?)
+  ajv.addVocabulary(['x-method', 'x-this-param', 'x-additional-params'])
+    
   const getJsonFromUrl = url => h((push) => {
     https.get(url, res => {
       res.on('data', chunk => push(null, chunk))
@@ -72,7 +71,10 @@ const run = ({
   .map(bufferToString)
   .map(JSON.parse)
   .errors(jsonErrorHandler(url))
-  
+
+  const combinedSchemas = combineStreamObjects(schemaFetcher(sharedSchemasFolder), schemaFetcher(schemasFolder), schemaFetcher(externalFolder), schemaFetcher('https://meta.json-schema.tools/'), schemaFetcher('https://meta.open-rpc.org/'))
+  const allModules = localModules(modulesFolder, markdownFolder, disableTransforms, false) // Validate private modules
+    
   const jsonSchema = getJsonFromUrl('https://meta.json-schema.tools')
 
   // flatten JSON-Schema into OpenRPC
@@ -80,8 +82,8 @@ const run = ({
   //  - AJV can't seem to handle having a property's schema be the entire JSON-Schema spec, so we need to merge OpenRPC & JSON-Schema into one schema
   const openRpc = jsSpec => getJsonFromUrl('https://meta.open-rpc.org')
     .map(orSpec => {
-      flattenSchemas(orSpec, jsSpec) // This is mutating by reference. Only mutates `orSpec`.
-      delete orSpec.$schema
+      removeIgnoredAdditionalItems(orSpec)
+      replaceUri('https://raw.githubusercontent.com/json-schema-tools/meta-schema/1.5.9/src/schema.json', 'https://meta.json-schema.tools/', orSpec)
       return orSpec
     })
 
