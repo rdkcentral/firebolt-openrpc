@@ -318,7 +318,7 @@ const localizeDependencies = (def, schema, schemas = {}, options = defaultLocali
           definition.components = definition.components || {}
           definition.components.schemas = definition.components.schemas || {}
           definition.components.schemas[title] = resolvedSchema
-          definition = setPath([...path, '$ref'], { "$ref": `#/components/schemas/${title}` }, definition)
+          definition = setPath([...path, '$ref'], `#/components/schemas/${title}`, definition)
         }
         else {
           // otherwise, copy the schema definition to the exact location of the old $ref
