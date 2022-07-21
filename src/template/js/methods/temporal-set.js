@@ -8,6 +8,7 @@ function ${method.name}(...args) {
         add = args.pop()
     }
 
-//    function start(module, method, addName, removeName, params, add, remove) {
-    return TemporalSet.start('${info.title}', '${method.name}', '${method.temporalset.add}', '${method.temporalset.remove}', arguments, add, remove)
+    const transforms = ${method.transforms}
+    
+    return TemporalSet.start('${info.title}', '${method.name}', '${method.temporalset.add}', '${method.temporalset.remove}', arguments, add, remove, transforms)
 }

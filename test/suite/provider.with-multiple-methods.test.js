@@ -17,7 +17,8 @@
  */
 
 import { Provider } from '../../build/sdk/javascript/src/sdk.mjs'
-import { transport } from '../Setup.js'
+import Setup from '../Setup.js'
+import { transport } from '../TransportHarness.js'
 
 let providerMethodOneNotificationRegistered = false
 let providerMethodOneRequestDispatched = false

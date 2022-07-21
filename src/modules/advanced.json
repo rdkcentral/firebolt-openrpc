@@ -1,0 +1,123 @@
+{
+    "openrpc": "1.2.4",
+    "info": {
+        "title": "Advanced",
+        "description": "Module for testing advanced firebolt-openrpc features",
+        "version": "0.0.0"
+    },
+    "methods": [
+        {
+            "name": "list",
+            "tags": [
+                {
+                    "name": "temporal-set"
+                }
+            ],
+            "summary": "A temporal set method that lists Advanced objects.",
+            "params": [
+
+            ],
+            "result": {
+                "name": "items",
+                "schema": {
+                    "type": "array",
+                    "items": {
+                        "title": "Item",
+                        "$ref": "#/components/schemas/Advanced"
+                    }    
+                }
+            },
+            "examples": [
+                {
+                    "name": "Default Example",
+                    "params": [
+                    ],
+                    "result": {
+                        "name": "items",
+                        "value": [
+                            {
+                                "aString": "Here's a string",
+                                "aNumber": 123
+                            }
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "name": "action",
+            "summary": "A method that takes an Advanced object.",
+            "description": "A method for testing advanced method generation.",
+            "params": [
+                {
+                    "name": "advanced",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/components/schemas/Advanced"
+                    },
+                    "summary": "A test parameter."
+                }
+            ],
+            "result": {
+                "name": "result",
+                "summary": "A result for testing basic method generation.",
+                "schema": {
+                    "type": "object",
+                    "required": [
+                        "foo"
+                    ],
+                    "properties": {
+                        "foo": {
+                            "type": "string",
+                            "description": "A required field in the result."
+                        },
+                        "bar": {
+                            "type": "number",
+                            "description": "An optional field in the result."
+                        }
+                    },
+                    "additionalProperties": false
+                }
+            },
+            "examples": [
+                {
+                    "name": "Default Example",
+                    "params": [
+                        {
+                            "name": "advanced",
+                            "value": {
+                                "aString": "Here's a string",
+                                "aNumber": 123
+                            }
+                        }
+                    ],
+                    "result": {
+                        "name": "Default Result",
+                        "value": {
+                            "foo": "here's foo",
+                            "bar": 1
+                        }
+                    }
+                }
+            ]
+        }
+    ],
+    "components": {
+        "schemas": {
+            "Advanced": {
+                "title": "Advanced",
+                "type": "object",
+                "properties": {
+                    "aString": {
+                        "type": "string"
+                    },
+                    "aMethod": {
+                        "type": "null",
+                        "x-method": "Advanced.action",
+                        "x-this-param": "advanced"
+                    }
+                }
+            }
+        }
+    }
+}

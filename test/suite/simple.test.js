@@ -21,7 +21,7 @@ import Setup from '../Setup'
 import { expect } from '@jest/globals';
 
 test('Basic', () => {
-    Simple.method(true).then(result => {
+    return Simple.method(true).then(result => {
         expect(result.foo).toBe("here's foo")
     })
 });
