@@ -247,8 +247,9 @@ function getSchemaConstraints(json, module, schemas = {}, options = { delimiter:
 }
 
 const defaultLocalizeOptions = {
-  externalOnly: false,  // true: only localizes refs pointing to other documents, false: localizes all refs into this def
-  mergeAllOfs: false    // true: does a deep merge on all `allOf` arrays, since this is possible w/out refs, and allows for **much** easier programatic inspection of schemas
+  externalOnly: false,                    // true: only localizes refs pointing to other documents, false: localizes all refs into this def
+  mergeAllOfs: false,                     // true: does a deep merge on all `allOf` arrays, since this is possible w/out refs, and allows for **much** easier programatic inspection of schemas
+  keepRefsAndLocalizeAsComponent: false   // true: localizes external schemas into definition.components.schemas, and changes the $refs to be local (use only on root RPC docs)
 }
 
 const localizeDependencies = (def, schema, schemas = {}, options = defaultLocalizeOptions) => {
@@ -295,7 +296,9 @@ const localizeDependencies = (def, schema, schemas = {}, options = defaultLocali
     for (let i=0; i<refs.length; i++) {
       let path = refs[i]      
       const ref = getPathOr(null, path, definition)
+
       path.pop() // drop ref
+
       let resolvedSchema = getExternalPath(ref, schemas, true)
       
       if (!resolvedSchema) {
@@ -308,9 +311,22 @@ const localizeDependencies = (def, schema, schemas = {}, options = defaultLocali
         // todo: should we preserve other things, like title?
         const examples = getPathOr(null, [...path, 'examples'], definition)
         resolvedSchema.examples = examples || resolvedSchema.examples
-        definition = setPath(path, resolvedSchema, definition)
+
+        if (options.keepRefsAndLocalizeAsComponent) {
+          // if copying schemas, just drop them in components.schemas
+          const title = ref.split('/').pop()
+          definition.components = definition.components || {}
+          definition.components.schemas = definition.components.schemas || {}
+          definition.components.schemas[title] = resolvedSchema
+          definition = setPath([...path, '$ref'], { "$ref": `#/components/schemas/${title}` }, definition)
+        }
+        else {
+          // otherwise, copy the schema definition to the exact location of the old $ref
+          definition = setPath(path, resolvedSchema, definition)
+        }
       }
       else {
+        // TODO: do we need keepRefsAndLocalizeAsComponent support at the root? i don't think so, that would mean that an OpenRPC doc just pointed to another right from the root.
         delete definition['$ref']
         Object.assign(definition, resolvedSchema)
       }
