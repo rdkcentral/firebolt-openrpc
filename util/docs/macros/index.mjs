@@ -306,6 +306,7 @@ function insertMacros(data = '', moduleJson = {}, templates = {}, schemas = {}, 
     data = data
         .replace(/\$\{module}/g, getTitle(moduleJson).toLowerCase() + '.json')
         .replace(/\$\{info.title}/g, getTitle(moduleJson))
+        .replace(/\$\{jsonrpc.module}/g, getTitle(moduleJson).toLowerCase())
         .replace(/\$\{package.name}/g, pkg.name)
         .replace(/\$\{package.repository}/g, pkg.repository && pkg.repository.url && pkg.repository.url.split("git+").pop().split("/blob").shift() || '')
         .replace(/\$\{package.repository.name}/g, pkg.repository && pkg.repository.url && pkg.repository.url.split("/").slice(3,5).join("/") || '')
