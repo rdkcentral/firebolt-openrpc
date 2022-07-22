@@ -122,6 +122,8 @@ export const displayError = (error) => {
     console.dir(error.value, {depth: null, colors: true})// + JSON.stringify(example, null, '  ') + '\n')
   }
 
+  console.dir(error, {depth: 1000})
+
   console.error()
 }
 
@@ -159,7 +161,7 @@ export const validate = (json = {}, schemas = {}, ajvPackage = [], additionalPac
       })
 
       for (let i=0; i<json.methods.length; i++) {
-        let method = localizeDependencies(json.methods[i], json)
+        let method = localizeDependencies(json.methods[i], json, schemas)
         try {
           if (method.examples) {
             const result = localizeDependencies(method.result.schema, json, schemas)
