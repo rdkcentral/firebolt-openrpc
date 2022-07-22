@@ -108,23 +108,23 @@ const updateRefUris = (schema, uri) => {
 }
 
 const removeIgnoredAdditionalItems = schema => {
-  if (schema.hasOwnProperty('additionalItems')) {
+  if (schema && schema.hasOwnProperty && schema.hasOwnProperty('additionalItems')) {
     if (!schema.hasOwnProperty('items') || !Array.isArray(schema.items)) {
       delete schema.additionalItems
     }
   }
-  else if (typeof schema === 'object') {
+  else if (schema && (typeof schema === 'object')) {
     Object.keys(schema).forEach(key => removeIgnoredAdditionalItems(schema[key]))
   }
 }
 
 const replaceUri = (existing, replacement, schema) => {
-  if (schema.hasOwnProperty('$ref') && (typeof schema['$ref'] === 'string')) {
+  if (schema && schema.hasOwnProperty && schema.hasOwnProperty('$ref') && (typeof schema['$ref'] === 'string')) {
     if (schema['$ref'].indexOf(existing) === 0) {
       schema['$ref'] = schema['$ref'].split('#').map( x => x === existing ? replacement : x).join('#')
     }
   }
-  else if (typeof schema === 'object') {
+  else if (schema && (typeof schema === 'object')) {
     Object.keys(schema).forEach(key => {
       replaceUri(existing, replacement, schema[key])
     })
