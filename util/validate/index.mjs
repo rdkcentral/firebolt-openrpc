@@ -77,9 +77,8 @@ const run = ({
     
   const jsonSchema = getJsonFromUrl('https://meta.json-schema.tools')
 
-  // flatten JSON-Schema into OpenRPC
   //  - OpenRPC uses `additionalItems` when `items` is not an array of schemas. This fails strict validate, so we remove it
-  //  - AJV can't seem to handle having a property's schema be the entire JSON-Schema spec, so we need to merge OpenRPC & JSON-Schema into one schema
+  //  - OpenRPC uses raw.githubusercontent.com URLs for the json-schema spec, we replace this with the up to date spec on meta.json-schema.tools
   const openRpc = jsSpec => getJsonFromUrl('https://meta.open-rpc.org')
     .map(orSpec => {
       removeIgnoredAdditionalItems(orSpec)
