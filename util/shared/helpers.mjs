@@ -86,16 +86,6 @@ const recursiveFileDirectoryList = dirOrFile => {
   })
 }
 
-const urlList = url => 
-{
-  return h((push) => {
-    if (url) {
-      push(null, url)
-    }
-    push(null, h.nil)
-  })
-}
-
 // A through stream that expects a stream of filepaths, reads the contents
 // of any .suffix files found, and converts them to an array tuple that
 // has the filepath and the contents of the file.
