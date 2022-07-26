@@ -310,7 +310,7 @@ const localizeDependencies = (def, schema, schemas = {}, options = defaultLocali
       const ref = getPathOr(null, path, definition)
 
       path.pop() // drop ref
-      let resolvedSchema = getExternalPath(ref, schemas, true)
+      let resolvedSchema
       
       // only resolve our schemas for localization. TODO: make this a CLI param
       if (ref.startsWith('https://meta.comcast.com/')) {

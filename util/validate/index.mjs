@@ -72,7 +72,7 @@ const run = ({
   .map(JSON.parse)
   .errors(jsonErrorHandler(url))
 
-  const combinedSchemas = combineStreamObjects(schemaFetcher(sharedSchemasFolder), schemaFetcher(schemasFolder), schemaFetcher(externalFolder), schemaFetcher('https://meta.json-schema.tools/'), schemaFetcher('https://meta.open-rpc.org/'))
+  const combinedSchemas = combineStreamObjects(schemaFetcher(sharedSchemasFolder), schemaFetcher(schemasFolder), schemaFetcher(externalFolder))
   const allModules = localModules(modulesFolder, markdownFolder, disableTransforms, false) // Validate private modules
     
   const jsonSchema = getJsonFromUrl('https://meta.json-schema.tools')
