@@ -20,16 +20,14 @@ win.__firebolt.registerExtensionSDK = (id, initializer) => {
 // Method for handing off platform tokens to extension SDKs
 registerAPI('token', _ => Transport.send('authentication', 'token', { type: 'platform' }))
 
-registerAPI('authorize', capability => {
+registerAPI('authorize', (grants) => {
     return new Promise( (resolve, reject) => {
-
         // this will fail until we support capabilities
-        Transport.send('capabilities', 'info', { role: 'use', capabilities: [capability] })
-        .then(info => info || [])
-        .then(info => info.pop())
-        .then(info => {
-            if (info.supported && info.available && info.permitted && info.granted) {
-                resolve()
+        // once it works, this will trigger user grant UIs, and update the FAT
+        Transport.send('capabilities', 'request', { grants })
+        .then(granted => {
+            if (granted && granted.length) {
+                resolve(granted)
             }
             else {
                 reject()
@@ -37,11 +35,12 @@ registerAPI('authorize', capability => {
         })
         // This is temporary. Will be handled by a user grant policy in future
         .catch(_ => {
-            if (capability === 'xrn:firebolt:capabilities:commerce:purchase') {
+            // assume all commerce capabilities require a pin prompt
+            if (grants.find(g => g.capability.startsWith('xrn:firebolt:capabilities:commerce:'))) {
                 Transport.send('profile', 'approvePurchase', {})
                     .then(result => {
                         if (result) {
-                            resolve()
+                            resolve(grants)
                         }
                         else {
                             reject()
