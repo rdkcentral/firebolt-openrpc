@@ -594,6 +594,19 @@ const createResponseFromProvider = (provider, json) => {
     return response
 }
 
+const generateHttpExtensions = json => {
+    const https = json.methods.filter( m => m.tags && m.tags.find( t => t.name == 'http')) || []
+    https.forEach(method => {
+        Object.keys(json.info).forEach(key => {
+            if (key.startsWith('x-http')) {
+                method.tags.find(t => t.name === 'http')[key] = method[key] || json.info[key]
+            }
+        })
+    })
+
+    return json
+}
+
 const generatePropertyEvents = json => {
     const properties = json.methods.filter( m => m.tags && m.tags.find( t => t.name == 'property')) || []
     const readonlies = json.methods.filter( m => m.tags && m.tags.find( t => t.name == 'property:readonly')) || []
@@ -700,5 +713,6 @@ export {
     generatePropertySetters,
     generateProviderMethods,
     generateTemporalSetMethods,
+    generateHttpExtensions,
     providerHasNoParameters
 }

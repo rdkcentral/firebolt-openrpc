@@ -15,10 +15,6 @@
                 },
                 "info": {
                     "type": "object",
-                    "propertyNames": {
-                        "type": "string",
-                        "enum": ["title", "description", "version"]
-                    },
                     "additionalProperties": true
                 },
                 "methods": {
@@ -136,6 +132,9 @@
                                     },
                                     {
                                         "$ref": "#/definitions/DeprecatedTag"
+                                    },
+                                    {
+                                        "$ref": "#/definitions/HttpTag"
                                     }
                                 ]
                             }
@@ -155,6 +154,9 @@
                         },
                         {
                             "$ref": "#/definitions/EventMethod"
+                        },
+                        {
+                            "$ref": "#/definitions/HttpMethod"
                         },
                         {
                             "$ref": "#/definitions/RpcOnlyMethod"
@@ -265,6 +267,29 @@
                 },
                 "result": {
                     "$ref": "#/definitions/EventResult"
+                }
+            }
+        },
+        "HttpMethod": {
+            "type": "object",
+            "properties": {
+                "tags": {
+                    "allOf": [
+                        {
+                            "type": "array",
+                            "minItems": 1,
+                            "maxItems": 1,
+                            "items": {
+                                "type": "object"
+                            }
+                        },
+                        {
+                            "type": "array",
+                            "contains": {
+                                "$ref": "#/definitions/HttpTag"
+                            }
+                        }
+                    ]
                 }
             }
         },
@@ -462,21 +487,7 @@
                 "name"
             ],
             "propertyNames": {
-                "type": "string",
-                "enum": [
-                    "name",
-                    "x-provides",
-                    "x-allow-focus",
-                    "x-allow-focus-for",
-                    "x-response",
-                    "x-response-for",
-                    "x-alternative",
-                    "x-since",
-                    "x-pulls-for",
-                    "x-setter-for",
-                    "x-manages",
-                    "x-uses"
-                ]
+                "type": "string"
             }
         },
         "EventTag": {
@@ -504,6 +515,31 @@
                 }
             ]
         },
+        "HttpTag": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/Tag"
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "name": {
+                            "const": "http"
+                        }
+                    },
+                    "propertyNames": {
+                        "type": "string",
+                        "enum": [
+                            "name",
+                            "x-http-path",
+                            "x-http-method",
+                            "x-http-uri",
+                            "x-http-headers"
+                        ]
+                    }
+                }
+            ]
+        },        
         "DeprecatedTag": {
             "allOf": [
                 {

@@ -25,11 +25,13 @@ function ${method.name} (data) {
         }).catch(error => {
           const msg = typeof error === 'string' ? error : error.message || 'Unknown Error'
           console.error(`App '${method.name}' callback failed: ${msg}`)
+          error.stack && console.error(error.stack)
         })
       }
       catch (error) {
         const msg = typeof error === 'string' ? error : error.message || 'Unknown Error'
         console.error(`App '${method.name}' callback failed: ${msg}`)
+        error.stack && console.error(error.stack)
     }
     })
   }

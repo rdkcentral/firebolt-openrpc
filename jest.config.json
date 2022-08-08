@@ -4,5 +4,8 @@
     "testPathIgnorePatterns": ["<rootDir>/build/", "<rootDir>/node_modules/"],
     "moduleFileExtensions": ["js", "jsx", "mjs"],
     "testEnvironment": "jsdom",
-    "verbose": true
+    "verbose": true,
+    "setupFiles": [
+      "./test/Browser.js"
+    ]
   }

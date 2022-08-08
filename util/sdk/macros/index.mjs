@@ -24,7 +24,7 @@ import getPath from 'crocks/Maybe/getPath.js'
 import pointfree from 'crocks/pointfree/index.js'
 const { chain, filter, option, map, reduce, concat } = pointfree
 import logic from 'crocks/logic/index.js'
-const { and, not } = logic
+const { and, or, not } = logic
 import isString from 'crocks/core/isString.js'
 import predicates from 'crocks/predicates/index.js'
 import isNil from 'crocks/core/isNil.js'
@@ -98,6 +98,20 @@ const isEventMethod = compose(
   getPath(['tags'])
 )
 
+const isHttpMethod = compose(
+  option(false),
+  map(_ => true),
+  chain(find(propEq('name', 'http'))),
+  getPath(['tags'])
+)
+
+const isSynchronousMethod = compose(
+  option(false),
+  map(_ => true),
+  chain(find(propEq('name', 'synchronous'))),
+  getPath(['tags'])
+)
+
 const methodHasExamples = compose(
   option(false),
   map(isObject),
@@ -164,6 +178,20 @@ const providersOrEmptyArray = compose(
   getMethods
 )
 
+// Pick methods that call RCP out of the methods array
+const rpcMethodsOrEmptyArray = compose(
+  option([]),
+  map(filter(not(or(isHttpMethod, isSynchronousMethod)))),
+  getMethods
+)
+
+// Pick methods that call http out of the methods array
+const httpMethodsOrEmptyArray = compose(
+  option([]),
+  map(filter(isHttpMethod)),
+  getMethods
+)
+
 // Pick deprecated methods out of the methods array
 const deprecatedOrEmptyArray = compose(
   option([]),
@@ -187,11 +215,13 @@ const makeProviderMethod = x => x.name["onRequest".length].toLowerCase() + x.nam
 //import { default as platform } from '../Platform/defaults'
 const generateAggregateMacros = (modules = {}) => Object.values(modules)
   .reduce((acc, module) => {
+    acc.imports += `${generateAggregateImports(module)}\n`
     acc.exports += `export { default as ${getModuleName(module)} } from './${getModuleName(module)}/index.mjs'\n`
     acc.mockImports += `import { default as ${getModuleName(module).toLowerCase()} } from './${getModuleName(module)}/defaults.mjs'\n`
     acc.mockObjects += `  ${getModuleName(module).toLowerCase()}: ${getModuleName(module).toLowerCase()},\n`
+    acc.configuration += generateConfig(module)
     return acc
-  }, {exports: '', mockImports: '', mockObjects: ''})
+  }, {imports: '', exports: '', mockImports: '', mockObjects: '', configuration: ''})
 
 const generateMacros = templates => obj => {
   const imports = generateImports(obj)
@@ -216,6 +246,8 @@ const generateMacros = templates => obj => {
 }
 
 const insertAggregateMacrosOnly = (fContents = '', aggregateMacros = {}) => {
+  fContents = fContents.replace(/[ \t]*\/\* \$\{IMPORTS\} \*\/[ \t]*\n/, aggregateMacros.imports)
+  fContents = fContents.replace(/[ \t]*\/\* \$\{CONFIGURATION\} \*\/[ \t]*\n/, aggregateMacros.configuration)
   fContents = fContents.replace(/[ \t]*\/\* \$\{EXPORTS\} \*\/[ \t]*\n/, aggregateMacros.exports)
   fContents = fContents.replace(/[ \t]*\/\* \$\{MOCK_IMPORTS\} \*\/[ \t]*\n/, aggregateMacros.mockImports)
   fContents = fContents.replace(/[ \t]*\/\* \$\{MOCK_OBJECTS\} \*\/[ \t]*\n/, aggregateMacros.mockObjects)
@@ -333,6 +365,14 @@ function generateDefaults(json = {}) {
 const generateImports = json => {
   let imports = ''
 
+  if (rpcMethodsOrEmptyArray(json).length) {
+    imports += `import Transport from '../Transport/index.mjs'\n`
+  }
+
+  if (httpMethodsOrEmptyArray(json).length) {
+    imports += `import Http from '../Http/index.mjs'\n`
+  }
+
   if (eventsOrEmptyArray(json).length) {
     imports += `import Events from '../Events/index.mjs'\n`
     imports += `import { registerEvents } from \'../Events/index.mjs\'\n`
@@ -354,8 +394,24 @@ const generateImports = json => {
   return imports
 }
 
-const generateInitialization = json => generateEventInitialization(json) + '\n' + generateProviderInitialization(json) + '\n' + generateDeprecatedInitialization(json)
+const generateInitialization = json => [generateEventInitialization(json), generateProviderInitialization(json), generateDeprecatedInitialization(json)].join('\n')
 
+const generateConfig = json => [generateHttpConfig(json)].join('\n')
+
+const generateHttpConfig = json => {
+  if (httpMethodsOrEmptyArray(json).length) {
+    const config =
+    `Http.setEndpoint('${json.info["x-http-endpoint"]}')\n` +
+    `Extensions.register`
+    return 
+  }
+}
+
+const generateAggregateImports = json => {
+  if (httpMethodsOrEmptyArray(json).length) {
+    return `import Http from './Http/index.mjs'`
+  }
+}
 
 const generateEventInitialization = json => compose(
   reduce((acc, method, i, arr) => {
@@ -479,6 +535,9 @@ function generateMethods(json = {}, templates = {}, onlyEvents = false) {
         template = templates['methods/polymorphic-property.js']
       }
 
+      const httpPath = isHttpMethod(methodObj) ? methodObj.tags.find(t => t.name === 'http')['x-http-path'] || '' : ''
+      const httpMethod = isHttpMethod(methodObj) ? methodObj.tags.find(t => t.name === 'http')['x-http-method'] || '' : ''
+      const httpHeaders = isHttpMethod(methodObj) ? JSON.stringify(methodObj.tags.find(t => t.name === 'http')['x-http-headers'] || {}) : '{}'
       const temporalItemName = isTemporalSetMethod(methodObj) ? methodObj.result.schema.items && methodObj.result.schema.items.title || 'Item' : ''
       const temporalAddName = isTemporalSetMethod(methodObj) ? `on${temporalItemName}Available` : ''
       const temporalRemoveName = isTemporalSetMethod(methodObj) ? `on${temporalItemName}Unvailable` : ''
@@ -490,6 +549,10 @@ function generateMethods(json = {}, templates = {}, onlyEvents = false) {
         .replace(/\$\{method\.property\.readonly\}/g, hasTag(methodObj, 'property:immutable') || hasTag(methodObj, 'property:readonly'))
         .replace(/\$\{method\.temporalset\.add\}/g, temporalAddName)
         .replace(/\$\{method\.temporalset\.remove\}/g, temporalRemoveName)
+        .replace(/\$\{http\.path\}/g, httpPath)
+        .replace(/\$\{http\.method\}/g, httpMethod)
+        .replace(/\$\{http\.headers\}/g, httpHeaders)
+
 
       acc = acc.concat(javascript)
 
