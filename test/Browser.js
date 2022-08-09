@@ -52,3 +52,15 @@ global.window.location = {
         console.log(`window.location.href set to '${ref}'.`)
     }
 }
+
+global.window.__firebolt = {
+    registerExtensionSDK: (id, initializer) => {
+        initializer({
+            apiBaseUri: 'https://www.jlacivita.com'
+        }, {
+            token: () => {
+                return Promise.resolve("MOCK Token from Browser.js")
+            }
+        })
+    }
+}

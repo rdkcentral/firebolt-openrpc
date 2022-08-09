@@ -13,11 +13,9 @@ const port = parseInt(new URL(endpoint).port) || 80
 const httpTag = m => m.tags && m.tags.find(t => t.name === 'http')
 const httpPath = m => httpTag(m) && httpTag(m)['x-http-path']
 
-console.log(`x-http-endpoing: ${rpc.info['x-http-endpoint']}`)
 console.log(`endpoint: ${endpoint}`)
 console.log(`domain: ${domain}`)
 console.log(`port: ${port}`)
-console.log(typeof port)
 
 dns.lookup = function (...args) {
     if (args[0] === domain) {
@@ -32,7 +30,7 @@ dns.lookup = function (...args) {
 async function setup() {
     return new Promise((resolve, reject) => {       
         
-        const process = (request, response) => {
+        const process = async (request, response) => {
             const requestPath = request.url.split(endpoint).pop()
             const method = rpc.methods.find(m => {
                 const tag = httpTag(m)
@@ -42,20 +40,33 @@ async function setup() {
                     path = path.substr(0, path.length-1)
                 }
 
-                console.log(path + " <-> " + requestPath)
-
                 return path && requestPath.startsWith(path.split("$")[0])
             })
 
-            console.dir(request.headers)
-            console.dir(request.body)
-            console.dir(request.url)
+            let body
+
+            if (request.method === 'POST') {
+                const buffers = [];
+
+                for await (const chunk of request) {
+                  buffers.push(chunk);
+                }
+              
+                body = Buffer.concat(buffers).toString();
+            }
 
             response.setHeader("Content-Type", "application/json")
             response.writeHead(200)
-            console.dir(method)
+
             if (method) {
                 response.write(JSON.stringify(method.examples[0].result.value))
+            }
+            else if (request.url.endsWith('/account/authenticate')) {
+                response.write(JSON.stringify({
+                    oat: "OAT",
+                    bearerToken: "BEARER",
+                    d: "D"
+                }))
             }
             else {
                 response.write('{}')

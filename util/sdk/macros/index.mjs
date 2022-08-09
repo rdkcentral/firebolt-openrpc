@@ -33,6 +33,7 @@ const { isObject, isArray, propEq, pathSatisfies, propSatisfies } = predicates
 import { isExcludedMethod, isRPCOnlyMethod, isProviderMethod, getPayloadFromEvent, providerHasNoParameters, isTemporalSetMethod, generateTemporalSetMethods } from '../../shared/modules.mjs'
 import { getTemplateForMethod } from '../../shared/template.mjs'
 import { getMethodSignatureParams } from '../../shared/javascript.mjs'
+import { parseVersion } from '../../shared/helpers.mjs'
 import isEmpty from 'crocks/core/isEmpty.js'
 import { localizeDependencies } from '../../shared/json-schema.mjs'
 
@@ -213,15 +214,31 @@ const makeEventName = x => x.name[2].toLowerCase() + x.name.substr(3) // onFooBa
 const makeProviderMethod = x => x.name["onRequest".length].toLowerCase() + x.name.substr("onRequest".length + 1) // onRequestChallenge becomes challenge
 
 //import { default as platform } from '../Platform/defaults'
-const generateAggregateMacros = (modules = {}) => Object.values(modules)
-  .reduce((acc, module) => {
+const generateAggregateMacros = (modules = {}, packageJson) => Object.values(modules)
+  .reduce((acc, module, i, arr) => {
     acc.imports += `${generateAggregateImports(module)}\n`
-    acc.exports += `export { default as ${getModuleName(module)} } from './${getModuleName(module)}/index.mjs'\n`
-    acc.mockImports += `import { default as ${getModuleName(module).toLowerCase()} } from './${getModuleName(module)}/defaults.mjs'\n`
-    acc.mockObjects += `  ${getModuleName(module).toLowerCase()}: ${getModuleName(module).toLowerCase()},\n`
-    acc.configuration += generateConfig(module)
+
+//    import _Commerce from './Commerce/index.mjs'
+//    export const Commerce = _Commerce
+//    export default _Commerce
+    
+    const name = getModuleName(module)
+
+    if (arr.length === 1) {
+      acc.exports += `import _${name} from './${name}/index.mjs'\n`
+      acc.exports += `export const ${name} = _${name}\n`
+      acc.exports += `export default _${name}\n`
+    }
+    else {
+      acc.exports += `export { default as ${name} } from './${name}/index.mjs'\n`
+    }
+
+    acc.mockImports += `import { default as ${name.toLowerCase()} } from './${name}/defaults.mjs'\n`
+    acc.mockObjects += `  ${name.toLowerCase()}: ${name.toLowerCase()},\n`
+    acc.configuration += generateConfig(module, packageJson)
+    acc.httpEndpoint = acc.httpEndpoint || module.info['x-http-endpoint']
     return acc
-  }, {imports: '', exports: '', mockImports: '', mockObjects: '', configuration: ''})
+  }, {imports: '', exports: '', mockImports: '', mockObjects: '', configuration: '', httpEndpoint: ''})
 
 const generateMacros = templates => obj => {
   const imports = generateImports(obj)
@@ -245,16 +262,19 @@ const generateMacros = templates => obj => {
   return macros
 }
 
-const insertAggregateMacrosOnly = (fContents = '', aggregateMacros = {}) => {
+const insertAggregateMacrosOnly = (fContents = '', aggregateMacros = {}, packageJson) => {
   fContents = fContents.replace(/[ \t]*\/\* \$\{IMPORTS\} \*\/[ \t]*\n/, aggregateMacros.imports)
+  fContents = fContents.replace(/[ \t]*\/\* \$\{ID\} \*\/[ \t]*\n/, packageJson.$id)
   fContents = fContents.replace(/[ \t]*\/\* \$\{CONFIGURATION\} \*\/[ \t]*\n/, aggregateMacros.configuration)
   fContents = fContents.replace(/[ \t]*\/\* \$\{EXPORTS\} \*\/[ \t]*\n/, aggregateMacros.exports)
   fContents = fContents.replace(/[ \t]*\/\* \$\{MOCK_IMPORTS\} \*\/[ \t]*\n/, aggregateMacros.mockImports)
   fContents = fContents.replace(/[ \t]*\/\* \$\{MOCK_OBJECTS\} \*\/[ \t]*\n/, aggregateMacros.mockObjects)
+  fContents = fContents.replace(/\$\{http.endpoint\}/g, aggregateMacros.httpEndpoint)
   return fContents
 }
 
-const insertMacros = (fContents = '', macros = {}, module = {}, version = {}) => {
+const insertMacros = (fContents = '', macros = {}, module = {}, packageJson = {}) => {
+  const version = parseVersion(packageJson)
   fContents = fContents.replace(/[ \t]*\/\* \$\{METHODS\} \*\/[ \t]*\n/, macros.methods)
   fContents = fContents.replace(/[ \t]*\/\* \$\{METHOD_LIST\} \*\/[ \t]*\n/, macros.methodList)
   fContents = fContents.replace(/[ \t]*\/\* \$\{ENUMS\} \*\/[ \t]*\n/, macros.enums)
@@ -267,6 +287,7 @@ const insertMacros = (fContents = '', macros = {}, module = {}, version = {}) =>
   fContents = fContents.replace(/\$\{major\}/g, version.major)
   fContents = fContents.replace(/\$\{minor\}/g, version.minor)
   fContents = fContents.replace(/\$\{patch\}/g, version.patch)
+  fContents = fContents.replace(/\$\{http.endpoint\}/g, module.info['x-http-endpoint'] || '')
 
   const exampleMatches = [...fContents.matchAll(/0 \/\* \$\{EXAMPLE\:(.*?)\} \*\//g)]
   const findCorrespondingMethodExample = methods => match => compose(
@@ -371,6 +392,7 @@ const generateImports = json => {
 
   if (httpMethodsOrEmptyArray(json).length) {
     imports += `import Http from '../Http/index.mjs'\n`
+    imports += `import Configuration from '../Configuration/index.mjs'\n`
   }
 
   if (eventsOrEmptyArray(json).length) {
@@ -396,20 +418,29 @@ const generateImports = json => {
 
 const generateInitialization = json => [generateEventInitialization(json), generateProviderInitialization(json), generateDeprecatedInitialization(json)].join('\n')
 
-const generateConfig = json => [generateHttpConfig(json)].join('\n')
+const generateConfig = (json, pkg) => [generateHttpConfig(json, pkg)].join('\n')
 
-const generateHttpConfig = json => {
+const generateHttpConfig = (json, pkg) => {
   if (httpMethodsOrEmptyArray(json).length) {
     const config =
-    `Http.setEndpoint('${json.info["x-http-endpoint"]}')\n` +
-    `Extensions.register`
-    return 
+`Configuration.set('apiBaseUri', '${json.info["x-http-endpoint"]}')
+
+window.__firebolt.registerExtensionSDK('${pkg.$id}', (config, apis) => {
+  Configuration.set(config)
+  Http.setEndpoint(Configuration.get('apiBaseUri'))
+  Http.onToken(apis.token)
+})`
+
+    return config
   }
 }
 
 const generateAggregateImports = json => {
   if (httpMethodsOrEmptyArray(json).length) {
-    return `import Http from './Http/index.mjs'`
+    const config = `import Http from './Http/index.mjs'
+import Configuration from './Configuration/index.mjs'
+`
+    return config
   }
 }
 
@@ -537,6 +568,7 @@ function generateMethods(json = {}, templates = {}, onlyEvents = false) {
 
       const httpPath = isHttpMethod(methodObj) ? methodObj.tags.find(t => t.name === 'http')['x-http-path'] || '' : ''
       const httpMethod = isHttpMethod(methodObj) ? methodObj.tags.find(t => t.name === 'http')['x-http-method'] || '' : ''
+      const httpQuery = isHttpMethod(methodObj) ? methodObj.tags.find(t => t.name === 'http')['x-http-parameters'] || '' : ''
       const httpHeaders = isHttpMethod(methodObj) ? JSON.stringify(methodObj.tags.find(t => t.name === 'http')['x-http-headers'] || {}) : '{}'
       const temporalItemName = isTemporalSetMethod(methodObj) ? methodObj.result.schema.items && methodObj.result.schema.items.title || 'Item' : ''
       const temporalAddName = isTemporalSetMethod(methodObj) ? `on${temporalItemName}Available` : ''
@@ -552,6 +584,7 @@ function generateMethods(json = {}, templates = {}, onlyEvents = false) {
         .replace(/\$\{http\.path\}/g, httpPath)
         .replace(/\$\{http\.method\}/g, httpMethod)
         .replace(/\$\{http\.headers\}/g, httpHeaders)
+        .replace(/\$\{http\.query\}/g, httpQuery)
 
 
       acc = acc.concat(javascript)

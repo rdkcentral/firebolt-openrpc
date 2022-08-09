@@ -533,7 +533,7 @@
                             "name",
                             "x-http-path",
                             "x-http-method",
-                            "x-http-uri",
+                            "x-http-parameters",
                             "x-http-headers"
                         ]
                     }

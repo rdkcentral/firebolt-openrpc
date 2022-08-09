@@ -19,7 +19,7 @@
  */
 
 import h from 'highland'
-import { fsWriteFile, fsCopy, localModules, combineStreamObjects, schemaFetcher, loadFilesIntoObject, clearDirectory, fsMkDirP, logSuccess, logHeader, loadVersion, trimPath } from '../shared/helpers.mjs'
+import { fsWriteFile, fsCopy, localModules, combineStreamObjects, schemaFetcher, loadFilesIntoObject, clearDirectory, fsMkDirP, logSuccess, logHeader, loadJson, trimPath } from '../shared/helpers.mjs'
 import { insertMacros, insertAggregateMacrosOnly, generateMacros, generateAggregateMacros } from './macros/index.mjs'
 import path from 'path'
 
@@ -53,7 +53,7 @@ const run = ({
   const sdkTemplateFolder = path.join(templateFolderArg)
   const sharedSdkTemplateFolder = path.join(__dirname, '..', '..', 'src', 'template', 'js', 'sdk')
   const staticSdkCodeFolder = path.join(__dirname, '..', '..', 'src', 'js', 'shared')
-
+  
   const allModules = localModules(modulesFolder, markdownFolder)
   const combinedSchemas = combineStreamObjects(schemaFetcher(sharedSchemasFolder), schemaFetcher(schemasFolder)) // Used to 
   const localTemplates = loadFilesIntoObject(sdkTemplateFolder, ['.js', '.mjs'] , '/template/js/sdk/')
@@ -79,7 +79,7 @@ const run = ({
         return dirPart === moduleTitle && filePart === file // <-- <moduleTitle>/<file>
       })
 
-  const macroOrchestrator = schemas => modules => (localTemplates = [], sharedTemplates = [], globalDefaults = [], methodTemplates = []) => version => {
+  const macroOrchestrator = schemas => modules => (localTemplates = [], sharedTemplates = [], globalDefaults = [], methodTemplates = []) => packageJson => {
     
     const macrosAlmost = generateMacros(Object.fromEntries(methodTemplates)) // <-- method expects object
     
@@ -111,17 +111,17 @@ const run = ({
         return h([indexTemplate, defaultsTemplate, otherModuleFiles])
           .merge()
           .map(([file, contents]) => {
-            const macrofied = insertMacros(contents, macros, module, version) // <-- macro replacement
+            const macrofied = insertMacros(contents, macros, module, packageJson) // <-- macro replacement
             return [file, macrofied]
           })
       })
     
-    const aggregateMacros = generateAggregateMacros(Object.assign(modules, staticModules))
+    const aggregateMacros = generateAggregateMacros(Object.assign(modules, staticModules), packageJson)
     
     return h(combinedTemplates)
       .concat(macrofiedModules) // <-- concat guarantees macrofied content wins over plain template content
       .map(([file, contents]) => {
-        return [file, insertAggregateMacrosOnly(contents, aggregateMacros)] // <-- aggregate macro replacement happens for all
+        return [file, insertAggregateMacrosOnly(contents, aggregateMacros, packageJson)] // <-- aggregate macro replacement happens for all
       })
       .map(([k, v]) => [path.join(outputFolderArg, k), v]) // <-- concat output folder arg with template path
       .tap(([file, _]) => {
@@ -149,9 +149,9 @@ const run = ({
                 const globalDefaults = Object.entries(shared).filter(([k, _]) => path.dirname(k) === '.')
                 return localTemplates
                   .map(local => fnWithModules(Object.entries(local), sharedSdkTemplates, globalDefaults, methodTemplates))
-                  .flatMap(fnWithTemplates => loadVersion(packageJsonFile)
-                    .tap(v => logHeader(`Generating ${v.readable} --${v.original}--`))
-                    .flatMap(fnWithTemplates) // <-- This is calling macroOrchestrator with the last of its arguments, version
+                  .flatMap(fnWithTemplates => loadJson(packageJsonFile)
+                    .tap(p => logHeader(`Generating ${p.description} --${p.version}--`))
+                    .flatMap(fnWithTemplates) // <-- This is calling macroOrchestrator with the last of its arguments, the parsed package.json 
                 )
               })
             )
