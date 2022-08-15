@@ -25,12 +25,21 @@ export function proxy(callback) {
     proxyProvider = callback
 }
 
-function send(path, method='GET', headers={}, body='', params={}) {
+function send(module, method, params, http = {}) {
 
-    if (typeof body === 'object' && params === undefined) {
-        params = body
-        body = undefined
-    }
+    let path = http.path || `/${module}/${method}`
+    const headers = http.headers || {}
+    const body = params && JSON.stringify(params) || null
+    let query = http.parameters || ''
+    
+    Object.entries(params).forEach(([name, value]) => {
+        const find = '${param.' + name + '}'
+        path = path.replace(find, value)
+        query = query.replace(find, value)
+        Object.keys(headers).forEach(header => {
+            headers[header] = headers[header].replace(find, value)
+        })
+    })
 
     return new Promise((resolve, reject) => {
         getToken().then(token => {
@@ -39,10 +48,10 @@ function send(path, method='GET', headers={}, body='', params={}) {
                 'Authorization': token
             })
 
-            const resource = join(baseUri, path) + (params ? '?' + Object.entries(params).map(p => p.join('=')).join('&') : '')
+            const resource = join(baseUri, path) + (query ? '?' + query : '')
             const options = {
-                method,
-                headers
+                method: http.method || 'GET',
+                headers: headers
             }
 
             if (method === 'POST' && body) {

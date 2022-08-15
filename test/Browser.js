@@ -56,7 +56,7 @@ global.window.location = {
 global.window.__firebolt = {
     registerExtensionSDK: (id, initializer) => {
         initializer({
-            apiBaseUri: 'https://www.jlacivita.com'
+//            apiBaseUri: 'http://localhost:8080'
         }, {
             token: () => {
                 return Promise.resolve("MOCK Token from Browser.js")

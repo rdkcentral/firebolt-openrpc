@@ -391,7 +391,7 @@ const generateImports = json => {
   }
 
   if (httpMethodsOrEmptyArray(json).length) {
-    imports += `import Http from '../Http/index.mjs'\n`
+    imports += `import Transport from '../Http/index.mjs'\n`
     imports += `import Configuration from '../Configuration/index.mjs'\n`
   }
 
@@ -566,10 +566,11 @@ function generateMethods(json = {}, templates = {}, onlyEvents = false) {
         template = templates['methods/polymorphic-property.js']
       }
 
-      const httpPath = isHttpMethod(methodObj) ? methodObj.tags.find(t => t.name === 'http')['x-http-path'] || '' : ''
-      const httpMethod = isHttpMethod(methodObj) ? methodObj.tags.find(t => t.name === 'http')['x-http-method'] || '' : ''
-      const httpQuery = isHttpMethod(methodObj) ? methodObj.tags.find(t => t.name === 'http')['x-http-parameters'] || '' : ''
-      const httpHeaders = isHttpMethod(methodObj) ? JSON.stringify(methodObj.tags.find(t => t.name === 'http')['x-http-headers'] || {}) : '{}'
+      const transportOptions = {}
+      if (isHttpMethod(methodObj)) {
+        const tag = methodObj.tags.find(t => t.name === 'http')
+        Object.keys(tag).filter(k => k.startsWith("x-http")).map(k => transportOptions[k.substring(7)] = tag[k])
+      }
       const temporalItemName = isTemporalSetMethod(methodObj) ? methodObj.result.schema.items && methodObj.result.schema.items.title || 'Item' : ''
       const temporalAddName = isTemporalSetMethod(methodObj) ? `on${temporalItemName}Available` : ''
       const temporalRemoveName = isTemporalSetMethod(methodObj) ? `on${temporalItemName}Unvailable` : ''
@@ -581,11 +582,7 @@ function generateMethods(json = {}, templates = {}, onlyEvents = false) {
         .replace(/\$\{method\.property\.readonly\}/g, hasTag(methodObj, 'property:immutable') || hasTag(methodObj, 'property:readonly'))
         .replace(/\$\{method\.temporalset\.add\}/g, temporalAddName)
         .replace(/\$\{method\.temporalset\.remove\}/g, temporalRemoveName)
-        .replace(/\$\{http\.path\}/g, httpPath)
-        .replace(/\$\{http\.method\}/g, httpMethod)
-        .replace(/\$\{http\.headers\}/g, httpHeaders)
-        .replace(/\$\{http\.query\}/g, httpQuery)
-
+        .replace(/\$\{transport\.options\}/g, JSON.stringify(transportOptions))
 
       acc = acc.concat(javascript)
 

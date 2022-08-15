@@ -280,7 +280,17 @@
                             "minItems": 1,
                             "maxItems": 1,
                             "items": {
-                                "type": "object"
+                                "oneOf": [
+                                    {
+                                        "$ref": "#/definitions/HttpTag"
+                                    },
+                                    {
+                                        "$ref": "#/definitions/CallsMetricsTag"
+                                    },
+                                    {
+                                        "$ref": "#/definitions/PolymorphicReducerTag"
+                                    }
+                                ]
                             }
                         },
                         {
@@ -438,8 +448,6 @@
                     "allOf": [
                         {
                             "type": "array",
-                            "minItems": 1,
-                            "maxItems": 1,
                             "items": {
                                 "type": "object"
                             }
@@ -534,7 +542,8 @@
                             "x-http-path",
                             "x-http-method",
                             "x-http-parameters",
-                            "x-http-headers"
+                            "x-http-headers",
+                            "x-http-result"
                         ]
                     }
                 }
