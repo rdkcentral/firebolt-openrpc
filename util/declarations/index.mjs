@@ -16,9 +16,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { fsWriteFile, logSuccess, fsMkDirP, logHeader, combineStreamObjects, schemaFetcher, localModules, trimPath } from '../shared/helpers.mjs'
+import { fsWriteFile, logSuccess, fsMkDirP, logHeader, combineStreamObjects, schemaFetcher, localModules, trimPath, fsReadFile } from '../shared/helpers.mjs'
 import { generateDeclarations } from './generator/index.mjs'
 import path from 'path'
+import h from 'highland'
 
 /************************************************************************************************/
 /******************************************** MAIN **********************************************/
@@ -27,7 +28,8 @@ import path from 'path'
 const run = ({
   source,
   'shared-schemas': sharedSchemasFolderArg,
-  output: declarationsFile
+  output: declarationsFile,
+  template: templateArg
 }) => {
   // Important file/directory locations
   const declarationsDir = path.dirname(declarationsFile)
@@ -44,6 +46,7 @@ const run = ({
         .map(modules => Object.values(modules))
         .flatten()
         .map(module => generateDeclarations(module, schemas))
+        .concat(templateArg ? fsReadFile(templateArg) : h(['']))
         .collect()
         .map(xs => {
           const joined = xs.join('\n')
