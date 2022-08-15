@@ -99,7 +99,7 @@
                         "tags": {
                             "type": "array",
                             "items": {
-                                "oneOf": [
+                                "anyOf": [
                                     {
                                         "$ref": "#/definitions/CapabilitiesTag"
                                     },
@@ -142,7 +142,7 @@
                     }
                 },
                 {
-                    "oneOf": [
+                    "anyOf": [
                         {
                             "$ref": "#/definitions/PropertyMethod"
                         },
@@ -212,8 +212,6 @@
                     "allOf": [
                         {
                             "type": "array",
-                            "minItems": 1,
-                            "maxItems": 1,
                             "items": {
                                 "type": "object"
                             }
@@ -250,15 +248,6 @@
                     "allOf": [
                         {
                             "type": "array",
-                            "minItems": 1,
-                            "maxItems": 1,
-                            "items": {
-                                "type": "object",
-                                "maxProperties": 1
-                            }
-                        },
-                        {
-                            "type": "array",
                             "contains": {
                                 "$ref": "#/definitions/EventTag"
                             }
@@ -277,12 +266,13 @@
                     "allOf": [
                         {
                             "type": "array",
-                            "minItems": 1,
-                            "maxItems": 1,
                             "items": {
                                 "oneOf": [
                                     {
                                         "$ref": "#/definitions/HttpTag"
+                                    },
+                                    {
+                                        "$ref": "#/definitions/CapabilitiesTag"
                                     },
                                     {
                                         "$ref": "#/definitions/CallsMetricsTag"
@@ -308,11 +298,6 @@
             "properties": {
                 "tags": {
                     "allOf": [
-                        {
-                            "type": "array",
-                            "minItems": 1,
-                            "maxItems": 1
-                        },
                         {
                             "type": "array",
                             "contains": {
@@ -379,8 +364,6 @@
                     "allOf": [
                         {
                             "type": "array",
-                            "minItems": 1,
-                            "maxItems": 2,
                             "items": {
                                 "type": "object"
                             }
@@ -402,8 +385,6 @@
                     "allOf": [
                         {
                             "type": "array",
-                            "minItems": 1,
-                            "maxItems": 1,
                             "items": {
                                 "type": "object"
                             }
@@ -425,8 +406,6 @@
                     "allOf": [
                         {
                             "type": "array",
-                            "minItems": 1,
-                            "maxItems": 1,
                             "items": {
                                 "type": "object"
                             }
@@ -469,8 +448,6 @@
                     "allOf": [
                         {
                             "type": "array",
-                            "minItems": 1,
-                            "maxItems": 1,
                             "items": {
                                 "type": "object"
                             }

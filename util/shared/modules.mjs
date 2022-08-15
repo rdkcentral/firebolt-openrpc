@@ -68,6 +68,19 @@ const isProviderMethod = compose(
     getPath(['tags'])
   )
 
+
+const getUsedCapabilitiesFromMethod = (json) => {
+    return (json && json.tags && json.tags.find(t => t.name === "capabilities") || {})['x-uses'] || []
+}
+
+const getManagedCapabilitiesFromMethod = (json) => {
+    return (json && json.tags && json.tags.find(t => t.name === "capabilities") || {})['x-manages'] || []
+}
+
+const getProvidedCapabilitiesFromMethod = (json) => {
+    return (json && json.tags && json.tags.find(t => t.name === "capabilities") || {})['x-provides'] || []
+}
+
 const getProvidedCapabilities = (json) => {
     return Array.from(new Set([...getMethods(json).filter(isProviderMethod).map(method => method.tags.find(tag => tag['x-provides'])['x-provides'])]))
 }
@@ -706,6 +719,9 @@ export {
     getPublicEvents,
     getSchemas,
     getParamsFromMethod,
+    getUsedCapabilitiesFromMethod,
+    getManagedCapabilitiesFromMethod,
+    getProvidedCapabilitiesFromMethod,
     getPayloadFromEvent,
     getPathFromModule,
     generatePolymorphicPullEvents,

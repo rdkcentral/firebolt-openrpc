@@ -52,15 +52,3 @@ global.window.location = {
         console.log(`window.location.href set to '${ref}'.`)
     }
 }
-
-global.window.__firebolt = {
-    registerExtensionSDK: (id, initializer) => {
-        initializer({
-//            apiBaseUri: 'http://localhost:8080'
-        }, {
-            token: () => {
-                return Promise.resolve("MOCK Token from Browser.js")
-            }
-        })
-    }
-}

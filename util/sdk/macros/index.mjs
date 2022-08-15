@@ -30,7 +30,7 @@ import predicates from 'crocks/predicates/index.js'
 import isNil from 'crocks/core/isNil.js'
 const { isObject, isArray, propEq, pathSatisfies, propSatisfies } = predicates
 
-import { isExcludedMethod, isRPCOnlyMethod, isProviderMethod, getPayloadFromEvent, providerHasNoParameters, isTemporalSetMethod, generateTemporalSetMethods } from '../../shared/modules.mjs'
+import { isExcludedMethod, isRPCOnlyMethod, isProviderMethod, getPayloadFromEvent, providerHasNoParameters, isTemporalSetMethod, generateTemporalSetMethods, getUsedCapabilitiesFromMethod, getProvidedCapabilitiesFromMethod, getManagedCapabilitiesFromMethod } from '../../shared/modules.mjs'
 import { getTemplateForMethod } from '../../shared/template.mjs'
 import { getMethodSignatureParams } from '../../shared/javascript.mjs'
 import { parseVersion } from '../../shared/helpers.mjs'
@@ -425,11 +425,16 @@ const generateHttpConfig = (json, pkg) => {
     const config =
 `Configuration.set('apiBaseUri', '${json.info["x-http-endpoint"]}')
 
-window.__firebolt.registerExtensionSDK('${pkg.$id}', (config, apis) => {
+function _initialize(config, apis) {
   Configuration.set(config)
   Http.setEndpoint(Configuration.get('apiBaseUri'))
   Http.onToken(apis.token)
-})`
+  Http.onAuthorize(apis.authorize)
+}
+
+export const initialize = window.__firebolt ? () => { throw new Error('Use Extensions.initialize() from \\'@firebolt-js/sdk\\' to initialize ${pkg.name}.') } : _initialize
+
+window.__firebolt && window.__firebolt.registerExtensionSDK('${pkg.$id}', _initialize)`
 
     return config
   }
@@ -571,6 +576,10 @@ function generateMethods(json = {}, templates = {}, onlyEvents = false) {
         const tag = methodObj.tags.find(t => t.name === 'http')
         Object.keys(tag).filter(k => k.startsWith("x-http")).map(k => transportOptions[k.substring(7)] = tag[k])
       }
+
+      transportOptions.uses = getUsedCapabilitiesFromMethod(methodObj)
+      transportOptions.manages = getManagedCapabilitiesFromMethod(methodObj)
+      transportOptions.provides = getProvidedCapabilitiesFromMethod(methodObj)
       const temporalItemName = isTemporalSetMethod(methodObj) ? methodObj.result.schema.items && methodObj.result.schema.items.title || 'Item' : ''
       const temporalAddName = isTemporalSetMethod(methodObj) ? `on${temporalItemName}Available` : ''
       const temporalRemoveName = isTemporalSetMethod(methodObj) ? `on${temporalItemName}Unvailable` : ''

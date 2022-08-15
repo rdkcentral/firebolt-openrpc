@@ -1,6 +1,11 @@
 let baseUri
-let readyResolver
-let ready = new Promise( resolve => readyResolver = resolve )
+let tokenApiResolver
+let tokenApiReady = new Promise( resolve => tokenApiResolver = resolve )
+
+let authApiResolver
+let authApiReady = new Promise( resolve => authApiResolver = resolve )
+
+
 let proxyProvider = (resource, options) => Promise.resolve({ resource, options })
 
 const join = (...args) => args.map(a => (''+a).split('/')).flat().filter(a => a!=='').join('/').replace(':/', '://')
@@ -10,15 +15,27 @@ function setEndpoint(endpoint) {
 }
 
 function onToken(callback) {
-    if (readyResolver) {
-        readyResolver(callback)
-        readyResolver = null
+    if (tokenApiResolver) {
+        tokenApiResolver(callback)
+        tokenApiResolver = null
     }
 }
 
 function getToken() {
-    return ready.then(tokenGetter => tokenGetter())
+    return tokenApiReady.then(tokenGetter => tokenGetter())
 }
+
+function onAuthorize(callback) {
+    if (authApiResolver) {
+        authApiResolver(callback)
+        authApiResolver = null
+    }
+}
+
+function getAuthorization(grants) {
+    return authApiReady.then(authGetter => authGetter(grants))
+}
+
 
 // this gets called syncrhonously by the SDK itself, if needed
 export function proxy(callback) {
@@ -42,7 +59,20 @@ function send(module, method, params, http = {}) {
     })
 
     return new Promise((resolve, reject) => {
-        getToken().then(token => {
+        const requested = http.uses.map(capability => ({ role: 'use', capability }))
+                  .concat(http.manages.map(capability => ({ role: 'manage', capability })))
+                  .concat(http.provides.map(capability => ({ role: 'provide', capability })))
+
+        Promise.all([
+            getToken(),
+            requested.length ? getAuthorization(requested) : Promise.resolve([])
+        ]).then(([token, granted]) => {
+
+            // TODO: this could be a bit more robust...
+            if (requested.length !== granted.length) {
+                reject(new Error(`Not all required capabilities for the ${module}.${method} API are permitted or granted.`))
+                return
+            }
 
             Object.assign(headers, {
                 'Authorization': token
@@ -88,5 +118,6 @@ function send(module, method, params, http = {}) {
 export default {
     send,
     setEndpoint,
-    onToken
+    onToken,
+    onAuthorize
 } 
