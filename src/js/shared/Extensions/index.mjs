@@ -40,7 +40,7 @@ function active() {
     return Object.freeze(initialized.contact())
 }
 
-function registerAPI(name, method) {
+export function registerAPI(name, method) {
     apis[name] = method
 }
 
