@@ -217,10 +217,6 @@ const makeProviderMethod = x => x.name["onRequest".length].toLowerCase() + x.nam
 const generateAggregateMacros = (modules = {}, packageJson) => Object.values(modules)
   .reduce((acc, module, i, arr) => {
     acc.imports += `${generateAggregateImports(module)}\n`
-
-//    import _Commerce from './Commerce/index.mjs'
-//    export const Commerce = _Commerce
-//    export default _Commerce
     
     const name = getModuleName(module)
 
