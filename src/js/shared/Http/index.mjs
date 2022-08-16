@@ -50,11 +50,11 @@ function send(module, method, params, http = {}) {
     let query = http.parameters || ''
     
     Object.entries(params).forEach(([name, value]) => {
-        const find = '${param.' + name + '}'
-        path = path.replace(find, value)
-        query = query.replace(find, value)
+        const re = new RegExp('\\${param.' + name + '}', 'g')
+        path = path.replace(re, value)
+        query = query.replace(re, value)
         Object.keys(headers).forEach(header => {
-            headers[header] = headers[header].replace(find, value)
+            headers[header] = headers[header].replace(re, value)
         })
     })
 
