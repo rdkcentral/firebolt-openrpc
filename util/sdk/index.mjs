@@ -79,9 +79,9 @@ const run = ({
         return dirPart === moduleTitle && filePart === file // <-- <moduleTitle>/<file>
       })
 
-  const macroOrchestrator = schemas => modules => (localTemplates = [], sharedTemplates = [], globalDefaults = [], methodTemplates = []) => packageJson => {
+  const macroOrchestrator = schemas => modules => (localTemplates = [], sharedTemplates = [], globalDefaults = [], codeTemplates = []) => packageJson => {
     
-    const macrosAlmost = generateMacros(Object.fromEntries(methodTemplates)) // <-- method expects object
+    const macrosAlmost = generateMacros(Object.fromEntries(codeTemplates)) // <-- method expects object
     
     const combinedTemplates = Object.entries(
       Object.assign(
@@ -116,7 +116,7 @@ const run = ({
           })
       })
     
-    const aggregateMacros = generateAggregateMacros(Object.assign(modules, staticModules), packageJson)
+    const aggregateMacros = generateAggregateMacros(Object.fromEntries(codeTemplates), Object.assign(modules, staticModules), packageJson)
     
     return h(combinedTemplates)
       .concat(macrofiedModules) // <-- concat guarantees macrofied content wins over plain template content
@@ -144,7 +144,7 @@ const run = ({
           .map(fnWithSchemas)
             .flatMap(fnWithModules => allSharedTemplates // Loads all 4 kinds of templates into an object.
               .flatMap(shared => {
-                const methodTemplates = Object.entries(shared).filter(([k, _]) => path.dirname(k).startsWith('methods'))
+                const methodTemplates = Object.entries(shared).filter(([k, _]) => !path.dirname(k).startsWith('sdk'))
                 const sharedSdkTemplates = Object.entries(shared).filter(([k, _]) => path.dirname(k).startsWith('sdk')).map(([k, v]) => [k.slice(4), v])
                 const globalDefaults = Object.entries(shared).filter(([k, _]) => path.dirname(k) === '.')
                 return localTemplates

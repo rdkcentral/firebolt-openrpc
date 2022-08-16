@@ -21,6 +21,12 @@ const getTemplateForMethod = (method, suffix, templates) => {
   return templates[`methods/${template}${suffix}`]
 }
 
+const getTemplateForConfig = (method, suffix, templates) => {
+  const template = method.tags && method.tags.map(t=>t.name).find(t => Object.keys(templates).includes('configuration/' + t + suffix)) || 'default'
+  return templates[`configuration/${template}${suffix}`]
+}
+
 export {
   getTemplateForMethod,
+  getTemplateForConfig
 }

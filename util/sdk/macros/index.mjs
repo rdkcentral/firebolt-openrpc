@@ -27,15 +27,13 @@ import logic from 'crocks/logic/index.js'
 const { and, or, not } = logic
 import isString from 'crocks/core/isString.js'
 import predicates from 'crocks/predicates/index.js'
-import isNil from 'crocks/core/isNil.js'
 const { isObject, isArray, propEq, pathSatisfies, propSatisfies } = predicates
 
 import { isExcludedMethod, isRPCOnlyMethod, isProviderMethod, getPayloadFromEvent, providerHasNoParameters, isTemporalSetMethod, generateTemporalSetMethods, getUsedCapabilitiesFromMethod, getProvidedCapabilitiesFromMethod, getManagedCapabilitiesFromMethod } from '../../shared/modules.mjs'
-import { getTemplateForMethod } from '../../shared/template.mjs'
+import { getTemplateForConfig, getTemplateForMethod } from '../../shared/template.mjs'
 import { getMethodSignatureParams } from '../../shared/javascript.mjs'
 import { parseVersion } from '../../shared/helpers.mjs'
 import isEmpty from 'crocks/core/isEmpty.js'
-import { localizeDependencies } from '../../shared/json-schema.mjs'
 
 // util for visually debugging crocks ADTs
 const _inspector = obj => {
@@ -214,7 +212,7 @@ const makeEventName = x => x.name[2].toLowerCase() + x.name.substr(3) // onFooBa
 const makeProviderMethod = x => x.name["onRequest".length].toLowerCase() + x.name.substr("onRequest".length + 1) // onRequestChallenge becomes challenge
 
 //import { default as platform } from '../Platform/defaults'
-const generateAggregateMacros = (modules = {}, packageJson) => Object.values(modules)
+const generateAggregateMacros = (templates, modules = {}, packageJson) => Object.values(modules)
   .reduce((acc, module, i, arr) => {
     acc.imports += `${generateAggregateImports(module)}\n`
     
@@ -231,7 +229,7 @@ const generateAggregateMacros = (modules = {}, packageJson) => Object.values(mod
 
     acc.mockImports += `import { default as ${name.toLowerCase()} } from './${name}/defaults.mjs'\n`
     acc.mockObjects += `  ${name.toLowerCase()}: ${name.toLowerCase()},\n`
-    acc.configuration += generateConfig(module, packageJson)
+    acc.configuration += generateConfig(templates, module, packageJson)
     acc.httpEndpoint = acc.httpEndpoint || module.info['x-http-endpoint']
     return acc
   }, {imports: '', exports: '', mockImports: '', mockObjects: '', configuration: '', httpEndpoint: ''})
@@ -265,7 +263,9 @@ const insertAggregateMacrosOnly = (fContents = '', aggregateMacros = {}, package
   fContents = fContents.replace(/[ \t]*\/\* \$\{EXPORTS\} \*\/[ \t]*\n/, aggregateMacros.exports)
   fContents = fContents.replace(/[ \t]*\/\* \$\{MOCK_IMPORTS\} \*\/[ \t]*\n/, aggregateMacros.mockImports)
   fContents = fContents.replace(/[ \t]*\/\* \$\{MOCK_OBJECTS\} \*\/[ \t]*\n/, aggregateMacros.mockObjects)
-  fContents = fContents.replace(/\$\{http.endpoint\}/g, aggregateMacros.httpEndpoint)
+  fContents = fContents.replace(/\$\{http\.endpoint\}/g, aggregateMacros.httpEndpoint)
+  fContents = fContents.replace(/\$\{sdk.id\}/g, packageJson.$id)
+  fContents = fContents.replace(/\$\{sdk.name\}/g, packageJson.name)
   return fContents
 }
 
@@ -414,25 +414,11 @@ const generateImports = json => {
 
 const generateInitialization = json => [generateEventInitialization(json), generateProviderInitialization(json), generateDeprecatedInitialization(json)].join('\n')
 
-const generateConfig = (json, pkg) => [generateHttpConfig(json, pkg)].join('\n')
+const generateConfig = (templates, json, pkg) => [generateHttpConfig(templates, json, pkg)].join('\n')
 
-const generateHttpConfig = (json, pkg) => {
+const generateHttpConfig = (templates, json, pkg) => {
   if (httpMethodsOrEmptyArray(json).length) {
-    const config =
-`Configuration.set('apiBaseUri', '${json.info["x-http-endpoint"]}')
-
-function _initialize(config, apis) {
-  Configuration.set(config)
-  Http.setEndpoint(Configuration.get('apiBaseUri'))
-  Http.onToken(apis.token)
-  Http.onAuthorize(apis.authorize)
-}
-
-export const initialize = window.__firebolt ? () => { throw new Error('Use Extensions.initialize() from \\'@firebolt-js/sdk\\' to initialize ${pkg.name}.') } : _initialize
-
-window.__firebolt && window.__firebolt.registerExtensionSDK('${pkg.$id}', _initialize)`
-
-    return config
+    return getTemplateForConfig(httpMethodsOrEmptyArray(json)[0], '.js', templates)
   }
 }
 
