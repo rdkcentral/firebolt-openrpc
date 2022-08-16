@@ -3,7 +3,6 @@ Configuration.set('apiBaseUri', '${http.endpoint}')
 function _initialize(config, apis) {
   Configuration.set(config)
   Http.setEndpoint(Configuration.get('apiBaseUri'))
-  Http.onToken(apis.token)
   Http.onAuthorize(apis.authorize)
 }
 

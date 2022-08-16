@@ -1,6 +1,4 @@
 let baseUri
-let tokenApiResolver
-let tokenApiReady = new Promise( resolve => tokenApiResolver = resolve )
 
 let authApiResolver
 let authApiReady = new Promise( resolve => authApiResolver = resolve )
@@ -12,17 +10,6 @@ const join = (...args) => args.map(a => (''+a).split('/')).flat().filter(a => a!
 
 function setEndpoint(endpoint) {
     baseUri = endpoint
-}
-
-function onToken(callback) {
-    if (tokenApiResolver) {
-        tokenApiResolver(callback)
-        tokenApiResolver = null
-    }
-}
-
-function getToken() {
-    return tokenApiReady.then(tokenGetter => tokenGetter())
 }
 
 function onAuthorize(callback) {
@@ -63,17 +50,8 @@ function send(module, method, params, http = {}) {
                   .concat(http.manages.map(capability => ({ role: 'manage', capability })))
                   .concat(http.provides.map(capability => ({ role: 'provide', capability })))
 
-        Promise.all([
-            getToken(),
-            requested.length ? getAuthorization(requested) : Promise.resolve([])
-        ]).then(([token, granted]) => {
-
+        getAuthorization(requested).then((token) => {
             // TODO: this could be a bit more robust...
-            if (requested.length !== granted.length) {
-                reject(new Error(`Not all required capabilities for the ${module}.${method} API are permitted or granted.`))
-                return
-            }
-
             Object.assign(headers, {
                 'Authorization': token
             })
@@ -118,6 +96,5 @@ function send(module, method, params, http = {}) {
 export default {
     send,
     setEndpoint,
-    onToken,
     onAuthorize
 } 
