@@ -24,7 +24,7 @@ import getPath from 'crocks/Maybe/getPath.js'
 import pointfree from 'crocks/pointfree/index.js'
 const { chain, filter, option, map, reduce, concat } = pointfree
 import logic from 'crocks/logic/index.js'
-const { and, not } = logic
+const { and, not, or } = logic
 import isString from 'crocks/core/isString.js'
 import predicates from 'crocks/predicates/index.js'
 import isNil from 'crocks/core/isNil.js'
@@ -98,6 +98,13 @@ const isEventMethod = compose(
   getPath(['tags'])
 )
 
+const isSynchronousMethod = compose(
+  option(false),
+  map(_ => true),
+  chain(find(propEq('name', 'synchronous'))),
+  getPath(['tags'])
+)
+
 const methodHasExamples = compose(
   option(false),
   map(isObject),
@@ -120,7 +127,7 @@ const isPropertyMethod = (m) => {
 // Pick methods that call RCP out of the methods array
 const rpcMethodsOrEmptyArray = compose(
   option([]),
-  map(filter(not(or(isHttpMethod, isSynchronousMethod)))),
+  map(filter(not(isSynchronousMethod))),
   getMethods
 )
 
