@@ -24,7 +24,7 @@ import getPath from 'crocks/Maybe/getPath.js'
 import pointfree from 'crocks/pointfree/index.js'
 const { chain, filter, option, map, reduce, concat } = pointfree
 import logic from 'crocks/logic/index.js'
-const { and, not } = logic
+const { and, not, or } = logic
 import isString from 'crocks/core/isString.js'
 import predicates from 'crocks/predicates/index.js'
 import isNil from 'crocks/core/isNil.js'
@@ -98,6 +98,13 @@ const isEventMethod = compose(
   getPath(['tags'])
 )
 
+const isSynchronousMethod = compose(
+  option(false),
+  map(_ => true),
+  chain(find(propEq('name', 'synchronous'))),
+  getPath(['tags'])
+)
+
 const methodHasExamples = compose(
   option(false),
   map(isObject),
@@ -116,6 +123,13 @@ const hasTag = (method, tag) => {
 const isPropertyMethod = (m) => {
   return hasTag(m, 'property') || hasTag(m, 'property:immutable') || hasTag(m, 'property:readonly')
 }
+
+// Pick methods that call RCP out of the methods array
+const rpcMethodsOrEmptyArray = compose(
+  option([]),
+  map(filter(not(isSynchronousMethod))),
+  getMethods
+)
 
 // Pick events out of the methods array
 const eventsOrEmptyArray = compose(
@@ -332,6 +346,10 @@ function generateDefaults(json = {}) {
 
 const generateImports = json => {
   let imports = ''
+
+  if (rpcMethodsOrEmptyArray(json).length) {
+    imports += `import Transport from '../Transport/index.mjs'\n`
+  }
 
   if (eventsOrEmptyArray(json).length) {
     imports += `import Events from '../Events/index.mjs'\n`
