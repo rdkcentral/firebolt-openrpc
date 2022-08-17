@@ -117,6 +117,13 @@ const isPropertyMethod = (m) => {
   return hasTag(m, 'property') || hasTag(m, 'property:immutable') || hasTag(m, 'property:readonly')
 }
 
+// Pick methods that call RCP out of the methods array
+const rpcMethodsOrEmptyArray = compose(
+  option([]),
+  map(filter(not(or(isHttpMethod, isSynchronousMethod)))),
+  getMethods
+)
+
 // Pick events out of the methods array
 const eventsOrEmptyArray = compose(
   option([]),
@@ -332,6 +339,10 @@ function generateDefaults(json = {}) {
 
 const generateImports = json => {
   let imports = ''
+
+  if (rpcMethodsOrEmptyArray(json).length) {
+    imports += `import Transport from '../Transport/index.mjs'\n`
+  }
 
   if (eventsOrEmptyArray(json).length) {
     imports += `import Events from '../Events/index.mjs'\n`
