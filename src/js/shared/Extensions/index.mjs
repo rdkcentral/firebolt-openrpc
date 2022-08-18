@@ -1,14 +1,13 @@
-import win from '../Transport/global.mjs'
 import Transport from '../Transport/index.mjs'
 
-win.__firebolt = win.__firebolt || {}
+window.__firebolt = window.__firebolt || {}
 const initializers = {}
 const apis = {}
 const queue = {}
 const initialized = []
 const frozen = false
 
-win.__firebolt.registerExtensionSDK = (id, initializer) => {
+window.__firebolt.registerExtensionSDK = (id, initializer) => {
     initializers[id] = initializer
 
     if (queue[id]) {
