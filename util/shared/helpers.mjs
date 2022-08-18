@@ -198,32 +198,36 @@ const jsonErrorHandler = filepath => (err, push) => {
   }
 }
 
+const parseVersion = json => {
+  const x = json.version.split('-').map(x => x.split('.'))
+  const v = {
+    major: x[0][0],
+    minor: x[0][1],
+    patch: x[0][2]
+  }
+
+  // grab description
+  v.readable = json.description
+
+  if (x.length === 2) {
+    const tag = x[1][0][0].toUpperCase() + x[1][0].substr(1)
+    const build = x[1][1]
+    v.readable += ` [${tag} ${build}]`
+  }
+
+  v.original = json.version
+  
+  return v
+}
+
 // example:
 // '1.0.0-beta.1' 
-const loadVersion = path => fsReadFile(path)
+const loadVersion = path => loadJson(path)
+  .map(parseVersion)
+
+const loadJson = path => fsReadFile(path)
   .map(bufferToString)
   .map(JSON.parse)
-  .map(json => {
-    const x = json.version.split('-').map(x => x.split('.'))
-    const v = {
-      major: x[0][0],
-      minor: x[0][1],
-      patch: x[0][2]
-    }
-
-    // grab description
-    v.readable = json.description
-
-    if (x.length === 2) {
-      const tag = x[1][0][0].toUpperCase() + x[1][0].substr(1)
-      const build = x[1][1]
-      v.readable += ` [${tag} ${build}]`
-    }
-
-    v.original = json.version
-    
-    return v
-  })
 
 const getFilename = (json, asPath) => (json.info ? json.info.title : (asPath ? json.title : json.title + 'Schema'))
 const getDirectory = (json, asPath) => asPath ? json.info ? '' : 'schemas' : ''
@@ -354,6 +358,7 @@ export {
   treeShakenFileList,
   treeShakeDirectory,
   loadVersion,
+  loadJson,
   fsMkDirP,
   fsCopy,
   fsCopyFile,

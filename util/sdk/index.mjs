@@ -19,7 +19,7 @@
  */
 
 import h from 'highland'
-import { fsWriteFile, fsCopy, localModules, combineStreamObjects, schemaFetcher, loadFilesIntoObject, clearDirectory, fsMkDirP, logSuccess, logHeader, loadVersion, trimPath, treeShakenFileList, treeShakeDirectory } from '../shared/helpers.mjs'
+import { fsWriteFile, fsCopy, localModules, combineStreamObjects, schemaFetcher, loadFilesIntoObject, clearDirectory, fsMkDirP, logSuccess, logHeader, loadVersion, trimPath, treeShakenFileList, treeShakeDirectory, loadJson } from '../shared/helpers.mjs'
 import { insertMacros, insertAggregateMacrosOnly, generateMacros, generateAggregateMacros } from './macros/index.mjs'
 import path from 'path'
 
@@ -153,7 +153,8 @@ const run = ({
                     .tap(v => logHeader(`Generating ${v.readable} --${v.original}--`))
                     .flatMap(fnWithTemplates) // <-- This is calling macroOrchestrator with the last of its arguments, version
                     .collect()
-                    .flatMap(_ => treeShakeDirectory(outputFolderArg, path.basename(packageJsonFile.main)))
+                    .flatMap(_ => loadJson(packageJsonFile))
+                    .flatMap(json => treeShakeDirectory(outputFolderArg, path.basename(json.main)))
                 )
               })
             )
