@@ -34,6 +34,7 @@ const {
   readFile, // NOTE: This explicit casing is _required_
   copyFile, // NOTE: This explicit casing is _required_
   rmdir,
+  rm,
   stat
 } = fs
 
@@ -46,6 +47,7 @@ const fsCopyFile = h.wrapCallback(copyFile)
 const fsCopy = h.wrapCallback(copy)
 const fsMkDirP = h.wrapCallback((path, cb) => mkdir(path, { recursive: true }, cb))
 const fsRemoveDirectory = h.wrapCallback(rmdir)
+const fsRemoveFile = h.wrapCallback(rm)
 const fsWriteFile = h.wrapCallback(writeFile)
 const fsReadFile = h.wrapCallback(readFile)
 const bufferToString = buf => buf.toString()
@@ -56,6 +58,8 @@ const isFile = dir => fsStat(dir).map(statObj => statObj.isFile())
 
 const logSuccess = message => console.log(`\x1b[32m ✓ \x1b[0m\x1b[2m ${message}\x1b[0m`)
 const logError = message => console.log(`\x1b[31m ✗ \x1b[0m\x1b[2m ${message}\x1b[0m`)
+const logInfo = message => console.log(`\x1b[38;5;202m ⓘ \x1b[0m\x1b[2m ${message}\x1b[0m`)
+
 const logHeader = message => console.log(`\x1b[0m\x1b[7m\x1b[32m${message}\x1b[0m\n`)
 
 // TODO: Convert to "stream" style fs functions
@@ -85,6 +89,79 @@ const recursiveFileDirectoryList = dirOrFile => {
     })
   })
 }
+
+const removeFileAndParentIfEmpty = file => fsRemoveFile(file).flatMap(_ => h(removeParentDirIfEmpty(file)))
+
+const removeParentDirIfEmpty = file => {
+  return new Promise((resolve, reject) => {
+    const dir = path.dirname(file)
+    fs.stat(dir, (err, stat) => {
+      if (stat && !stat.isFile()) {
+        fs.readdir(dir, (err, files) => {
+          if (files.length === 0) {
+            rmdir(dir, { recursive: true }, err => {
+              if (err) {
+                reject(err)
+              }
+              else {
+                resolve()
+              }
+            })
+          }
+          else {
+            resolve()
+          }
+        })
+      }
+      else {
+        resolve()
+      }
+    })  
+  })
+}
+
+
+const treeShakeDirectory = (baseUrl, entryPoint) => {
+  return h(new Promise((resolve, reject) => {
+    treeShakenFileList(baseUrl, entryPoint).then(keep => {
+      recursiveFileDirectoryList(baseUrl)
+        .filter(file => file.endsWith('.js') || file.endsWith('.mjs'))
+        .filter(file => !keep.includes(file))
+        .tap(file => logInfo(`Tree-shaking: ${trimPath(file)} from build.`))
+        .flatMap(removeFileAndParentIfEmpty)
+        .collect()
+        .tap(_ => resolve())
+        .done(_ => {})
+    })
+  }))
+}
+
+const importedFiles = code => [...code.matchAll(/(import|export).*?from\s+['"](.*?)['"]/g)].map(arr => arr[2])
+
+const treeShakenFileList = (baseUrl, entryPoint) => {
+
+  const file = path.join(baseUrl, entryPoint)
+  baseUrl = path.dirname(file)
+  entryPoint = path.basename(file)
+
+  const list = [file]
+
+  return new Promise( (resolve, reject) => {
+    readFile(path.join(baseUrl, entryPoint), (err, data) => {
+      if (data) {
+        const imports = importedFiles(bufferToString(data))
+        list.push(...imports.map(i => path.join(baseUrl, i)))
+        return Promise.all(imports.map(i => treeShakenFileList(baseUrl, i).then(moreImports => list.push(...moreImports))))
+          .then(_ => { resolve(Array.from(new Set(list)).sort())})
+      }
+      else {
+        reject(err)
+      }
+    })
+  })
+}
+
+
 
 // A through stream that expects a stream of filepaths, reads the contents
 // of any .suffix files found, and converts them to an array tuple that
@@ -274,6 +351,8 @@ export {
   jsonErrorHandler,
   bufferToString,
   clearDirectory,
+  treeShakenFileList,
+  treeShakeDirectory,
   loadVersion,
   fsMkDirP,
   fsCopy,
