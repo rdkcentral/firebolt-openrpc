@@ -27,28 +27,15 @@
  * 
  */
 
-const config = (await import(process.env.npm_package_json)).default
+import fetch from 'node-fetch'
+import { TextDecoder } from 'util'
 
-const nodeVersion = () => {
-    const nodeVersionString = (config.devDependencies || {}).node || ""
-    let nodeVersionMajor = nodeVersionString.match(/^[~^@]?([0-9]+)/)
-    if (nodeVersionMajor && nodeVersionMajor.length) {
-        return nodeVersionMajor[1]
-    }
-    else {
-        return 0
-    }
+if (!global.fetch && !window.fetch) {
+    console.log('Using node-fetch package to polyfill window.fetch')
+    global.fetch = fetch
 }
 
-// add fetch polyfill to node prior to 18
-if (nodeVersion() < 18) {
-    const fetch = await import('node-fetch')
-    global.fetch  = fetch
-}
-
-global.window = {}
-global.window.location = {
-    set href(ref) {
-        console.log(`window.location.href set to '${ref}'.`)
-    }
+if (!global.TextDecoder && !window.TextDecoder) {
+    console.log('Using text-decoding package to polyfill window.TextDecoder')
+    global.TextDecoder = TextDecoder
 }
