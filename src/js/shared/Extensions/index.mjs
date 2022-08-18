@@ -16,8 +16,8 @@ window.__firebolt.registerExtensionSDK = (id, initializer) => {
     }
 }
 
-registerAPI('token', _ => Transport.send('authentication', 'token', { type: 'platform' }))
-registerAPI('authorize', grants => Transport.send('capabilities', 'request', {grants} ))
+// Method for handing off platform tokens to extension SDKs
+registerAPI('authorize', (...args) => Transport.send('capabilities', 'authorize', {...args} ))
 
 function initialize(id, config) {
     if (!frozen) {
