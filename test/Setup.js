@@ -55,6 +55,4 @@
      }
  }
  
- window.__firebolt.setTransportLayer(transport)
-
  export default transport
