@@ -30,7 +30,7 @@ import predicates from 'crocks/predicates/index.js'
 import isNil from 'crocks/core/isNil.js'
 const { isObject, isArray, propEq, pathSatisfies, propSatisfies } = predicates
 
-import { isExcludedMethod, isRPCOnlyMethod, isProviderMethod, getPayloadFromEvent, providerHasNoParameters, isTemporalSetMethod, generateTemporalSetMethods } from '../../shared/modules.mjs'
+import { isExcludedMethod, isRPCOnlyMethod, isProviderMethod, getPayloadFromEvent, providerHasNoParameters, isTemporalSetMethod, generateTemporalSetMethods, hasMethodAttributes, getMethodAttributes } from '../../shared/modules.mjs'
 import { getTemplateForMethod } from '../../shared/template.mjs'
 import { getMethodSignatureParams } from '../../shared/javascript.mjs'
 import isEmpty from 'crocks/core/isEmpty.js'
@@ -150,6 +150,12 @@ const eventsOrEmptyArray = compose(
 const temporalSets = compose(
   option([]),
   map(filter(isTemporalSetMethod)),
+  getMethods  
+)
+
+const methodsWithXMethodsInResult = compose(
+  option([]),
+  map(filter(hasMethodAttributes)),
   getMethods  
 )
 
@@ -369,6 +375,10 @@ const generateImports = json => {
     imports += `import TemporalSet from '../TemporalSet/index.mjs'\n`
   }
 
+  if (methodsWithXMethodsInResult(json).length) {
+    imports += `import Results from '../Results/index.mjs'\n`
+  }
+
   return imports
 }
 
@@ -484,12 +494,15 @@ function generateMethods(json = {}, templates = {}, onlyEvents = false) {
 //      const params = getParamsFromMethod(methodObj)
 //      const [ARGS, PARAMS] = buildArgsAndParams(params)
 
+      methodObj = localizeDependencies(methodObj, json)
+
       const info = {
         title: moduleName
       }
       const method = {
         name: methodObj.name,
-        params: getMethodSignatureParams(methodObj)
+        params: getMethodSignatureParams(methodObj),
+        transforms: null
       }
 
       let template = getTemplateForMethod(methodObj, '.js', templates);
@@ -497,6 +510,12 @@ function generateMethods(json = {}, templates = {}, onlyEvents = false) {
         template = templates['methods/polymorphic-property.js']
       }
 
+      if (hasMethodAttributes(methodObj)) {
+        method.transforms = {
+          methods: getMethodAttributes(methodObj)
+        }
+      }
+      
       const temporalItemName = isTemporalSetMethod(methodObj) ? methodObj.result.schema.items && methodObj.result.schema.items.title || 'Item' : ''
       const temporalAddName = isTemporalSetMethod(methodObj) ? `on${temporalItemName}Available` : ''
       const temporalRemoveName = isTemporalSetMethod(methodObj) ? `on${temporalItemName}Unvailable` : ''
@@ -508,6 +527,7 @@ function generateMethods(json = {}, templates = {}, onlyEvents = false) {
         .replace(/\$\{method\.property\.readonly\}/g, hasTag(methodObj, 'property:immutable') || hasTag(methodObj, 'property:readonly'))
         .replace(/\$\{method\.temporalset\.add\}/g, temporalAddName)
         .replace(/\$\{method\.temporalset\.remove\}/g, temporalRemoveName)
+        .replace(/\$\{method\.transforms}/g, JSON.stringify(method.transforms))
 
       acc = acc.concat(javascript)
 

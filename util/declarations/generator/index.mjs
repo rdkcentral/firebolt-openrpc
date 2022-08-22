@@ -328,7 +328,8 @@ const generateMethods = (json, schemas = {}) => compose(
       if (val.params && val.params.length) {
         sig += ', '
       }
-      sig += `add: (item: ${itemType}) => void, remove: (item: ${itemType}) => void): { stop: () => {} }`
+      sig +=  `add: (item: ${itemType}) => void, remove: (item: ${itemType}) => void): { stop: () => {} }\n` +
+              sig + `add: (item: ${itemType}) => void): { stop: () => {} }`
     }
 
     if (val.tags && val.tags.find(t => t.name == 'polymorphic-pull')) {
