@@ -6,7 +6,7 @@ To listen to a specific event pass the event name as the first parameter:
 ${if.javascript}
 
 ```typescript
-${info.title}.${method.name}(event: string, (data: any) => void): Promise<bigint>
+${info.title}.${method.name}(event: string, (data: any) => void): Promise<number>
 ```
 
 ${end.if.javascript}
@@ -22,7 +22,7 @@ Promise resolution:
 
 | Type | Description |
 |------|-------------|
-| `bigint` | Listener ID to clear the callback method and stop receiving the event, e.g. `${info.title}.clear(id)` |
+| `number` | Listener ID to clear the callback method and stop receiving the event, e.g. `${info.title}.clear(id)` |
 
 Callback parameters:
 
@@ -35,7 +35,7 @@ To listen to all events from this module  pass only a callback, without specifyi
 ${if.javascript}
 
 ```typescript
-${info.title}.${method.name}((event: string, data: any) => void): Promise<bigint>
+${info.title}.${method.name}((event: string, data: any) => void): Promise<number>
 ```
 
 ${end.if.javascript}
@@ -59,7 +59,7 @@ Promise resolution:
 
 | Type | Description |
 |------|-------------|
-| `bigint` | Listener ID to clear the callback method and stop receiving the event, e.g. `${info.title}.clear(id)` |
+| `number` | Listener ID to clear the callback method and stop receiving the event, e.g. `${info.title}.clear(id)` |
 
 See [Listening for events](../../docs/listening-for-events/) for more information and examples.
 

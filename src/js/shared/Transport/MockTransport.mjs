@@ -16,8 +16,6 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { default as win } from '../Transport/global.mjs'
-
 let listener
 export const setMockListener = func => { listener = func }
 
@@ -28,8 +26,8 @@ const eventMap = {}
 let callback
 let testHarness
 
-if (win.__firebolt && win.__firebolt.testHarness) {
-  testHarness = win.__firebolt.testHarness
+if (window.__firebolt && window.__firebolt.testHarness) {
+  testHarness = window.__firebolt.testHarness
 }
 
 function send(message) {
