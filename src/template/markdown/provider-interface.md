@@ -32,7 +32,7 @@ ${info.title}.provide('${capability}', new My${provider}())
 ```
 
 <details>
-    <summary>**JSON-RPC**</summary>
+    <summary><b>JSON-RPC</b></summary>
 
 **Register to recieve each provider API**
 
@@ -111,3 +111,4 @@ ${provider.interface.end}
 
 
 </details>
+
