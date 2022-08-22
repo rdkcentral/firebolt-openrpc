@@ -29,7 +29,7 @@ import isString from 'crocks/core/isString.js'
 import predicates from 'crocks/predicates/index.js'
 const { isObject, isArray, propEq, pathSatisfies, propSatisfies } = predicates
 
-import { isExcludedMethod, isRPCOnlyMethod, isProviderMethod, getPayloadFromEvent, providerHasNoParameters, isTemporalSetMethod, generateTemporalSetMethods, getUsedCapabilitiesFromMethod, getProvidedCapabilitiesFromMethod, getManagedCapabilitiesFromMethod } from '../../shared/modules.mjs'
+import { isExcludedMethod, isRPCOnlyMethod, isProviderMethod, getPayloadFromEvent, providerHasNoParameters, isTemporalSetMethod, generateTemporalSetMethods, hasMethodAttributes, getMethodAttributes, getUsedCapabilitiesFromMethod, getProvidedCapabilitiesFromMethod, getManagedCapabilitiesFromMethod } from '../../shared/modules.mjs'
 import { getTemplateForConfig, getTemplateForMethod } from '../../shared/template.mjs'
 import { getMethodSignatureParams } from '../../shared/javascript.mjs'
 import { parseVersion } from '../../shared/helpers.mjs'
@@ -130,6 +130,13 @@ const isPropertyMethod = (m) => {
   return hasTag(m, 'property') || hasTag(m, 'property:immutable') || hasTag(m, 'property:readonly')
 }
 
+// Pick methods that call RCP out of the methods array
+const rpcMethodsOrEmptyArray = compose(
+  option([]),
+  map(filter(not(isSynchronousMethod))),
+  getMethods
+)
+
 // Pick events out of the methods array
 const eventsOrEmptyArray = compose(
   option([]),
@@ -149,6 +156,12 @@ const eventsOrEmptyArray = compose(
 const temporalSets = compose(
   option([]),
   map(filter(isTemporalSetMethod)),
+  getMethods  
+)
+
+const methodsWithXMethodsInResult = compose(
+  option([]),
+  map(filter(hasMethodAttributes)),
   getMethods  
 )
 
@@ -409,6 +422,10 @@ const generateImports = json => {
     imports += `import TemporalSet from '../TemporalSet/index.mjs'\n`
   }
 
+  if (methodsWithXMethodsInResult(json).length) {
+    imports += `import Results from '../Results/index.mjs'\n`
+  }
+
   return imports
 }
 
@@ -540,12 +557,15 @@ function generateMethods(json = {}, templates = {}, onlyEvents = false) {
 //      const params = getParamsFromMethod(methodObj)
 //      const [ARGS, PARAMS] = buildArgsAndParams(params)
 
+      methodObj = localizeDependencies(methodObj, json)
+
       const info = {
         title: moduleName
       }
       const method = {
         name: methodObj.name,
-        params: getMethodSignatureParams(methodObj)
+        params: getMethodSignatureParams(methodObj),
+        transforms: null
       }
 
       let template = getTemplateForMethod(methodObj, '.js', templates);
@@ -562,6 +582,13 @@ function generateMethods(json = {}, templates = {}, onlyEvents = false) {
       transportOptions.uses = getUsedCapabilitiesFromMethod(methodObj)
       transportOptions.manages = getManagedCapabilitiesFromMethod(methodObj)
       transportOptions.provides = getProvidedCapabilitiesFromMethod(methodObj)
+
+      if (hasMethodAttributes(methodObj)) {
+        transportOptions.transforms = {
+          methods: getMethodAttributes(methodObj)
+        }
+      }
+      
       const temporalItemName = isTemporalSetMethod(methodObj) ? methodObj.result.schema.items && methodObj.result.schema.items.title || 'Item' : ''
       const temporalAddName = isTemporalSetMethod(methodObj) ? `on${temporalItemName}Available` : ''
       const temporalRemoveName = isTemporalSetMethod(methodObj) ? `on${temporalItemName}Unvailable` : ''

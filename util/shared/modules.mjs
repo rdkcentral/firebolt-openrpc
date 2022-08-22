@@ -137,6 +137,29 @@ const isTemporalSetMethod = compose(
     getPath(['tags'])
 )
 
+const getMethodAttributes = compose(
+    option(null),
+    map(props => props.reduce( (val, item) => {
+        val[item['__key']] = item;
+        delete item['__key'];
+        return val
+    }, {})),
+    map(filter(hasProp('x-method'))),
+    map(props => props.map(([k, v]) => ({ "__key": k, ...v}))),
+    map(Object.entries),
+    map(schema => schema.items ? schema.items.properties || {} : schema.properties || {}),
+    getPath(['result', 'schema'])
+)
+
+const hasMethodAttributes = compose(
+    option(false),
+    map(_ => true),
+    chain(find(hasProp('x-method'))),
+    map(Object.values),
+    map(schema => schema.items ? schema.items.properties || {} : schema.properties || {}),
+    getPath(['result', 'schema'])
+)
+
 const isPublicEventMethod = and(
     compose(
         option(true),
@@ -710,6 +733,8 @@ export {
     isProviderMethod,
     hasExamples,
     hasTitle,
+    hasMethodAttributes,
+    getMethodAttributes,
     getMethods,
     getMethodsThatProvide,
     getProvidedCapabilities,
