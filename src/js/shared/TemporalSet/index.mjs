@@ -53,7 +53,7 @@ function start(module, method, addName, removeName, params, add, remove, transfo
             module: module,
             method: method,
             params: params,
-            transforms: transforms
+            options: { transforms }
         }
     ]
 
@@ -63,7 +63,7 @@ function start(module, method, addName, removeName, params, add, remove, transfo
         params: {
             listen: true
         },
-        transforms: transforms
+        options: { transforms }
     })
 
     if (remove) {
@@ -73,7 +73,7 @@ function start(module, method, addName, removeName, params, add, remove, transfo
             params: {
                 listen: true
             },
-            transforms: transforms
+            options: { transforms }
         })
     }
     

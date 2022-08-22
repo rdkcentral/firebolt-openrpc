@@ -34,6 +34,7 @@ import { getTemplateForConfig, getTemplateForMethod } from '../../shared/templat
 import { getMethodSignatureParams } from '../../shared/javascript.mjs'
 import { parseVersion } from '../../shared/helpers.mjs'
 import isEmpty from 'crocks/core/isEmpty.js'
+import { localizeDependencies } from '../../shared/json-schema.mjs'
 
 // util for visually debugging crocks ADTs
 const _inspector = obj => {
@@ -129,13 +130,6 @@ const hasTag = (method, tag) => {
 const isPropertyMethod = (m) => {
   return hasTag(m, 'property') || hasTag(m, 'property:immutable') || hasTag(m, 'property:readonly')
 }
-
-// Pick methods that call RCP out of the methods array
-const rpcMethodsOrEmptyArray = compose(
-  option([]),
-  map(filter(not(isSynchronousMethod))),
-  getMethods
-)
 
 // Pick events out of the methods array
 const eventsOrEmptyArray = compose(
