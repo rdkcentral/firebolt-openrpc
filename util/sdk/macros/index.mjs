@@ -187,7 +187,7 @@ const providersOrEmptyArray = compose(
 // Pick methods that call RCP out of the methods array
 const rpcMethodsOrEmptyArray = compose(
   option([]),
-  map(filter(not(or(isHttpMethod, isSynchronousMethod, isExcludedMethod)))),
+  map(filter(not(or(or(isHttpMethod, isSynchronousMethod), isExcludedMethod)))),
   getMethods
 )
 
