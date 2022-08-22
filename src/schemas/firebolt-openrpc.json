@@ -696,14 +696,6 @@
                                 "$ref": "#/definitions/Capability"
                             }
                         },
-                        "x-uses-operator": {
-                            "type": "string",
-                            "enum": [
-                                "anyOf",
-                                "allOf",
-                                "oneOf"
-                            ]
-                        },
                         "x-manages": {
                             "type": "array",
                             "items": {
