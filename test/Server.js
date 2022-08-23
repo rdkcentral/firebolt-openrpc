@@ -36,7 +36,7 @@ async function setup() {
                 const tag = httpTag(m)
                 let path = tag && httpPath(m)
 
-                if (path.endsWith('/')) {
+                if (path && path.endsWith('/')) {
                     path = path.substr(0, path.length-1)
                 }
 
