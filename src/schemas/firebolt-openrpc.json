@@ -185,7 +185,7 @@
                         }
                     },
                     "then": {
-                        "$ref": "#/definitions/PolymorphicPullMethod"
+                        "$ref": "#/definitions/PolymorphicReducerMethod"
                     }        
                 },
                 {
@@ -395,7 +395,10 @@
                     "items": {
                         "$ref": "#/definitions/ContextParameter"
                     }
-                }
+                },
+                "result": {
+                    "$ref": "#/definitions/EventResult"
+                }                
             }
         },
         "CapabilityMethod": {
@@ -436,9 +439,6 @@
                             }
                         }
                     ]
-                },
-                "result": {
-                    "$ref": "#/definitions/EventResult"
                 },
                 "examples": {
                     "type": "array",
@@ -954,6 +954,10 @@
                 },
                 "schema": {
                     "type": "object",
+                    "oneOf": [
+                        { "required": [ "type" ] },
+                        { "required": [ "$ref" ] }
+                    ],
                     "required": [ "type" ],
                     "properties": {
                         "type": {

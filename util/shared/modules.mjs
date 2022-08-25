@@ -277,6 +277,7 @@ const createEventFromProperty = property => {
 
 const createPullEventFromPush = (pusher, json) => {
     const event = eventDefaults(JSON.parse(JSON.stringify(pusher)))
+    event.params = []
     event.name = 'onPull' + event.name.charAt(0).toUpperCase() + event.name.substr(1)
     const old_tags = pusher.tags.concat()
 
@@ -288,7 +289,8 @@ const createPullEventFromPush = (pusher, json) => {
     const requestType = (pusher.name.charAt(0).toUpperCase() + pusher.name.substr(1)) + "FederatedRequest"
     event.result.name = "request"
     event.result.summary = "A " + requestType + " object."
-    event.result.schema.oneOf[1] = {
+
+    event.result.schema = {
         "$ref": "#/components/schemas/" + requestType
     }
 
