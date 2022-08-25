@@ -1,0 +1,1 @@
+eventContextParams['${method.name}'] = '${method.params}'.split(', ')

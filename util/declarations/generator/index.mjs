@@ -199,9 +199,10 @@ const generateProviders = (json, schemas = {}) => compose(
 const polymorphicPull = (json, val, schemas = {}) => {
   let acc = ''
 
+  acc += `/**\n`
+
   if (val.summary) {
-    acc += `/**
- * ${val.summary}`
+    acc += ` * ${val.summary}`
   }
 
   acc += deprecatedMessage(val)
@@ -227,9 +228,10 @@ const polymorphicPull = (json, val, schemas = {}) => {
 const polymorphicPush = (json, val, schemas = {}) => {
   let acc = ''
 
+  acc += `/**\n`
+
   if (val.summary) {
-    acc += `/**
- * ${val.summary}`
+    acc += ` * ${val.summary}`
   }
 
   acc += deprecatedMessage(val)
@@ -258,9 +260,10 @@ const polymorphicPush = (json, val, schemas = {}) => {
 const subscriber = (json, val, schemas) => {
   let acc = ''
 
+  acc += `/**\n`
+
   if (val.summary) {
-    acc += `/**
- * ${val.summary}`
+    acc += ` * ${val.summary}`
   }
 
   acc += deprecatedMessage(val)
@@ -281,9 +284,10 @@ const subscriber = (json, val, schemas) => {
 const setter = (json, val, schemas = {}) => {
   let acc = ''
 
+  acc += `/**\n`
+  
   if (val.summary) {
-    acc += `/**
- * ${val.summary}`
+    acc += ` * ${val.summary}`
   }
 
   acc += deprecatedMessage(val)
@@ -305,11 +309,12 @@ const setter = (json, val, schemas = {}) => {
 const generateMethods = (json, schemas = {}) => compose(
   reduce((acc, val, i, arr) => {
 
-    if (val.summary) {
-      acc += `/**
- * ${val.summary}`
-    }
+    acc += `/**\n`
 
+    if (val.summary) {
+      acc += ` * ${val.summary}`
+    }
+    
     acc += deprecatedMessage(val)
 
     if (val.params && val.params.length) {

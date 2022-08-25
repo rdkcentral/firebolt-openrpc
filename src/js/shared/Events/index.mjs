@@ -54,7 +54,9 @@ const callCallbacks = (cbs, args) => {
     })
 }
 
-const doListen = function(module, event, callback, once) {
+const doListen = function(module, event, callback, context, once) {
+  init()
+
   if (typeof callback !== 'function') {
     return Promise.reject('No valid callback function provided.')
   } else {
@@ -64,7 +66,9 @@ const doListen = function(module, event, callback, once) {
 
     let events = (event === '*' ? validEvents[module] : [event]) // explodes wildcards into an array
     let promises = []
-    const key = module + '.' + event // this might be a wildcard, e.g. 'lifecycle.*'
+    const hasContext = Object.values(context).length > 0
+    const contextKey = Object.keys(context).sort().map(key => key + '=' + JSON.stringify(context[key])).join('&')
+    const key = module + '.' + event + (hasContext ? `.${contextKey}` : '') // event might be a wildcard, e.g. 'lifecycle.*'
     listenerId++
     listeners[key] = listeners[key] || {}
     listeners[key][''+listenerId] = callback
@@ -113,20 +117,20 @@ const doListen = function(module, event, callback, once) {
 
 const getListenArgs = function(...args) {
   const callback = args.pop()
-  const module = args[0].toLowerCase() || '*'
-  const event = args[1] || '*'
-  return [module, event, callback]
+  const module = (args.shift() || '*').toLowerCase()
+  const event = args.shift() || '*'
+  const context = args.shift() || {}
+  return [module, event, callback, context]
 }
 
 const once = function(...args) {
-  const [module, event, callback] = getListenArgs(...args)
-  return doListen(module, event, callback, true)
+  const [module, event, callback, context] = getListenArgs(...args)
+  return doListen(module, event, callback, context, true)
 }
 
 const listen = function(...args) {
-  init()
-  const [module, event, callback] = getListenArgs(...args)
-  return doListen(module, event, callback, false)
+  const [module, event, callback, context] = getListenArgs(...args)
+  return doListen(module, event, callback, context, false)
 }
 
 const init = () => {

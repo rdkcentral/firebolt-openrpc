@@ -360,6 +360,7 @@ const generateImports = json => {
   if (eventsOrEmptyArray(json).length) {
     imports += `import Events from '../Events/index.mjs'\n`
     imports += `import { registerEvents } from \'../Events/index.mjs\'\n`
+    imports += `const eventContextParams = {}\n`
   }
 
   if (providersOrEmptyArray(json).length) {
@@ -459,41 +460,18 @@ function generateMethods(json = {}, templates = {}, onlyEvents = false) {
   const moduleName = getModuleName(json).toLowerCase()
   
   // Two arrays that represent two codegen flows
-  const eventMethods = eventsOrEmptyArray(json)
-  const providerMethods = providersOrEmptyArray(json)
-  const notEventMethods = compose(
+  const providerMethods = onlyEvents ? [] : providersOrEmptyArray(json)
+  const normalMethods = compose(
     option([]),
-    map(filter(not(isEventMethod))),
+    map(filter(m => !onlyEvents || isEventMethod(m))),
     map(filter(not(isRPCOnlyMethod))),
+    map(filter(not(isProviderMethod))),
     map(filter(not(isExcludedMethod))),
     getMethods
   )(json)
 
-  // Builds [ARGS, PARAMS] strings for use in the function templates.
-  // I went with accumulating the 2 values over the same loop to avoid
-  // doing it twice.
-  const paramsReducer = (acc, val, i, arr) => {
-    let [argAcc, paramAcc] = acc
-    if (i === 0) {
-      paramAcc = paramAcc.concat(', {')
-    }
-    paramAcc = paramAcc.concat(`${val.name}:${val.name}`)
-    argAcc = argAcc.concat(`${val.name}`)
-    if (i < arr.length-1) {
-      paramAcc = paramAcc.concat(', ')
-      argAcc = argAcc.concat(', ')
-    } else {
-      paramAcc = paramAcc.concat('}')
-    }
-    return [argAcc, paramAcc]
-  }
-  const buildArgsAndParams = reduce(paramsReducer, ['', ''])
-
   // Code to generate for methods that ARE NOT events.
-  const nonEventMethodReducer = reduce((acc, methodObj, i, arr) => {
-//      const params = getParamsFromMethod(methodObj)
-//      const [ARGS, PARAMS] = buildArgsAndParams(params)
-
+  const methodReduction = reduce((acc, methodObj, i, arr) => {
       methodObj = localizeDependencies(methodObj, json)
 
       const info = {
@@ -535,27 +513,10 @@ function generateMethods(json = {}, templates = {}, onlyEvents = false) {
       // Do this regardless
       acc = acc.concat('\n')
       return acc
-    }, '', notEventMethods)
+    }, '', normalMethods)
 
     // Code to generate for methods that ARE events
-    const eventMethodReducer = reduce((_) => {
-      return `
-  function listen(...args) {
-    return Events.listen('${moduleName}', ...args)
-  } 
-  
-  function once(...args) {
-    return Events.once('${moduleName}', ...args)
-  }
-  
-  function clear(...args) {
-    return Events.clear('${moduleName}', ...args)
-  }
-  `
-    }, '', eventMethods)
-
-    // Code to generate for methods that ARE events
-    const providerMethodReducer = reduce((_) => {
+    const providerReduction = reduce((_) => {
       return `  
   function provide(capability, provider) {
     return Capabilities.provide(capability, provider)
@@ -563,10 +524,29 @@ function generateMethods(json = {}, templates = {}, onlyEvents = false) {
   `
     }, '', providerMethods)
   
-  if (onlyEvents) {
-    return eventMethodReducer.concat(providerMethodReducer)
+  let additionalStuff = ''
+
+  if (json.methods && json.methods.find(isEventMethod)) {
+    additionalStuff = `
+    function listen(...args) {
+      const context = args.length > 2 ? Object.fromEntries(eventContextParams[args[0]].map((p, i) => [p, args[i+1]])) : undefined
+      args = context ? [args.shift(), context, args.pop()] : args
+      return Events.listen('${moduleName}', ...args)
+    } 
+    
+    function once(...args) {
+      const context = args.length > 2 ? Object.fromEntries(eventContextParams[args[0]].map((p, i) => [p, args[i+1]])) : undefined
+      args = context ? [args.shift(), context, args.pop()] : args
+      return Events.once('${moduleName}', ...args)
+    }
+    
+    function clear(...args) {
+      return Events.clear('${moduleName}', ...args)
+    }
+    `
   }
-  return nonEventMethodReducer.concat(eventMethodReducer.concat(providerMethodReducer))
+
+  return methodReduction.concat(providerReduction).concat(additionalStuff)
 }
 
 export {
