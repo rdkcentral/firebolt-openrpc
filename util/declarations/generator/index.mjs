@@ -24,7 +24,7 @@ import logic from 'crocks/logic/index.js'
 const { not } = logic
 
 import { getMethods, getTypes, isEventMethod, isPublicEventMethod, isPolymorphicPullMethod, getEnums, isRPCOnlyMethod, getProvidedCapabilities, isTemporalSetMethod } from '../../shared/modules.mjs'
-import { getSchemaType, getSchemaShape, getMethodSignature, generateEnum, getProviderInterface, getProviderName, getProviderSessionInterface } from '../../shared/typescript.mjs'
+import { getSchemaType, getSchemaShape, getMethodSignature, getMethodSignatureParams, generateEnum, getProviderInterface, getProviderName, getProviderSessionInterface } from '../../shared/typescript.mjs'
 import { getExternalSchemas } from '../../shared/json-schema.mjs'
 
 const getModuleName = getPathOr('missing', ['info', 'title'])
@@ -271,8 +271,9 @@ const subscriber = (json, val, schemas) => {
  */
 `
   const type = val.name[0].toUpperCase() + val.name.substr(1)
+  const context = getMethodSignatureParams(json, val, schemas, { isInterface: false })
 
-  acc += `function ${val.name}(subscriber: (${val.result.name}: ${getSchemaType(json, val.result.schema, schemas)}) => void): Promise<number>\n`
+  acc += `function ${val.name}(${context ? context + ', ' : ''}subscriber: (${val.result.name}: ${getSchemaType(json, val.result.schema, schemas)}) => void): Promise<number>\n`
     
   return acc
 }
@@ -293,8 +294,9 @@ const setter = (json, val, schemas = {}) => {
  */
 `
   const type = val.name[0].toUpperCase() + val.name.substr(1)
+  const context = getMethodSignatureParams(json, val, schemas, { isInterface: false })
 
-  acc += `function ${val.name}(value: ${getSchemaType(json, val.result.schema, schemas)}): Promise<void>\n`
+  acc += `function ${val.name}(${context ? context + ', ' : ''}value: ${getSchemaType(json, val.result.schema, schemas)}): Promise<void>\n`
     
   return acc
 }

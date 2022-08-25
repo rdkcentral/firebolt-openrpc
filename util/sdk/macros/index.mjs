@@ -30,7 +30,7 @@ import predicates from 'crocks/predicates/index.js'
 import isNil from 'crocks/core/isNil.js'
 const { isObject, isArray, propEq, pathSatisfies, propSatisfies } = predicates
 
-import { isExcludedMethod, isRPCOnlyMethod, isProviderMethod, getPayloadFromEvent, providerHasNoParameters, isTemporalSetMethod, generateTemporalSetMethods, hasMethodAttributes, getMethodAttributes } from '../../shared/modules.mjs'
+import { isExcludedMethod, isRPCOnlyMethod, isProviderMethod, getPayloadFromEvent, providerHasNoParameters, isTemporalSetMethod, hasMethodAttributes, getMethodAttributes } from '../../shared/modules.mjs'
 import { getTemplateForMethod } from '../../shared/template.mjs'
 import { getMethodSignatureParams } from '../../shared/javascript.mjs'
 import isEmpty from 'crocks/core/isEmpty.js'
@@ -525,6 +525,7 @@ function generateMethods(json = {}, templates = {}, onlyEvents = false) {
         .replace(/\$\{info\.title\}/g, info.title)
         .replace(/\$\{method\.property\.immutable\}/g, hasTag(methodObj, 'property:immutable'))
         .replace(/\$\{method\.property\.readonly\}/g, hasTag(methodObj, 'property:immutable') || hasTag(methodObj, 'property:readonly'))
+        .replace(/\$\{method\.params\.count}/g, methodObj.params ? methodObj.params.length : 0)
         .replace(/\$\{method\.temporalset\.add\}/g, temporalAddName)
         .replace(/\$\{method\.temporalset\.remove\}/g, temporalRemoveName)
         .replace(/\$\{method\.transforms}/g, JSON.stringify(method.transforms))
