@@ -581,10 +581,7 @@
             "type": "object",
             "required": [
                 "name"
-            ],
-            "propertyNames": {
-                "type": "string"
-            }
+            ]
         },
         "EventTag": {
             "allOf": [
@@ -605,7 +602,8 @@
                             "x-response",
                             "x-alternative",
                             "x-since",
-                            "x-pulls-for"
+                            "x-pulls-for",
+                            "x-error"
                         ]
                     }
                 }
