@@ -7,6 +7,31 @@
     },
     "methods": [
         {
+            "name": "prop",
+            "summary": "A prop.",
+            "description": "A method for testing basic method generation.",
+            "params": [
+            ],
+            "result": {
+                "name": "result",
+                "summary": "A result for testing basic method generation.",
+                "schema": {
+                    "type": "string"
+                }
+            },
+            "examples": [
+                {
+                    "name": "Default Example",
+                    "params": [
+                    ],
+                    "result": {
+                        "name": "Default Result",
+                        "value": "the prop"
+                    }
+                }
+            ]
+        },
+        {
             "name": "method",
             "summary": "A method.",
             "description": "A method for testing basic method generation.",

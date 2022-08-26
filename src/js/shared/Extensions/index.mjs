@@ -20,7 +20,6 @@ window.__firebolt.registerExtensionSDK = (id, initializer) => {
 
 // Method for handing off platform tokens to extension SDKs
 registerAPI('authorize', (...args) => Transport.send('capabilities', 'authorize', {...args} ))
-registerAPI('distributor', () => Transport.send)
 
 function initialize(id, config) {
     if (!frozen) {
