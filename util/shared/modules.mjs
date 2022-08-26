@@ -522,39 +522,40 @@ const createFocusFromProvider = provider => {
     return ready
 }
 
-const createResponseFromProvider = (provider, json) => {
+// type = Response | Error
+const createResponseFromProvider = (provider, type, json) => {
 
     if (!provider.name.startsWith('onRequest')) {
         throw "Methods with the `x-provider` tag extension MUST start with 'onRequest'."
     }
 
     const response = JSON.parse(JSON.stringify(provider))
-    response.name = response.name.charAt(9).toLowerCase() + response.name.substr(10) + 'Response'
-    response.summary = `Internal API for ${provider.name.substr(9)} Provider to send back a response.`
+    response.name = response.name.charAt(9).toLowerCase() + response.name.substr(10) + type
+    response.summary = `Internal API for ${provider.name.substr(9)} Provider to send back ${type.toLowerCase()}.`
     const old_tags = response.tags
     response.tags = [
         {
-            'name': 'rpc-only',
-            'x-response-for': provider.name
+            'name': 'rpc-only'
         }
     ]
+    response.tags[`x-${type.toLowerCase()}-for`] = provider.name
 
     const paramExamples = []
 
-    if (provider.tags.find(t => t['x-response'])) {
+    if (provider.tags.find(t => t[`x-${type.toLowerCase()}`])) {
         response.params = [
             {
-                name: 'response',
+                name: type.toLowerCase(),
                 required: true,
                 schema: {
                     allOf: [
                         {
-                            "$ref": "https://meta.comcast.com/firebolt/types#/definitions/ProviderResponse"
+                            "$ref": "https://meta.comcast.com/firebolt/types#/definitions/ProviderResponse" // use this schema for both Errors and Results
                         },
                         {
                             "type": "object",
                             "properties": {
-                                "result": provider.tags.find(t => t['x-response'])['x-response']
+                                "result": provider.tags.find(t => t[`x-${type.toLowerCase()}`])[`x-${type.toLowerCase()}`]
                             }
                         }
                     ]
@@ -562,7 +563,36 @@ const createResponseFromProvider = (provider, json) => {
             }
         ]
 
-        const schema = localizeDependencies(provider.tags.find(t => t['x-response'])['x-response'], json)
+        if (!provider.tags.find(t => t['x-error'])) {
+            provider.tags.find(t => t.name === 'event')['x-error'] = {
+                //"$ref": "https://meta.open-rpc.org/#definitions/errorObject"
+                // TODO: replace this with ref above (requires merge of `fix/rpc.discover`)
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "code",
+                  "message"
+                ],
+                "properties": {
+                  "code": {
+                    "title": "errorObjectCode",
+                    "description": "A Number that indicates the error type that occurred. This MUST be an integer. The error codes from and including -32768 to -32000 are reserved for pre-defined errors. These pre-defined errors SHOULD be assumed to be returned from any JSON-RPC api.",
+                    "type": "integer"
+                  },
+                  "message": {
+                    "title": "errorObjectMessage",
+                    "description": "A String providing a short description of the error. The message SHOULD be limited to a concise single sentence.",
+                    "type": "string"
+                  },
+                  "data": {
+                    "title": "errorObjectData",
+                    "description": "A Primitive or Structured value that contains additional information about the error. This may be omitted. The value of this member is defined by the Server (e.g. detailed error information, nested errors etc.)."
+                  }
+                }
+            }
+        }
+
+        const schema = localizeDependencies(provider.tags.find(t => t[`x-${type.toLowerCase()}`])[`x-${type.toLowerCase()}`], json)
 
         let n = 1
         if (schema.examples && schema.examples.length) {
@@ -570,7 +600,7 @@ const createResponseFromProvider = (provider, json) => {
                 name: schema.examples.length === 1 ? "Example" : `Example #${n++}`,
                 params: [
                     {
-                        name: 'response',
+                        name: `${type.toLowerCase()}`,
                         value: {
                             correlationId: "123",
                             result: param
@@ -589,7 +619,7 @@ const createResponseFromProvider = (provider, json) => {
                 name: 'Generated Example',
                 params: [
                     {
-                        name: 'response',
+                        name: `${type.toLowerCase()}`,
                         value: {
                             correlationId: "123",
                             result: {
@@ -605,12 +635,21 @@ const createResponseFromProvider = (provider, json) => {
             })
         }
     }
-    else {
-        response.params = []
+    
+    if (paramExamples.length === 0) {
+        const value = type === 'Error' ? { code: 1, message: 'Error' } : {}
         paramExamples.push(
             {
                 name: 'Example 1',
-                params: [],
+                params: [
+                    {
+                        name: `${type.toLowerCase()}`,
+                        value: {
+                            correlationId: "123",
+                            result: value
+                        }                        
+                    }
+                ],
                 result: {
                     name: 'result',
                     value: null
@@ -696,7 +735,8 @@ const generateProviderMethods = json => {
     })
 
     providers.forEach(provider => {
-        json.methods.push(createResponseFromProvider(provider, json))
+        json.methods.push(createResponseFromProvider(provider, 'Response', json))
+        json.methods.push(createResponseFromProvider(provider, 'Error', json))
     })
 
     return json

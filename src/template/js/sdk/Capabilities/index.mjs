@@ -99,19 +99,33 @@ const provide = function(capability, provider) {
         correlationId: request.correlationId
       }
 
-      const result = provider[method].apply(provider, providerCallArgs)
+      try {
+        const result = provider[method].apply(provider, providerCallArgs)
 
-      if (!(result instanceof Promise)) {
-        throw `Provider method ${method} did not return a Promise.`
-      }
+        if (!(result instanceof Promise)) {
+          throw `Provider method ${method} did not return a Promise.`
+        }
       
-      result.then(result => {
-        if (imethod.response) {
-          response.result = result
+        result.then(result => {
+          if (imethod.response) {
+            response.result = result
+          }
+
+          Transport.send(module, `${method}Response`, response)
+        })
+      }
+      catch(error) {
+        response.error = {
+          code: error.code || 1000, // todo: should be some reserved code for "Unknown"
+          message: error.message || `An error occured while calling provided ${method} method.`
         }
 
-        Transport.send(module, `${method}Response`, response)
-      })
+        if (error.data) {
+          response.error.data = JSON.parse(JSON.stringify(error.data))
+        }
+
+        Transport.send(module, `${method}Error`, response)
+      }
     })
   })
 }
