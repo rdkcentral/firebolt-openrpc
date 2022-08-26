@@ -75,13 +75,18 @@ async function setup() {
         }
         
         const server = http.createServer(process);
-        
+
+        global.__firebolt__shutdown__ = () => {
+            server.close()
+        }                
+
         server.listen(port, () => {
             console.log("Firebolt Server Started")
             resolve()
-        });    
+        });
     })
 }
+
 
 export default async function(globalConfig, projectConfig) {
     await setup()

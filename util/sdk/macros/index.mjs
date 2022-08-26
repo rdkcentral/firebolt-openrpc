@@ -364,7 +364,7 @@ function generateDefaults(json = {}) {
       const def = JSON.stringify(val.examples[0].result.value, null, '  ')
       if (isPropertyMethod(val)) {
         acc += `
-    ${val.name}: function () { return MockProps.mock('${moduleName}', '${val.name}', arguments, ${def}) }`
+    ${val.name}: function (params) { return MockProps.mock('${moduleName}', '${val.name}', params, ${def}) }`
       } else {
         acc += `
     ${val.name}: ${def}`
