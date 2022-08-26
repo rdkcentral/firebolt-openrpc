@@ -1,1 +1,1 @@
-eventContextParams['${method.name}'] = '${method.params}'.split(', ')
+// ${method.name} API is handled via listen('${event.name}', (data) => void)

@@ -28,9 +28,10 @@ const listeners = {}
 // holds a map of ${module}.${event} => Transport.send calls (only called once per event)
 // note that the keys here MUST NOT contain wild cards
 const enabledEvents = {}
-
 const oncers = []
 const validEvents = {}
+const validContext = {}
+
 let transportInitialized = false
 
 export const emit = (module, event, value) => {
@@ -40,6 +41,11 @@ export const emit = (module, event, value) => {
 
 export const registerEvents = (module, events) => {
   validEvents[module.toLowerCase()] = events.concat()
+}
+
+export const registerEventContext = (module, event, context) => {
+  validContext[module.toLowerCase()] = validContext[module.toLowerCase()] || {}
+  validContext[module.toLowerCase()][event] = context.concat()
 }
 
 const callCallbacks = (cbs, args) => {
@@ -119,7 +125,12 @@ const getListenArgs = function(...args) {
   const callback = args.pop()
   const module = (args.shift() || '*').toLowerCase()
   const event = args.shift() || '*'
-  const context = args.shift() || {}
+  const context = {}
+  
+  for (let i = 0; i<args.length; i++) {
+    context[validContext[module][event][i]] = args.shift()
+  }
+
   return [module, event, callback, context]
 }
 

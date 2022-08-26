@@ -30,7 +30,7 @@ import predicates from 'crocks/predicates/index.js'
 import isNil from 'crocks/core/isNil.js'
 const { isObject, isArray, propEq, pathSatisfies, propSatisfies } = predicates
 
-import { isExcludedMethod, isRPCOnlyMethod, isProviderMethod, getPayloadFromEvent, providerHasNoParameters, isTemporalSetMethod, hasMethodAttributes, getMethodAttributes } from '../../shared/modules.mjs'
+import { isExcludedMethod, isRPCOnlyMethod, isProviderMethod, getPayloadFromEvent, providerHasNoParameters, isTemporalSetMethod, hasMethodAttributes, getMethodAttributes, isEventMethodWithContext } from '../../shared/modules.mjs'
 import { getTemplateForMethod } from '../../shared/template.mjs'
 import { getMethodSignatureParams } from '../../shared/javascript.mjs'
 import isEmpty from 'crocks/core/isEmpty.js'
@@ -360,7 +360,10 @@ const generateImports = json => {
   if (eventsOrEmptyArray(json).length) {
     imports += `import Events from '../Events/index.mjs'\n`
     imports += `import { registerEvents } from \'../Events/index.mjs\'\n`
-    imports += `const eventContextParams = {}\n`
+  }
+
+  if (eventsOrEmptyArray(json).find(m => m.params.length > 1)) {
+    imports += `import { registerEventContext } from \'../Events/index.mjs\'\n`
   }
 
   if (providersOrEmptyArray(json).length) {
@@ -395,6 +398,7 @@ const generateEventInitialization = json => compose(
     if (i < arr.length-1) {
       return acc  
     }
+
     return `registerEvents('${getModuleName(json)}', Object.values(${JSON.stringify(acc)}))\n`
   }, ''),
   eventsOrEmptyArray
@@ -480,12 +484,17 @@ function generateMethods(json = {}, templates = {}, onlyEvents = false) {
       const method = {
         name: methodObj.name,
         params: getMethodSignatureParams(methodObj),
-        transforms: null
+        transforms: null,
+        context: []
       }
 
       let template = getTemplateForMethod(methodObj, '.js', templates);
       if (isPropertyMethod(methodObj)) {
         template = templates['methods/polymorphic-property.js']
+      }
+      else if (isEventMethod(methodObj) && methodObj.params.length > 1) {
+        template = templates['methods/event-with-context.js']
+        method.context = methodObj.params.filter(p => p.name !== 'listen').map(p => p.name)
       }
 
       if (hasMethodAttributes(methodObj)) {
@@ -499,7 +508,11 @@ function generateMethods(json = {}, templates = {}, onlyEvents = false) {
       const temporalRemoveName = isTemporalSetMethod(methodObj) ? `on${temporalItemName}Unvailable` : ''
       const javascript = template.replace(/\$\{method\.name\}/g, method.name)
         .replace(/\$\{method\.params\}/g, method.params)
+        .replace(/\$\{method\.params\.array\}/g, JSON.stringify(methodObj.params.map(p => p.name)))
+        .replace(/\$\{method\.context\}/g, method.context.join(', '))
+        .replace(/\$\{method\.context\.array\}/g, JSON.stringify(method.context))
         .replace(/\$\{method\.Name\}/g, method.name[0].toUpperCase() + method.name.substr(1))
+        .replace(/\$\{event\.name\}/g, method.name.toLowerCase()[2] + method.name.substr(3))
         .replace(/\$\{info\.title\}/g, info.title)
         .replace(/\$\{method\.property\.immutable\}/g, hasTag(methodObj, 'property:immutable'))
         .replace(/\$\{method\.property\.readonly\}/g, hasTag(methodObj, 'property:immutable') || hasTag(methodObj, 'property:readonly'))
@@ -529,14 +542,10 @@ function generateMethods(json = {}, templates = {}, onlyEvents = false) {
   if (json.methods && json.methods.find(isEventMethod)) {
     additionalStuff = `
     function listen(...args) {
-      const context = args.length > 2 ? Object.fromEntries(eventContextParams[args[0]].map((p, i) => [p, args[i+1]])) : undefined
-      args = context ? [args.shift(), context, args.pop()] : args
       return Events.listen('${moduleName}', ...args)
     } 
     
     function once(...args) {
-      const context = args.length > 2 ? Object.fromEntries(eventContextParams[args[0]].map((p, i) => [p, args[i+1]])) : undefined
-      args = context ? [args.shift(), context, args.pop()] : args
       return Events.once('${moduleName}', ...args)
     }
     

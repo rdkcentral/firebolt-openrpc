@@ -1,0 +1,1 @@
+registerEventContext('${info.title}', '${method.name}', ${method.context.array})

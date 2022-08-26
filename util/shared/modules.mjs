@@ -110,6 +110,25 @@ const isEventMethod = compose(
     getPath(['tags'])
 )
 
+const isEventMethodWithContext = compose(
+    and(
+        compose(
+            option(false),
+            map(_ => true),
+            chain(find(propEq('name', 'event'))),
+            getPath(['tags'])
+        ),
+        compose(
+            map(params => {
+                return params.length > 1
+            }),
+            //propSatisfies('length', length => length > 1),
+            getPath(['params'])
+        )        
+    )
+  )
+  
+
 const isPolymorphicPullMethod = compose(
     option(false),
     map(_ => true),
@@ -777,6 +796,7 @@ const fireboltize = (json) => {
 export {
     isEnum,
     isEventMethod,
+    isEventMethodWithContext,
     isPublicEventMethod,
     isPolymorphicReducer,
     isPolymorphicPullMethod,
