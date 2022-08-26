@@ -5,7 +5,9 @@ const initializers = {}
 const apis = {}
 const queue = {}
 const initialized = []
+const pending = []
 const frozen = false
+const getDistributor = Transport.send('device', 'distributor', {})
 
 window.__firebolt.registerExtensionSDK = (id, initializer) => {
     initializers[id] = initializer
@@ -18,6 +20,7 @@ window.__firebolt.registerExtensionSDK = (id, initializer) => {
 
 // Method for handing off platform tokens to extension SDKs
 registerAPI('authorize', (...args) => Transport.send('capabilities', 'authorize', {...args} ))
+registerAPI('distributor', () => Transport.send)
 
 function initialize(id, config) {
     if (!frozen) {
@@ -25,9 +28,14 @@ function initialize(id, config) {
     }
     Object.freeze(config)
     if (initializers[id]) {
-        initializers[id](config, apis)
+        const init = initializers[id]
         delete initializers[id]
-        initialized.push(id)
+        pending.push(id)
+        getDistributor.then(distributor => {
+            init(distributor, config, apis)
+            initialized.push(id)
+            delete pending[id]
+        })
     }
     else {
         queue[id] = config
