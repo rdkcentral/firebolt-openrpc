@@ -7,7 +7,7 @@ function prop(moduleName, key, params, callbackOrValue, immutable, readonly, con
   if (numArgs === contextParameterCount && !callbackOrValue) {
     // getter
     return Transport.send(moduleName, key, params)
-  } else if (numArgs === (contextParameterCount) && typeof callbackOrValue === 'function') {
+  } else if (numArgs === contextParameterCount && typeof callbackOrValue === 'function') {
     // subscribe
     if (immutable) {
       throw new Error('Cannot subscribe to an immutable property')
