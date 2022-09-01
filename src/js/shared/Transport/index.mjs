@@ -34,7 +34,7 @@ export default class Transport {
     this._transport = null
     this._id = 1
     this._eventEmitters = []
-    this._eventMap = {}
+    this._eventIds = []
     this._queue = new Queue()
     this._deprecated = {}
     this.isMock = false
@@ -97,11 +97,20 @@ export default class Transport {
     return Transport.get()._send(module, method, params, transforms)
   }
 
+  static listen(module, method, params, transforms) {
+    return Transport.get()._sendAndGetId(module, method, params, transforms)
+  }
+
   _send (module, method, params, transforms) {
     if (Array.isArray(module) && !method && !params) {
       return this._batch(module)
     }
+    else {
+      return this._sendAndGetId(module, method, params, transforms).promise
+    }
+  }
 
+  _sendAndGetId (module, method, params, transforms) {
     const {promise, json, id } = this._processRequest(module, method, params, transforms)
     const msg = JSON.stringify(json)
     if (Settings.getLogLevel() === 'DEBUG') {
@@ -109,7 +118,7 @@ export default class Transport {
     }
     this._transport.send(msg)
 
-    return promise
+    return { id, promise }
   }
 
   _batch (requests) {
@@ -171,20 +180,12 @@ export default class Transport {
       // TODO: what about wild cards?
       if (method.match(/^on[A-Z]/)) {
         if (params.listen) {
-          this._eventMap[this._id] = module.toLowerCase() + '.' + method[2].toLowerCase() + method.substr(3)
+          this._eventIds.push(this._id)
         } else {
-          Object.keys(this._eventMap).forEach(key => {
-            if (this._eventMap[key] === module.toLowerCase() + '.' + method[2].toLowerCase() + method.substr(3)) {
-              delete this._eventMap[key]
-            }
-          })
+          this._eventIds = this._eventIds.filter(id => id !== this._id)
         }
       }
     })
-  }
-
-  static getEventMap () {
-    return Transport.get()._eventMap
   }
 
   /**
@@ -237,13 +238,10 @@ export default class Transport {
     }
 
     // event responses need to be emitted, even after the listen call is resolved
-    if (this._eventMap[json.id] && !isEventSuccess(json.result)) {
-      const moduleevent = this._eventMap[json.id]
-      if (moduleevent) {
-        this._eventEmitters.forEach(emit => {
-          emit(moduleevent.split('.')[0], moduleevent.split('.')[1], json.result)
-        })
-      }
+    if (this._eventIds.includes(json.id) && !isEventSuccess(json.result)) {
+      this._eventEmitters.forEach(emit => {
+        emit(json.id, json.result)
+      })
     }
   }
 
