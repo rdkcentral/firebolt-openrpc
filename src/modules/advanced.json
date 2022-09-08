@@ -7,6 +7,95 @@
     },
     "methods": [
         {
+            "name": "onEventWithContext",
+            "tags": [
+                {
+                    "name": "event"
+                }
+            ],
+            "summary": "A temporal set method that lists Advanced objects.",
+            "params": [
+                {
+                    "name": "appId",
+                    "required": true,
+                    "schema": {
+                        "type": "string"
+                    }
+                }
+            ],
+            "result": {
+                "name": "result",
+                "schema": {
+                    "type": "object",
+                    "properties": {
+                        "foo": {
+                            "type": "string"
+                        }
+                    }    
+                }
+            },
+            "examples": [
+                {
+                    "name": "Default Example",
+                    "params": [
+                        {
+                            "name": "appId",
+                            "value": "hulu"
+                        }
+                    ],
+                    "result": {
+                        "name": "result",
+                        "value": {
+                            "foo": "bar"
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "propertyWithContext",
+            "summary":"",
+            "tags": [
+                {
+                    "name": "property"
+                },
+                {
+                    "name": "capabilities",
+                    "x-uses": "xrn:firebolt:capability:test:test"
+                }
+            ],
+            "params": [
+                {
+                    "name": "appId",
+                    "required": true,
+                    "schema": {
+                        "type": "string"
+                    }
+                }
+            ],
+            "result": {
+                "name": "value",
+                "schema": {
+                    "type": "boolean"
+                }
+            },
+            "examples": [
+                {
+                    "name": "Get the property for hulu",
+                    "params": [
+                        {
+                            "name": "appId",
+                            "value": "hulu"
+                        }
+                    ],
+                    "result": {
+                        "name": "value",
+                        "value": true
+                    }
+                }
+            ]
+        },
+        {
             "name": "list",
             "tags": [
                 {

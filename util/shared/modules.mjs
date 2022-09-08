@@ -110,6 +110,25 @@ const isEventMethod = compose(
     getPath(['tags'])
 )
 
+const isEventMethodWithContext = compose(
+    and(
+        compose(
+            option(false),
+            map(_ => true),
+            chain(find(propEq('name', 'event'))),
+            getPath(['tags'])
+        ),
+        compose(
+            map(params => {
+                return params.length > 1
+            }),
+            //propSatisfies('length', length => length > 1),
+            getPath(['params'])
+        )        
+    )
+  )
+  
+
 const isPolymorphicPullMethod = compose(
     option(false),
     map(_ => true),
@@ -255,34 +274,6 @@ const eventDefaults = event => {
         }
     ]    
 
-    event.params = [
-        {
-            name: 'listen',
-            required: true,
-            schema: {
-                type: 'boolean'
-            }
-        }
-    ]
-
-    event.result.schema = {
-        "oneOf": [
-            {
-                "$ref": "https://meta.comcast.com/firebolt/types#/definitions/ListenResponse"
-            },
-            event.result.schema
-        ]
-    }
-
-    event.examples && event.examples.forEach(example => {
-        example.params = [
-            {
-                name: 'listen',
-                value: true
-            }
-        ]
-    })
-
     return event
 }
 
@@ -305,6 +296,7 @@ const createEventFromProperty = property => {
 
 const createPullEventFromPush = (pusher, json) => {
     const event = eventDefaults(JSON.parse(JSON.stringify(pusher)))
+    event.params = []
     event.name = 'onPull' + event.name.charAt(0).toUpperCase() + event.name.substr(1)
     const old_tags = pusher.tags.concat()
 
@@ -316,7 +308,8 @@ const createPullEventFromPush = (pusher, json) => {
     const requestType = (pusher.name.charAt(0).toUpperCase() + pusher.name.substr(1)) + "FederatedRequest"
     event.result.name = "request"
     event.result.summary = "A " + requestType + " object."
-    event.result.schema.oneOf[1] = {
+
+    event.result.schema = {
         "$ref": "#/components/schemas/" + requestType
     }
 
@@ -343,7 +336,7 @@ const createTemporalEventMethod = (method, json, name) => {
     const event = createEventFromMethod(method, json, name, 'x-temporal-for', ['temporal-set'])
 
     // copy the array items schema to the main result for individual events
-    event.result.schema.oneOf[1] = method.result.schema.items
+    event.result.schema = method.result.schema.items
 
     event.tags = event.tags.filter(t => t.name !== 'temporal-set')
     event.tags.push({
@@ -716,6 +709,59 @@ const generateProviderMethods = json => {
     return json
 }
 
+const generateEventListenerParameters = json => {
+    const events = json.methods.filter( m => m.tags && m.tags.find(t => t.name == 'event')) || []
+
+    events.forEach(event => {
+        event.params = event.params || []
+        event.params.push({
+            "name": "listen",
+            "required": true,
+            "schema": {
+                "type": "boolean"
+            }
+        })
+
+        event.examples = event.examples || []
+
+        event.examples.forEach(example => {
+            example.params = example.params || []
+            example.params.push({
+                "name": "listen",
+                "value": true
+            })
+        })
+    })
+
+    return json
+}
+
+const generateEventListenResponse = json => {
+    const events = json.methods.filter( m => m.tags && m.tags.find(t => t.name == 'event')) || []
+
+    events.forEach(event => {
+        // only want or and xor here (might even remove xor)
+        const anyOf = event.result.schema.oneOf || event.result.schema.anyOf
+        const ref = {
+            "$ref": "https://meta.comcast.com/firebolt/types#/definitions/ListenResponse"
+        }
+
+        if (anyOf) {
+            anyOf.splice(0, 0, ref)
+        }
+        else {
+            event.result.schema = {
+                anyOf: [
+                    ref,
+                    event.result.schema
+                ]
+            }
+        }
+    })
+
+    return json
+}
+
 const getPathFromModule = (module, path) => {
     console.error("DEPRECATED: getPathFromModule")
     
@@ -735,9 +781,22 @@ const getPathFromModule = (module, path) => {
     return item    
 }
 
+const fireboltize = (json) => {
+    json = generatePropertyEvents(json)
+    json = generatePropertySetters(json)
+    json = generatePolymorphicPullEvents(json)
+    json = generateProviderMethods(json)
+    json = generateTemporalSetMethods(json)
+    json = generateEventListenerParameters(json)
+    json = generateEventListenResponse(json)
+    
+    return json
+}
+
 export {
     isEnum,
     isEventMethod,
+    isEventMethodWithContext,
     isPublicEventMethod,
     isPolymorphicReducer,
     isPolymorphicPullMethod,
@@ -758,12 +817,8 @@ export {
     getPublicEvents,
     getSchemas,
     getParamsFromMethod,
+    fireboltize,
     getPayloadFromEvent,
     getPathFromModule,
-    generatePolymorphicPullEvents,
-    generatePropertyEvents,
-    generatePropertySetters,
-    generateProviderMethods,
-    generateTemporalSetMethods,
     providerHasNoParameters
 }
