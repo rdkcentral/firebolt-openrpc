@@ -43,6 +43,18 @@ const addPrettyPath = (error, json) => {
   return error
 }
 
+const addFailingMethodSchema = (error, json, schema) => {
+  if (error.instancePath.match(/\/methods\/[0-9]+/)) {
+    if (error.keyword == 'if') {
+      if (error.params && error.params.failingKeyword == 'then') {
+        const i = parseInt(error.schemaPath.split("/")[2])
+        error.params.failingSchema = schema.definitions.Method.allOf[i].then.$ref
+      }
+  
+    }  
+  }
+}
+
 // this method keeps errors that are deeper in the JSON structure, and hides "parent" errors with an overlapping path
 export const pruneErrors = (errors = []) => {
 
@@ -122,7 +134,8 @@ export const displayError = (error) => {
     console.dir(error.value, {depth: null, colors: true})// + JSON.stringify(example, null, '  ') + '\n')
   }
 
-  console.dir(error, {depth: 1000})
+  // This is useful for debugging... please leave comment here for quick access :)
+  // console.dir(error, {depth: 1000})
 
   console.error()
 }
@@ -156,6 +169,7 @@ export const validate = (json = {}, schemas = {}, ajvPackage = [], additionalPac
           valid = false
           addtnlValidator.errors.forEach(error => addPrettyPath(error, json))
           addtnlValidator.errors.forEach(error => error.source = 'Firebolt OpenRPC')
+          addtnlValidator.errors.forEach(error => addFailingMethodSchema(error, json, addtnlValidator.schema))
           errors.push(...pruneErrors(addtnlValidator.errors))
         }
       })

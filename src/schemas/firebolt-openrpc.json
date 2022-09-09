@@ -33,29 +33,208 @@
             }        
         },
         "Method": {
+            "type": "object",
+            "required": [
+                "examples"
+            ],
+            "properties": {
+                "examples": {
+                    "type": "array",
+                    "minItems": 1
+                }
+            },
             "allOf": [
                 {
-                    "type": "object",
-                    "required": [
-                        "examples"
-                    ],
-                    "properties": {
-                        "examples": {
-                            "type": "array",
-                            "minItems": 1
+                    "if": {
+                        "required": [ "tags"],
+                        "properties": {
+                            "tags": {
+                                "type": "array",
+                                "contains": {
+                                    "$ref": "#/definitions/EventTag"
+                                }
+                            }
                         }
                     },
-                    "additionalProperties": true
+                    "then": {
+                        "$ref": "#/definitions/EventMethod"
+                    }        
                 },
                 {
-                    "oneOf": [
-                        {
-                            "$ref": "#/definitions/TaglessMethod"
-                        },
-                        {
-                            "$ref": "#/definitions/TaggedMethod"
+                    "if": {
+                        "required": [ "tags"],
+                        "properties": {
+                            "tags": {
+                                "type": "array",
+                                "contains": {
+                                    "$ref": "#/definitions/PropertyTag"
+                                }
+                            }
                         }
-                    ]
+                    },
+                    "then": {
+                        "$ref": "#/definitions/PropertyMethod"
+                    }        
+                },
+                {
+                    "if": {
+                        "required": [ "tags"],
+                        "properties": {
+                            "tags": {
+                                "type": "array",
+                                "contains": {
+                                    "$ref": "#/definitions/CapabilitiesTagForProviderMethod"
+                                }
+                            }
+                        }
+                    },
+                    "then": {
+                        "$ref": "#/definitions/ProviderMethod"
+                    }
+                },
+                {
+                    "if": {
+                        "required": [ "tags"],
+                        "properties": {
+                            "tags": {
+                                "type": "array",
+                                "contains": {
+                                    "$ref": "#/definitions/CapabilitiesTag"
+                                }
+                            }
+                        }
+                    },
+                    "then": {
+                        "$ref": "#/definitions/CapabilityMethod"
+                    }        
+                },
+                {
+                    "if": {
+                        "required": [ "tags"],
+                        "properties": {
+                            "tags": {
+                                "type": "array",
+                                "contains": {
+                                    "$ref": "#/definitions/RpcOnlyTag"
+                                }
+                            }
+                        }
+                    },
+                    "then": {
+                        "$ref": "#/definitions/RpcOnlyMethod"
+                    }        
+                },
+                {
+                    "if": {
+                        "required": [ "tags"],
+                        "properties": {
+                            "tags": {
+                                "type": "array",
+                                "contains": {
+                                    "$ref": "#/definitions/SynchronousTag"
+                                }
+                            }
+                        }
+                    },
+                    "then": {
+                        "$ref": "#/definitions/SynchronousMethod"
+                    }        
+                },
+                {
+                    "if": {
+                        "required": [ "tags" ],
+                        "properties": {
+                            "tags": {
+                                "type": "array",
+                                "contains": {
+                                    "$ref": "#/definitions/PolymorphicPullTag"
+                                }
+                            }
+                        }
+                    },
+                    "then": {
+                        "$ref": "#/definitions/PolymorphicPullMethod"
+                    }        
+                },
+                {
+                    "if": {
+                        "required": [ "tags" ],
+                        "properties": {
+                            "tags": {
+                                "type": "array",
+                                "contains": {
+                                    "$ref": "#/definitions/TemporalSetTag"
+                                }
+                            }
+                        }
+                    },
+                    "then": {
+                        "$ref": "#/definitions/TemporalSetMethod"
+                    }        
+                },
+                {
+                    "if": {
+                        "required": [ "tags" ],
+                        "properties": {
+                            "tags": {
+                                "type": "array",
+                                "contains": {
+                                    "$ref": "#/definitions/PolymorphicReducerTag"
+                                }
+                            }
+                        }
+                    },
+                    "then": {
+                        "$ref": "#/definitions/PolymorphicReducerMethod"
+                    }        
+                },
+                {
+                    "if": {
+                        "required": [ "tags" ],
+                        "properties": {
+                            "tags": {
+                                "type": "array",
+                                "contains": {
+                                    "$ref": "#/definitions/CallsMetricsTag"
+                                }
+                            }
+                        }
+                    },
+                    "then": {
+                        "$ref": "#/definitions/CallsMetricsMethod"
+                    }        
+                },
+                {
+                    "if": {
+                        "required": [ "tags" ],
+                        "properties": {
+                            "tags": {
+                                "type": "array",
+                                "contains": {
+                                    "$ref": "#/definitions/ExcludeTag"
+                                }
+                            }
+                        }
+                    },
+                    "then": {
+                        "$ref": "#/definitions/ExcludeMethod"
+                    }        
+                },
+                {
+                    "if": {
+                        "required": [ "tags" ],
+                        "properties": {
+                            "tags": {
+                                "type": "array",
+                                "contains": {
+                                    "$ref": "#/definitions/DeprecatedTag"
+                                }
+                            }
+                        }
+                    },
+                    "then": {
+                        "$ref": "#/definitions/DeprecatedMethod"
+                    }        
                 }
             ]
         },
@@ -137,7 +316,8 @@
                                         "$ref": "#/definitions/HttpTag"
                                     }
                                 ]
-                            }
+                            },
+                            "minItems": 1
                         }
                     }
                 },
@@ -245,18 +425,23 @@
             "type": "object",
             "properties": {
                 "tags": {
-                    "allOf": [
-                        {
-                            "type": "array",
-                            "contains": {
-                                "$ref": "#/definitions/EventTag"
-                            }
-                        }
-                    ]
+                    "type": "array",
+                    "contains": {
+                        "$ref": "#/definitions/EventTag"
+                    }
+                },
+                "params": {
+                    "type": "array",
+                    "contains": {
+                        "$ref": "#/definitions/ListenParameter"
+                    },
+                    "items": {
+                        "$ref": "#/definitions/ContextParameter"
+                    }
                 },
                 "result": {
                     "$ref": "#/definitions/EventResult"
-                }
+                }                
             }
         },
         "HttpMethod": {
@@ -332,9 +517,6 @@
                         }
                     ]
                 },
-                "result": {
-                    "$ref": "#/definitions/EventResult"
-                },
                 "examples": {
                     "type": "array",
                     "contains": {
@@ -353,6 +535,12 @@
                     "type": "array",
                     "contains": {
                         "$ref": "#/definitions/PropertyTag"
+                    }
+                },
+                "params": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/ContextParameter"
                     }
                 }
             }
@@ -470,10 +658,7 @@
             "type": "object",
             "required": [
                 "name"
-            ],
-            "propertyNames": {
-                "type": "string"
-            }
+            ]
         },
         "EventTag": {
             "allOf": [
@@ -494,7 +679,8 @@
                             "x-response",
                             "x-alternative",
                             "x-since",
-                            "x-pulls-for"
+                            "x-pulls-for",
+                            "x-error"
                         ]
                     }
                 }
@@ -797,10 +983,10 @@
                 "schema": {
                     "type": "object",
                     "required": [
-                        "oneOf"
+                        "anyOf"
                     ],
                     "properties": {
-                        "oneOf": {
+                        "anyOf": {
                             "type": "array",
                             "minItems": 2,
                             "maxItems": 2,
@@ -812,7 +998,7 @@
                                 "properties": {
                                     "$ref": {
                                         "type": "string",
-                                        "pattern": "^https://meta\\.comcast\\.com/firebolt/types/?#/definitions/ListenResponse$"
+                                        "pattern": "/ListenResponse$"
                                     }
                                 }
                             }
@@ -859,6 +1045,66 @@
                     }
                 }
             }
+        },
+        "ContextParameter": {
+            "title":"ContextParameter",
+            "type": "object",
+            "additionalProperties": true,
+            "required": [ "required", "schema" ],
+            "properties": {
+                "required": {
+                    "const": true
+                },
+                "schema": {
+                    "type": "object",
+                    "oneOf": [
+                        { "required": [ "type" ] },
+                        { "required": [ "$ref" ] }
+                    ],
+                    "required": [ "type" ],
+                    "properties": {
+                        "type": {
+                            "type": "string",
+                            "enum": ["integer", "string", "number", "boolean"]
+                        }
+                    }
+                }
+            }        
+        },
+        "ListenParameter": {
+            "type": "object",
+            "additionalProperties": true,
+            "properties": {
+                "name": {
+                    "const": "listen"
+                },
+                "schema": {
+                    "type": "object",
+                    "properties": {
+                        "type": {
+                            "const": "boolean"
+                        }
+                    }
+                }
+            }
+        },
+        "ListenResponse": {
+            "title": "ListenResponse",
+            "type": "object",
+            "required": [
+                "event",
+                "listening"
+            ],
+            "properties": {
+                "event": {
+                    "type": "string",
+                    "pattern": "[a-zA-Z]+\\.on[A-Z][a-zA-Z]+"
+                },
+                "listening": {
+                    "type": "boolean"
+                }
+            },
+            "additionalProperties": false
         }
     }
 }

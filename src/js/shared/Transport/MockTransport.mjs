@@ -105,7 +105,7 @@ function event(module, event, value) {
   if (listener) {
     let message = JSON.stringify({
       jsonrpc: '2.0',
-      id: listener[0],
+      id: parseInt(listener[0]),
       result: value
     })
     callback(message)

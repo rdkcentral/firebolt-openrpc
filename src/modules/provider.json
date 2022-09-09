@@ -26,25 +26,11 @@
             ],
             "summary": "Dispatches a request for the simple method to the simple provider.",
             "params": [
-                {
-                    "name": "listen",
-                    "summary": "Whether or not to listen for requests to this interface method.",
-                    "schema": {
-                        "type": "boolean"
-                    }
-                }
             ],
             "result": {
                 "name": "result",
                 "schema": {
-                    "oneOf": [
-                        {
-                            "$ref": "https://meta.comcast.com/firebolt/types#/definitions/ListenResponse"
-                        },
-                        {
-                            "$ref": "#/components/schemas/SimpleProviderRequest"
-                        }
-                    ]
+                    "$ref": "#/components/schemas/SimpleProviderRequest"
                 }
             },
             "examples": [
@@ -81,25 +67,11 @@
             ],
             "summary": "Dispatches a request for the simple method, with a handshake, to the simple provider.",
             "params": [
-                {
-                    "name": "listen",
-                    "summary": "Whether or not to listen for requests to this interface method.",
-                    "schema": {
-                        "type": "boolean"
-                    }
-                }
             ],
             "result": {
                 "name": "result",
                 "schema": {
-                    "oneOf": [
-                        {
-                            "$ref": "https://meta.comcast.com/firebolt/types#/definitions/ListenResponse"
-                        },
-                        {
-                            "$ref": "#/components/schemas/SimpleProviderRequest"
-                        }
-                    ]
+                    "$ref": "#/components/schemas/SimpleProviderRequest"
                 }
             },
             "examples": [
@@ -136,25 +108,11 @@
             ],
             "summary": "Dispatches a request for the simple method one to the simple provider.",
             "params": [
-                {
-                    "name": "listen",
-                    "summary": "Whether or not to listen for requests to this interface method.",
-                    "schema": {
-                        "type": "boolean"
-                    }
-                }
             ],
             "result": {
                 "name": "result",
                 "schema": {
-                    "oneOf": [
-                        {
-                            "$ref": "https://meta.comcast.com/firebolt/types#/definitions/ListenResponse"
-                        },
-                        {
-                            "$ref": "#/components/schemas/SimpleProviderRequest"
-                        }
-                    ]
+                    "$ref": "#/components/schemas/SimpleProviderRequest"
                 }
             },
             "examples": [
@@ -191,25 +149,11 @@
             ],
             "summary": "Dispatches a request for the simple method two to the simple provider.",
             "params": [
-                {
-                    "name": "listen",
-                    "summary": "Whether or not to listen for requests to this interface method.",
-                    "schema": {
-                        "type": "boolean"
-                    }
-                }
             ],
             "result": {
                 "name": "result",
                 "schema": {
-                    "oneOf": [
-                        {
-                            "$ref": "https://meta.comcast.com/firebolt/types#/definitions/ListenResponse"
-                        },
-                        {
-                            "$ref": "#/components/schemas/SimpleProviderRequest"
-                        }
-                    ]
+                    "$ref": "#/components/schemas/SimpleProviderRequest"
                 }
             },
             "examples": [
@@ -240,25 +184,11 @@
             ],
             "summary": "Dispatches a request for the simple method to the simple provider.",
             "params": [
-                {
-                    "name": "listen",
-                    "summary": "Whether or not to listen for requests to this interface method.",
-                    "schema": {
-                        "type": "boolean"
-                    }
-                }
             ],
             "result": {
                 "name": "result",
                 "schema": {
-                    "oneOf": [
-                        {
-                            "$ref": "https://meta.comcast.com/firebolt/types#/definitions/ListenResponse"
-                        },
-                        {
-                            "$ref": "#/components/schemas/NoResponseProviderRequest"
-                        }
-                    ]
+                    "$ref": "#/components/schemas/NoResponseProviderRequest"
                 }
             },
             "examples": [

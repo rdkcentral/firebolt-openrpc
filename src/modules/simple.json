@@ -85,6 +85,60 @@
             ]
         },
         {
+            "name": "property",
+            "summary": "A property.",
+            "tags": [
+                {
+                    "name": "property"
+                },
+                {
+                    "name": "capabilities",
+                    "x-uses": "xrn:firebolt:capability:test:test"
+                }
+            ],
+            "description": "A property for testing basic property generation.",
+            "params": [
+            ],
+            "result": {
+                "name": "result",
+                "summary": "A result for testing basic method generation.",
+                "schema": {
+                    "type": "object",
+                    "required": [
+                        "foo"
+                    ],
+                    "properties": {
+                        "foo": {
+                            "type": "string",
+                            "description": "A required field in the result."
+                        },
+                        "bar": {
+                            "type": "number",
+                            "description": "An optional field in the result."
+                        }
+                    },
+                    "additionalProperties": false
+                }
+            },
+            "examples": [
+                {
+                    "name": "Default Example",
+                    "params": [
+                        {
+                            "name": "parameter",
+                            "value": true
+                        }
+                    ],
+                    "result": {
+                        "name": "Default Result",
+                        "value": {
+                            "foo": "here's foo"
+                        }
+                    }
+                }
+            ]            
+        },
+        {
             "name": "methodWithMarkdownDescription",
             "summary": "A method that pulls it's description from an external markdown file.",
             "description": {

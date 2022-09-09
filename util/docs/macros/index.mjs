@@ -673,10 +673,6 @@ function iterateSignatures(data, method, moduleJson = {}, schemas = {}, template
         if (possibleResults && possibleResults.length == 2) {
             method.result.schema = possibleResults.find(s => s['$ref'] !== "https://meta.comcast.com/firebolt/types#/definitions/ListenResponse")
         }
-        else {
-            console.log(`\nERROR: ${getTitle(moduleJson.info.title)}.${method.name} does not have two return types: both 'ListenResponse' and an event-specific payload\n`)
-            process.exit(-1)
-        }
     }
 
     let regex, match
