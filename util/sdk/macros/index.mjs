@@ -29,7 +29,7 @@ import isString from 'crocks/core/isString.js'
 import predicates from 'crocks/predicates/index.js'
 const { isObject, isArray, propEq, pathSatisfies, propSatisfies } = predicates
 
-import { isExcludedMethod, isRPCOnlyMethod, isProviderMethod, getPayloadFromEvent, providerHasNoParameters, isTemporalSetMethod, generateTemporalSetMethods, hasMethodAttributes, getMethodAttributes, getUsedCapabilitiesFromMethod, getProvidedCapabilitiesFromMethod, getManagedCapabilitiesFromMethod, isEventMethodWithContext } from '../../shared/modules.mjs'
+import { isExcludedMethod, isRPCOnlyMethod, isProviderMethod, getPayloadFromEvent, providerHasNoParameters, isTemporalSetMethod, hasMethodAttributes, getMethodAttributes, getUsedCapabilitiesFromMethod, getProvidedCapabilitiesFromMethod, getManagedCapabilitiesFromMethod, isEventMethodWithContext } from '../../shared/modules.mjs'
 import { getTemplateForConfig, getTemplateForMethod } from '../../shared/template.mjs'
 import { getMethodSignatureParams } from '../../shared/javascript.mjs'
 import { parseVersion } from '../../shared/helpers.mjs'
