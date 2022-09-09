@@ -1,3 +1,4 @@
-function ${method.name}() {
-  return Prop.prop('${info.title}',  '${method.name}', arguments, ${method.property.immutable}, ${method.property.readonly})
+function ${method.name}(${method.params}) {
+  const callbackOrValue = arguments[${method.params.count}]
+  return Prop.prop('${info.title}',  '${method.name}', { ${method.params} }, callbackOrValue, ${method.property.immutable}, ${method.property.readonly}, ${method.params.count})
 }

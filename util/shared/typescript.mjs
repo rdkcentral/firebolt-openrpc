@@ -348,6 +348,25 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
     else if (json.const) {
       return (typeof json.const === 'string' ? `'${json.const}'` : json.const)
     }
+    else if (json['x-method']) {
+      const target = JSON.parse(JSON.stringify(module.methods.find(m => m.name === json['x-method'].split('.').pop())))
+
+      // transform the method copy params to be in the order of the x-additional-params array (and leave out any we don't want)
+      if (json['x-additional-params']) {
+        const params = []
+        json['x-additional-params'].forEach(key => {
+          params.push(target.params.find(p => p.name === key))
+        })
+        target.params = params
+      }
+      else {
+        target.params = []
+      }
+
+      const params = getMethodSignatureParams(module, target)
+      const result = getSchemaType(module, target.result.schema)
+      return `(${params}) => Promise<${result}>`
+    }
     else if (json.type === 'string' && json.enum) {
       let type = json.enum.map(e => wrap(e, '\'')).join(' | ')
       if (options.code) {

@@ -29,7 +29,7 @@ function stopSession(module, method) {
     delete sessions[module.toLowerCase() + '.' + method]
 }
 
-function start(module, method, addName, removeName, params, add, remove) {
+function start(module, method, addName, removeName, params, add, remove, transforms) {
     let session = getSession(module, method)
 
     if (!eventEmitterInitialized) {
@@ -52,7 +52,8 @@ function start(module, method, addName, removeName, params, add, remove) {
         {
             module: module,
             method: method,
-            params: params
+            params: params,
+            transforms: transforms
         }
     ]
 
@@ -61,7 +62,8 @@ function start(module, method, addName, removeName, params, add, remove) {
         method: addName,
         params: {
             listen: true
-        }
+        },
+        transforms: transforms
     })
 
     if (remove) {
@@ -70,7 +72,8 @@ function start(module, method, addName, removeName, params, add, remove) {
             method: removeName,
             params: {
                 listen: true
-            }
+            },
+            transforms: transforms
         })
     }
     

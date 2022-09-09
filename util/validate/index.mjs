@@ -38,7 +38,7 @@ const __dirname = url.fileURLToPath(new URL('.', import.meta.url))
 const run = ({
   'shared-schemas': sharedSchemasFolderArg,
   source: srcFolderArg,
-  'disable-transforms': disableTransforms = true // UNDOCUMENTED ARGUMENT!
+  'disable-transforms': disableTransforms = false // UNDOCUMENTED ARGUMENT!
 }) => {
   logHeader(` VALIDATING... `)
 
@@ -50,7 +50,7 @@ const run = ({
   const modulesFolder = path.join(srcFolderArg, 'modules')
 
   // Flip default value when running on /dist/ folder (makes default smart)
-  if (!disableTransforms && srcFolderArg.indexOf('/dist/') >= 0) {
+  if (!disableTransforms && (srcFolderArg.indexOf('/dist/') || srcFolderArg.indexOf('/build/')) >= 0) {
     disableTransforms = true
   }
 
@@ -59,7 +59,7 @@ const run = ({
   addFormats(ajv)
   // explicitly add our custom extensions so we can keep strict mode on (TODO: put these in a JSON config?)
   ajv.addVocabulary(['x-method', 'x-this-param', 'x-additional-params'])
-    
+
   const getJsonFromUrl = url => h((push) => {
     https.get(url, res => {
       res.on('data', chunk => push(null, chunk))

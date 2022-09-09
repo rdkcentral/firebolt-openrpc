@@ -30,7 +30,7 @@ import predicates from 'crocks/predicates/index.js'
 import isNil from 'crocks/core/isNil.js'
 const { isObject, isArray, propEq, pathSatisfies, propSatisfies } = predicates
 
-import { isExcludedMethod, isRPCOnlyMethod, isProviderMethod, getPayloadFromEvent, providerHasNoParameters, isTemporalSetMethod, generateTemporalSetMethods } from '../../shared/modules.mjs'
+import { isExcludedMethod, isRPCOnlyMethod, isProviderMethod, getPayloadFromEvent, providerHasNoParameters, isTemporalSetMethod, hasMethodAttributes, getMethodAttributes, isEventMethodWithContext } from '../../shared/modules.mjs'
 import { getTemplateForMethod } from '../../shared/template.mjs'
 import { getMethodSignatureParams } from '../../shared/javascript.mjs'
 import isEmpty from 'crocks/core/isEmpty.js'
@@ -150,6 +150,12 @@ const eventsOrEmptyArray = compose(
 const temporalSets = compose(
   option([]),
   map(filter(isTemporalSetMethod)),
+  getMethods  
+)
+
+const methodsWithXMethodsInResult = compose(
+  option([]),
+  map(filter(hasMethodAttributes)),
   getMethods  
 )
 
@@ -356,6 +362,10 @@ const generateImports = json => {
     imports += `import { registerEvents } from \'../Events/index.mjs\'\n`
   }
 
+  if (eventsOrEmptyArray(json).find(m => m.params.length > 1)) {
+    imports += `import { registerEventContext } from \'../Events/index.mjs\'\n`
+  }
+
   if (providersOrEmptyArray(json).length) {
     imports += `import Capabilities from '../Capabilities/index.mjs'\n`
     imports += `import { registerProviderInterface } from \'../Capabilities/index.mjs\'\n`
@@ -367,6 +377,10 @@ const generateImports = json => {
 
   if (temporalSets(json).length) {
     imports += `import TemporalSet from '../TemporalSet/index.mjs'\n`
+  }
+
+  if (methodsWithXMethodsInResult(json).length) {
+    imports += `import Results from '../Results/index.mjs'\n`
   }
 
   return imports
@@ -384,6 +398,7 @@ const generateEventInitialization = json => compose(
     if (i < arr.length-1) {
       return acc  
     }
+
     return `registerEvents('${getModuleName(json)}', Object.values(${JSON.stringify(acc)}))\n`
   }, ''),
   eventsOrEmptyArray
@@ -449,92 +464,72 @@ function generateMethods(json = {}, templates = {}, onlyEvents = false) {
   const moduleName = getModuleName(json).toLowerCase()
   
   // Two arrays that represent two codegen flows
-  const eventMethods = eventsOrEmptyArray(json)
-  const providerMethods = providersOrEmptyArray(json)
-  const notEventMethods = compose(
+  const providerMethods = onlyEvents ? [] : providersOrEmptyArray(json)
+  const normalMethods = compose(
     option([]),
-    map(filter(not(isEventMethod))),
+    map(filter(m => !onlyEvents || isEventMethod(m))),
     map(filter(not(isRPCOnlyMethod))),
+    map(filter(not(isProviderMethod))),
     map(filter(not(isExcludedMethod))),
     getMethods
   )(json)
 
-  // Builds [ARGS, PARAMS] strings for use in the function templates.
-  // I went with accumulating the 2 values over the same loop to avoid
-  // doing it twice.
-  const paramsReducer = (acc, val, i, arr) => {
-    let [argAcc, paramAcc] = acc
-    if (i === 0) {
-      paramAcc = paramAcc.concat(', {')
-    }
-    paramAcc = paramAcc.concat(`${val.name}:${val.name}`)
-    argAcc = argAcc.concat(`${val.name}`)
-    if (i < arr.length-1) {
-      paramAcc = paramAcc.concat(', ')
-      argAcc = argAcc.concat(', ')
-    } else {
-      paramAcc = paramAcc.concat('}')
-    }
-    return [argAcc, paramAcc]
-  }
-  const buildArgsAndParams = reduce(paramsReducer, ['', ''])
-
   // Code to generate for methods that ARE NOT events.
-  const nonEventMethodReducer = reduce((acc, methodObj, i, arr) => {
-//      const params = getParamsFromMethod(methodObj)
-//      const [ARGS, PARAMS] = buildArgsAndParams(params)
+  const methodReduction = reduce((acc, methodObj, i, arr) => {
+      methodObj = localizeDependencies(methodObj, json)
 
       const info = {
         title: moduleName
       }
       const method = {
         name: methodObj.name,
-        params: getMethodSignatureParams(methodObj)
+        params: getMethodSignatureParams(methodObj),
+        transforms: null,
+        context: []
       }
 
       let template = getTemplateForMethod(methodObj, '.js', templates);
       if (isPropertyMethod(methodObj)) {
         template = templates['methods/polymorphic-property.js']
       }
+      else if (isEventMethod(methodObj) && methodObj.params.length > 1) {
+        template = templates['methods/event-with-context.js']
+        method.context = methodObj.params.filter(p => p.name !== 'listen').map(p => p.name)
+      }
 
+      if (hasMethodAttributes(methodObj)) {
+        method.transforms = {
+          methods: getMethodAttributes(methodObj)
+        }
+      }
+      
       const temporalItemName = isTemporalSetMethod(methodObj) ? methodObj.result.schema.items && methodObj.result.schema.items.title || 'Item' : ''
       const temporalAddName = isTemporalSetMethod(methodObj) ? `on${temporalItemName}Available` : ''
       const temporalRemoveName = isTemporalSetMethod(methodObj) ? `on${temporalItemName}Unvailable` : ''
       const javascript = template.replace(/\$\{method\.name\}/g, method.name)
         .replace(/\$\{method\.params\}/g, method.params)
+        .replace(/\$\{method\.params\.array\}/g, JSON.stringify(methodObj.params.map(p => p.name)))
+        .replace(/\$\{method\.context\}/g, method.context.join(', '))
+        .replace(/\$\{method\.context\.array\}/g, JSON.stringify(method.context))
         .replace(/\$\{method\.Name\}/g, method.name[0].toUpperCase() + method.name.substr(1))
+        .replace(/\$\{event\.name\}/g, method.name.toLowerCase()[2] + method.name.substr(3))
         .replace(/\$\{info\.title\}/g, info.title)
         .replace(/\$\{method\.property\.immutable\}/g, hasTag(methodObj, 'property:immutable'))
         .replace(/\$\{method\.property\.readonly\}/g, hasTag(methodObj, 'property:immutable') || hasTag(methodObj, 'property:readonly'))
+        .replace(/\$\{method\.params\.count}/g, methodObj.params ? methodObj.params.length : 0)
         .replace(/\$\{method\.temporalset\.add\}/g, temporalAddName)
         .replace(/\$\{method\.temporalset\.remove\}/g, temporalRemoveName)
+        .replace(/\$\{method\.transforms}/g, JSON.stringify(method.transforms))
 
       acc = acc.concat(javascript)
 
       // Do this regardless
       acc = acc.concat('\n')
       return acc
-    }, '', notEventMethods)
+    }, '', normalMethods)
 
     // Code to generate for methods that ARE events
-    const eventMethodReducer = reduce((_) => {
-      return `
-  function listen(...args) {
-    return Events.listen('${moduleName}', ...args)
-  } 
-  
-  function once(...args) {
-    return Events.once('${moduleName}', ...args)
-  }
-  
-  function clear(...args) {
-    return Events.clear('${moduleName}', ...args)
-  }
-  `
-    }, '', eventMethods)
-
-    // Code to generate for methods that ARE events
-    const providerMethodReducer = reduce((_) => {
+    const providerReduction = reduce((_) => {
       return `  
   function provide(capability, provider) {
     return Capabilities.provide(capability, provider)
@@ -542,10 +537,25 @@ function generateMethods(json = {}, templates = {}, onlyEvents = false) {
   `
     }, '', providerMethods)
   
-  if (onlyEvents) {
-    return eventMethodReducer.concat(providerMethodReducer)
+  let additionalStuff = ''
+
+  if (json.methods && json.methods.find(isEventMethod)) {
+    additionalStuff = `
+    function listen(...args) {
+      return Events.listen('${moduleName}', ...args)
+    } 
+    
+    function once(...args) {
+      return Events.once('${moduleName}', ...args)
+    }
+    
+    function clear(...args) {
+      return Events.clear('${moduleName}', ...args)
+    }
+    `
   }
-  return nonEventMethodReducer.concat(eventMethodReducer.concat(providerMethodReducer))
+
+  return methodReduction.concat(providerReduction).concat(additionalStuff)
 }
 
 export {

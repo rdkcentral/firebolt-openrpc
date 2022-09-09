@@ -21,6 +21,7 @@ import Queue from './queue.mjs'
 import Settings, { initSettings } from '../Settings/index.mjs'
 import LegacyTransport from './LegacyTransport.mjs'
 import WebsocketTransport from './WebsocketTransport.mjs'
+import Results from '../Results/index.mjs'
 
 const LEGACY_TRANSPORT_SERVICE_NAME = 'com.comcast.BridgeObject_1'
 let moduleInstance = null
@@ -33,7 +34,7 @@ export default class Transport {
     this._transport = null
     this._id = 1
     this._eventEmitters = []
-    this._eventMap = {}
+    this._eventIds = []
     this._queue = new Queue()
     this._deprecated = {}
     this.isMock = false
@@ -91,32 +92,41 @@ export default class Transport {
     this._queue.flush(tl)
   }
 
-  static send (module, method, params) {
+  static send (module, method, params, transforms) {
     /** Transport singleton across all SDKs to keep single id map */
-    return Transport.get()._send(module, method, params)
+    return Transport.get()._send(module, method, params, transforms)
   }
 
-  _send (module, method, params) {
+  static listen(module, method, params, transforms) {
+    return Transport.get()._sendAndGetId(module, method, params, transforms)
+  }
+
+  _send (module, method, params, transforms) {
     if (Array.isArray(module) && !method && !params) {
       return this._batch(module)
     }
+    else {
+      return this._sendAndGetId(module, method, params, transforms).promise
+    }
+  }
 
-    const {promise, json, id } = this._processRequest(module, method, params)
+  _sendAndGetId (module, method, params, transforms) {
+    const {promise, json, id } = this._processRequest(module, method, params, transforms)
     const msg = JSON.stringify(json)
     if (Settings.getLogLevel() === 'DEBUG') {
       console.debug('Sending message to transport: ' + msg)
     }
     this._transport.send(msg)
 
-    return promise
+    return { id, promise }
   }
 
   _batch (requests) {
     const results = []
     const json = []
 
-    requests.forEach( ({module, method, params}) => {
-      const result = this._processRequest(module, method, params)
+    requests.forEach( ({module, method, params, transforms}) => {
+      const result = this._processRequest(module, method, params, transforms)
       results.push({
         promise: result.promise,
         id: result.id
@@ -133,8 +143,9 @@ export default class Transport {
     return results
   }
 
-  _processRequest (module, method, params) {
-    const p = this._addPromiseToQueue(module, method, params)
+  _processRequest (module, method, params, transforms) {
+
+    const p = this._addPromiseToQueue(module, method, params, transforms)
     const json = this._createRequestJSON(module, method, params)
 
     const result = {
@@ -152,12 +163,13 @@ export default class Transport {
     return { jsonrpc: '2.0', method: module + '.' + method, params: params, id: this._id }
   }
 
-  _addPromiseToQueue (module, method, params) {
+  _addPromiseToQueue (module, method, params, transforms) {
     return new Promise((resolve, reject) => {
       this._promises[this._id] = {}
       this._promises[this._id].promise = this
       this._promises[this._id].resolve = resolve
       this._promises[this._id].reject = reject
+      this._promises[this._id].transforms = transforms
 
       const deprecated = this._deprecated[module.toLowerCase() + '.' + method.toLowerCase()]
       if (deprecated) {
@@ -168,20 +180,12 @@ export default class Transport {
       // TODO: what about wild cards?
       if (method.match(/^on[A-Z]/)) {
         if (params.listen) {
-          this._eventMap[this._id] = module.toLowerCase() + '.' + method[2].toLowerCase() + method.substr(3)
+          this._eventIds.push(this._id)
         } else {
-          Object.keys(this._eventMap).forEach(key => {
-            if (this._eventMap[key] === module.toLowerCase() + '.' + method[2].toLowerCase() + method.substr(3)) {
-              delete this._eventMap[key]
-            }
-          })
+          this._eventIds = this._eventIds.filter(id => id !== this._id)
         }
       }
     })
-  }
-
-  static getEventMap () {
-    return Transport.get()._eventMap
   }
 
   /**
@@ -216,19 +220,28 @@ export default class Transport {
     if (p) {
       if (json.error) p.reject(json.error)
       else {
-        p.resolve(json.result)
+        // Do any module-specific transforms on the result
+        let result = json.result
+
+        if (p.transforms) {
+          if (Array.isArray(json.result)) {
+            result = result.map(x => Results.transform(x, p.transforms))
+          }
+          else {
+            result = Results.transform(result, p.transforms)
+          }
+        }
+        
+        p.resolve(result)
       }
       delete this._promises[json.id]
     }
 
     // event responses need to be emitted, even after the listen call is resolved
-    if (this._eventMap[json.id] && !isEventSuccess(json.result)) {
-      const moduleevent = this._eventMap[json.id]
-      if (moduleevent) {
-        this._eventEmitters.forEach(emit => {
-          emit(moduleevent.split('.')[0], moduleevent.split('.')[1], json.result)
-        })
-      }
+    if (this._eventIds.includes(json.id) && !isEventSuccess(json.result)) {
+      this._eventEmitters.forEach(emit => {
+        emit(json.id, json.result)
+      })
     }
   }
 

@@ -22,9 +22,7 @@ import { transport } from '../TransportHarness.js'
 
 let providerMethodNotificationRegistered = false
 let providerMethodRequestDispatched = false
-let providerMethodResultSent = false
-let numberOfArgs = -1
-let methodParameters
+let providerMethodErrorSent = false
 let methodSession
 let value
 let responseCorrelationId
@@ -34,10 +32,15 @@ beforeAll( () => {
 
     class SimpleProvider {
         simpleMethod(...args) {
-            methodParameters = args[0]
             methodSession = args[1]
-            numberOfArgs = args.length
-            return Promise.resolve('a value!')
+
+            throw {
+                message: 'An error occured!',
+                code: 50,
+                data: {
+                    info: 'the_info'
+                }
+            }
         }
     }
     
@@ -59,9 +62,9 @@ beforeAll( () => {
                 })
             })
         }
-        else if (json.method === 'provider.simpleMethodResponse') {
-            providerMethodResultSent = true
-            value = json.params.result
+        else if (json.method === 'provider.simpleMethodError') {
+            providerMethodErrorSent = true
+            value = json.params.error
             responseCorrelationId = json.params.correlationId
         }
     })
@@ -86,14 +89,6 @@ test('Provider method request dispatched', () => {
     expect(providerMethodRequestDispatched).toBe(true)
 })
 
-test('Provide method called with two args', () => {
-    expect(numberOfArgs).toBe(2)
-})
-
-test('Provide method parameters arg is null', () => {
-    expect(methodParameters).toBe(null)
-})
-
 test('Provide method session arg has correlationId', () => {
     expect(methodSession.correlationId()).toBe(123)
 })
@@ -106,6 +101,7 @@ test('Provider response used correct correlationId', () => {
     expect(responseCorrelationId).toBe(123)
 })
 
-test('Provider method result is correct', () => {
-    expect(value).toBe('a value!')
+test('Provider method error is correct', () => {
+    expect(value.code).toBe(50)
+    expect(value.data.info).toBe('the_info')
 })
