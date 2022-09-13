@@ -136,22 +136,22 @@ const treeShakeDirectory = (baseUrl, entryPoint) => {
   }))
 }
 
-const importedFiles = code => [...code.matchAll(/(import|export).*?from\s+['"](.*?)['"]/g)].map(arr => arr[2])
+const importedFiles = code => Array.from(new Set([...code.matchAll(/(import|export).*?from\s+['"](.*?)['"]/g)].map(arr => arr[2])))
 
-const treeShakenFileList = (baseUrl, entryPoint) => {
-
+const treeShakenFileList = (baseUrl, entryPoint, list=[]) => {
   const file = path.join(baseUrl, entryPoint)
   baseUrl = path.dirname(file)
   entryPoint = path.basename(file)
 
-  const list = [file]
+  list.push(file)
 
   return new Promise( (resolve, reject) => {
     readFile(path.join(baseUrl, entryPoint), (err, data) => {
       if (data) {
         const imports = importedFiles(bufferToString(data))
-        list.push(...imports.map(i => path.join(baseUrl, i)))
-        return Promise.all(imports.map(i => treeShakenFileList(baseUrl, i).then(moreImports => list.push(...moreImports))))
+        const newImports = imports.filter(i => !list.includes(i))
+        list.push(...newImports)
+        return Promise.all(newImports.map(i => treeShakenFileList(baseUrl, i, list).then(moreImports => list.push(...moreImports))))
           .then(_ => { resolve(Array.from(new Set(list)).sort())})
       }
       else {
