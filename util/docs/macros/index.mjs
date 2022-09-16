@@ -1006,6 +1006,12 @@ function generateJavaScriptExample(example, m, moduleJson = {}, templates = {}) 
     const template = m.tags && m.tags.map(t=>t.name).find(t => Object.keys(templates).includes('examples/' + t + '.md')) || 'default'
     typescript = templates[`examples/${template}.md`]
 
+    // added null check to handle the scenario when parameter is optional
+    // it's coming as null in the doc
+    if (params === 'null') {
+        params = '';
+    }
+
     typescript = typescript.replace(/\$\{example.params\}/g, params)
 
     return typescript
