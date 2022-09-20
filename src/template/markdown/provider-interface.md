@@ -90,10 +90,8 @@ Request:
     "id": ${provider.interface.j},
     "method": "${jsonrpc.module}.${provider.interface.name}Response",
     "params": {
-        "result": {
-            "correlationId": ${provider.interface.example.correlationId},
-            "result": ${provider.interface.example.result}
-        }
+        "correlationId": ${provider.interface.example.correlationId},
+        "result": ${provider.interface.example.result}
     }
 }
 ```
