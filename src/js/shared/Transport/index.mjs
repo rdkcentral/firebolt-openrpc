@@ -25,7 +25,6 @@ import Results from '../Results/index.mjs'
 
 const LEGACY_TRANSPORT_SERVICE_NAME = 'com.comcast.BridgeObject_1'
 let moduleInstance = null
-let legacyId = 0
 
 const isEventSuccess = x => x && (typeof x.event === 'string') && (typeof x.listening === 'boolean')
 
@@ -99,15 +98,7 @@ export default class Transport {
   }
 
   static listen(module, method, params, transforms) {
-    if (Transport.get()._sendAndGetId) {
       return Transport.get()._sendAndGetId(module, method, params, transforms)
-    }
-    else {
-      return {
-        id: this._id,
-        promise: Transport.get()._send(module, method, params, transforms)
-      }
-    }
   }
 
   _send (module, method, params, transforms) {
