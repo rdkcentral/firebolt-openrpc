@@ -109,10 +109,13 @@ function insertMacros(data = '', moduleJson = {}, templates = {}, schemas = {}, 
         regex = /\$\{events\}/
         if (match = data.match(regex)) {
             let eventsBlock = ''
+            let eventsList = ''
             events.forEach(method => {
                 eventsBlock += insertMethodMacros(match[0], method, moduleJson, schemas, templates, options)
+                eventsList += '    - [' + method.name[2].toLowerCase() + method.name.substr(3) + '](#' + method.name.substr(2).toLowerCase() + ')' + '\n'
             })
             data = data.replace(regex, eventsBlock)
+            data = data.replace(/\$\{toc.events\}/g, eventsList)
         }
     }
 
@@ -297,7 +300,7 @@ function insertMacros(data = '', moduleJson = {}, templates = {}, schemas = {}, 
     if (methods) {
         data = data
             .replace(/\$\{toc.methods\}/g, methods.filter(isTocMethod).map(m => '    - [' + m.name + '](#' + m.name.toLowerCase() + ')').join('\n'))
-            .replace(/\$\{toc.events\}/g, methods.filter(m => isEvent(m) && !isProviderMethod(m)).map(m => '    - [' + m.name[2].toLowerCase() + m.name.substr(3) + '](#' + m.name.substr(2).toLowerCase() + ')').join('\n'))
+            // .replace(/\$\{toc.events\}/g, methods.filter(m => isEvent(m) && !isProviderMethod(m)).map(m => '    - [' + m.name[2].toLowerCase() + m.name.substr(3) + '](#' + m.name.substr(2).toLowerCase() + ')').join('\n'))
             .replace(/\$\{toc.providers\}/g, capabilities.map(c => `    - [${getProviderName(c, moduleJson, schemas)}](#${getProviderName(c, moduleJson, schemas).toLowerCase()})`).join('\n'))
     }
 
