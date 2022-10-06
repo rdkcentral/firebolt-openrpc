@@ -958,7 +958,6 @@
                         { "required": [ "type" ] },
                         { "required": [ "$ref" ] }
                     ],
-                    "required": [ "type" ],
                     "properties": {
                         "type": {
                             "type": "string",
