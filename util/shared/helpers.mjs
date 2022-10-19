@@ -21,11 +21,12 @@ import fs from 'fs'
 import fse from 'fs-extra'
 import path from 'path'
 import getPathOr from 'crocks/helpers/getPathOr.js'
-import { getSchema } from './json-schema.mjs'
-import { generatePropertyEvents, generatePropertySetters, generatePolymorphicPullEvents, generateProviderMethods, generateTemporalSetMethods } from '../shared/modules.mjs'
+import { getSchema, removeIgnoredAdditionalItems, replaceUri } from './json-schema.mjs'
+import { fireboltize } from '../shared/modules.mjs'
 import { getExternalMarkdownPaths } from '../shared/json-schema.mjs'
 import or from 'crocks/logic/or.js'
 import not from 'crocks/logic/not.js'
+import https from 'https'
 
 const {
   mkdir,
@@ -62,27 +63,26 @@ const recursiveFileDirectoryList = dirOrFile => {
   return h((push, next) => {
     if (!dirOrFile) {
       push(null, h.nil)
+      return
     }
-    else {
-      fs.stat(dirOrFile, (err, stat) => {
-        if (!stat || stat.isFile()) {
-          stat && push(err, dirOrFile)
-          push(null, h.nil)
-        } else {
-          // Add the directory itself to the ouput stream.
-          push(null, dirOrFile)
-          fs.readdir(dirOrFile, (_err, files) => {
-            next(h(files)
-              .map(file => {
-                file = path.join(dirOrFile, file)
-                return recursiveFileDirectoryList(file)
-              })
-              .merge()
-            )
-          })
-        }
-      })
-    }
+    fs.stat(dirOrFile, (err, stat) => {
+      if (!stat || stat.isFile()) {
+        stat && push(err, dirOrFile)
+        push(null, h.nil)
+      } else {
+        // Add the directory itself to the ouput stream.
+        push(null, dirOrFile)
+        fs.readdir(dirOrFile, (_err, files) => {
+          next(h(files)
+            .map(file => {
+              file = path.join(dirOrFile, file)
+              return recursiveFileDirectoryList(file)
+            })
+            .merge()
+          )
+        })
+      }
+    })
   })
 }
 
@@ -94,6 +94,21 @@ const loadFileContent = suffix => fileStream => fileStream
   .filter(filepath => ((path.extname(filepath) === suffix) || (suffix.includes && suffix.includes(path.extname(filepath)))))
   .flatMap(filepath => fsReadFile(filepath)
     .map(buf => [filepath, bufferToString(buf)]))
+
+const readUrl = url => h((push) => {
+  https.get(url, res => {
+    res.on('data', chunk => push(null, chunk))
+    res.on('end', () => push(null, h.nil))
+  })
+})
+.collect()
+.map(Buffer.concat)
+  
+const loadUrlContent = url => {
+  return readUrl(url)
+    .map(buf => [url, bufferToString(buf)])
+}
+  
 
 const jsonErrorHandler = filepath => (err, push) => {
   console.error(`\n\u{1F494} Error: ${filepath}\n`)
@@ -190,14 +205,25 @@ const externalMarkdownDescriptions = markdownFolder => recursiveFileDirectoryLis
   .through(loadFileContent('.md'))
   .reduce({}, fileCollectionReducer('/src/'))
 
-const schemaFetcher = folder => recursiveFileDirectoryList(folder)
-  .flatFilter(isFile)
-  .through(loadFileContent('.json'))
-  .flatMap(([file, contents]) => h.of(contents)
-    .map(JSON.parse)
-    .errors(jsonErrorHandler(file))
-    .map(parsed => schemaMapper([file, parsed])))
-  .reduce({}, fileCollectionReducer())
+const schemaFetcher = uri => loadSchema(uri)
+    .flatMap(([file, contents]) => h.of(contents)
+      .map(JSON.parse)
+      .tap(removeIgnoredAdditionalItems)
+      .tap(schema => replaceUri('https://raw.githubusercontent.com/json-schema-tools/meta-schema/1.5.9/src/schema.json', 'https://meta.json-schema.tools/', schema))
+      .errors(jsonErrorHandler(file))
+      .map(parsed => schemaMapper([file, parsed])))
+    .reduce({}, fileCollectionReducer())
+
+const loadSchema = uri => {
+  if (uri.startsWith('http') || uri.startsWith('https')) {
+    return loadUrlContent(uri)
+  }
+  else {
+    return recursiveFileDirectoryList(uri)
+    .flatFilter(isFile)
+    .through(loadFileContent('.json'))
+  }
+}
 
 const localModules = (modulesFolder = '', markdownFolder = '', disableTransforms = false, filterPrivateModules = true) => {
   const isFlagSet = (_) => filterPrivateModules // Makes this impure on purpose b/c our flag lives outside the context of the filter and sometimes, we want to override the filter.
@@ -212,11 +238,7 @@ const localModules = (modulesFolder = '', markdownFolder = '', disableTransforms
           return h.of(obj)
         }
         return h.of(obj)
-          .map(generatePropertyEvents)
-          .map(generatePropertySetters)
-          .map(generatePolymorphicPullEvents)
-          .map(generateProviderMethods)
-          .map(generateTemporalSetMethods)
+          .map(fireboltize)
       })
       .filter(or(not(isFlagSet), hasPublicMethods)) // allows the validator to validate private modules
       .sortBy(alphabeticalSorter)

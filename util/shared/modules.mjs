@@ -110,6 +110,25 @@ const isEventMethod = compose(
     getPath(['tags'])
 )
 
+const isEventMethodWithContext = compose(
+    and(
+        compose(
+            option(false),
+            map(_ => true),
+            chain(find(propEq('name', 'event'))),
+            getPath(['tags'])
+        ),
+        compose(
+            map(params => {
+                return params.length > 1
+            }),
+            //propSatisfies('length', length => length > 1),
+            getPath(['params'])
+        )        
+    )
+  )
+  
+
 const isPolymorphicPullMethod = compose(
     option(false),
     map(_ => true),
@@ -122,6 +141,29 @@ const isTemporalSetMethod = compose(
     map(_ => true),
     chain(find(propEq('name', 'temporal-set'))),
     getPath(['tags'])
+)
+
+const getMethodAttributes = compose(
+    option(null),
+    map(props => props.reduce( (val, item) => {
+        val[item['__key']] = item;
+        delete item['__key'];
+        return val
+    }, {})),
+    map(filter(hasProp('x-method'))),
+    map(props => props.map(([k, v]) => ({ "__key": k, ...v}))),
+    map(Object.entries),
+    map(schema => schema.items ? schema.items.properties || {} : schema.properties || {}),
+    getPath(['result', 'schema'])
+)
+
+const hasMethodAttributes = compose(
+    option(false),
+    map(_ => true),
+    chain(find(hasProp('x-method'))),
+    map(Object.values),
+    map(schema => schema.items ? schema.items.properties || {} : schema.properties || {}),
+    getPath(['result', 'schema'])
 )
 
 const isPublicEventMethod = and(
@@ -232,34 +274,6 @@ const eventDefaults = event => {
         }
     ]    
 
-    event.params = [
-        {
-            name: 'listen',
-            required: true,
-            schema: {
-                type: 'boolean'
-            }
-        }
-    ]
-
-    event.result.schema = {
-        "oneOf": [
-            {
-                "$ref": "https://meta.comcast.com/firebolt/types#/definitions/ListenResponse"
-            },
-            event.result.schema
-        ]
-    }
-
-    event.examples && event.examples.forEach(example => {
-        example.params = [
-            {
-                name: 'listen',
-                value: true
-            }
-        ]
-    })
-
     return event
 }
 
@@ -282,6 +296,7 @@ const createEventFromProperty = property => {
 
 const createPullEventFromPush = (pusher, json) => {
     const event = eventDefaults(JSON.parse(JSON.stringify(pusher)))
+    event.params = []
     event.name = 'onPull' + event.name.charAt(0).toUpperCase() + event.name.substr(1)
     const old_tags = pusher.tags.concat()
 
@@ -293,7 +308,8 @@ const createPullEventFromPush = (pusher, json) => {
     const requestType = (pusher.name.charAt(0).toUpperCase() + pusher.name.substr(1)) + "FederatedRequest"
     event.result.name = "request"
     event.result.summary = "A " + requestType + " object."
-    event.result.schema.oneOf[1] = {
+
+    event.result.schema = {
         "$ref": "#/components/schemas/" + requestType
     }
 
@@ -320,7 +336,7 @@ const createTemporalEventMethod = (method, json, name) => {
     const event = createEventFromMethod(method, json, name, 'x-temporal-for', ['temporal-set'])
 
     // copy the array items schema to the main result for individual events
-    event.result.schema.oneOf[1] = method.result.schema.items
+    event.result.schema = method.result.schema.items
 
     event.tags = event.tags.filter(t => t.name !== 'temporal-set')
     event.tags.push({
@@ -417,6 +433,7 @@ const createSetterFromProperty = property => {
     ]
 
     const param = setter.result
+    param.name = 'value'
     param.required = true
     setter.params.push(param)
     
@@ -429,7 +446,7 @@ const createSetterFromProperty = property => {
 
     setter.examples && setter.examples.forEach(example => {
         example.params.push({
-            name: param.name,
+            name: 'value',
             value: example.result.value
         })
 
@@ -485,39 +502,40 @@ const createFocusFromProvider = provider => {
     return ready
 }
 
-const createResponseFromProvider = (provider, json) => {
+// type = Response | Error
+const createResponseFromProvider = (provider, type, json) => {
 
     if (!provider.name.startsWith('onRequest')) {
         throw "Methods with the `x-provider` tag extension MUST start with 'onRequest'."
     }
 
     const response = JSON.parse(JSON.stringify(provider))
-    response.name = response.name.charAt(9).toLowerCase() + response.name.substr(10) + 'Response'
-    response.summary = `Internal API for ${provider.name.substr(9)} Provider to send back a response.`
+    response.name = response.name.charAt(9).toLowerCase() + response.name.substr(10) + type
+    response.summary = `Internal API for ${provider.name.substr(9)} Provider to send back ${type.toLowerCase()}.`
     const old_tags = response.tags
     response.tags = [
         {
-            'name': 'rpc-only',
-            'x-response-for': provider.name
+            'name': 'rpc-only'
         }
     ]
+    response.tags[`x-${type.toLowerCase()}-for`] = provider.name
 
     const paramExamples = []
 
-    if (provider.tags.find(t => t['x-response'])) {
+    if (provider.tags.find(t => t[`x-${type.toLowerCase()}`])) {
         response.params = [
             {
-                name: 'response',
+                name: type.toLowerCase(),
                 required: true,
                 schema: {
                     allOf: [
                         {
-                            "$ref": "https://meta.comcast.com/firebolt/types#/definitions/ProviderResponse"
+                            "$ref": "https://meta.comcast.com/firebolt/types#/definitions/ProviderResponse" // use this schema for both Errors and Results
                         },
                         {
                             "type": "object",
                             "properties": {
-                                "result": provider.tags.find(t => t['x-response'])['x-response']
+                                "result": provider.tags.find(t => t[`x-${type.toLowerCase()}`])[`x-${type.toLowerCase()}`]
                             }
                         }
                     ]
@@ -525,7 +543,36 @@ const createResponseFromProvider = (provider, json) => {
             }
         ]
 
-        const schema = localizeDependencies(provider.tags.find(t => t['x-response'])['x-response'], json)
+        if (!provider.tags.find(t => t['x-error'])) {
+            provider.tags.find(t => t.name === 'event')['x-error'] = {
+                //"$ref": "https://meta.open-rpc.org/#definitions/errorObject"
+                // TODO: replace this with ref above (requires merge of `fix/rpc.discover`)
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "code",
+                  "message"
+                ],
+                "properties": {
+                  "code": {
+                    "title": "errorObjectCode",
+                    "description": "A Number that indicates the error type that occurred. This MUST be an integer. The error codes from and including -32768 to -32000 are reserved for pre-defined errors. These pre-defined errors SHOULD be assumed to be returned from any JSON-RPC api.",
+                    "type": "integer"
+                  },
+                  "message": {
+                    "title": "errorObjectMessage",
+                    "description": "A String providing a short description of the error. The message SHOULD be limited to a concise single sentence.",
+                    "type": "string"
+                  },
+                  "data": {
+                    "title": "errorObjectData",
+                    "description": "A Primitive or Structured value that contains additional information about the error. This may be omitted. The value of this member is defined by the Server (e.g. detailed error information, nested errors etc.)."
+                  }
+                }
+            }
+        }
+
+        const schema = localizeDependencies(provider.tags.find(t => t[`x-${type.toLowerCase()}`])[`x-${type.toLowerCase()}`], json)
 
         let n = 1
         if (schema.examples && schema.examples.length) {
@@ -533,7 +580,7 @@ const createResponseFromProvider = (provider, json) => {
                 name: schema.examples.length === 1 ? "Example" : `Example #${n++}`,
                 params: [
                     {
-                        name: 'response',
+                        name: `${type.toLowerCase()}`,
                         value: {
                             correlationId: "123",
                             result: param
@@ -552,7 +599,7 @@ const createResponseFromProvider = (provider, json) => {
                 name: 'Generated Example',
                 params: [
                     {
-                        name: 'response',
+                        name: `${type.toLowerCase()}`,
                         value: {
                             correlationId: "123",
                             result: {
@@ -568,12 +615,21 @@ const createResponseFromProvider = (provider, json) => {
             })
         }
     }
-    else {
-        response.params = []
+    
+    if (paramExamples.length === 0) {
+        const value = type === 'Error' ? { code: 1, message: 'Error' } : {}
         paramExamples.push(
             {
                 name: 'Example 1',
-                params: [],
+                params: [
+                    {
+                        name: `${type.toLowerCase()}`,
+                        value: {
+                            correlationId: "123",
+                            result: value
+                        }                        
+                    }
+                ],
                 result: {
                     name: 'result',
                     value: null
@@ -646,7 +702,61 @@ const generateProviderMethods = json => {
     })
 
     providers.forEach(provider => {
-        json.methods.push(createResponseFromProvider(provider, json))
+        json.methods.push(createResponseFromProvider(provider, 'Response', json))
+        json.methods.push(createResponseFromProvider(provider, 'Error', json))
+    })
+
+    return json
+}
+
+const generateEventListenerParameters = json => {
+    const events = json.methods.filter( m => m.tags && m.tags.find(t => t.name == 'event')) || []
+
+    events.forEach(event => {
+        event.params = event.params || []
+        event.params.push({
+            "name": "listen",
+            "required": true,
+            "schema": {
+                "type": "boolean"
+            }
+        })
+
+        event.examples = event.examples || []
+
+        event.examples.forEach(example => {
+            example.params = example.params || []
+            example.params.push({
+                "name": "listen",
+                "value": true
+            })
+        })
+    })
+
+    return json
+}
+
+const generateEventListenResponse = json => {
+    const events = json.methods.filter( m => m.tags && m.tags.find(t => t.name == 'event')) || []
+
+    events.forEach(event => {
+        // only want or and xor here (might even remove xor)
+        const anyOf = event.result.schema.oneOf || event.result.schema.anyOf
+        const ref = {
+            "$ref": "https://meta.comcast.com/firebolt/types#/definitions/ListenResponse"
+        }
+
+        if (anyOf) {
+            anyOf.splice(0, 0, ref)
+        }
+        else {
+            event.result.schema = {
+                anyOf: [
+                    ref,
+                    event.result.schema
+                ]
+            }
+        }
     })
 
     return json
@@ -671,9 +781,22 @@ const getPathFromModule = (module, path) => {
     return item    
 }
 
+const fireboltize = (json) => {
+    json = generatePropertyEvents(json)
+    json = generatePropertySetters(json)
+    json = generatePolymorphicPullEvents(json)
+    json = generateProviderMethods(json)
+    json = generateTemporalSetMethods(json)
+    json = generateEventListenerParameters(json)
+    json = generateEventListenResponse(json)
+    
+    return json
+}
+
 export {
     isEnum,
     isEventMethod,
+    isEventMethodWithContext,
     isPublicEventMethod,
     isPolymorphicReducer,
     isPolymorphicPullMethod,
@@ -683,6 +806,8 @@ export {
     isProviderMethod,
     hasExamples,
     hasTitle,
+    hasMethodAttributes,
+    getMethodAttributes,
     getMethods,
     getMethodsThatProvide,
     getProvidedCapabilities,
@@ -692,12 +817,8 @@ export {
     getPublicEvents,
     getSchemas,
     getParamsFromMethod,
+    fireboltize,
     getPayloadFromEvent,
     getPathFromModule,
-    generatePolymorphicPullEvents,
-    generatePropertyEvents,
-    generatePropertySetters,
-    generateProviderMethods,
-    generateTemporalSetMethods,
     providerHasNoParameters
 }

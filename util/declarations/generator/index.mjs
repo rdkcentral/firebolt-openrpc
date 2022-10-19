@@ -24,7 +24,7 @@ import logic from 'crocks/logic/index.js'
 const { not } = logic
 
 import { getMethods, getTypes, isEventMethod, isPublicEventMethod, isPolymorphicPullMethod, getEnums, isRPCOnlyMethod, getProvidedCapabilities, isTemporalSetMethod } from '../../shared/modules.mjs'
-import { getSchemaType, getSchemaShape, getMethodSignature, generateEnum, getProviderInterface, getProviderName, getProviderSessionInterface } from '../../shared/typescript.mjs'
+import { getSchemaType, getSchemaShape, getMethodSignature, getMethodSignatureParams, generateEnum, getProviderInterface, getProviderName, getProviderSessionInterface } from '../../shared/typescript.mjs'
 import { getExternalSchemas } from '../../shared/json-schema.mjs'
 
 const getModuleName = getPathOr('missing', ['info', 'title'])
@@ -199,9 +199,10 @@ const generateProviders = (json, schemas = {}) => compose(
 const polymorphicPull = (json, val, schemas = {}) => {
   let acc = ''
 
+  acc += `/**\n`
+
   if (val.summary) {
-    acc += `/**
- * ${val.summary}`
+    acc += ` * ${val.summary}`
   }
 
   acc += deprecatedMessage(val)
@@ -227,9 +228,10 @@ const polymorphicPull = (json, val, schemas = {}) => {
 const polymorphicPush = (json, val, schemas = {}) => {
   let acc = ''
 
+  acc += `/**\n`
+
   if (val.summary) {
-    acc += `/**
- * ${val.summary}`
+    acc += ` * ${val.summary}`
   }
 
   acc += deprecatedMessage(val)
@@ -258,9 +260,10 @@ const polymorphicPush = (json, val, schemas = {}) => {
 const subscriber = (json, val, schemas) => {
   let acc = ''
 
+  acc += `/**\n`
+
   if (val.summary) {
-    acc += `/**
- * ${val.summary}`
+    acc += ` * ${val.summary}`
   }
 
   acc += deprecatedMessage(val)
@@ -271,8 +274,9 @@ const subscriber = (json, val, schemas) => {
  */
 `
   const type = val.name[0].toUpperCase() + val.name.substr(1)
+  const context = getMethodSignatureParams(json, val, schemas, { isInterface: false })
 
-  acc += `function ${val.name}(subscriber: (${val.result.name}: ${getSchemaType(json, val.result.schema, schemas)}) => void): Promise<number>\n`
+  acc += `function ${val.name}(${context ? context + ', ' : ''}subscriber: (${val.result.name}: ${getSchemaType(json, val.result.schema, schemas)}) => void): Promise<number>\n`
     
   return acc
 }
@@ -280,9 +284,10 @@ const subscriber = (json, val, schemas) => {
 const setter = (json, val, schemas = {}) => {
   let acc = ''
 
+  acc += `/**\n`
+  
   if (val.summary) {
-    acc += `/**
- * ${val.summary}`
+    acc += ` * ${val.summary}`
   }
 
   acc += deprecatedMessage(val)
@@ -293,8 +298,9 @@ const setter = (json, val, schemas = {}) => {
  */
 `
   const type = val.name[0].toUpperCase() + val.name.substr(1)
+  const context = getMethodSignatureParams(json, val, schemas, { isInterface: false })
 
-  acc += `function ${val.name}(value: ${getSchemaType(json, val.result.schema, schemas)}): Promise<void>\n`
+  acc += `function ${val.name}(${context ? context + ', ' : ''}value: ${getSchemaType(json, val.result.schema, schemas)}): Promise<void>\n`
     
   return acc
 }
@@ -303,11 +309,12 @@ const setter = (json, val, schemas = {}) => {
 const generateMethods = (json, schemas = {}) => compose(
   reduce((acc, val, i, arr) => {
 
-    if (val.summary) {
-      acc += `/**
- * ${val.summary}`
-    }
+    acc += `/**\n`
 
+    if (val.summary) {
+      acc += ` * ${val.summary}`
+    }
+    
     acc += deprecatedMessage(val)
 
     if (val.params && val.params.length) {
@@ -328,7 +335,8 @@ const generateMethods = (json, schemas = {}) => compose(
       if (val.params && val.params.length) {
         sig += ', '
       }
-      sig += `add: (item: ${itemType}) => void, remove: (item: ${itemType}) => void): { stop: () => {} }`
+      sig +=  `add: (item: ${itemType}) => void, remove: (item: ${itemType}) => void): { stop: () => {} }\n` +
+              sig + `add: (item: ${itemType}) => void): { stop: () => {} }`
     }
 
     if (val.tags && val.tags.find(t => t.name == 'polymorphic-pull')) {

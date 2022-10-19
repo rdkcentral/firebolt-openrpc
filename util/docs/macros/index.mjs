@@ -306,6 +306,7 @@ function insertMacros(data = '', moduleJson = {}, templates = {}, schemas = {}, 
     data = data
         .replace(/\$\{module}/g, getTitle(moduleJson).toLowerCase() + '.json')
         .replace(/\$\{info.title}/g, getTitle(moduleJson))
+        .replace(/\$\{jsonrpc.module}/g, getTitle(moduleJson).toLowerCase())
         .replace(/\$\{package.name}/g, pkg.name)
         .replace(/\$\{package.repository}/g, pkg.repository && pkg.repository.url && pkg.repository.url.split("git+").pop().split("/blob").shift() || '')
         .replace(/\$\{package.repository.name}/g, pkg.repository && pkg.repository.url && pkg.repository.url.split("/").slice(3,5).join("/") || '')
@@ -671,10 +672,6 @@ function iterateSignatures(data, method, moduleJson = {}, schemas = {}, template
         const possibleResults = method.result.schema.oneOf || method.result.schema.anyOf
         if (possibleResults && possibleResults.length == 2) {
             method.result.schema = possibleResults.find(s => s['$ref'] !== "https://meta.comcast.com/firebolt/types#/definitions/ListenResponse")
-        }
-        else {
-            console.log(`\nERROR: ${getTitle(moduleJson.info.title)}.${method.name} does not have two return types: both 'ListenResponse' and an event-specific payload\n`)
-            process.exit(-1)
         }
     }
 

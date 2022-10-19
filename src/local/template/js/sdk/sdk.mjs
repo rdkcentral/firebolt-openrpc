@@ -16,5 +16,15 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-export { default as Provider } from './Provider/index.mjs'
-export { default as Simple } from './Simple/index.mjs'
+import { setMockResponses } from './Transport/MockTransport.mjs'
+
+/* ${MOCK_IMPORTS} */
+
+setMockResponses({
+  /* ${MOCK_OBJECTS} */
+})
+
+/* ${EXPORTS} */
+export { default as Log } from './Log/index.mjs'
+export { default as Events } from './Events/index.mjs'
+export { default as Settings } from './Settings/index.mjs'

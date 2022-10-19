@@ -92,7 +92,7 @@ const run = ({
 
     const macrofiedModules = h(Object.values(modules)
       .concat(Object.values(staticModules))) // <-- Static modules also get the macrofication spa treatment
-      .map(module => localizeDependencies(module, module, schemas, true))
+      .map(module => localizeDependencies(module, module, schemas, { externalOnly: true, keepRefsAndLocalizeAsComponent: true }))
       .flatMap(module => {
         const macros = macrosAlmost(module) // <-- call generateMacros with final async context
 

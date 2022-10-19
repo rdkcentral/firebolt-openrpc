@@ -26,7 +26,7 @@ import https from 'https'
 import url from 'url'
 import Ajv from 'ajv'
 import addFormats from 'ajv-formats'
-import { flattenSchemas } from '../shared/json-schema.mjs'
+import { flattenSchemas, removeIgnoredAdditionalItems, replaceUri } from '../shared/json-schema.mjs'
 import { readFileSync } from 'fs'
 const __dirname = url.fileURLToPath(new URL('.', import.meta.url))
 
@@ -38,7 +38,7 @@ const __dirname = url.fileURLToPath(new URL('.', import.meta.url))
 const run = ({
   'shared-schemas': sharedSchemasFolderArg,
   source: srcFolderArg,
-  'disable-transforms': disableTransforms = true // UNDOCUMENTED ARGUMENT!
+  'disable-transforms': disableTransforms = false // UNDOCUMENTED ARGUMENT!
 }) => {
   logHeader(` VALIDATING... `)
 
@@ -50,17 +50,16 @@ const run = ({
   const modulesFolder = path.join(srcFolderArg, 'modules')
 
   // Flip default value when running on /dist/ folder (makes default smart)
-  if (!disableTransforms && srcFolderArg.indexOf('/dist/') >= 0) {
+  if (!disableTransforms && (srcFolderArg.indexOf('/dist/') || srcFolderArg.indexOf('/build/')) >= 0) {
     disableTransforms = true
   }
 
   // Set up the ajv instance
   const ajv = new Ajv()
   addFormats(ajv)
+  // explicitly add our custom extensions so we can keep strict mode on (TODO: put these in a JSON config?)
+  ajv.addVocabulary(['x-method', 'x-this-param', 'x-additional-params'])
 
-  const combinedSchemas = combineStreamObjects(schemaFetcher(sharedSchemasFolder), schemaFetcher(schemasFolder), schemaFetcher(externalFolder))
-  const allModules = localModules(modulesFolder, markdownFolder, disableTransforms, false) // Validate private modules
-  
   const getJsonFromUrl = url => h((push) => {
     https.get(url, res => {
       res.on('data', chunk => push(null, chunk))
@@ -72,16 +71,18 @@ const run = ({
   .map(bufferToString)
   .map(JSON.parse)
   .errors(jsonErrorHandler(url))
-  
+
+  const combinedSchemas = combineStreamObjects(schemaFetcher(sharedSchemasFolder), schemaFetcher(schemasFolder), schemaFetcher(externalFolder))
+  const allModules = localModules(modulesFolder, markdownFolder, disableTransforms, false) // Validate private modules
+    
   const jsonSchema = getJsonFromUrl('https://meta.json-schema.tools')
 
-  // flatten JSON-Schema into OpenRPC
   //  - OpenRPC uses `additionalItems` when `items` is not an array of schemas. This fails strict validate, so we remove it
-  //  - AJV can't seem to handle having a property's schema be the entire JSON-Schema spec, so we need to merge OpenRPC & JSON-Schema into one schema
+  //  - OpenRPC uses raw.githubusercontent.com URLs for the json-schema spec, we replace this with the up to date spec on meta.json-schema.tools
   const openRpc = jsSpec => getJsonFromUrl('https://meta.open-rpc.org')
     .map(orSpec => {
-      flattenSchemas(orSpec, jsSpec) // This is mutating by reference. Only mutates `orSpec`.
-      delete orSpec.$schema
+      removeIgnoredAdditionalItems(orSpec)
+      replaceUri('https://raw.githubusercontent.com/json-schema-tools/meta-schema/1.5.9/src/schema.json', 'https://meta.json-schema.tools/', orSpec)
       return orSpec
     })
 

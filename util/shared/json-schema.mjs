@@ -33,7 +33,7 @@ const getExternalMarkdownPaths = obj => {
 
 const refToPath = ref => {
   let path = ref.split('#').pop().substr(1).split('/')
-  return path.map(x => x.match(/[0-9]+/) ? parseInt(x) : x)
+  return path.map(x => x.match(/^[0-9]+$/) ? parseInt(x) : x)
 }
 
 const objectPaths = obj => {
@@ -63,7 +63,7 @@ const localRefPaths = obj => {
   return objectPaths(obj)
     .filter(x => /\/\$ref$/.test(x))
     .map(refToPath)
-    .filter(x => /^#/.test(getPathOr(null, x, obj)))
+    .filter(x => /^#.+/.test(getPathOr(null, x, obj)))
 }
 
 
@@ -108,23 +108,23 @@ const updateRefUris = (schema, uri) => {
 }
 
 const removeIgnoredAdditionalItems = schema => {
-  if (schema.hasOwnProperty('additionalItems')) {
+  if (schema && schema.hasOwnProperty && schema.hasOwnProperty('additionalItems')) {
     if (!schema.hasOwnProperty('items') || !Array.isArray(schema.items)) {
       delete schema.additionalItems
     }
   }
-  else if (typeof schema === 'object') {
+  else if (schema && (typeof schema === 'object')) {
     Object.keys(schema).forEach(key => removeIgnoredAdditionalItems(schema[key]))
   }
 }
 
 const replaceUri = (existing, replacement, schema) => {
-  if (schema.hasOwnProperty('$ref') && (typeof schema['$ref'] === 'string')) {
+  if (schema && schema.hasOwnProperty && schema.hasOwnProperty('$ref') && (typeof schema['$ref'] === 'string')) {
     if (schema['$ref'].indexOf(existing) === 0) {
       schema['$ref'] = schema['$ref'].split('#').map( x => x === existing ? replacement : x).join('#')
     }
   }
-  else if (typeof schema === 'object') {
+  else if (schema && (typeof schema === 'object')) {
     Object.keys(schema).forEach(key => {
       replaceUri(existing, replacement, schema[key])
     })
@@ -171,9 +171,19 @@ const getPath = (uri = '', moduleJson = {}, schemas = {}) => {
 // grab a schema from another file in this project
 const getExternalPath = (uri = '', schemas = {}, localize = true, replace = true) => {
   const [mainPath, subPath] = uri.split('#')
-  const json = schemas[mainPath] || schemas[mainPath + '/']
+  const json = schemas[mainPath] || schemas[mainPath + '/'] 
+  
   // copy to avoid side effects
-  let result = JSON.parse(JSON.stringify(subPath ? getPathOr(null, subPath.slice(1).split('/'), json) : json))
+  let result
+
+  try {
+    result = JSON.parse(JSON.stringify(subPath ? getPathOr(null, subPath.slice(1).split('/'), json) : json))
+  }
+  catch (err) {
+    console.log(`Error loading ${uri}`)
+    console.log(err)
+    process.exit(100)
+  }
 
   if (localize) {
     result && (result = localizeDependencies(result, json, schemas))
@@ -247,8 +257,9 @@ function getSchemaConstraints(json, module, schemas = {}, options = { delimiter:
 }
 
 const defaultLocalizeOptions = {
-  externalOnly: false,  // true: only localizes refs pointing to other documents, false: localizes all refs into this def
-  mergeAllOfs: false    // true: does a deep merge on all `allOf` arrays, since this is possible w/out refs, and allows for **much** easier programatic inspection of schemas
+  externalOnly: false,                    // true: only localizes refs pointing to other documents, false: localizes all refs into this def
+  mergeAllOfs: false,                     // true: does a deep merge on all `allOf` arrays, since this is possible w/out refs, and allows for **much** easier programatic inspection of schemas
+  keepRefsAndLocalizeAsComponent: false   // true: localizes external schemas into definition.components.schemas, and changes the $refs to be local (use only on root RPC docs)
 }
 
 const localizeDependencies = (def, schema, schemas = {}, options = defaultLocalizeOptions) => {
@@ -267,23 +278,25 @@ const localizeDependencies = (def, schema, schemas = {}, options = defaultLocali
         let path = refs[i]      
         const ref = getPathOr(null, path, definition)
         path.pop() // drop ref
-        let resolvedSchema = JSON.parse(JSON.stringify(getPathOr(null, refToPath(ref), schema)))
+        if (refToPath(ref).length > 1) {
+          let resolvedSchema = JSON.parse(JSON.stringify(getPathOr(null, refToPath(ref), schema)))
         
-        if (!resolvedSchema) {
-          resolvedSchema = { "$REF": ref}
-          unresolvedRefs.push([...path])
-        }
-
-        if (path.length) {
-          // don't loose examples from original object w/ $ref
-          // todo: should we preserve other things, like title?
-          const examples = getPathOr(null, [...path, 'examples'], definition)
-          resolvedSchema.examples = examples || resolvedSchema.examples
-          definition = setPath(path, resolvedSchema, definition)
-        }
-        else {
-          delete definition['$ref']
-          Object.assign(definition, resolvedSchema)
+          if (!resolvedSchema) {
+            resolvedSchema = { "$REF": ref}
+            unresolvedRefs.push([...path])
+          }
+  
+          if (path.length) {
+            // don't loose examples from original object w/ $ref
+            // todo: should we preserve other things, like title?
+            const examples = getPathOr(null, [...path, 'examples'], definition)
+            resolvedSchema.examples = examples || resolvedSchema.examples
+            definition = setPath(path, resolvedSchema, definition)
+          }
+          else {
+            delete definition['$ref']
+            Object.assign(definition, resolvedSchema)
+          }  
         }
       }
       refs = localRefPaths(definition)
@@ -295,9 +308,15 @@ const localizeDependencies = (def, schema, schemas = {}, options = defaultLocali
     for (let i=0; i<refs.length; i++) {
       let path = refs[i]      
       const ref = getPathOr(null, path, definition)
+
       path.pop() // drop ref
-      let resolvedSchema = getExternalPath(ref, schemas, true)
+      let resolvedSchema
       
+      // only resolve our schemas for localization. TODO: make this a CLI param
+      if (ref.startsWith('https://meta.comcast.com/')) {
+        resolvedSchema = getExternalPath(ref, schemas, true)
+      }
+
       if (!resolvedSchema) {
         resolvedSchema = { "$REF": ref}
         unresolvedRefs.push([...path])
@@ -308,9 +327,22 @@ const localizeDependencies = (def, schema, schemas = {}, options = defaultLocali
         // todo: should we preserve other things, like title?
         const examples = getPathOr(null, [...path, 'examples'], definition)
         resolvedSchema.examples = examples || resolvedSchema.examples
-        definition = setPath(path, resolvedSchema, definition)
+
+        if (options.keepRefsAndLocalizeAsComponent) {
+          // if copying schemas, just drop them in components.schemas
+          const title = ref.split('/').pop()
+          definition.components = definition.components || {}
+          definition.components.schemas = definition.components.schemas || {}
+          definition.components.schemas[title] = resolvedSchema
+          definition = setPath([...path, '$ref'], `#/components/schemas/${title}`, definition)
+        }
+        else {
+          // otherwise, copy the schema definition to the exact location of the old $ref
+          definition = setPath(path, resolvedSchema, definition)
+        }
       }
       else {
+        // TODO: do we need keepRefsAndLocalizeAsComponent support at the root? i don't think so, that would mean that an OpenRPC doc just pointed to another right from the root.
         delete definition['$ref']
         Object.assign(definition, resolvedSchema)
       }
@@ -422,5 +454,6 @@ export {
   localizeDependencies,
   replaceUri,
   replaceRef,
-  flattenSchemas
+  flattenSchemas,
+  removeIgnoredAdditionalItems
 }
