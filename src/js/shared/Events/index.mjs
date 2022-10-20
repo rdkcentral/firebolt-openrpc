@@ -160,29 +160,30 @@ const doListen = function(module, event, callback, context, once, internal=false
       }
     })
 
-    let resolve, reject
-    let p = new Promise((res, rej) => {
-      resolve = res
-      reject = rej
-    })
+    let p = new Promise((resolve, reject) => {
+      let successes = 0
+      let failures = 0
 
-    if (promises.length) {
-      Promise.all(promises).then(responses => {
-        resolve(listenerId)
-      }).catch(error => {
-        // Promise.all rejects if at least one promise rejects... we don't want that behavior here
-        // TODO: Do something better than fail silently
-        if (event === '*') {
-          resolve(listenerId)
-        }
-        else {
-          reject(error)
-        }
+      promises.forEach(promise => {
+        let error
+
+        promise.then( id => {
+          successes++
+        }).catch( e => {
+          error = e
+          failures++
+        }).finally(() => {
+          if (successes + failures == promises.length) {
+            if (successes > 0) {
+              resolve(listenerId)
+            }
+            else {
+              reject(error)
+            }
+          }
+        })
       })
-    }
-    else {
-      resolve(listenerId)
-    }
+    })
 
     return p
   }
