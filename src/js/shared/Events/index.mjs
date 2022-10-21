@@ -143,48 +143,45 @@ const doListen = function(module, event, callback, context, once, internal=false
 
     events.forEach(event => {
       const key = module + '.' + event + (hasContext ? `.${contextKey}`  : '')
-
       if (Object.values(listeners.get(key)).length === 0) {
         const { id, promise } = Transport.listen(module, 'on' + event[0].toUpperCase() + event.substring(1), { listen: true })
         keys[id] = key
         promises.push(promise)
-      }
-
-      const setter = internal ? listeners.setInternal : listeners.set
-
-      if (wildcard) {
-        setter(key, ''+listenerId, value => callback(event, value))
-      }
-      else {
-        setter(key, ''+listenerId, callback)
-      }
-    })
-
-    let p = new Promise((resolve, reject) => {
-      let successes = 0
-      let failures = 0
-
-      promises.forEach(promise => {
-        let error
-
+        const setter = internal ? listeners.setInternal : listeners.set
         promise.then( id => {
-          successes++
-        }).catch( e => {
-          error = e
-          failures++
-        }).finally(() => {
-          if (successes + failures == promises.length) {
-            if (successes > 0) {
-              resolve(listenerId)
-            }
-            else {
-              reject(error)
-            }
+          if (wildcard) {
+            setter(key, ''+listenerId, value => callback(event, value))
           }
+          else {
+            setter(key, ''+listenerId, callback)
+          }
+        }).catch( error => {
+          reject(error)
         })
-      })
+      }
     })
-
+    let resolve, reject
+    let p = new Promise((res, rej) => {
+      resolve = res
+      reject = rej
+    })
+    if (promises.length) {
+      Promise.all(promises).then(responses => {
+        resolve(listenerId)
+      }).catch(error => {
+        // Promise.all rejects if at least one promise rejects... we don't want that behavior here
+        // TODO: Do something better than fail silently
+        if (event === '*') {
+          resolve(listenerId)
+        }
+        else {
+          reject(error)
+        }
+      })
+    }
+    else {
+      resolve(listenerId)
+    }
     return p
   }
 }
