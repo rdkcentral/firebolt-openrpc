@@ -1,3 +1,13 @@
+# 1.6.0
+ 
+- Convert all unit tests to TypeScript
+- Docs generation Clean-up (schemas, etc.)
+- Temporal Set methods, e.g. DeveloperTools.find()
+- Provider APIs
+- Support for static declarations template
+- Bugfix: remove unit test global object
+- Bugfix: include external schemas in declarations
+
 # 1.5.0
 
 - Much more beautiful validation error messages

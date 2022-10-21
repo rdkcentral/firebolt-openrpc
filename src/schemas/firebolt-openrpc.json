@@ -35,9 +35,59 @@
         "Method": {
             "type": "object",
             "required": [
-                "examples"
+                "examples",
+                "tags"
             ],
             "properties": {
+                "tags": {
+                    "type": "array",
+                    "contains": {
+                        "anyOf": [
+                            {
+                                "type": "object",
+                                "required": ["x-uses"],
+                                "properties": {
+                                    "x-uses": {
+                                        "type": "array",
+                                        "minItems": 1,
+                                        "items": {
+                                            "type": "string",
+                                            "pattern": "^xrn:firebolt:capability:"
+                                        }
+                                    }
+                                }
+                            },
+                            {
+                                "type": "object",
+                                "required": ["x-manages"],
+                                "properties": {
+                                    "x-uses": {
+                                        "type": "array",
+                                        "minItems": 1,
+                                        "items": {
+                                            "type": "string",
+                                            "pattern": "^xrn:firebolt:capability:"
+                                        }
+                                    }
+                                }
+                            },
+                            {
+                                "type": "object",
+                                "required": ["x-provides"],
+                                "properties": {
+                                    "x-uses": {
+                                        "type": "array",
+                                        "minItems": 1,
+                                        "items": {
+                                            "type": "string",
+                                            "pattern": "^xrn:firebolt:capability:"
+                                        }
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                },
                 "examples": {
                     "type": "array",
                     "minItems": 1
