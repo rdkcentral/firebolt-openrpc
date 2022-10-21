@@ -160,11 +160,13 @@ const doListen = function(module, event, callback, context, once, internal=false
         })
       }
     })
+
     let resolve, reject
     let p = new Promise((res, rej) => {
       resolve = res
       reject = rej
     })
+
     if (promises.length) {
       Promise.all(promises).then(responses => {
         resolve(listenerId)
@@ -182,6 +184,7 @@ const doListen = function(module, event, callback, context, once, internal=false
     else {
       resolve(listenerId)
     }
+    
     return p
   }
 }
