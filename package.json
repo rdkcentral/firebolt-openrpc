@@ -23,13 +23,13 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/rdkcentral/firebolt-core-sdk/blob/main/src/modules//ottx/firebolt-openrpc.git"
+    "url": "git+https://github.com/rdkcentral/firebolt-openrpc.git"
   },
   "author": "",
   "bugs": {
     "url": "https://github.com/rdkcentral/firebolt-openrpc/issues"
   },
-  "homepage": "https://github.com/rdkcentral/firebolt-core-sdk/blob/main/src/modules//ottx/firebolt-openrpc#readme",
+  "homepage": "https://github.com/rdkcentral/firebolt-openrpc#readme",
   "devDependencies": {
     "@commitlint/cli": "^17.1.2",
     "@commitlint/config-conventional": "^17.1.0",
