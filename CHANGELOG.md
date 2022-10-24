@@ -1,3 +1,10 @@
+# [1.7.0-next.1](https://github.com/rdkcentral/firebolt-openrpc/compare/v1.6.2-next.1...v1.7.0-next.1) (2022-10-24)
+
+
+### Features
+
+* Context Params and Request Methods ([d36586e](https://github.com/rdkcentral/firebolt-openrpc/commit/d36586e76ce5ff864012a97be10c71123f97f191))
+
 ## 1.7.0-next
 
 ### Features
