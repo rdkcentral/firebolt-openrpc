@@ -1,3 +1,12 @@
+## [1.6.2-next.1](https://github.com/rdkcentral/firebolt-openrpc/compare/v1.6.1...v1.6.2-next.1) (2022-10-24)
+
+
+### Bug Fixes
+
+* $ref usage in context parameters ([906eeb6](https://github.com/rdkcentral/firebolt-openrpc/commit/906eeb6c3750594dd18e0c88a4ad86d22ad13897))
+* JSONRPC docs for provider response has invalid format ([#61](https://github.com/rdkcentral/firebolt-openrpc/issues/61)) ([34ddeaf](https://github.com/rdkcentral/firebolt-openrpc/commit/34ddeaf7345074a894f901464d366b6eb4488e51))
+* multiple provider doc headers for same module are broken ([#56](https://github.com/rdkcentral/firebolt-openrpc/issues/56)) ([e63928f](https://github.com/rdkcentral/firebolt-openrpc/commit/e63928f5160c9d4227f3207c8a7c90495245ff7a))
+
 ## [1.4.1-next.1](https://github.com/rdkcentral/firebolt-openrpc/compare/v1.4.0...v1.4.1-next.1) (2022-10-24)
 
 
