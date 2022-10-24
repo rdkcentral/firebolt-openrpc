@@ -24,6 +24,8 @@ jobs:
       - name: Override npm dist-tag for non-main releases
         if: github.ref_name != 'main'
         run: echo "NPM_DIST_TAG=${{ github.ref_name }}" >> $GITHUB_ENV
+      - name: Install dependencies
+        run: npm ci
       - name: Release to GitHub and NPM
         env:
           GITHUB_TOKEN: ${{ secrets.SEMANTIC_RELEASE_BOT_PAT }} # <-- Allows semantic-release-bot to push changes to protected branches
