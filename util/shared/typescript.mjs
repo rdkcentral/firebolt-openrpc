@@ -387,7 +387,7 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
       else {
         // grab the type for the non-array schema, so we get the link for free
         // added asPath and baseUrl to generate proper URL
-        let type = getSchemaType(module, json.items, schemas, {code: options.code, link: options.link, title: options.title, asPath: options.asPath, baseUrl: options.baseUrl})
+        let type = getSchemaType(module, json.items, schemas, options)
         // insert the [] into the type
         if (options.link) {
           type = type.replace(/\[(`?)(.*)(`?)\]/, '\[$1$2\[\]$3\]')
