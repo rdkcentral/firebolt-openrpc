@@ -1,4 +1,11 @@
+.husky/*
+.github/*
+.commitlintrc.json
+.releaserc
 build/*
 node_modules/*
 .DS_Store
 merge-script-control-flow.svg
+jest.config.json
+test/*
+firebolt-*.tgz
