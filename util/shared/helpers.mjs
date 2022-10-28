@@ -361,6 +361,7 @@ export {
   fsWriteFile,
   fsReadFile,
   logSuccess,
+  logInfo,
   logError,
   logHeader,
   getFilename,
