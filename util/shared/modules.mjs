@@ -54,26 +54,33 @@ const getMethods = compose(
     getPath(['methods'])
 )
 
-const isProviderMethod = compose(
-    option(false),
-    map(_ => true),
-    chain(
-      find(
-        and(
-          propEq('name', 'capabilities'),
-          propSatisfies('x-provides', not(isEmpty))
+const isProviderInterfaceMethod = compose(
+    and(
+        compose(
+            propSatisfies('name', name => name.startsWith('onRequest'))
+        ),
+        compose(
+            option(false),
+            map(_ => true),
+            chain(
+              find(
+                and(
+                  propEq('name', 'capabilities'),
+                  propSatisfies('x-provides', not(isEmpty))
+                )
+              )
+            ),
+            getPath(['tags'])        
         )
-      )
-    ),
-    getPath(['tags'])
+    )
   )
 
 const getProvidedCapabilities = (json) => {
-    return Array.from(new Set([...getMethods(json).filter(isProviderMethod).map(method => method.tags.find(tag => tag['x-provides'])['x-provides'])]))
+    return Array.from(new Set([...getMethods(json).filter(isProviderInterfaceMethod).map(method => method.tags.find(tag => tag['x-provides'])['x-provides'])]))
 }
 
-const getMethodsThatProvide = (capability, json) => {
-    return getMethods(json).filter(method => method.tags && method.tags.find(tag => tag['x-provides'] === capability))
+const getProviderInterfaceMethods = (capability, json) => {
+    return getMethods(json).filter(method => method.name.startsWith("onRequest") && method.tags && method.tags.find(tag => tag['x-provides'] === capability))
 }
   
 
@@ -472,13 +479,8 @@ const createFocusFromProvider = provider => {
     const ready = JSON.parse(JSON.stringify(provider))
     ready.name = ready.name.charAt(9).toLowerCase() + ready.name.substr(10) + 'Focus'
     ready.summary = `Internal API for ${provider.name.substr(9)} Provider to request focus for UX purposes.`
-    const old_tags = ready.tags
-    ready.tags = [
-        {
-            'name': 'rpc-only',
-            'x-allow-focus-for': provider.name
-        }
-    ]
+    ready.tags = ready.tags.filter(t => t.name !== 'event')
+    ready.tags.find(t => t.name === 'capabilities')['x-allow-focus-for'] = provider.name
 
     ready.params = []
     ready.result = {
@@ -512,13 +514,9 @@ const createResponseFromProvider = (provider, type, json) => {
     const response = JSON.parse(JSON.stringify(provider))
     response.name = response.name.charAt(9).toLowerCase() + response.name.substr(10) + type
     response.summary = `Internal API for ${provider.name.substr(9)} Provider to send back ${type.toLowerCase()}.`
-    const old_tags = response.tags
-    response.tags = [
-        {
-            'name': 'rpc-only'
-        }
-    ]
-    response.tags[`x-${type.toLowerCase()}-for`] = provider.name
+
+    response.tags = response.tags.filter(t => t.name !== 'event')
+    response.tags.find(t => t.name === 'capabilities')[`x-${type.toLowerCase()}-for`] = provider.name
 
     const paramExamples = []
 
@@ -687,7 +685,7 @@ const generateTemporalSetMethods = json => {
 
 
 const generateProviderMethods = json => {
-    const providers = json.methods.filter( m => m.tags && m.tags.find( t => t.name == 'capabilities' && t['x-provides'])) || []
+    const providers = json.methods.filter( m => m.name.startsWith('onRequest') && m.tags && m.tags.find( t => t.name == 'capabilities' && t['x-provides'])) || []
 
     providers.forEach(provider => {
         if (! isRPCOnlyMethod(provider)) {
@@ -803,13 +801,13 @@ export {
     isTemporalSetMethod,
     isExcludedMethod,
     isRPCOnlyMethod,
-    isProviderMethod,
+    isProviderInterfaceMethod,
     hasExamples,
     hasTitle,
     hasMethodAttributes,
     getMethodAttributes,
     getMethods,
-    getMethodsThatProvide,
+    getProviderInterfaceMethods,
     getProvidedCapabilities,
     getEnums,
     getTypes,

@@ -35,12 +35,22 @@
         "Method": {
             "type": "object",
             "required": [
-                "examples"
+                "examples",
+                "tags"
             ],
             "properties": {
                 "examples": {
                     "type": "array",
                     "minItems": 1
+                },
+                "tags": {
+                    "type": "array",
+                    "items": {
+                        "type": "object"
+                    },
+                    "contains": {
+                        "$ref": "#/definitions/CapabilitiesTag"
+                    }
                 }
             },
             "allOf": [
@@ -78,8 +88,12 @@
                 },
                 {
                     "if": {
-                        "required": [ "tags"],
+                        "required": [ "tags", "name"],
                         "properties": {
+                            "name": {
+                                "type": "string",
+                                "pattern": "^onRequest"
+                            },
                             "tags": {
                                 "type": "array",
                                 "contains": {
@@ -853,8 +867,28 @@
                         },
                         "x-allow-focus": {
                             "type": "boolean"
+                        },
+                        "x-response-for": {
+                            "type": "string"
+                        },
+                        "x-allow-focus-for": {
+                            "type": "string"
+                        },
+                        "x-error-for": {
+                            "type": "string"
                         }
-                    }
+                    },
+                    "anyOf": [
+                        {
+                            "required": [ "x-uses"]
+                        },
+                        {
+                            "required": [ "x-manages"]
+                        },
+                        {
+                            "required": [ "x-provides"]
+                        }
+                    ]
                 }
             ]
         },
