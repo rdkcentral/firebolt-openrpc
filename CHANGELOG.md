@@ -1,3 +1,10 @@
+# [1.7.0-next.2](https://github.com/rdkcentral/firebolt-openrpc/compare/v1.7.0-next.1...v1.7.0-next.2) (2022-10-31)
+
+
+### Bug Fixes
+
+* Interfaceless providers ([#68](https://github.com/rdkcentral/firebolt-openrpc/issues/68)) ([ceb3040](https://github.com/rdkcentral/firebolt-openrpc/commit/ceb304018c2e0eb7cf5ac6f9bcd5b44bab0cb083))
+
 # [1.7.0-next.1](https://github.com/rdkcentral/firebolt-openrpc/compare/v1.6.2-next.1...v1.7.0-next.1) (2022-10-24)
 
 
