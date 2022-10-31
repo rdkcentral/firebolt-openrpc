@@ -1,3 +1,10 @@
+# [1.7.0-next.3](https://github.com/rdkcentral/firebolt-openrpc/compare/v1.7.0-next.2...v1.7.0-next.3) (2022-10-31)
+
+
+### Bug Fixes
+
+* Only generate docs for used schema files ([ff08978](https://github.com/rdkcentral/firebolt-openrpc/commit/ff08978477ef8eb048c9f4c9d9a96e2fe66fc868))
+
 # [1.7.0-next.2](https://github.com/rdkcentral/firebolt-openrpc/compare/v1.7.0-next.1...v1.7.0-next.2) (2022-10-31)
 
 
