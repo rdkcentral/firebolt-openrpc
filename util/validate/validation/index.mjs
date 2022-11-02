@@ -40,6 +40,7 @@ const addPrettyPath = (error, json) => {
   })
   error.prettyPath = '/' + path.join('/')
   error.document = root
+  error.node = pointer
   return error
 }
 
@@ -136,6 +137,7 @@ export const displayError = (error) => {
 
   // This is useful for debugging... please leave comment here for quick access :)
   // console.dir(error, {depth: 1000})
+  // console.dir(error.node, {depth: 100})
 
   console.error()
 }

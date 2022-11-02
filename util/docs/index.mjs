@@ -56,9 +56,10 @@ const run = ({
   // All the streams we care about.
   const combinedTemplates = combineStreamObjects(loadFilesIntoObject(sharedTemplateFolder, '.md', '/template/markdown/'), loadFilesIntoObject(templateFolder, '.md', '/template/markdown/'))
   const combinedSchemas = combineStreamObjects(schemaFetcher(sharedSchemasFolder), schemaFetcher(schemasFolder))
-  
+  const usedSchemasFilter = (schema, modules) => Object.values(modules).find(module => JSON.stringify(module).match(new RegExp("\"" + schema.$id + "(#[^\"]+)?\""))) // filter out schemas nobody references...
+
   const generateDocs = templates => modules => schemas => version => h(Object.entries(modules))
-  .concat(Object.entries(schemas))
+    .concat(Object.entries(schemas).filter(([_, schema]) => usedSchemasFilter(schema, modules)))
     .flatMap(([_, module]) => {
       const documentOptions = {
         asPath: asPath,

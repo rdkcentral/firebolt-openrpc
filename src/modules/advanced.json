@@ -11,6 +11,10 @@
             "tags": [
                 {
                     "name": "event"
+                },
+                {
+                    "name": "capabilities",
+                    "x-uses": ["xrn:firebolt:capability:test:test"]
                 }
             ],
             "summary": "A temporal set method that lists Advanced objects.",
@@ -61,7 +65,9 @@
                 },
                 {
                     "name": "capabilities",
-                    "x-uses": "xrn:firebolt:capability:test:test"
+                    "x-uses": [
+                        "xrn:firebolt:capability:test:test"
+                    ]
                 }
             ],
             "params": [
@@ -100,6 +106,10 @@
             "tags": [
                 {
                     "name": "temporal-set"
+                },
+                {
+                    "name": "capabilities",
+                    "x-uses": ["xrn:firebolt:capability:test:test"]
                 }
             ],
             "summary": "A temporal set method that lists Advanced objects.",
@@ -136,6 +146,12 @@
         {
             "name": "action",
             "summary": "A method that takes an Advanced object.",
+            "tags": [
+                {
+                    "name": "capabilities",
+                    "x-uses": ["xrn:firebolt:capability:test:test"]
+                }
+            ],
             "description": "A method for testing advanced method generation.",
             "params": [
                 {

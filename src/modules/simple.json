@@ -34,6 +34,12 @@
         {
             "name": "method",
             "summary": "A method.",
+            "tags": [
+                {
+                    "name": "capabilities",
+                    "x-uses": ["xrn:firebolt:capability:test:test"]
+                }
+            ],
             "description": "A method for testing basic method generation.",
             "params": [
                 {
@@ -93,7 +99,9 @@
                 },
                 {
                     "name": "capabilities",
-                    "x-uses": "xrn:firebolt:capability:test:test"
+                    "x-uses": [
+                        "xrn:firebolt:capability:test:test"
+                    ]
                 }
             ],
             "description": "A property for testing basic property generation.",
@@ -144,6 +152,12 @@
             "description": {
                 "$ref": "file:../descriptions/modules/Simple/methodWithMarkdownDescription.md"
             },
+            "tags": [
+                {
+                    "name": "capabilities",
+                    "x-uses": ["xrn:firebolt:capability:test:test"]
+                }
+            ],         
             "params": [
                 {
                     "name": "parameter",
@@ -197,6 +211,12 @@
             "name": "methodWithSchema",
             "summary": "A method using a schema.",
             "description": "A method for testing schema-dependent method generation.",
+            "tags": [
+                {
+                    "name": "capabilities",
+                    "x-uses": ["xrn:firebolt:capability:test:test"]
+                }
+            ],
             "params": [
                 {
                     "name": "title",
@@ -236,6 +256,12 @@
             "name": "methodWithMethodAttribute",
             "summary": "A method using a method-attribute transform.",
             "description": "A method for testing sub-method generation.",
+            "tags": [
+                {
+                    "name": "capabilities",
+                    "x-uses": ["xrn:firebolt:capability:test:test"]
+                }
+            ],
             "params": [
                 {
                     "name": "title",
