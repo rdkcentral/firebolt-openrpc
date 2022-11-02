@@ -19,7 +19,7 @@
  */
 
 import h from 'highland'
-import { fsWriteFile, fsCopy, localModules, combineStreamObjects, schemaFetcher, loadFilesIntoObject, clearDirectory, fsMkDirP, logSuccess, logHeader, loadJson, trimPath } from '../shared/helpers.mjs'
+import { fsWriteFile, fsCopy, localModules, combineStreamObjects, schemaFetcher, loadFilesIntoObject, clearDirectory, fsMkDirP, logSuccess, logHeader, trimPath, treeShakeDirectory, loadJson } from '../shared/helpers.mjs'
 import { insertMacros, insertAggregateMacrosOnly, generateMacros, generateAggregateMacros } from './macros/index.mjs'
 import path from 'path'
 
@@ -42,7 +42,8 @@ const run = ({
   template: templateFolderArg,
   output: outputFolderArg,
   'shared-schemas': sharedSchemasFolderArg,
-  'static-modules': staticModulesArg
+  'static-modules': staticModulesArg,
+  'main': mainEntryPoint
 }) => {
   // Important file/directory locations
   const packageJsonFile = path.join(srcFolderArg, '..', 'package.json')
@@ -152,7 +153,13 @@ const run = ({
                   .flatMap(fnWithTemplates => loadJson(packageJsonFile)
                     .tap(p => logHeader(`Generating ${p.description} --${p.version}--`))
                     .flatMap(fnWithTemplates) // <-- This is calling macroOrchestrator with the last of its arguments, the parsed package.json 
-                )
+                    .collect()
+                    .flatMap(_ => loadJson(packageJsonFile))
+                    .flatMap(json => {
+                      const entry = mainEntryPoint || path.basename(json.main)
+                      return treeShakeDirectory(outputFolderArg, entry)
+                    })
+                  )
               })
             )
         )

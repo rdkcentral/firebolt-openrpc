@@ -33,6 +33,7 @@ const {
   writeFile,
   readFile, // NOTE: This explicit casing is _required_
   copyFile, // NOTE: This explicit casing is _required_
+  rm,
   rmdir,
   stat
 } = fs
@@ -46,12 +47,13 @@ const fsCopyFile = h.wrapCallback(copyFile)
 const fsCopy = h.wrapCallback(copy)
 const fsMkDirP = h.wrapCallback((path, cb) => mkdir(path, { recursive: true }, cb))
 const fsRemoveDirectory = h.wrapCallback(rmdir)
+const fsRemoveFile = h.wrapCallback(rm)
 const fsWriteFile = h.wrapCallback(writeFile)
 const fsReadFile = h.wrapCallback(readFile)
 const bufferToString = buf => buf.toString()
 
 const copyDirectory = dir => h.wrapCallback(copy)
-const clearDirectory = dir => fsRemoveDirectory(dir, {recursive: true})
+const clearDirectory = dir => fsRemoveDirectory(dir, { recursive: true })
 const isFile = dir => fsStat(dir).map(statObj => statObj.isFile())
 
 const logSuccess = message => console.log(`\x1b[32m ✓ \x1b[0m\x1b[2m ${message}\x1b[0m`)
@@ -87,6 +89,77 @@ const recursiveFileDirectoryList = dirOrFile => {
   })
 }
 
+const removeFileAndParentIfEmpty = file => fsRemoveFile(file).flatMap(_ => h(removeParentDirIfEmpty(file)))
+
+const removeParentDirIfEmpty = file => {
+  return new Promise((resolve, reject) => {
+    const dir = path.dirname(file)
+    fs.stat(dir, (err, stat) => {
+      if (stat && !stat.isFile()) {
+        fs.readdir(dir, (err, files) => {
+          if (files.length === 0) {
+            rmdir(dir, { recursive: true }, err => {
+              if (err) {
+                reject(err)
+              }
+              else {
+                resolve()
+              }
+            })
+          }
+          else {
+            resolve()
+          }
+        })
+      }
+      else {
+        resolve()
+      }
+    })
+  })
+}
+
+
+const treeShakeDirectory = (baseUrl, entryPoint) => {
+  return h(new Promise((resolve, reject) => {
+    treeShakenFileList(baseUrl, entryPoint).then(keep => {
+      recursiveFileDirectoryList(baseUrl)
+        .filter(file => file.endsWith('.js') || file.endsWith('.mjs'))
+        .filter(file => !keep.includes(file))
+        .tap(file => logInfo(`Tree-shaking: ${trimPath(file)} from build.`))
+        .flatMap(removeFileAndParentIfEmpty)
+        .collect()
+        .tap(_ => resolve())
+        .done(_ => { })
+    })
+  }))
+}
+
+const importedFiles = code => Array.from(new Set([...code.matchAll(/(import|export).*?from\s+['"](.*?)['"]/g)].map(arr => arr[2])))
+
+const treeShakenFileList = (baseUrl, entryPoint, list = []) => {
+  const file = path.join(baseUrl, entryPoint)
+  baseUrl = path.dirname(file)
+  entryPoint = path.basename(file)
+
+  list.push(file)
+
+  return new Promise((resolve, reject) => {
+    readFile(path.join(baseUrl, entryPoint), (err, data) => {
+      if (data) {
+        const imports = importedFiles(bufferToString(data))
+        const newImports = imports.filter(i => !list.includes(i))
+        list.push(...newImports)
+        return Promise.all(newImports.map(i => treeShakenFileList(baseUrl, i, list).then(moreImports => list.push(...moreImports))))
+          .then(_ => { resolve(Array.from(new Set(list)).sort()) })
+      }
+      else {
+        reject(err)
+      }
+    })
+  })
+}
+
 // A through stream that expects a stream of filepaths, reads the contents
 // of any .suffix files found, and converts them to an array tuple that
 // has the filepath and the contents of the file.
@@ -102,14 +175,14 @@ const readUrl = url => h((push) => {
     res.on('end', () => push(null, h.nil))
   })
 })
-.collect()
-.map(Buffer.concat)
-  
+  .collect()
+  .map(Buffer.concat)
+
 const loadUrlContent = url => {
   return readUrl(url)
     .map(buf => [url, bufferToString(buf)])
 }
-  
+
 
 const jsonErrorHandler = filepath => (err, push) => {
   console.error(`\n\u{1F494} Error: ${filepath}\n`)
@@ -140,7 +213,7 @@ const parseVersion = json => {
   }
 
   v.original = json.version
-  
+
   return v
 }
 
@@ -177,13 +250,13 @@ const fileCollectionReducer = (truncateBefore = '') => (acc = {}, payload = '') 
   return acc
 }
 
-const hasPublicInterfaces = json => json.methods && json.methods.filter(m => m.tags && m.tags.find(t=>t['x-provides'])).length > 0
-const hasPublicMethods = json => hasPublicInterfaces(json) || (json.methods && json.methods.filter(m => !m.tags || !m.tags.map(t=>t.name).includes('rpc-only')).length > 0)
+const hasPublicInterfaces = json => json.methods && json.methods.filter(m => m.tags && m.tags.find(t => t['x-provides'])).length > 0
+const hasPublicMethods = json => hasPublicInterfaces(json) || (json.methods && json.methods.filter(m => !m.tags || !m.tags.map(t => t.name).includes('rpc-only')).length > 0)
 const alphabeticalSorter = (a, b) => a.info.title > b.info.title ? 1 : b.info.title > a.info.title ? -1 : 0
 const combineStreamObjects = (...xs) => h([...xs]).flatten().collect().map(xs => Object.assign({}, ...xs))
 const schemaMapper = ([_filepath, parsed]) => {
   if (parsed && parsed.$id) {
-    return  [parsed.$id, parsed]
+    return [parsed.$id, parsed]
   }
 }
 
@@ -211,13 +284,13 @@ const externalMarkdownDescriptions = markdownFolder => recursiveFileDirectoryLis
   .reduce({}, fileCollectionReducer('/src/'))
 
 const schemaFetcher = uri => loadSchema(uri)
-    .flatMap(([file, contents]) => h.of(contents)
-      .map(JSON.parse)
-      .tap(removeIgnoredAdditionalItems)
-      .tap(schema => replaceUri('https://raw.githubusercontent.com/json-schema-tools/meta-schema/1.5.9/src/schema.json', 'https://meta.json-schema.tools/', schema))
-      .errors(jsonErrorHandler(file))
-      .map(parsed => schemaMapper([file, parsed])))
-    .reduce({}, fileCollectionReducer())
+  .flatMap(([file, contents]) => h.of(contents)
+    .map(JSON.parse)
+    .tap(removeIgnoredAdditionalItems)
+    .tap(schema => replaceUri('https://raw.githubusercontent.com/json-schema-tools/meta-schema/1.5.9/src/schema.json', 'https://meta.json-schema.tools/', schema))
+    .errors(jsonErrorHandler(file))
+    .map(parsed => schemaMapper([file, parsed])))
+  .reduce({}, fileCollectionReducer())
 
 const loadSchema = uri => {
   if (uri.startsWith('http') || uri.startsWith('https')) {
@@ -225,8 +298,8 @@ const loadSchema = uri => {
   }
   else {
     return recursiveFileDirectoryList(uri)
-    .flatFilter(isFile)
-    .through(loadFileContent('.json'))
+      .flatFilter(isFile)
+      .through(loadFileContent('.json'))
   }
 }
 
@@ -263,9 +336,9 @@ const localModules = (modulesFolder = '', markdownFolder = '', disableTransforms
       }
     })
     .reduce({}, fileCollectionReducer('/modules/'))
-  }
+}
 
-  const trimPath = file => path.relative(process.cwd(), file)
+const trimPath = file => path.relative(process.cwd(), file)
 
 export {
   loadFilesIntoObject,
@@ -275,6 +348,8 @@ export {
   jsonErrorHandler,
   bufferToString,
   clearDirectory,
+  treeShakenFileList,
+  treeShakeDirectory,
   loadJson,
   loadVersion,
   parseVersion,

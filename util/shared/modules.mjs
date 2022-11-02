@@ -711,7 +711,7 @@ const generateTemporalSetMethods = json => {
 
 
 const generateProviderMethods = json => {
-    const providers = json.methods.filter(isProviderMethod) || []
+    const providers = json.methods.filter(isProviderInterfaceMethod) || []
 
     providers.forEach(provider => {
         if (! isRPCOnlyMethod(provider)) {
