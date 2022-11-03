@@ -463,6 +463,14 @@ const createSetterFromProperty = property => {
     old_tags.forEach(t => {
         if (t.name !== 'property' && !t.name.startsWith('property:'))
         {
+            // Setters manage the property that the getter uses
+            // If a getter manages a property, then the setter does to
+            if (t.name === "capabilities") {
+                const used = t['x-uses'] || []
+                t['x-manages'] = t['x-manages'] || []
+                t['x-manages'].push(...used)
+                delete t['x-uses']
+            }
             setter.tags.push(t)
         }
     })
@@ -647,6 +655,25 @@ const createResponseFromProvider = (provider, type, json) => {
     return response
 }
 
+const generatePropertyTags = json => {
+    const properties = json.methods.filter( m => m.tags && m.tags.find( t => t.name.startsWith('property:'))) || []
+
+    properties.forEach(property => {
+        const tag = property.tags.find(tag => tag.name.startsWith('property:'))
+        tag['x-property-type'] = tag.name.split(':').pop()
+        tag.name = 'property'
+    })
+
+    const readwrites = json.methods.filter( m => m.tags && m.tags.find( t => t.name === 'property')) || []
+
+    properties.forEach(property => {
+        const tag = property.tags.find(tag => tag.name === 'property')
+        tag['x-property-type'] = 'readwrite'
+    })
+
+    return json
+}
+
 const generatePropertyEvents = json => {
     const properties = json.methods.filter( m => m.tags && m.tags.find( t => t.name == 'property')) || []
     const readonlies = json.methods.filter( m => m.tags && m.tags.find( t => t.name == 'property:readonly')) || []
@@ -782,6 +809,7 @@ const getPathFromModule = (module, path) => {
 const fireboltize = (json) => {
     json = generatePropertyEvents(json)
     json = generatePropertySetters(json)
+    json = generatePropertyTags(json)
     json = generatePolymorphicPullEvents(json)
     json = generateProviderMethods(json)
     json = generateTemporalSetMethods(json)
