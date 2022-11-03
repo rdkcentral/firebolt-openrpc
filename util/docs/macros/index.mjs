@@ -981,7 +981,7 @@ function getExternalSchemaLinks(json = {}, schemas = {}, options = {}) {
 }
 
 function isNextParamNotRequired(params, i, p) {
-    let nonReqParamsArray = [];
+    const nonReqParamsArray = [];
     for (let index = i; index < params.length; index++){
         if (p.required === false) {
             nonReqParamsArray.push(p);
