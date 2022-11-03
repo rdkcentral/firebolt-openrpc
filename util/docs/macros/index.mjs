@@ -980,6 +980,16 @@ function getExternalSchemaLinks(json = {}, schemas = {}, options = {}) {
     return links
 }
 
+function isNextParamNotRequired(params, i, p) {
+    let nonReqParamsArray = [];
+    for (let index = i; index < params.length; index++){
+        if (p.required === false) {
+            nonReqParamsArray.push(p);
+        }
+    }
+    return nonReqParamsArray.length === (params.length - i);
+}
+
 function generateJavaScriptExample(example, m, moduleJson = {}, templates = {}) {
     if (m.name.match(/^on[A-Z]/)) {
         if (isProviderMethod(m)) {
@@ -989,7 +999,18 @@ function generateJavaScriptExample(example, m, moduleJson = {}, templates = {}) 
         }
     }
 
-    const formatParams = (params, delimit, pretty = false) => params.map(p => JSON.stringify((example.params.find(x => x.name === p.name) || { value: null }).value, null, pretty ? '  ' : null)).join(delimit)
+    const formatParams = (params, delimit, pretty = false) => {
+        // added check to handle the scenario when parameter is optional
+        // and it's coming as null in the doc
+        return params.map((p, index) => {
+            if (!p.required && isNextParamNotRequired(params, index, p)) {
+                return '';
+            } else {
+                return JSON.stringify((example.params.find(x => x.name === p.name) || { value: null }).value, null, pretty ? '  ' : null);
+            }
+        }).join(delimit);
+    }
+
     let indent = ' '.repeat(getTitle(moduleJson).length + m.name.length + 2)
     let params = formatParams(m.params, ', ')
     if (params.length + indent > 80) {
