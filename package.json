@@ -1,6 +1,6 @@
 {
   "name": "@firebolt-js/openrpc",
-  "version": "1.6.1",
+  "version": "1.7.0-next.3",
   "description": "The Firebolt SDK Code & Doc Generator",
   "main": "src/js/sdk/index.mjs",
   "type": "module",
@@ -8,7 +8,7 @@
     "firebolt-openrpc": "./src/cli.mjs"
   },
   "scripts": {
-    "prepare": "npm run prepare:setup && npm run dist",
+    "prepack": "npm run prepare:setup && npm run dist",
     "prepare:setup": "npx mkdirp ./dist/docs ./build/docs/markdown ./build/docs/wiki ./build/sdk/javascript/src",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --config=jest.config.json --detectOpenHandles",
     "build": "npm run validate && npm run build:docs && npm run build:sdk",
@@ -18,19 +18,27 @@
     "build:d": "node ./src/cli.mjs --task declarations --source ./src/ --output ./dist/lib/sdk.d.ts --shared-schemas src/schemas",
     "build:docs": "node ./src/cli.mjs --task docs --source ./src/ --template ./src/template/markdown --output ./build/docs/markdown --shared-schemas test/sharedSchemas --as-path",
     "build:wiki": "node ./src/cli.mjs --task docs --source ./src/ --template ./src/template/markdown --output ./build/docs/wiki --shared-schemas test/sharedSchemas",
-    "dist": "npm run validate && npm run build:sdk && npm run build:docs && npm run test"
+    "dist": "npm run validate && npm run build:sdk && npm run build:docs && npm run test",
+    "prepare": "husky install"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/rdkcentral/firebolt-core-sdk/blob/main/src/modules//ottx/firebolt-openrpc.git"
+    "url": "git+https://github.com/rdkcentral/firebolt-openrpc.git"
   },
   "author": "",
   "bugs": {
     "url": "https://github.com/rdkcentral/firebolt-openrpc/issues"
   },
-  "homepage": "https://github.com/rdkcentral/firebolt-core-sdk/blob/main/src/modules//ottx/firebolt-openrpc#readme",
+  "homepage": "https://github.com/rdkcentral/firebolt-openrpc#readme",
   "devDependencies": {
-    "jest": "^27.3.1"
+    "@commitlint/cli": "^17.1.2",
+    "@commitlint/config-conventional": "^17.1.0",
+    "@semantic-release/changelog": "^6.0.1",
+    "@semantic-release/git": "^10.0.1",
+    "@semantic-release/npm": "^9.0.1",
+    "husky": "^8.0.1",
+    "jest": "^27.3.1",
+    "semantic-release": "^19.0.5"
   },
   "keywords": [
     "firebolt",

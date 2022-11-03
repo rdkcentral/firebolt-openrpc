@@ -230,7 +230,6 @@ export const prioritize = function(...args) {
 }
 
 const unsubscribe = (key) => {
-  console.log(key)
   const [module, event] = key.split('.').slice(0, 2)
   Transport.send(module, 'on' + event[0].toUpperCase() + event.substr(1), { listen: false })
 }

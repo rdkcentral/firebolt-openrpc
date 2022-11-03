@@ -30,7 +30,7 @@ import predicates from 'crocks/predicates/index.js'
 import isNil from 'crocks/core/isNil.js'
 const { isObject, isArray, propEq, pathSatisfies, propSatisfies } = predicates
 
-import { isExcludedMethod, isRPCOnlyMethod, isProviderMethod, getPayloadFromEvent, providerHasNoParameters, isTemporalSetMethod, hasMethodAttributes, getMethodAttributes, isEventMethodWithContext } from '../../shared/modules.mjs'
+import { isExcludedMethod, isRPCOnlyMethod, isProviderInterfaceMethod, getPayloadFromEvent, providerHasNoParameters, isTemporalSetMethod, hasMethodAttributes, getMethodAttributes, isEventMethodWithContext } from '../../shared/modules.mjs'
 import { getTemplateForMethod } from '../../shared/template.mjs'
 import { getMethodSignatureParams } from '../../shared/javascript.mjs'
 import isEmpty from 'crocks/core/isEmpty.js'
@@ -164,7 +164,7 @@ const providedCapabilitiesOrEmptyArray = compose(
   option([]),
   map(caps => [... new Set(caps)]),
   map(map(m => m.tags.find(t => t['x-provides'])['x-provides'])), // grab the capabilty it provides
-  map(filter(isProviderMethod)),
+  map(filter(isProviderInterfaceMethod)),
   getMethods
 )
 
@@ -180,7 +180,7 @@ const providersOrEmptyArray = compose(
     }
     return e
   })),
-  map(filter(isProviderMethod)),
+  map(filter(isProviderInterfaceMethod)),
   getMethods
 )
 
@@ -273,7 +273,7 @@ const insertMacros = (fContents = '', macros = {}, module = {}, version = {}) =>
 }
 
 const enumReducer = (acc, val, i, arr) => {
-  const keyName = val.replace(/[\.\-]/g, '_').replace(/\+/g, '_plus').replace(/([a-z])([A-Z0-9])/g, '$1_$2').toUpperCase()
+  const keyName = val.split(':').pop().replace(/[\.\-]/g, '_').replace(/\+/g, '_plus').replace(/([a-z])([A-Z0-9])/g, '$1_$2').toUpperCase()
   acc = acc + `    ${keyName}: '${val}'`
   if (i < arr.length-1) {
     acc = acc.concat(',\n')
@@ -469,7 +469,7 @@ function generateMethods(json = {}, templates = {}, onlyEvents = false) {
     option([]),
     map(filter(m => !onlyEvents || isEventMethod(m))),
     map(filter(not(isRPCOnlyMethod))),
-    map(filter(not(isProviderMethod))),
+    map(filter(not(isProviderInterfaceMethod))),
     map(filter(not(isExcludedMethod))),
     getMethods
   )(json)
