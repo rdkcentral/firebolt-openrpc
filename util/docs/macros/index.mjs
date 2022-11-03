@@ -27,7 +27,7 @@ import pointfree from 'crocks/pointfree/index.js'
 const { filter, option, map } = pointfree
 import isArray from 'crocks/predicates/isArray.js'
 import safe from 'crocks/Maybe/safe.js'
-import { getProvidedCapabilities, isRPCOnlyMethod, isTemporalSetMethod } from '../../shared/modules.mjs'
+import { getProvidedCapabilities, isRPCOnlyMethod, isTemporalSetMethod, isProviderInterfaceMethod } from '../../shared/modules.mjs'
 
 var pkg = JSON.parse(fs.readFileSync('./package.json', 'utf8'));
 
@@ -62,7 +62,6 @@ const hasNonEmptyEventAttribute = (method, attribute) => {
 const isEvent = method => hasTag(method, 'event')
 const isProviderFocusMethod = method => method.tags && method.tags.find(t => t['x-allow-focus-for'])
 const isProviderResponseMethod = method => method.tags && method.tags.find(t => t['x-response-for'])
-const isProviderMethod = method => isEvent(method) && hasNonEmptyEventAttribute(method, 'x-provides')
 const isFullyDocumentedEvent = method => isEvent(method) && !hasTag(method, 'rpc-only') && !hasEventAttribute(method, 'x-alternative') && !hasEventAttribute(method, 'x-pulls-for')
 const isSetter = method => method.tags && method.tags.find(t => t['x-setter-for'])
 const isTocMethod = method => !isEvent(method) && !isProviderFocusMethod(method) && !isProviderResponseMethod(method)
@@ -88,7 +87,7 @@ function insertMacros(data = '', moduleJson = {}, templates = {}, schemas = {}, 
     const additionalEvents = moduleJson.methods && moduleJson.methods.filter( method => isEvent(method) && !isFullyDocumentedEvent(method))
     const additionalMethods = moduleJson.methods && moduleJson.methods.filter( method => !isEvent(method) && isRPCOnlyMethod(method) )
     const hasEvents = (additionalEvents && additionalEvents.length > 0) || (events && events.length > 0)  //(methods && methods.find(method => isEvent(method) && !isProviderMethod(method)))
-    const providerMethods = moduleJson.methods && moduleJson.methods.filter( method => isProviderMethod(method))
+    const providerMethods = moduleJson.methods && moduleJson.methods.filter( method => isProviderInterfaceMethod(method))
     const hasProviderMethods = (providerMethods && providerMethods.length > 0)
 
     const capabilities = moduleJson.methods && getProvidedCapabilities(moduleJson)
@@ -297,7 +296,7 @@ function insertMacros(data = '', moduleJson = {}, templates = {}, schemas = {}, 
     if (methods) {
         data = data
             .replace(/\$\{toc.methods\}/g, methods.filter(isTocMethod).map(m => '    - [' + m.name + '](#' + m.name.toLowerCase() + ')').join('\n'))
-            .replace(/\$\{toc.events\}/g, methods.filter(m => isEvent(m) && !isProviderMethod(m)).map(m => '    - [' + m.name[2].toLowerCase() + m.name.substr(3) + '](#' + m.name.substr(2).toLowerCase() + ')').join('\n'))
+            .replace(/\$\{toc.events\}/g, methods.filter(m => isEvent(m) && !isProviderInterfaceMethod(m)).map(m => '    - [' + m.name[2].toLowerCase() + m.name.substr(3) + '](#' + m.name.substr(2).toLowerCase() + ')').join('\n'))
             .replace(/\$\{toc.providers\}/g, capabilities.map(c => `    - [${getProviderName(c, moduleJson, schemas)}](#${getProviderName(c, moduleJson, schemas).toLowerCase()})`).join('\n'))
     }
 
@@ -982,7 +981,7 @@ function getExternalSchemaLinks(json = {}, schemas = {}, options = {}) {
 
 function generateJavaScriptExample(example, m, moduleJson = {}, templates = {}) {
     if (m.name.match(/^on[A-Z]/)) {
-        if (isProviderMethod(m)) {
+        if (isProviderInterfaceMethod(m)) {
             return generateProviderExample(m, moduleJson, templates)
         } else {
             return generateEventExample(m, moduleJson)
