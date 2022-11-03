@@ -20,7 +20,7 @@ import { getPath, getSchema } from './json-schema.mjs'
 import deepmerge from 'deepmerge'
 import { localizeDependencies } from './json-schema.mjs'
 import { getLinkFromRef } from './helpers.mjs'
-import { getMethodsThatProvide, getPayloadFromEvent } from './modules.mjs'
+import {  getProviderInterfaceMethods, getPayloadFromEvent } from './modules.mjs'
 
 const isSynchronous = m => !m.tags ? false : m.tags.map(t => t.name).find(s => s === 'synchronous')
 
@@ -43,6 +43,10 @@ function getProviderName(capability, moduleJson, schemas) {
     return ''
   }
   
+  const prettyName = (moduleJson.info['x-interface-names'] || {})[capability]
+
+  if (prettyName) return prettyName
+
   const capitalize = str => str[0].toUpperCase() + str.substr(1)
   const uglyName = capability.split(":").slice(-2).map(capitalize).reverse().join('') + "Provider"
 
@@ -85,7 +89,7 @@ interface FocusableProviderSession extends ProviderSession {
 
 function getProviderInterface(module, capability, schemas = {}) {
   module = JSON.parse(JSON.stringify(module))
-  const iface = getMethodsThatProvide(capability, module).map(method => localizeDependencies(method, module, schemas, { mergeAllOfs: true }))
+  const iface = getProviderInterfaceMethods(capability, module).map(method => localizeDependencies(method, module, schemas, { mergeAllOfs: true }))
 
   iface.forEach(method => {
     const payload = getPayloadFromEvent(method, module, schemas)
