@@ -1,3 +1,10 @@
+# [1.7.0-next.4](https://github.com/rdkcentral/firebolt-openrpc/compare/v1.7.0-next.3...v1.7.0-next.4) (2022-11-04)
+
+
+### Bug Fixes
+
+* Updated logic to return error on failing to listen the events ([#65](https://github.com/rdkcentral/firebolt-openrpc/issues/65)) ([846709e](https://github.com/rdkcentral/firebolt-openrpc/commit/846709ea0ce22cba60a95ebfd0e02872f3756e57))
+
 # [1.7.0-next.3](https://github.com/rdkcentral/firebolt-openrpc/compare/v1.7.0-next.2...v1.7.0-next.3) (2022-10-31)
 
 
