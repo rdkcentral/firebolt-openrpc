@@ -1,3 +1,10 @@
+# [1.7.0-next.5](https://github.com/rdkcentral/firebolt-openrpc/compare/v1.7.0-next.4...v1.7.0-next.5) (2022-11-04)
+
+
+### Bug Fixes
+
+* Reverted code of Fire-52 ([#73](https://github.com/rdkcentral/firebolt-openrpc/issues/73)) ([c599e62](https://github.com/rdkcentral/firebolt-openrpc/commit/c599e6299cae33d03ee2ac189746fb73381bbbdc))
+
 # [1.7.0-next.4](https://github.com/rdkcentral/firebolt-openrpc/compare/v1.7.0-next.3...v1.7.0-next.4) (2022-11-04)
 
 
