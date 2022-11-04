@@ -143,20 +143,21 @@ const doListen = function(module, event, callback, context, once, internal=false
 
     events.forEach(event => {
       const key = module + '.' + event + (hasContext ? `.${contextKey}`  : '')
-
       if (Object.values(listeners.get(key)).length === 0) {
         const { id, promise } = Transport.listen(module, 'on' + event[0].toUpperCase() + event.substring(1), { listen: true })
         keys[id] = key
         promises.push(promise)
-      }
-
-      const setter = internal ? listeners.setInternal : listeners.set
-
-      if (wildcard) {
-        setter(key, ''+listenerId, value => callback(event, value))
-      }
-      else {
-        setter(key, ''+listenerId, callback)
+        const setter = internal ? listeners.setInternal : listeners.set
+        promise.then( id => {
+          if (wildcard) {
+            setter(key, ''+listenerId, value => callback(event, value))
+          }
+          else {
+            setter(key, ''+listenerId, callback)
+          }
+        }).catch( error => {
+          reject(error)
+        })
       }
     })
 
@@ -183,7 +184,7 @@ const doListen = function(module, event, callback, context, once, internal=false
     else {
       resolve(listenerId)
     }
-
+    
     return p
   }
 }
