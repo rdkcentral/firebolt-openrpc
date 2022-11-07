@@ -963,12 +963,6 @@ function generateJavaScriptExampleResult(example) {
 }
 
 function generateRPCExample(example, m, moduleJson = {}) {
-    // if (m.tags && m.tags.filter(t => (t.name === 'property-subscribe')).length) {
-    //     return generatePropertyChangedRPCExample(example, m, moduleJson)
-    // }
-    // else if (m.tags && m.tags.filter(t => (t.name === 'property-set')).length) {
-    //     return generatePropertySetRPCExample(example, m, moduleJson.info.title)
-    // }
     let request = {
         "jsonrpc": "2.0",
         "id": 1,
@@ -982,32 +976,6 @@ function generateRPCExample(example, m, moduleJson = {}) {
             request.params[p.name] = example_p.value
         }
     })
-
-    return JSON.stringify(request, null, '  ')
-}
-
-function generatePropertyChangedRPCExample(example, m, module) {
-    let request = {
-        jsonrpc: "2.0",
-        id: 1,
-        "method": `${getTitle(module).toLowerCase()}.on${m.name.substr(0, 1).toUpperCase()}${m.name.substr(1)}Changed`,
-        "params": {
-            listen: true
-        },
-    }
-
-    return JSON.stringify(request, null, '  ')
-}
-
-function generatePropertySetRPCExample(example, m, module) {
-    let request = {
-        jsonrpc: "2.0",
-        id: 1,
-        "method": `${module.toLowerCase()}.set${m.name.substr(0, 1).toUpperCase()}${m.name.substr(1)}`,
-        "params": {
-            value: example.params[0].value
-        },
-    }
 
     return JSON.stringify(request, null, '  ')
 }
