@@ -1,9 +1,7 @@
-Configuration.set('apiBaseUri', '${http.endpoint}')
-
-function _initialize(distributor, config, apis) {
+function _initialize(distributor, endpoint, config, apis) {
   Configuration.set(config)
   Configuration.set('distributor', distributor)
-  Http.setEndpoint(Configuration.get('apiBaseUri'))
+  Http.setEndpoint(endpoint || config.endpoint)
   Http.onAuthorize(apis.authorize)
 }
 

@@ -27,11 +27,12 @@ function initialize(id, config) {
     }
     Object.freeze(config)
     if (initializers[id]) {
+        const getEndPoint = Transport.send('capabilities', 'endpoint', { id })
         const init = initializers[id]
         delete initializers[id]
         pending.push(id)
-        getDistributor.then(distributor => {
-            init(distributor, config, apis)
+        Promise.all([getDistributor, getEndPoint]).then( ([distributor, endpoint]) => {
+            init(distributor, endpoint, config, apis)
             initialized.push(id)
             delete pending[id]
         })

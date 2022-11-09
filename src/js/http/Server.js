@@ -7,7 +7,7 @@ const config = (await import(process.env.npm_package_json, { assert: {type: "jso
 const name = 'firebolt-' + config.name.split('/').pop().split('-').shift()
 const rpcPath = process.env.npm_config_local_prefix + '/dist/' + name + '-open-rpc.json'
 const rpc = (await import(rpcPath, {assert: { type: "json" }})).default
-const endpoint = (rpc.info['x-http-endpoint'] || "http://localhost/").replace(/^https:/, 'http:')
+const endpoint = "http://localhost/"
 const domain = new URL(endpoint).hostname
 const port = parseInt(new URL(endpoint).port) || 80
 const httpTag = m => m.tags && m.tags.find(t => t.name === 'http')
