@@ -7,7 +7,6 @@ const queue = {}
 const initialized = []
 const pending = []
 const frozen = false
-const getDistributor = Transport.send('device', 'distributor', {})
 
 window.__firebolt.registerExtensionSDK = (id, initializer) => {
     initializers[id] = initializer
@@ -31,8 +30,8 @@ function initialize(id, config) {
         const init = initializers[id]
         delete initializers[id]
         pending.push(id)
-        Promise.all([getDistributor, getEndPoint]).then( ([distributor, endpoint]) => {
-            init(distributor, endpoint, config, apis)
+        getEndPoint.then((endpoint) => {
+            init(endpoint, config, apis)
             initialized.push(id)
             delete pending[id]
         })

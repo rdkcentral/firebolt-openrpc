@@ -1,6 +1,5 @@
-function _initialize(distributor, endpoint, config, apis) {
+function _initialize(endpoint, config, apis) {
   Configuration.set(config)
-  Configuration.set('distributor', distributor)
   Http.setEndpoint(endpoint || config.endpoint)
   Http.onAuthorize(apis.authorize)
 }
