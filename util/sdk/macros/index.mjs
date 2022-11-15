@@ -236,21 +236,21 @@ const generateMacros = templates => obj => {
 }
 
 const insertAggregateMacrosOnly = (fContents = '', aggregateMacros = {}) => {
-  fContents = fContents.replace(/[ \t]*\/\* \$\{EXPORTS\} \*\/[ \t]*\n/, aggregateMacros.exports)
-  fContents = fContents.replace(/[ \t]*\/\* \$\{MOCK_IMPORTS\} \*\/[ \t]*\n/, aggregateMacros.mockImports)
-  fContents = fContents.replace(/[ \t]*\/\* \$\{MOCK_OBJECTS\} \*\/[ \t]*\n/, aggregateMacros.mockObjects)
+  fContents = fContents.replace(/[ \t]*\/\* \$\{EXPORTS\} \*\/[ \t\r]*\n/, aggregateMacros.exports)
+  fContents = fContents.replace(/[ \t]*\/\* \$\{MOCK_IMPORTS\} \*\/[ \t\r]*\n/, aggregateMacros.mockImports)
+  fContents = fContents.replace(/[ \t]*\/\* \$\{MOCK_OBJECTS\} \*\/[ \t\r]*\n/, aggregateMacros.mockObjects)
   return fContents
 }
 
 const insertMacros = (fContents = '', macros = {}, module = {}, version = {}) => {
-  fContents = fContents.replace(/[ \t]*\/\* \$\{METHODS\} \*\/[ \t]*\n/, macros.methods)
-  fContents = fContents.replace(/[ \t]*\/\* \$\{METHOD_LIST\} \*\/[ \t]*\n/, macros.methodList)
-  fContents = fContents.replace(/[ \t]*\/\* \$\{ENUMS\} \*\/[ \t]*\n/, macros.enums)
-  fContents = fContents.replace(/[ \t]*\/\* \$\{EVENTS\} \*\/[ \t]*\n/, macros.events)
-  fContents = fContents.replace(/[ \t]*\/\* \$\{IMPORTS\} \*\/[ \t]*\n/, macros.imports)
-  fContents = fContents.replace(/[ \t]*\/\* \$\{INITIALIZATION\} \*\/[ \t]*\n/, macros.initialization)
-  fContents = fContents.replace(/[ \t]*\/\* \$\{DEFAULTS\} \*\/[ \t]*\n/, macros.defaults)
-  fContents = fContents.replace(/[ \t]*\/\* \$\{EVENT_METHODS\} \*\/[ \t]*\n/, macros.onlyEventMethods)
+  fContents = fContents.replace(/[ \t]*\/\* \$\{METHODS\} \*\/[ \t\r]*\n/, macros.methods)
+  fContents = fContents.replace(/[ \t]*\/\* \$\{METHOD_LIST\} \*\/[ \t\r]*\n/, macros.methodList)
+  fContents = fContents.replace(/[ \t]*\/\* \$\{ENUMS\} \*\/[ \t\r]*\n/, macros.enums)
+  fContents = fContents.replace(/[ \t]*\/\* \$\{EVENTS\} \*\/[ \t\r]*\n/, macros.events)
+  fContents = fContents.replace(/[ \t]*\/\* \$\{IMPORTS\} \*\/[ \t\r]*\n/, macros.imports)
+  fContents = fContents.replace(/[ \t]*\/\* \$\{INITIALIZATION\} \*\/[ \t\r]*\n/, macros.initialization)
+  fContents = fContents.replace(/[ \t]*\/\* \$\{DEFAULTS\} \*\/[ \t\r]*\n/, macros.defaults)
+  fContents = fContents.replace(/[ \t]*\/\* \$\{EVENT_METHODS\} \*\/[ \t\r]*\n/, macros.onlyEventMethods)
   fContents = fContents.replace(/\$\{readable\}/g, version.readable)
   fContents = fContents.replace(/\$\{major\}/g, version.major)
   fContents = fContents.replace(/\$\{minor\}/g, version.minor)

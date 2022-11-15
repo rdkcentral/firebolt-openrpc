@@ -25,8 +25,6 @@ import { getPath, getExternalPath, getExternalSchemaPaths, getSchemaConstraints,
 import fs from 'fs'
 import pointfree from 'crocks/pointfree/index.js'
 const { filter, option, map } = pointfree
-import isArray from 'crocks/predicates/isArray.js'
-import safe from 'crocks/Maybe/safe.js'
 import { getProvidedCapabilities, isRPCOnlyMethod, isTemporalSetMethod, isProviderInterfaceMethod } from '../../shared/modules.mjs'
 
 var pkg = JSON.parse(fs.readFileSync('./package.json', 'utf8'));
