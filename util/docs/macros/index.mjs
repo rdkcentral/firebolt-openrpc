@@ -229,7 +229,7 @@ function insertMacros(data = '', moduleJson = {}, templates = {}, schemas = {}, 
                 // change the template
                 event.tags.find(t => t.name === 'event').name = 'additional-event'
                 // drop the ListenerResponse result type
-                event.result.schema = (event.result.schema.oneOf || event.result.schema.anyOf)[1]
+                event.result.schema = (event.result.schema.oneOf || event.result.schema.anyOf).pop()
                 additionalStr += insertMethodMacros(match[0], event, moduleJson, schemas, templates, options)
             })
             data = data.replace(regex, additionalStr)
@@ -529,80 +529,25 @@ function insertMethodMacros(data, method, moduleJson = {}, schemas = {}, templat
     return result
 }
 
-function generatePropertySignatures (m) {
+function generatePropertySignatures (m, json) {
     let signatures = [m]
-    if (hasTag(m, 'property') && !hasTag(m, 'property:immutable') && !hasTag(m, 'property:readonly')) {
-        signatures.push({
-            name: m.name,
-            summary: 'Set value for ' + m.summary,
-            tags: [
-                {
-                    name: 'property-set'
-                }
-            ],
-            // setter takes the getters result
-            params: [
-                {
-                    ...m.result,
-                    name: 'value',
-                    required: true
-                }
-            ],
-            result: {
-                name: "response",
-                summary: "",
-                schema: {
-                  const: null
-                }
-            },
-            examples: [
-                {
-                    name: "",
-                    params: [
-                      {
-                        name: "value",
-                        value: m.examples[0].result.value
-                      }
-                    ],
-                    result: {
-                      name: "Default Result",
-                      value: null
-                    }
-                  }
-            ]
-        })
-    } else {
-        signatures.push(null)
-    }
-    if ((hasTag(m, 'property') || hasTag(m, 'property:readonly')) && !hasTag(m, 'property:immutable')) {
-        const examples = []
-        m.examples.forEach(e => examples.push(JSON.parse(JSON.stringify(e))))
-        examples.forEach(e => { e.params = [ { name: m.result.name, value: e.result.value } ]; e.result = { name: 'listenerId', value: 1 }; })
 
-        signatures.push({
-            name: m.name,
-            summary: 'Subscribe to value for ' + m.summary,
-            tags: [{
-                name: 'property-subscribe'
-            }],
-            params: [
-                {
-                    ...m.result,
-                    required: true
-                }
-            ],
-            result: {
-                name: "listenerId",
-                summary: "",
-                schema: {
-                    type: "integer"
-                }
-            },
-            examples: m.examples
-        })
-    } else {
-        signatures.push(null)
+    const setter = json.methods.find(m => m.tags && m.tags.find(t => t['x-setter-for']) && m.tags.find(t => t['x-setter-for'] === signatures[0].name))
+    const subscriber = json.methods.find(m => m.tags && m.tags.find(t => t['x-alternative']) && m.tags.find(t => t['x-alternative'] === signatures[0].name))
+
+    if (setter) {
+        setter.tags = setter.tags.filter(t => t.name !== 'rpc-only')
+        setter.name = m.name
+        signatures.push(setter)
     }
+
+    if (subscriber) {
+        subscriber.tags = subscriber.tags.filter(t => t.name !== 'rpc-only')
+        subscriber.name = m.name
+        subscriber.params = m.params
+        signatures.push(subscriber)
+    }
+
     return signatures
 }
 
@@ -612,7 +557,7 @@ function iterateSignatures(data, method, moduleJson = {}, schemas = {}, template
     const module = moduleJson.info.title
     let signatures = [method]
     if (hasTag(method, 'property') || hasTag(method, 'property:readonly') || hasTag(method, 'property:immutable')) {
-        signatures = generatePropertySignatures(method)
+        signatures = generatePropertySignatures(method, moduleJson)
     }
     
     if (method.tags && method.tags.find(t => t.name === 'polymorphic-pull')) {
@@ -742,6 +687,7 @@ function insertSignatureMacros(block, sig, moduleJson = {}, schemas = {}, templa
         .replace(/\$\{method.result.summary\}/g, sig.result.summary)
         .replace(/\$\{method.result.link\}/g, getSchemaType(moduleJson, sig.result, schemas, {title: true, link: true, asPath: options.asPath, baseUrl: options.baseUrl}))
         .replace(/\$\{method.result.type\}/g, getSchemaType(moduleJson, sig.result, schemas, {title: true, asPath: options.asPath, baseUrl: options.baseUrl}))
+        .replace(/\$\{event.result.type\}/, getSchemaType(moduleJson, (sig.result.schema.anyOf || [sig.result.schema]).pop(), schemas, { event: true, description: sig.result.summary, asPath: options.asPath, baseUrl: options.baseUrl })) //getType(method.result, true))
         .replace(/\$\{method.result\}/g, getSchemaTypeTable(moduleJson, sig.result, schemas, { description: sig.result.summary, title: true, asPath: options.asPath, baseUrl: options.baseUrl}))
 
     return block
@@ -814,7 +760,7 @@ function insertEventMacros(data = '', methods = [], moduleJson = {}, schemas = {
             .replace(/\$\{event.description\}/, method.description)
             .replace(/\$\{event.result.name\}/, method.result.name)
             .replace(/\$\{event.result.summary\}/, method.result.summary)
-            .replace(/\$\{event.result.type\}/, getSchemaTypeTable(moduleJson, method.result, schemas, { event: true, description: method.result.summary, asPath: options.asPath, baseUrl: options.baseUrl })) //getType(method.result, true))
+            .replace(/\$\{event.result.type\}/, getSchemaTypeTable(moduleJson, method.result.schema.anyOf.pop(), schemas, { event: true, description: method.result.summary, asPath: options.asPath, baseUrl: options.baseUrl })) //getType(method.result, true))
 
         let match, regex = /[\# \t]*?\$\{example\.[a-zA-Z]+\}.*?\$\{end.example\}/s
         while (match = method_data.match(regex)) {
@@ -1038,12 +984,6 @@ function generateJavaScriptExampleResult(example) {
 }
 
 function generateRPCExample(example, m, moduleJson = {}) {
-    if (m.tags && m.tags.filter(t => (t.name === 'property-subscribe')).length) {
-        return generatePropertyChangedRPCExample(example, m, moduleJson)
-    }
-    else if (m.tags && m.tags.filter(t => (t.name === 'property-set')).length) {
-        return generatePropertySetRPCExample(example, m, moduleJson.info.title)
-    }
     let request = {
         "jsonrpc": "2.0",
         "id": 1,
@@ -1057,32 +997,6 @@ function generateRPCExample(example, m, moduleJson = {}) {
             request.params[p.name] = example_p.value
         }
     })
-
-    return JSON.stringify(request, null, '  ')
-}
-
-function generatePropertyChangedRPCExample(example, m, module) {
-    let request = {
-        jsonrpc: "2.0",
-        id: 1,
-        "method": `${getTitle(module).toLowerCase()}.on${m.name.substr(0, 1).toUpperCase()}${m.name.substr(1)}Changed`,
-        "params": {
-            listen: true
-        },
-    }
-
-    return JSON.stringify(request, null, '  ')
-}
-
-function generatePropertySetRPCExample(example, m, module) {
-    let request = {
-        jsonrpc: "2.0",
-        id: 1,
-        "method": `${module.toLowerCase()}.set${m.name.substr(0, 1).toUpperCase()}${m.name.substr(1)}`,
-        "params": {
-            value: example.params[0].value
-        },
-    }
 
     return JSON.stringify(request, null, '  ')
 }
