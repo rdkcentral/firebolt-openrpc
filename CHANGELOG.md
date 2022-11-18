@@ -1,3 +1,11 @@
+# [1.7.0-next.6](https://github.com/rdkcentral/firebolt-openrpc/compare/v1.7.0-next.5...v1.7.0-next.6) (2022-11-18)
+
+
+### Bug Fixes
+
+* Capabilities for property setters to be manages instead of uses ([#77](https://github.com/rdkcentral/firebolt-openrpc/issues/77)) ([a2fa157](https://github.com/rdkcentral/firebolt-openrpc/commit/a2fa157fac3ace0c3cec9f283b59bc4768e17373))
+* Properly document context params ([#75](https://github.com/rdkcentral/firebolt-openrpc/issues/75)) ([325858c](https://github.com/rdkcentral/firebolt-openrpc/commit/325858c98116edd4708eacce644bbdb95a2e18e4))
+
 ## 1.7.0
 
 ### Features
