@@ -1,3 +1,10 @@
+## [1.7.1-next.3](https://github.com/rdkcentral/firebolt-openrpc/compare/v1.7.1-next.2...v1.7.1-next.3) (2022-11-18)
+
+
+### Bug Fixes
+
+* Removes extra string added to params table ([0d51872](https://github.com/rdkcentral/firebolt-openrpc/commit/0d5187266a1466cefded2ac50a7e44aa4ef1a2df))
+
 ## [1.7.1-next.2](https://github.com/rdkcentral/firebolt-openrpc/compare/v1.7.1-next.1...v1.7.1-next.2) (2022-11-18)
 
 
