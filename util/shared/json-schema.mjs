@@ -220,7 +220,6 @@ function getSchemaConstraints(json, module, schemas = {}, options = { delimiter:
     typeof json.format === 'string'   ? constraints.push(`format: ${json.format}`) : null
     typeof json.minLength === 'number' ? constraints.push(`minLength: ${json.minLength}`) : null
     typeof json.maxLength === 'number' ? constraints.push(`maxLength: ${json.maxLength}`) : null
-    typeof json.maxLength === 'number' ? constraints.push(`maxLength: ${json.maxLength}`) : null
     typeof json.pattern === 'string'   ? constraints.push(`pattern: ${json.pattern}`) : null
 
     return constraints.join(options.delimiter)
