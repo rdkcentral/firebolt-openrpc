@@ -1,10 +1,10 @@
 import Transport from "../Transport/index.mjs"
 import Events from "../Events/index.mjs"
 
-function prop(moduleName, key, params, callbackOrValue, immutable, readonly, contextParameterCount) {
+function prop(moduleName, key, params, callbackOrValue = null, immutable, readonly, contextParameterCount) {
   const numArgs = Object.values(params).length
 
-  if (numArgs === contextParameterCount && !callbackOrValue) {
+  if (numArgs === contextParameterCount && callbackOrValue === null) {
     // getter
     return Transport.send(moduleName, key, params)
   } else if (numArgs === contextParameterCount && typeof callbackOrValue === 'function') {
@@ -13,7 +13,7 @@ function prop(moduleName, key, params, callbackOrValue, immutable, readonly, con
       throw new Error('Cannot subscribe to an immutable property')
     }
     return Events.listen(moduleName, key + 'Changed', callbackOrValue)
-  } else if (numArgs === (contextParameterCount) && callbackOrValue) {
+  } else if (numArgs === (contextParameterCount) && callbackOrValue !== null) {
     // setter
     if (immutable) {
       throw new Error('Cannot set a value to an immutable property')

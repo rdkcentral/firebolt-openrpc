@@ -1,6 +1,9 @@
 name: Release to GitHub and NPM
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - 'next'
 env:
   HUSKY: 0
 jobs:
