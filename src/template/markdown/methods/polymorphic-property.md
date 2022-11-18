@@ -3,15 +3,25 @@ ${method.description}
 
 ${method.1}
 
-To get the value, call the method with no parameters:
+To get the value of `${method.name}` call the method like this:
 
 ${if.javascript}
 
 ```typescript
-function ${method.name}(): Promise<${method.result.type}>
+${method.signature}
 ```
 
 ${end.if.javascript}
+
+${if.params}
+
+Parameters:
+
+| Param                  | Type                 | Required                 | Summary                 |
+| ---------------------- | -------------------- | ------------------------ | ----------------------- |
+| `${method.param.name}` | ${method.param.type} | ${method.param.required} | ${method.param.summary} ${method.param.constraints} |
+
+${end.if.params}
 
 Promise resolution:
 
@@ -56,12 +66,12 @@ ${end.example}
 ${end.method}
 
 ${method.2}
-To set the value, pass in the new value as the only parameter:
+To set the value of `${method.name}` call the method like this:
 
 ${if.javascript}
 
 ```typescript
-function ${method.name}(${method.params}): Promise<void>
+${method.signature}
 ```
 
 ${end.if.javascript}
@@ -90,9 +100,6 @@ JavaScript:
 import { ${module} } from '${package.name}'
 
 ${module}.${method.name}(${example.params})
-    .then(${method.result.name} => {
-        // property value has been set
-    })
 ```
 
 ${end.if.javascript}
@@ -118,12 +125,12 @@ ${end.example}
 ${end.method}
 
 ${method.3}
-To subscribe to notifications when the value changes, pass a function as the only parameter:
+To subscribe to notifications when the value changes, call the method like this:
 
 ${if.javascript}
 
 ```typescript
-function ${method.name}(subscriber: (${method.params}) => void): Promise<boolean>
+function ${method.name} (${method.params} ${if.params}, ${end.if.params}subscriber: (${method.result.name}) => void): Promise<listenerId>
 ```
 
 ${end.if.javascript}
@@ -132,7 +139,9 @@ Parameters:
 
 | Param                  | Type                 | Required                 | Summary                 |
 | ---------------------- | -------------------- | ------------------------ | ----------------------- |
-| `subscriber` | `Function` | Yes | A callback that gets invoked when the value for ${method.name} changes |
+| `${method.param.name}` | ${method.param.type} | ${method.param.required} | ${method.param.summary} ${method.param.constraints} |
+| `subscriber`           | `function`             | Yes                      | Callback to execute when the value changes. |
+
 
 Promise resolution:
 
@@ -144,7 +153,7 @@ Callback parameters:
 
 | Param                  | Type                 | Required                 | Summary                 |
 | ---------------------- | -------------------- | ------------------------ | ----------------------- |
-| `${method.param.name}` | ${method.param.type} | Yes | ${method.param.summary} ${method.param.constraints} |
+| `${method.result.name}` | `${event.result.type}` | Yes | ${method.result.summary} |
 
 **Examples**
 
@@ -157,15 +166,15 @@ JavaScript:
 ```javascript
 import { ${module} } from '${package.name}'
 
-${module}.${method.name}(${method.paramNames} => {
+${module}.${method.name}(${method.paramNames} ${if.params}, ${end.if.params}(value) => {
   // property value was changed
-  console.log(${method.paramNames})
+  console.log(value)
 }).then(listenerId => {
   // you can clear this listener w/ ${module}.clear(listenerId)
 })
 ```
 
-value of `${method.paramNames}`:
+value of `value`:
 
 ```javascript
 ${example.result}
