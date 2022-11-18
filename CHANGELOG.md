@@ -1,3 +1,10 @@
+## [1.7.1-next.2](https://github.com/rdkcentral/firebolt-openrpc/compare/v1.7.1-next.1...v1.7.1-next.2) (2022-11-18)
+
+
+### Bug Fixes
+
+* Improper null check of value ([eed458c](https://github.com/rdkcentral/firebolt-openrpc/commit/eed458c57eb8ba5701ea86097338041b79f88848))
+
 ## [1.7.1-next.1](https://github.com/rdkcentral/firebolt-openrpc/compare/v1.7.0...v1.7.1-next.1) (2022-11-18)
 
 
