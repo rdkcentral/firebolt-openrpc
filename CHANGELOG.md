@@ -1,3 +1,10 @@
+# [1.7.0-next.7](https://github.com/rdkcentral/firebolt-openrpc/compare/v1.7.0-next.6...v1.7.0-next.7) (2022-11-18)
+
+
+### Bug Fixes
+
+* Trigger semantic release ([bb2ab26](https://github.com/rdkcentral/firebolt-openrpc/commit/bb2ab26b76e7515c0770f79d0ea65a436c930915))
+
 # [1.7.0-next.6](https://github.com/rdkcentral/firebolt-openrpc/compare/v1.7.0-next.5...v1.7.0-next.6) (2022-11-18)
 
 
