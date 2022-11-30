@@ -463,14 +463,7 @@ const createSetterFromProperty = property => {
     old_tags.forEach(t => {
         if (t.name !== 'property' && !t.name.startsWith('property:'))
         {
-            if (t.name === 'capabilities') {
-                setter.tags.push({
-                    name: 'capabilities',
-                    'x-manages': t['x-uses']
-                })
-            } else {
-                setter.tags.push(t)
-            }
+            setter.tags.push(t)
         }
     })
 
