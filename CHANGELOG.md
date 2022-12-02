@@ -1,3 +1,10 @@
+# [1.8.0-next.1](https://github.com/rdkcentral/firebolt-openrpc/compare/v1.7.2-next.1...v1.8.0-next.1) (2022-12-02)
+
+
+### Features
+
+* Add registerEventContext as an import for Capabilities module ([#83](https://github.com/rdkcentral/firebolt-openrpc/issues/83)) ([16409bd](https://github.com/rdkcentral/firebolt-openrpc/commit/16409bda1de97487493078e8cbe782b295b57412))
+
 ## [1.7.2-next.1](https://github.com/rdkcentral/firebolt-openrpc/compare/v1.7.1...v1.7.2-next.1) (2022-12-02)
 
 
