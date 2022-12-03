@@ -8,7 +8,7 @@ function ${method.name}(...args) {
         add = args.pop()
     }
 
-    const transforms = ${method.transforms}
+    const { transforms } = ${transport.options}
     
     return TemporalSet.start('${info.title}', '${method.name}', '${method.temporalset.add}', '${method.temporalset.remove}', arguments, add, remove, transforms)
 }

@@ -24,15 +24,15 @@ import getPath from 'crocks/Maybe/getPath.js'
 import pointfree from 'crocks/pointfree/index.js'
 const { chain, filter, option, map, reduce, concat } = pointfree
 import logic from 'crocks/logic/index.js'
-const { and, not, or } = logic
+const { and, or, not } = logic
 import isString from 'crocks/core/isString.js'
 import predicates from 'crocks/predicates/index.js'
-import isNil from 'crocks/core/isNil.js'
 const { isObject, isArray, propEq, pathSatisfies, propSatisfies } = predicates
 
-import { isExcludedMethod, isRPCOnlyMethod, isProviderInterfaceMethod, getPayloadFromEvent, providerHasNoParameters, isTemporalSetMethod, hasMethodAttributes, getMethodAttributes, isEventMethodWithContext } from '../../shared/modules.mjs'
-import { getTemplateForMethod } from '../../shared/template.mjs'
+import { isExcludedMethod, isRPCOnlyMethod, isProviderInterfaceMethod, getPayloadFromEvent, providerHasNoParameters, isTemporalSetMethod, hasMethodAttributes, getMethodAttributes, getUsedCapabilitiesFromMethod, getProvidedCapabilitiesFromMethod, getManagedCapabilitiesFromMethod, isEventMethodWithContext } from '../../shared/modules.mjs'
+import { getTemplateForConfig, getTemplateForMethod } from '../../shared/template.mjs'
 import { getMethodSignatureParams } from '../../shared/javascript.mjs'
+import { parseVersion } from '../../shared/helpers.mjs'
 import isEmpty from 'crocks/core/isEmpty.js'
 import { localizeDependencies } from '../../shared/json-schema.mjs'
 
@@ -98,6 +98,13 @@ const isEventMethod = compose(
   getPath(['tags'])
 )
 
+const isHttpMethod = compose(
+  option(false),
+  map(_ => true),
+  chain(find(propEq('name', 'http'))),
+  getPath(['tags'])
+)
+
 const isSynchronousMethod = compose(
   option(false),
   map(_ => true),
@@ -123,13 +130,6 @@ const hasTag = (method, tag) => {
 const isPropertyMethod = (m) => {
   return hasTag(m, 'property') || hasTag(m, 'property:immutable') || hasTag(m, 'property:readonly')
 }
-
-// Pick methods that call RCP out of the methods array
-const rpcMethodsOrEmptyArray = compose(
-  option([]),
-  map(filter(not(isSynchronousMethod))),
-  getMethods
-)
 
 // Pick events out of the methods array
 const eventsOrEmptyArray = compose(
@@ -184,6 +184,20 @@ const providersOrEmptyArray = compose(
   getMethods
 )
 
+// Pick methods that call RCP out of the methods array
+const rpcMethodsOrEmptyArray = compose(
+  option([]),
+  map(filter(not(or(or(isHttpMethod, isSynchronousMethod), isExcludedMethod)))),
+  getMethods
+)
+
+// Pick methods that call http out of the methods array
+const httpMethodsOrEmptyArray = compose(
+  option([]),
+  map(filter(isHttpMethod)),
+  getMethods
+)
+
 // Pick deprecated methods out of the methods array
 const deprecatedOrEmptyArray = compose(
   option([]),
@@ -205,13 +219,27 @@ const makeEventName = x => x.name[2].toLowerCase() + x.name.substr(3) // onFooBa
 const makeProviderMethod = x => x.name["onRequest".length].toLowerCase() + x.name.substr("onRequest".length + 1) // onRequestChallenge becomes challenge
 
 //import { default as platform } from '../Platform/defaults'
-const generateAggregateMacros = (modules = {}) => Object.values(modules)
-  .reduce((acc, module) => {
-    acc.exports += `export { default as ${getModuleName(module)} } from './${getModuleName(module)}/index.mjs'\n`
-    acc.mockImports += `import { default as ${getModuleName(module).toLowerCase()} } from './${getModuleName(module)}/defaults.mjs'\n`
-    acc.mockObjects += `  ${getModuleName(module).toLowerCase()}: ${getModuleName(module).toLowerCase()},\n`
+const generateAggregateMacros = (templates, modules = {}, packageJson) => Object.values(modules)
+  .reduce((acc, module, i, arr) => {
+    acc.imports += `${generateAggregateImports(module)}\n`
+    
+    const name = getModuleName(module)
+
+    if (arr.length === 1) {
+      acc.exports += `import _${name} from './${name}/index.mjs'\n`
+      acc.exports += `export const ${name} = _${name}\n`
+      acc.exports += `export default _${name}\n`
+    }
+    else {
+      acc.exports += `export { default as ${name} } from './${name}/index.mjs'\n`
+    }
+
+    acc.mockImports += `import { default as ${name.toLowerCase()} } from './${name}/defaults.mjs'\n`
+    acc.mockObjects += `  ${name.toLowerCase()}: ${name.toLowerCase()},\n`
+    acc.configuration += generateConfig(templates, module, packageJson)
+    acc.httpEndpoint = acc.httpEndpoint || module.info['x-http-endpoint']
     return acc
-  }, {exports: '', mockImports: '', mockObjects: ''})
+  }, {imports: '', exports: '', mockImports: '', mockObjects: '', configuration: '', httpEndpoint: ''})
 
 const generateMacros = templates => obj => {
   const imports = generateImports(obj)
@@ -235,14 +263,21 @@ const generateMacros = templates => obj => {
   return macros
 }
 
-const insertAggregateMacrosOnly = (fContents = '', aggregateMacros = {}) => {
+const insertAggregateMacrosOnly = (fContents = '', aggregateMacros = {}, packageJson) => {
+  fContents = fContents.replace(/[ \t]*\/\* \$\{IMPORTS\} \*\/[ \t]*\n/, aggregateMacros.imports)
+  fContents = fContents.replace(/[ \t]*\/\* \$\{ID\} \*\/[ \t]*\n/, packageJson.$id)
+  fContents = fContents.replace(/[ \t]*\/\* \$\{CONFIGURATION\} \*\/[ \t]*\n/, aggregateMacros.configuration)
   fContents = fContents.replace(/[ \t]*\/\* \$\{EXPORTS\} \*\/[ \t]*\n/, aggregateMacros.exports)
   fContents = fContents.replace(/[ \t]*\/\* \$\{MOCK_IMPORTS\} \*\/[ \t]*\n/, aggregateMacros.mockImports)
   fContents = fContents.replace(/[ \t]*\/\* \$\{MOCK_OBJECTS\} \*\/[ \t]*\n/, aggregateMacros.mockObjects)
+  fContents = fContents.replace(/\$\{http\.endpoint\}/g, aggregateMacros.httpEndpoint)
+  fContents = fContents.replace(/\$\{sdk.id\}/g, packageJson.$id)
+  fContents = fContents.replace(/\$\{sdk.name\}/g, packageJson.name)
   return fContents
 }
 
-const insertMacros = (fContents = '', macros = {}, module = {}, version = {}) => {
+const insertMacros = (fContents = '', macros = {}, module = {}, packageJson = {}) => {
+  const version = parseVersion(packageJson)
   fContents = fContents.replace(/[ \t]*\/\* \$\{METHODS\} \*\/[ \t]*\n/, macros.methods)
   fContents = fContents.replace(/[ \t]*\/\* \$\{METHOD_LIST\} \*\/[ \t]*\n/, macros.methodList)
   fContents = fContents.replace(/[ \t]*\/\* \$\{ENUMS\} \*\/[ \t]*\n/, macros.enums)
@@ -255,6 +290,7 @@ const insertMacros = (fContents = '', macros = {}, module = {}, version = {}) =>
   fContents = fContents.replace(/\$\{major\}/g, version.major)
   fContents = fContents.replace(/\$\{minor\}/g, version.minor)
   fContents = fContents.replace(/\$\{patch\}/g, version.patch)
+  fContents = fContents.replace(/\$\{http.endpoint\}/g, module.info['x-http-endpoint'] || '')
 
   const exampleMatches = [...fContents.matchAll(/0 \/\* \$\{EXAMPLE\:(.*?)\} \*\//g)]
   const findCorrespondingMethodExample = methods => match => compose(
@@ -328,7 +364,7 @@ function generateDefaults(json = {}) {
       const def = JSON.stringify(val.examples[0].result.value, null, '  ')
       if (isPropertyMethod(val)) {
         acc += `
-    ${val.name}: function () { return MockProps.mock('${moduleName}', '${val.name}', arguments, ${def}) }`
+    ${val.name}: function (params) { return MockProps.mock('${moduleName}', '${val.name}', params, ${def}) }`
       } else {
         acc += `
     ${val.name}: ${def}`
@@ -355,6 +391,11 @@ const generateImports = json => {
 
   if (rpcMethodsOrEmptyArray(json).length) {
     imports += `import Transport from '../Transport/index.mjs'\n`
+  }
+
+  if (httpMethodsOrEmptyArray(json).length) {
+    imports += `import Transport from '../Http/index.mjs'\n`
+    imports += `import Configuration from '../Configuration/index.mjs'\n`
   }
 
   if (eventsOrEmptyArray(json).length) {
@@ -386,8 +427,24 @@ const generateImports = json => {
   return imports
 }
 
-const generateInitialization = json => generateEventInitialization(json) + '\n' + generateProviderInitialization(json) + '\n' + generateDeprecatedInitialization(json)
+const generateInitialization = json => [generateEventInitialization(json), generateProviderInitialization(json), generateDeprecatedInitialization(json)].join('\n')
 
+const generateConfig = (templates, json, pkg) => [generateHttpConfig(templates, json, pkg)].join('\n')
+
+const generateHttpConfig = (templates, json, pkg) => {
+  if (httpMethodsOrEmptyArray(json).length) {
+    return getTemplateForConfig(httpMethodsOrEmptyArray(json)[0], '.js', templates)
+  }
+}
+
+const generateAggregateImports = json => {
+  if (httpMethodsOrEmptyArray(json).length) {
+    const config = `import Http from './Http/index.mjs'
+import Configuration from './Configuration/index.mjs'
+`
+    return config
+  }
+}
 
 const generateEventInitialization = json => compose(
   reduce((acc, method, i, arr) => {
@@ -497,8 +554,18 @@ function generateMethods(json = {}, templates = {}, onlyEvents = false) {
         method.context = methodObj.params.filter(p => p.name !== 'listen').map(p => p.name)
       }
 
+      const transportOptions = {}
+      if (isHttpMethod(methodObj)) {
+        const tag = methodObj.tags.find(t => t.name === 'http')
+        Object.keys(tag).filter(k => k.startsWith("x-http")).map(k => transportOptions[k.substring(7)] = tag[k])
+      }
+
+      transportOptions.uses = getUsedCapabilitiesFromMethod(methodObj)
+      transportOptions.manages = getManagedCapabilitiesFromMethod(methodObj)
+      transportOptions.provides = getProvidedCapabilitiesFromMethod(methodObj)
+
       if (hasMethodAttributes(methodObj)) {
-        method.transforms = {
+        transportOptions.transforms = {
           methods: getMethodAttributes(methodObj)
         }
       }
@@ -519,7 +586,7 @@ function generateMethods(json = {}, templates = {}, onlyEvents = false) {
         .replace(/\$\{method\.params\.count}/g, methodObj.params ? methodObj.params.length : 0)
         .replace(/\$\{method\.temporalset\.add\}/g, temporalAddName)
         .replace(/\$\{method\.temporalset\.remove\}/g, temporalRemoveName)
-        .replace(/\$\{method\.transforms}/g, JSON.stringify(method.transforms))
+        .replace(/\$\{transport\.options\}/g, JSON.stringify(transportOptions))
 
       acc = acc.concat(javascript)
 

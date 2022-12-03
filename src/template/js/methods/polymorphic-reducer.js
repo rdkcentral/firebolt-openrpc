@@ -1,11 +1,9 @@
 
 function ${method.name}(${method.params}) {
-  const transforms = ${method.transforms}
-
   if (arguments.length === 1 && Array.isArray(arguments[0])) {
-    return Transport.send('${info.title}', '${method.name}', arguments[0], transforms)
+    return Transport.send('${info.title}', '${method.name}', arguments[0], ${transport.options})
   }
   else {
-    return Transport.send('${info.title}', '${method.name}', { ${method.params} }, transforms)
+    return Transport.send('${info.title}', '${method.name}', { ${method.params} }, ${transport.options})
   }
 }

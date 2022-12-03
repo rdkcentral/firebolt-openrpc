@@ -7,6 +7,37 @@
     },
     "methods": [
         {
+            "name": "prop",
+            "summary": "A prop.",
+            "tags": [
+                {
+                    "name": "capabilities",
+                    "x-uses": [ "xrn:firebolt:capability:test:test" ]
+                }
+            ],
+            "description": "A method for testing basic method generation.",
+            "params": [
+            ],
+            "result": {
+                "name": "result",
+                "summary": "A result for testing basic method generation.",
+                "schema": {
+                    "type": "string"
+                }
+            },
+            "examples": [
+                {
+                    "name": "Default Example",
+                    "params": [
+                    ],
+                    "result": {
+                        "name": "Default Result",
+                        "value": "the prop"
+                    }
+                }
+            ]
+        },
+        {
             "name": "method",
             "summary": "A method.",
             "tags": [

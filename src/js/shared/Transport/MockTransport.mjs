@@ -79,6 +79,7 @@ function handle(json) {
       },
       id: json.id
     })))
+    throw error
   }
 
   setTimeout(() => callback(JSON.stringify({ 

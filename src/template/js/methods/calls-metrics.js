@@ -2,9 +2,7 @@
 import { ${method.name} as log${method.Name} } from '../Metrics/index.mjs'
 
 function ${method.name}(${method.params}) {
-    const transforms = ${method.transforms}
-
-    const p = Transport.send('${info.title}', '${method.name}', { ${method.params} }, transforms)
+    const p = Transport.send('${info.title}', '${method.name}', { ${method.params} }, ${transport.options})
     
     p.then(_ => {
         setTimeout(_ => {

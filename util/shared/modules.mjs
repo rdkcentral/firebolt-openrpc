@@ -70,10 +70,23 @@ const isProviderInterfaceMethod = compose(
                 )
               )
             ),
-            getPath(['tags'])        
+            getPath(['tags']),        
         )
     )
   )
+
+
+const getUsedCapabilitiesFromMethod = (json) => {
+    return (json && json.tags && json.tags.find(t => t.name === "capabilities") || {})['x-uses'] || []
+}
+
+const getManagedCapabilitiesFromMethod = (json) => {
+    return (json && json.tags && json.tags.find(t => t.name === "capabilities") || {})['x-manages'] || []
+}
+
+const getProvidedCapabilitiesFromMethod = (json) => {
+    return (json && json.tags && json.tags.find(t => t.name === "capabilities") || {})['x-provides'] || []
+}
 
 const getProvidedCapabilities = (json) => {
     return Array.from(new Set([...getMethods(json).filter(isProviderInterfaceMethod).map(method => method.tags.find(tag => tag['x-provides'])['x-provides'])]))
@@ -480,7 +493,7 @@ const createSetterFromProperty = property => {
 const createFocusFromProvider = provider => {
 
     if (!provider.name.startsWith('onRequest')) {
-        throw "Methods with the `x-provider` tag extension MUST start with 'onRequest'."
+        throw "Can only create a focus callback for methods that start with 'onRequest'."
     }
     
     const ready = JSON.parse(JSON.stringify(provider))
@@ -515,7 +528,7 @@ const createFocusFromProvider = provider => {
 const createResponseFromProvider = (provider, type, json) => {
 
     if (!provider.name.startsWith('onRequest')) {
-        throw "Methods with the `x-provider` tag extension MUST start with 'onRequest'."
+        throw "Can only create a response callback for methods that start with 'onRequest'."
     }
 
     const response = JSON.parse(JSON.stringify(provider))
@@ -654,6 +667,19 @@ const createResponseFromProvider = (provider, type, json) => {
     return response
 }
 
+const generateHttpExtensions = json => {
+    const https = json.methods.filter( m => m.tags && m.tags.find( t => t.name == 'http')) || []
+    https.forEach(method => {
+        Object.keys(json.info).forEach(key => {
+            if (key.startsWith('x-http')) {
+                method.tags.find(t => t.name === 'http')[key] = method[key] || json.info[key]
+            }
+        })
+    })
+
+    return json
+}
+
 const generatePropertyEvents = json => {
     const properties = json.methods.filter( m => m.tags && m.tags.find( t => t.name == 'property')) || []
     const readonlies = json.methods.filter( m => m.tags && m.tags.find( t => t.name == 'property:readonly')) || []
@@ -692,7 +718,7 @@ const generateTemporalSetMethods = json => {
 
 
 const generateProviderMethods = json => {
-    const providers = json.methods.filter( m => m.name.startsWith('onRequest') && m.tags && m.tags.find( t => t.name == 'capabilities' && t['x-provides'])) || []
+    const providers = json.methods.filter(isProviderInterfaceMethod) || []
 
     providers.forEach(provider => {
         if (! isRPCOnlyMethod(provider)) {
@@ -707,8 +733,10 @@ const generateProviderMethods = json => {
     })
 
     providers.forEach(provider => {
-        json.methods.push(createResponseFromProvider(provider, 'Response', json))
-        json.methods.push(createResponseFromProvider(provider, 'Error', json))
+        if (provider.name.startsWith("onRequest")) {
+            json.methods.push(createResponseFromProvider(provider, 'Response', json))
+            json.methods.push(createResponseFromProvider(provider, 'Error', json))
+        }
     })
 
     return json
@@ -794,6 +822,7 @@ const fireboltize = (json) => {
     json = generateTemporalSetMethods(json)
     json = generateEventListenerParameters(json)
     json = generateEventListenResponse(json)
+    json = generateHttpExtensions(json)
     
     return json
 }
@@ -822,8 +851,10 @@ export {
     getPublicEvents,
     getSchemas,
     getParamsFromMethod,
-    fireboltize,
+    getUsedCapabilitiesFromMethod,
+    getManagedCapabilitiesFromMethod,
+    getProvidedCapabilitiesFromMethod,
     getPayloadFromEvent,
-    getPathFromModule,
-    providerHasNoParameters
+    providerHasNoParameters,
+    fireboltize
 }

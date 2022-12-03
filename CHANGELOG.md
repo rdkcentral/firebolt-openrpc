@@ -24,7 +24,17 @@
 * JSONRPC docs for provider response has invalid format ([#61](https://github.com/rdkcentral/firebolt-openrpc/issues/61)) ([34ddeaf](https://github.com/rdkcentral/firebolt-openrpc/commit/34ddeaf7345074a894f901464d366b6eb4488e51))
 * multiple provider doc headers for same module are broken ([#56](https://github.com/rdkcentral/firebolt-openrpc/issues/56)) ([e63928f](https://github.com/rdkcentral/firebolt-openrpc/commit/e63928f5160c9d4227f3207c8a7c90495245ff7a))
 
-## 1.5.0
+# 1.6.0
+ 
+- Convert all unit tests to TypeScript
+- Docs generation Clean-up (schemas, etc.)
+- Temporal Set methods, e.g. DeveloperTools.find()
+- Provider APIs
+- Support for static declarations template
+- Bugfix: remove unit test global object
+- Bugfix: include external schemas in declarations
+
+# 1.5.0
 
 - Much more beautiful validation error messages
 - Moved Transport Layer API out of `src/templates` and into `src/js`

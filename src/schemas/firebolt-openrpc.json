@@ -39,6 +39,55 @@
                 "tags"
             ],
             "properties": {
+                "tags": {
+                    "type": "array",
+                    "contains": {
+                        "anyOf": [
+                            {
+                                "type": "object",
+                                "required": ["x-uses"],
+                                "properties": {
+                                    "x-uses": {
+                                        "type": "array",
+                                        "minItems": 1,
+                                        "items": {
+                                            "type": "string",
+                                            "pattern": "^xrn:firebolt:capability:"
+                                        }
+                                    }
+                                }
+                            },
+                            {
+                                "type": "object",
+                                "required": ["x-manages"],
+                                "properties": {
+                                    "x-uses": {
+                                        "type": "array",
+                                        "minItems": 1,
+                                        "items": {
+                                            "type": "string",
+                                            "pattern": "^xrn:firebolt:capability:"
+                                        }
+                                    }
+                                }
+                            },
+                            {
+                                "type": "object",
+                                "required": ["x-provides"],
+                                "properties": {
+                                    "x-uses": {
+                                        "type": "array",
+                                        "minItems": 1,
+                                        "items": {
+                                            "type": "string",
+                                            "pattern": "^xrn:firebolt:capability:"
+                                        }
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                },
                 "examples": {
                     "type": "array",
                     "minItems": 1
@@ -291,6 +340,46 @@
                     "properties": {
                         "tags": {
                             "type": "array",
+                            "items": {
+                                "anyOf": [
+                                    {
+                                        "$ref": "#/definitions/CapabilitiesTag"
+                                    },
+                                    {
+                                        "$ref": "#/definitions/EventTag"
+                                    },
+                                    {
+                                        "$ref": "#/definitions/PropertyTag"
+                                    },
+                                    {
+                                        "$ref": "#/definitions/PolymorphicPullTag"
+                                    },
+                                    {
+                                        "$ref": "#/definitions/TemporalSetTag"
+                                    },
+                                    {
+                                        "$ref": "#/definitions/PolymorphicReducerTag"
+                                    },
+                                    {
+                                        "$ref": "#/definitions/SynchronousTag"
+                                    },
+                                    {
+                                        "$ref": "#/definitions/CallsMetricsTag"
+                                    },
+                                    {
+                                        "$ref": "#/definitions/ExcludeTag"
+                                    },
+                                    {
+                                        "$ref": "#/definitions/RpcOnlyTag"
+                                    },
+                                    {
+                                        "$ref": "#/definitions/DeprecatedTag"
+                                    },
+                                    {
+                                        "$ref": "#/definitions/HttpTag"
+                                    }
+                                ]
+                            },
                             "minItems": 1
                         }
                     }
@@ -308,6 +397,9 @@
                         },
                         {
                             "$ref": "#/definitions/EventMethod"
+                        },
+                        {
+                            "$ref": "#/definitions/HttpMethod"
                         },
                         {
                             "$ref": "#/definitions/RpcOnlyMethod"
@@ -413,6 +505,40 @@
                 "result": {
                     "$ref": "#/definitions/EventResult"
                 }                
+            }
+        },
+        "HttpMethod": {
+            "type": "object",
+            "properties": {
+                "tags": {
+                    "allOf": [
+                        {
+                            "type": "array",
+                            "items": {
+                                "oneOf": [
+                                    {
+                                        "$ref": "#/definitions/HttpTag"
+                                    },
+                                    {
+                                        "$ref": "#/definitions/CapabilitiesTag"
+                                    },
+                                    {
+                                        "$ref": "#/definitions/CallsMetricsTag"
+                                    },
+                                    {
+                                        "$ref": "#/definitions/PolymorphicReducerTag"
+                                    }
+                                ]
+                            }
+                        },
+                        {
+                            "type": "array",
+                            "contains": {
+                                "$ref": "#/definitions/HttpTag"
+                            }
+                        }
+                    ]
+                }
             }
         },
         "CapabilityMethod": {
@@ -622,7 +748,33 @@
                     }
                 }
             ]
-        }, 
+        },
+        "HttpTag": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/Tag"
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "name": {
+                            "const": "http"
+                        }
+                    },
+                    "propertyNames": {
+                        "type": "string",
+                        "enum": [
+                            "name",
+                            "x-http-path",
+                            "x-http-method",
+                            "x-http-parameters",
+                            "x-http-headers",
+                            "x-http-result"
+                        ]
+                    }
+                }
+            ]
+        },        
         "DeprecatedTag": {
             "allOf": [
                 {

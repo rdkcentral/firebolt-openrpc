@@ -15,7 +15,8 @@ const knownOpts = {
   'output': [path],
   'shared-schemas': [path],
   'as-path': Boolean,
-  'static-modules': String
+  'static-modules': String,
+  'main': String
 }
 const shortHands = {
   't': '--task',

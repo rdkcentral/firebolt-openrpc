@@ -16,17 +16,25 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-const getTemplateForMethod = (method, suffix, templates) => {
-  const template = method.tags && method.tags.map(t=>t.name).find(t => Object.keys(templates).includes('methods/' + t + suffix)) || 'default'
-  return templates[`methods/${template}${suffix}`]
-}
+import { Simple } from '../../build/sdk/javascript/src/sdk.mjs'
+import Setup from '../Setup'
+import { expect } from '@jest/globals';
 
-const getTemplateForConfig = (method, suffix, templates) => {
-  const template = method.tags && method.tags.map(t=>t.name).find(t => Object.keys(templates).includes('configuration/' + t + suffix)) || 'default'
-  return templates[`configuration/${template}${suffix}`]
-}
 
-export {
-  getTemplateForMethod,
-  getTemplateForConfig
-}
+test('Property get', () => {
+    return Simple.prop().then(p => {
+        expect(p).toBe('the prop')
+    })
+})
+
+test('Property set', () => {
+    return Simple.prop('new value').then(_ => {
+        expect(true).toBe(true)
+    })
+})
+
+// test('Property get new value', () => {
+//     return Simple.prop().then(p => {
+//         expect(p).toBe('new value')
+//     })
+// })
