@@ -1,3 +1,11 @@
+import { setMockResponses } from './Transport/MockTransport.mjs'
+
+/* ${MOCK_IMPORTS} */
+
+setMockResponses({
+  /* ${MOCK_OBJECTS} */
+})
+
 function _initialize(endpoint, config, apis) {
   Configuration.set(config)
   Http.setEndpoint(endpoint || config.endpoint)
