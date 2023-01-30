@@ -12,7 +12,7 @@ function ${method.name}(${method.params}) {
         })    
     }).catch(error => {
         const msg = typeof error === 'string' ? error : error.message || 'Unknown Error'
-        console.error(`Metrics1 '${method.name}' callback failed: ${msg}`)
+        console.error(`Metrics '${method.name}' callback failed: ${msg}`)
     })
 
     return p
