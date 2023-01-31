@@ -1,3 +1,11 @@
+# [1.8.0-next.2](https://github.com/rdkcentral/firebolt-openrpc/compare/v1.8.0-next.1...v1.8.0-next.2) (2023-01-31)
+
+
+### Bug Fixes
+
+* Handle error in calls-metrics template ([322f636](https://github.com/rdkcentral/firebolt-openrpc/commit/322f636ca627c7c95ae58a16e8d3b334cf5ff3e2))
+* Handle error in calls-metrics template ([b737d09](https://github.com/rdkcentral/firebolt-openrpc/commit/b737d09f9d5b22c63cae75f2992f324b8a1541cb))
+
 # [1.8.0-next.1](https://github.com/rdkcentral/firebolt-openrpc/compare/v1.7.2-next.1...v1.8.0-next.1) (2022-12-02)
 
 
