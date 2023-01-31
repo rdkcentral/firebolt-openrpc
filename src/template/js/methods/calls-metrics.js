@@ -10,6 +10,9 @@ function ${method.name}(${method.params}) {
         setTimeout(_ => {
             log${method.Name}(${method.params})
         })    
+    }).catch(error => {
+        const msg = typeof error === 'string' ? error : error.message || 'Unknown Error'
+        console.error(`Metrics '${method.name}' callback failed: ${msg}`)
     })
 
     return p
