@@ -145,7 +145,8 @@ const doListen = function(module, event, callback, context, once, internal=false
       const key = module + '.' + event + (hasContext ? `.${contextKey}`  : '')
 
       if (Object.values(listeners.get(key)).length === 0) {
-        const { id, promise } = Transport.listen(module, 'on' + event[0].toUpperCase() + event.substring(1), { listen: true })
+        const args = Object.assign({ listen: true }, context)
+        const { id, promise } = Transport.listen(module, 'on' + event[0].toUpperCase() + event.substring(1), args)
         keys[id] = key
         promises.push(promise)
       }
@@ -190,6 +191,12 @@ const doListen = function(module, event, callback, context, once, internal=false
 
 const getListenArgs = function(...args) {
   const callback = args.pop()
+  const [module, event, context] = getClearArgs(...args)
+
+  return [module, event, callback, context]
+}
+
+const getClearArgs = function(...args) {
   const module = (args.shift() || '*').toLowerCase()
   const event = args.shift() || '*'
   const context = {}
@@ -198,7 +205,7 @@ const getListenArgs = function(...args) {
     context[validContext[module][event][i]] = args.shift()
   }
 
-  return [module, event, callback, context]
+  return [module, event, context]
 }
 
 const once = function(...args) {
@@ -216,9 +223,8 @@ const clear = function(...args) {
     return doClear(args[0])
   }
   else {
-    const moduleOrId = args.shift()
-    const event = args.shift() || undefined
-    return doClear(moduleOrId, event) // todo: add context
+    const [moduleOrId, event, context] = getClearArgs(...args)
+    return doClear(moduleOrId, event, context)
   }
 }
 
@@ -228,14 +234,20 @@ export const prioritize = function(...args) {
   return doListen(module, event, callback, context, false, true)
 }
 
-const unsubscribe = (key) => {
+const unsubscribe = (key, context) => {
   const [module, event] = key.split('.').slice(0, 2)
-  Transport.send(module, 'on' + event[0].toUpperCase() + event.substr(1), { listen: false })
+  const args = Object.assign({ listen: false }, context)
+  Transport.send(module, 'on' + event[0].toUpperCase() + event.substr(1), args)
 }
 
 
 // TODO: clear needs to go through Transport Layer
-const doClear = function (moduleOrId = false, event = false) {
+const doClear = function (moduleOrId = false, event = false, context) {
+
+  if (event === '*') {
+    event = false
+  }
+
   if (typeof moduleOrId === 'number') {
     const searchId = moduleOrId.toString()
     const key = listeners.find(searchId)
@@ -259,8 +271,12 @@ const doClear = function (moduleOrId = false, event = false) {
         }
       })
     } else {
-      listeners.removeKey(moduleOrId + '.' + event)
-      unsubscribe(moduleOrId + '.' + event)
+      const hasContext = Object.values(context).length > 0
+      const contextKey = Object.keys(context).sort().map(key => key + '=' + JSON.stringify(context[key])).join('&')
+      const key = moduleOrId + '.' + event + (hasContext ? `.${contextKey}`  : '')
+
+      listeners.removeKey(key)
+      unsubscribe(key, context)
     }
   }
 }
