@@ -1,1 +1,1 @@
-registerEventContext('${info.title}', '${method.name}', ${method.context.array})
+registerEventContext('${info.title}', '${event.name}', ${method.context.array})
