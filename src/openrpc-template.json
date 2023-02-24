@@ -1,0 +1,33 @@
+{
+    "openrpc": "1.2.4",
+    "info": {
+        "title": "",
+        "version": ""
+    },
+    "methods": [
+        {
+            "name": "rpc.discover",
+            "summary": "The OpenRPC schema for this JSON-RPC API",
+            "params": [],
+            "result": {
+                "name": "OpenRPC Schema",
+                "schema": {
+                    "type": "object"
+                }
+            },
+            "examples": [
+                {
+                    "name": "Default",
+                    "params": [],
+                    "result": {
+                        "name": "schema",
+                        "value": {}
+                    }
+                }
+            ]
+        }
+    ],
+    "components": {
+        "schemas": {}
+    }
+}
