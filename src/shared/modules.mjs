@@ -871,7 +871,7 @@ const getSemanticVersion = json => {
     [version.major, version.minor, version.patch] = numbers.split('.')
     version.readable = (json.info && json.info.title + ' ' || '')
     version.readable += version.major ? version.major : ''
-    version.readable += version.minor ? '.' + version.major : ''
+    version.readable += version.minor ? '.' + version.minor : ''
     version.readable += version.patch ? '.' + version.patch : ''
     version.readable += version.tag ? '-' + version.tag : ''
     version.readable += version.build ? '.' + version.build : ''

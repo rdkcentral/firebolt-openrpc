@@ -50,7 +50,7 @@ const insertMacros = (content, macros) => {
     return content.replace(/[ \t]*\/\* \$\{DECLARATIONS\} \*\/[ \t]*\n/, macros.declarations)
 }
 
-const generateAggregateMacros = (modules, templates) => {
+const generateAggregateMacros = (openrpc, modules, templates) => {
     const typescript = modules  .map(module => generateMacros(module, templates))
                                 .map(macros => macros.declarations)
                                 .join('\n')

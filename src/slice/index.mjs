@@ -44,6 +44,11 @@ const run = ({
         const provides = method => capabilities(method)['x-provides'] || null
         const manages = method => capabilities(method)['x-manages'] || []
 
+        // TypeError-proof the code below
+        rule.use = rule.use || []
+        rule.provide = rule.provide || []
+        rule.manage = rule.manage || []
+
         const matchModule = method => rule.module === '*' || method.name.toLowerCase().startsWith(rule.module.toLowerCase())
         const matchUse = method => uses(method).some(cap => rule.use.includes(cap) || rule.use.includes('*'))
         const matchProvide = method => provides(method) && rule.provide.includes(provides(method)) || rule.provide.includes('*')

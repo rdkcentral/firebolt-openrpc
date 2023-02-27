@@ -204,13 +204,18 @@ const makeEventName = x => x.name[2].toLowerCase() + x.name.substr(3) // onFooBa
 const makeProviderMethod = x => x.name["onRequest".length].toLowerCase() + x.name.substr("onRequest".length + 1) // onRequestChallenge becomes challenge
 
 //import { default as platform } from '../Platform/defaults'
-const generateAggregateMacros = (modules = {}) => Object.values(modules)
+const generateAggregateMacros = (openrpc, modules, templates) => Object.values(modules)
   .reduce((acc, module) => {
     acc.exports += `export { default as ${getModuleName(module)} } from './${getModuleName(module)}/index.mjs'\n`
     acc.mockImports += `import { default as ${getModuleName(module).toLowerCase()} } from './${getModuleName(module)}/defaults.mjs'\n`
     acc.mockObjects += `  ${getModuleName(module).toLowerCase()}: ${getModuleName(module).toLowerCase()},\n`
     return acc
-  }, {exports: '', mockImports: '', mockObjects: ''})
+  }, {
+    exports: '',
+    mockImports: '',
+    mockObjects: '',
+    version: getSemanticVersion(openrpc)
+  })
 
 const generateMacros = (obj, templates) => {
   const imports = generateImports(obj)
@@ -242,6 +247,8 @@ const insertAggregateMacros = (fContents = '', aggregateMacros = {}) => {
   fContents = fContents.replace(/[ \t]*\/\* \$\{EXPORTS\} \*\/[ \t]*\n/, aggregateMacros.exports)
   fContents = fContents.replace(/[ \t]*\/\* \$\{MOCK_IMPORTS\} \*\/[ \t]*\n/, aggregateMacros.mockImports)
   fContents = fContents.replace(/[ \t]*\/\* \$\{MOCK_OBJECTS\} \*\/[ \t]*\n/, aggregateMacros.mockObjects)
+  fContents = fContents.replace(/\$\{readable\}/g, aggregateMacros.version.readable)
+
   return fContents
 }
 
@@ -254,7 +261,6 @@ const insertMacros = (fContents = '', macros = {}) => {
   fContents = fContents.replace(/[ \t]*\/\* \$\{INITIALIZATION\} \*\/[ \t]*\n/, macros.initialization)
   fContents = fContents.replace(/[ \t]*\/\* \$\{DEFAULTS\} \*\/[ \t]*\n/, macros.defaults)
   fContents = fContents.replace(/[ \t]*\/\* \$\{EVENT_METHODS\} \*\/[ \t]*\n/, macros.onlyEventMethods)
-  fContents = fContents.replace(/\$\{readable\}/g, macros.version.readable)
   fContents = fContents.replace(/\$\{major\}/g, macros.version.major)
   fContents = fContents.replace(/\$\{minor\}/g, macros.version.minor)
   fContents = fContents.replace(/\$\{patch\}/g, macros.version.patch)

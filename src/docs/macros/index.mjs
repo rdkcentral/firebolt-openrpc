@@ -84,8 +84,10 @@ function generateMacros(module, templates) {
     }
 }
 
-function generateAggregateMacros(modules, templates) {
-    return {}
+function generateAggregateMacros(openrpc, modules, templates) {
+    return {
+        version: getSemanticVersion(openrpc)
+    }
 }
 
 function insertMacros(data = '', macros = {}, options = {}) {

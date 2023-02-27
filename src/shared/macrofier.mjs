@@ -20,7 +20,7 @@
 
 import { emptyDir, readDir, readFiles, readJson, writeFiles, writeText } from '../shared/filesystem.mjs'
 import { getTemplateForModule } from '../shared/template.mjs'
-import { getModule, isRPCOnlyMethod } from '../shared/modules.mjs'
+import { getModule, getSemanticVersion, isRPCOnlyMethod } from '../shared/modules.mjs'
 import { logHeader, logSuccess } from './io.mjs'
 import path from 'path'
 
@@ -76,7 +76,7 @@ const macrofy = async (
             modules = moduleList.map(name => getModule(name, openrpc))
         }
 
-        const aggregateMacros = engine.generateAggregateMacros(modules.concat(staticModules), templates)
+        const aggregateMacros = engine.generateAggregateMacros(openrpc, modules.concat(staticModules), templates)
 
         const outputFiles = Object.fromEntries(Object.entries(await readFiles( staticCodeList, staticContent))
                                 .map( ([n, v]) => [path.join(output, n), v]))
