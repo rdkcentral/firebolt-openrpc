@@ -43,7 +43,9 @@ const macrofy = async (
         staticModuleNames = [],
         rename = {},
         clearTargetDirectory = true,
-        headline
+        headline,
+        treeshakePattern = null,
+        treeshakeEntry = null
     } = options
 
     return new Promise( async (resolve, reject) => {
@@ -109,10 +111,39 @@ const macrofy = async (
 
         console.log()
         
+        if (treeshakePattern && treeshakeEntry) {
+            const importedFiles = (code, base) => Array.from(new Set([...code.matchAll(treeshakePattern)].map(arr => arr[2]))).map(i => path.join(output, base, i))
+
+            const treeShake = (entry, base='', checked = []) => {
+                const code = outputFiles[entry]
+                let imports = []
+
+                if (!checked.includes(entry)) {
+                    imports = importedFiles(code, base)
+                    checked.push(entry)    
+                }
+
+                imports = imports.map(imp => Array.from(new Set([imp, ...treeShake(imp, path.dirname(imp).substring(output.length), checked)]))).flat()
+
+                return Array.from(new Set([entry, ...imports]))
+            }
+
+            const keep = treeShake(path.join(output, treeshakeEntry))
+            Object.keys(outputFiles).forEach(file => {
+                if (!keep.find(x => x === file)) {
+                    logSuccess(`Tree-shaking ${path.relative(output, file)} from project.`)
+                    delete outputFiles[file]
+                }
+            })
+
+            console.log()
+        }
+
         if (clearTargetDirectory) {
             logSuccess(`Cleared ${path.relative('.', output)} directory`)
             await emptyDir(output)
         }
+
         await writeFiles(outputFiles)    
         logSuccess(`Wrote ${Object.keys(outputFiles).length} files.`)
 

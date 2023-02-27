@@ -64,7 +64,9 @@ const run = async ({
     staticContent:      path.join(__dirname, '..', '..', 'languages', 'javascript', 'src', 'shared'),
     templatesPerModule: [ 'index.mjs', 'defaults.mjs' ],
     staticModuleNames: staticModuleNames,
-    rename: mainFilename ? { '/index.mjs': mainFilename } : {}
+    rename: mainFilename ? { '/index.mjs': mainFilename } : {},
+    treeshakePattern: /(import|export).*?from\s+['"](.*?)['"]/g,
+    treeshakeEntry: mainFilename ? '/' + mainFilename : '/index.mjs'
   })
 }
 
