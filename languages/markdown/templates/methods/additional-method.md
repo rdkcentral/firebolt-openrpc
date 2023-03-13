@@ -1,1 +1,0 @@
-| ${event.javascript} | ${event.rpc} | `(${method.params})` | ${event.seeAlso} |

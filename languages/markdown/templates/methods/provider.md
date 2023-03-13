@@ -10,8 +10,7 @@ Provider methods always have two arguments:
 
 | Param                  | Type                 | Required                 | Summary                 |
 | ---------------------- | -------------------- | ------------------------ | ----------------------- |
-| `${method.param.name}` | ${method.param.type} | ${method.param.required} | ${method.param.summary} ${method.param.constraints} |
-
+${method.params.table.rows}
 
 ${if.provider.params}
 

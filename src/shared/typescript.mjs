@@ -16,9 +16,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { getPath, getSchema } from './json-schema.mjs'
 import deepmerge from 'deepmerge'
-import { localizeDependencies } from './json-schema.mjs'
+import { getPath, getSchema, localizeDependencies } from './json-schema.mjs'
 import { getLinkFromRef } from './markdown.mjs'
 import {  getProviderInterfaceMethods, getPayloadFromEvent } from './modules.mjs'
 
@@ -175,6 +174,10 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
     let operator = (level == 0 ? ' =' : ':')
     let title = (level === 0 ? json.title || name : name)
 
+    if (level === 0 && json.type === "string" && Array.isArray(json.enum)) {
+      return `enum ${json.title || name} {\n\t` + json.enum.map(value => value.split(':').pop().replace(/[\.\-]/g, '_').replace(/\+/g, '_plus').replace(/([a-z])([A-Z0-9])/g, '$1_$2').toUpperCase() + ` = '${value}'`).join(',\n\t') + '\n}\n'
+    }
+
     if (!title) {
       prefix = operator = title = ''
     }
@@ -309,6 +312,7 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
   }
 
   function getSchemaType(module, json, schemas = {}, options = { link: false, title: false, code: false, asPath: false, baseUrl: '' }) {
+
     if (json.schema) {
       json = json.schema
     }
@@ -478,7 +482,7 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
     }
   }
 
-  export {
+  export default {
       getMethodSignature,
       getMethodSignatureParams,
       getProviderInterface,

@@ -18,12 +18,6 @@
 
 import Transport from '../Transport/index.mjs'
 import Events from '../Events/index.mjs'
-import { registerEvents } from '../Events/index.mjs'
-import { registerEventContext } from '../Events/index.mjs'
-
-/* ${INITIALIZATION} */
-
-  /* ${METHODS} */
 
 const providerInterfaces = {}
 
@@ -132,8 +126,5 @@ const provide = function(capability, provider) {
 }
 
 export default {
-  provide,
-  /* ${EVENTS} */
-  /* ${ENUMS} */
-  /* ${METHOD_LIST} */
+  provide
 }

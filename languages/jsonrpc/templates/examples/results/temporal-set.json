@@ -1,0 +1,28 @@
+[
+    {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "result": ${example.result}
+    },
+    {
+        "jsonrpc": "2.0",
+        "id": 2,
+        "result": {
+            "listening": true
+        }
+    },
+    {
+        "jsonrpc": "2.0",
+        "id": 3,
+        "result": {
+            "listening": true
+        }
+    },
+    {
+        "jsonrpc": "2.0",
+        "id": 2,
+        "result": ${example.result.item}
+    }
+]
+
+

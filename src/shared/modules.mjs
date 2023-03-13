@@ -295,6 +295,11 @@ const createEventFromProperty = property => {
 
     event.tags[0]['x-alternative'] = property.name
 
+    event.tags.unshift({
+        name: "subscriber",
+        'x-subscriber-for': property.name
+    })
+
     old_tags.forEach(t => {
         if (t.name !== 'property' && !t.name.startsWith('property:'))
         {
@@ -312,8 +317,8 @@ const createPullEventFromPush = (pusher, json) => {
     const old_tags = pusher.tags.concat()
 
     event.tags[0]['x-pulls-for'] = pusher.name
-    event.tags.push({
-        name: 'rpc-only'
+    event.tags.unshift({
+        name: 'polymorphic-pull-event'
     })
 
     const requestType = (pusher.name.charAt(0).toUpperCase() + pusher.name.substr(1)) + "FederatedRequest"
@@ -331,6 +336,7 @@ const createPullEventFromPush = (pusher, json) => {
 
     event.examples && event.examples.forEach(example => {
         example.result = exampleResult
+        example.params = []
     })
 
     old_tags.forEach(t => {
@@ -438,7 +444,7 @@ const createSetterFromProperty = property => {
     const old_tags = setter.tags
     setter.tags = [
         {
-            'name': 'rpc-only',
+            'name': 'setter',
             'x-setter-for': property.name
         }
     ]
@@ -846,6 +852,10 @@ const getModule = (name, json) => {
                         .filter(method => method.name.toLowerCase().startsWith(name.toLowerCase() + '.'))
                         .map(method => Object.assign(method, { name: method.name.split('.').pop() }))
     openrpc.info.title = name
+    if (json.info['x-module-descriptions'] && json.info['x-module-descriptions'][name]) {
+        openrpc.info.description = json.info['x-module-descriptions'][name]
+    }
+    delete openrpc.info['x-module-descriptions']
     return removeUnusedSchemas(openrpc)
 }
 

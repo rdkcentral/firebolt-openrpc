@@ -1,0 +1,12 @@
+{
+    "name": "JavaScript",
+    "langcode": "javascript",
+    "templatesPerModule": [
+        "/index.mjs",
+        "/defaults.mjs"
+    ],
+    "createModuleDirectories": true,
+    "aggregateFile": "/index.d.ts",
+    "treeshakePattern": "(import|export).*?from\\s+['\"](.*?)['\"]",
+    "treeshakeTypes": [".js", ".mjs"]
+}

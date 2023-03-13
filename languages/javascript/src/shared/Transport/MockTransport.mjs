@@ -115,7 +115,7 @@ function dotGrab(obj = {}, key) {
   const keys = key.split('.')
   let ref = obj
   for (let i = 0; i < keys.length; i++) {
-    ref = ref[keys[i]] || {}
+    ref = (Object.entries(ref).find( ([k, v]) => k.toLowerCase() === keys[i].toLowerCase()) || [null, {}])[1]
   }
   return ref
 }

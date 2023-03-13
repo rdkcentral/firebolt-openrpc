@@ -82,6 +82,12 @@ const run = async ({
       }
     })
 
+    if (json.info.description) {
+      openrpc.info['x-module-descriptions'] = openrpc.info['x-module-descriptions'] || {}
+      openrpc.info['x-module-descriptions'][json.info.title] = json.info.description
+    }
+
+
     // add methods from this module
     openrpc.methods.push(...json.methods)
 

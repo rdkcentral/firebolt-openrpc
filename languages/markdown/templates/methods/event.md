@@ -1,50 +1,23 @@
 ### ${event.name}
-${method.description}
 
 ${if.javascript}
-
+```typescript
+function listen('${event.name}', ${event.signature.params}${if.context}, ${end.if.context}(${event.result.type}) => void): Promise<number>
+```
 See also: [listen()](#listen), [once()](#listen), [clear()](#listen).
+
 ${end.if.javascript}
+
+${event.params}
 
 Event value:
 
 ${method.result}
 
-**Examples**
+${method.capabilities}
 
-${example.title}:
+#### Examples
 
-${if.javascript}
-JavaScript:
-
-```javascript
-${example.javascript}
-```
-Value of `${method.result.name}`
-
-```javascript
-${example.result}
-```
-
-${end.if.javascript}
-
-<details>
-  <summary>JSON-RPC:</summary>
-
-Request:
-
-```json
-${example.jsonrpc}
-```
-
-Response:
-
-```json
-${example.response}
-```
-
-</details>
-
-${end.example}
+${method.examples}
 
 ---

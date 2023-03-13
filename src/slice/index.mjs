@@ -33,6 +33,7 @@ const run = ({
 
       openrpc.info.title = manifest.info.title
 
+      // copy info x- extensions from sdk.config.json to openrpc slice
       Object.keys(manifest.info).filter(key => key.startsWith('x-')).forEach(extension => {
         openrpc.info[extension] = manifest.info[extension]
       })
@@ -63,6 +64,15 @@ const run = ({
       })
       openrpc.methods.length = 0
       openrpc.methods.push(...new Set(methods))
+
+      const modules = Array.from(new Set(openrpc.methods.map(m => m.name.split(".").shift())))
+
+      // copy info x- extensions from sdk.config.json to openrpc slice
+      Object.keys(openrpc.info).filter(key => key.startsWith('x-module-')).forEach(extension => {
+        Object.keys(openrpc.info[extension]).filter(key => !(modules.find(module => module === key))).forEach(key => {
+          delete openrpc.info[extension][key]
+        })
+      })
 
       // Tree-shake unused schemas
       openrpc.components = removeUnusedSchemas(openrpc).components

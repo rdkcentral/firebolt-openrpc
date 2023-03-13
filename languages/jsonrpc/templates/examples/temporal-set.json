@@ -1,0 +1,26 @@
+[
+    {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "${info.title}.${method.name}",
+        "params": {
+            "TBD": "TBD"
+        }
+    },
+    {
+        "jsonrpc": "2.0",
+        "id": 2,
+        "method": "${info.title}.on${method.item}Available",
+        "params": {
+            "listen": true
+        }
+    },
+    {
+        "jsonrpc": "2.0",
+        "id": 3,
+        "method": "${info.title}.on${method.item}Unavailable",
+        "params": {
+            "listen": true
+        }
+    }
+]

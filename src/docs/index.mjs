@@ -19,12 +19,8 @@
  */
 
 import path from 'path'
-import url from 'url'
-import macrofy from '../shared/macrofier.mjs'
-import { insertMacros, insertAggregateMacros, generateMacros, generateAggregateMacros } from './macros/index.mjs'
-
-// Workaround for using __dirname in ESM
-const __dirname = url.fileURLToPath(new URL('.', import.meta.url))
+import macrofy from '../macrofier/index.mjs'
+import { readJson } from '../shared/filesystem.mjs'
 
 /************************************************************************************************/
 /******************************************** MAIN **********************************************/
@@ -33,22 +29,35 @@ const __dirname = url.fileURLToPath(new URL('.', import.meta.url))
 const run = async ({
   input: input,
   template: template,
-  output: output
+  output: output,
+  examples: examples,
+  language: language,
+  'as-path': asPath
 }) => {
+  let libraryName = 'your-library' // TODO find a better default if package.json isn't available...
+
   // Important file/directory locations
-  
-  const engine = {
-    generateMacros,
-    generateAggregateMacros,
-    insertMacros,
-    insertAggregateMacros
+  try {
+    // Important file/directory locations
+    const packageJsonFile = path.join(path.dirname(input), '..', 'package.json')
+    const packageJson = await readJson(packageJsonFile)
+    libraryName = packageJson.name || libraryName
+  }
+  catch (error) {
+     // fail silently
+     throw error
   }
 
-  return macrofy(input, template, output, engine, {
+  const config = await readJson(path.join(language, 'language.config.json'))
+
+  return macrofy(input, template, output, {
     headline: "documentation",
     outputDirectory:    'content',
-    sharedTemplates:    path.join(__dirname, '..', '..', 'languages', 'markdown', 'templates'),
+    sharedTemplates:    path.join(language, 'templates'),
+    createModuleDirectories: asPath,
+    examples: examples,
     templatesPerModule: [ 'index.md' ],
+    libraryName: libraryName,
     hidePrivate: false
   })
 }

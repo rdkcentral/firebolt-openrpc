@@ -1,1 +1,1 @@
-// ${method.name} API is handled via listen('${event.name}', (data) => void)
+// ${method.name} is accessed via listen('${event.name}, ...)

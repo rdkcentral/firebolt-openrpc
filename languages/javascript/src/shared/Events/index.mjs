@@ -215,6 +215,9 @@ const clear = function(...args) {
   if (args && args.length && typeof args[0] === 'number') {
     return doClear(args[0])
   }
+  else if (args && args.length && typeof args[1] === 'number') {
+    return doClear(args[1])
+  }
   else {
     const moduleOrId = args.shift()
     const event = args.shift() || undefined
@@ -240,11 +243,14 @@ const doClear = function (moduleOrId = false, event = false) {
     const searchId = moduleOrId.toString()
     const key = listeners.find(searchId)
 
-    listeners.remove(searchId)
-    if (listeners.count(key) === 0) {
-      unsubscribe(key)
+    if (key) {
+      listeners.remove(searchId)
+      if (listeners.count(key) === 0) {
+        unsubscribe(key)
+      }
+      return true
     }
-    return true
+    return false
   } else {
     if (!moduleOrId && !event) {
       listeners.keys().forEach(key => {

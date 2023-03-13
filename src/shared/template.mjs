@@ -24,7 +24,7 @@ const getTemplateForMethod = (method, suffix, templates) => {
 }
 
 const getTemplateForModule = (module, file, templates) => {
-  return getTemplate(module, file, templates) || getTemplate('', file, templates)
+  return getTemplate(module, file, templates) || getTemplate('/modules/', file, templates)
 }
 
 const getTemplate = (dir = 'Foo', file = 'index.js', templates = []) => {

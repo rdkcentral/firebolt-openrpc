@@ -19,13 +19,8 @@
  */
 
 import path from 'path'
-import url from 'url'
 import { readJson } from '../shared/filesystem.mjs'
-import macrofy from '../shared/macrofier.mjs'
-import { insertMacros, insertAggregateMacros, generateMacros, generateAggregateMacros } from './macros/index.mjs'
-
-// Workaround for using __dirname in ESM
-const __dirname = url.fileURLToPath(new URL('.', import.meta.url))
+import macrofy from '../macrofier/index.mjs'
 
 /************************************************************************************************/
 /******************************************** MAIN **********************************************/
@@ -35,37 +30,39 @@ const run = async ({
   input: input,
   template: template,
   output: output,
+  language: language,
   'static-module': staticModuleNames
 }) => {
   
   let mainFilename
+  let declarationsFilename
   
   try {
     // Important file/directory locations
     const packageJsonFile = path.join(path.dirname(input), '..', 'package.json')
     const packageJson = await readJson(packageJsonFile)
     mainFilename = path.basename(packageJson.main)
+    declarationsFilename = path.basename(packageJson.types)
   }
   catch (error) {
      // fail silently
   }
   
-  const engine = {
-    generateMacros,
-    generateAggregateMacros,
-    insertMacros,
-    insertAggregateMacros
-  }
+  const config = await readJson(path.join(language, 'language.config.json'))
 
-  return macrofy(input, template, output, engine, {
+  return macrofy(input, template, output, {
     headline: 'SDK code',
     outputDirectory:    'sdk',
-    sharedTemplates:    path.join(__dirname, '..', '..', 'languages', 'javascript', 'templates'),
-    staticContent:      path.join(__dirname, '..', '..', 'languages', 'javascript', 'src', 'shared'),
-    templatesPerModule: [ 'index.mjs', 'defaults.mjs' ],
+    sharedTemplates:    path.join(language, 'templates'),
+    staticContent:      path.join(language, 'src', 'shared'),
+    templatesPerModule: config.templatesPerModule,
+    createModuleDirectories: config.createModuleDirectories,
     staticModuleNames: staticModuleNames,
-    rename: mainFilename ? { '/index.mjs': mainFilename } : {},
-    treeshakePattern: /(import|export).*?from\s+['"](.*?)['"]/g,
+    hideExcluded: true,
+    aggregateFile: config.aggregateFile,
+    rename: mainFilename ? { '/index.mjs': mainFilename, '/index.d.ts': declarationsFilename } : {},
+    treeshakePattern: config.treeshakePattern ? new RegExp(config.treeshakePattern, "g") : undefined,
+    treeshakeTypes: config.treeshakeTypes,
     treeshakeEntry: mainFilename ? '/' + mainFilename : '/index.mjs'
   })
 }
