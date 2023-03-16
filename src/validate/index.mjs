@@ -16,9 +16,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { readJson, readFiles, readDir, writeJson } from "../shared/filesystem.mjs"
-import { addExternalMarkdown, fireboltize } from "../shared/modules.mjs"
-import { getExternalSchemas, removeIgnoredAdditionalItems, replaceRef, replaceUri } from "../shared/json-schema.mjs"
+import { readJson, readFiles, readDir } from "../shared/filesystem.mjs"
+import { addExternalMarkdown, addExternalSchemas, fireboltize } from "../shared/modules.mjs"
+import { removeIgnoredAdditionalItems, replaceUri } from "../shared/json-schema.mjs"
 import { validate, displayError } from "./validator/index.mjs"
 import { logHeader, logSuccess, logError } from "../shared/io.mjs"
 
@@ -103,7 +103,6 @@ const run = async ({
         ]
     })
 
-
     addFormats(ajv)
     // explicitly add our custom extensions so we can keep strict mode on (TODO: put these in a JSON config?)
     ajv.addVocabulary(['x-method', 'x-this-param', 'x-additional-params'])
@@ -135,19 +134,7 @@ const run = async ({
             json.components.schemas = json.components.schemas || {}
 
             // add externally referenced schemas that are in our shared schemas path
-            const externalSchemas = getExternalSchemas(json, sharedSchemas)
-            Object.entries(externalSchemas).forEach(([name, schema]) => {
-                // if this schema is a child of some other schema that will be copied in this batch, then skip it
-                if (Object.keys(externalSchemas).find(s => name.startsWith(s + '/') && s.length < name.length)) {
-                    return
-                }
-                json.components.schemas[name.split("/").pop()] = schema
-            })
-
-            // update references to external schemas to be local
-            Object.keys(externalSchemas).forEach(ref => {
-                replaceRef(ref, `#/components/schemas/${ref.split("#").pop().substring('/definitions/'.length)}`, json)
-            })
+            json = addExternalSchemas(json, sharedSchemas)
         }
 
         try {

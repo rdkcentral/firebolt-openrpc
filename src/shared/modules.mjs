@@ -28,7 +28,7 @@ import isEmpty from 'crocks/core/isEmpty.js'
 const { and, not } = logic
 import isString from 'crocks/core/isString.js'
 import predicates from 'crocks/predicates/index.js'
-import { getExternalSchemaPaths, isDefinitionReferencedBySchema, isNull, localizeDependencies, isSchema, getLocalSchemaPaths, replaceRef } from './json-schema.mjs'
+import { getExternalSchemaPaths, isDefinitionReferencedBySchema, isNull, localizeDependencies, isSchema, getLocalSchemaPaths, replaceRef, getExternalSchemas } from './json-schema.mjs'
 const { isObject, isArray, propEq, pathSatisfies, hasProp, propSatisfies } = predicates
 
 // util for visually debugging crocks ADTs
@@ -827,6 +827,31 @@ const addExternalMarkdown = (data = {}, descriptions = {}) => {
     return data
 }
 
+const addExternalSchemas = (json, sharedSchemas) => {
+    json = JSON.parse(JSON.stringify(json))
+    const externalSchemas = getExternalSchemas(json, sharedSchemas)
+    Object.entries(externalSchemas).forEach( ([name, schema]) => {
+      const group = sharedSchemas[name.split('#')[0]].title
+      // if this schema is a child of some other schema that will be copied in this batch, then skip it
+      if (Object.keys(externalSchemas).find(s => name.startsWith(s+'/') && s.length < name.length)) {
+        console.log('Skipping: ' + name)
+        console.log('Because of: ' + Object.keys(externalSchemas).find(s => name.startsWith(s) && s.length < name.length))
+        return
+      }
+      json['x-schemas'] = json['x-schemas'] || {}
+      json['x-schemas'][group] = json['x-schemas'][group] || { uri: name.split("#")[0]}
+      json['x-schemas'][group][name.split("/").pop()] = schema
+    })
+
+    //update references to external schemas to be local
+    Object.keys(externalSchemas).forEach(ref => {
+      const group = sharedSchemas[ref.split('#')[0]].title
+      replaceRef(ref, `#/x-schemas/${group}/${ref.split("#").pop().substring('/definitions/'.length)}`, json)
+    })
+
+    return json
+}
+
 // TODO: make this recursive, and check for group vs schema
 const removeUnusedSchemas = (json) => {
     const schema = JSON.parse(JSON.stringify(json))
@@ -886,11 +911,10 @@ const getModule = (name, json, copySchemas) => {
 
             // copy embedded schemas to the local schemas area if the flag is set
             if (uri && copySchemas) {
-                // use 'schemas' instead of 'x-schemas'
+                // use '#/components/schemas/<name>' instead of '#/x-schemas/<group>/<name>'
+                destination[0] = 'components'
                 destination[1] = 'schemas'
-                // drop the group name
-                destination.splice(2, 1)
-                replaceRef(ref, ref.replace(/\/x-schemas\/[a-zA-Z]+\//, '/schemas/'), openrpc)
+                replaceRef(ref, ref.replace(/\/x-schemas\/[a-zA-Z]+\//, '/components/schemas/'), openrpc)
             }
 
             // only copy things that aren't already there
@@ -899,9 +923,9 @@ const getModule = (name, json, copySchemas) => {
                 searching = true
                 // if copySchemas is off, then make sure we also grab the x-schema URI
                 if (uri && !copySchemas) {
-                    openrpc.components[destination[1]][destination[2]] = {
+                    openrpc[destination[0]][destination[1]][destination[2]] = {
                         uri: uri,
-                        ...(openrpc.components[destination[1]][destination[2]] || {})
+                        ...(openrpc[destination[0]][destination[1]][destination[2]] || {})
                     }    
                 }
                 openrpc = setPath(destination, schema, openrpc)
@@ -976,5 +1000,6 @@ export {
     getModule,
     getSemanticVersion,
     addExternalMarkdown,
+    addExternalSchemas,
     getExternalMarkdownPaths
 }

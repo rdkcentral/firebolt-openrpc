@@ -17,8 +17,7 @@
  */
 
 import { readJson, readFiles, readDir, writeJson } from "../shared/filesystem.mjs"
-import { addExternalMarkdown, fireboltize } from "../shared/modules.mjs"
-import { getExternalSchemas, replaceRef, replaceUri } from "../shared/json-schema.mjs"
+import { addExternalMarkdown, addExternalSchemas, fireboltize } from "../shared/modules.mjs"
 import path from "path"
 import { logHeader, logSuccess } from "../shared/io.mjs"
 
@@ -29,7 +28,7 @@ const run = async ({
   schemas: schemas,
 }) => {
 
-  const openrpc = await readJson(template)
+  let openrpc = await readJson(template)
   const sharedSchemaList = schemas ? (await Promise.all(schemas.map(d => readDir(d, { recursive: true })))).flat() : []
   const sharedSchemas = await readFiles(sharedSchemaList)
 
@@ -95,25 +94,7 @@ const run = async ({
     json.components && Object.assign(openrpc.components.schemas, json.components.schemas)
 
     // add externally referenced schemas that are in our shared schemas path
-    const externalSchemas = getExternalSchemas(json, sharedSchemas)
-    Object.entries(externalSchemas).forEach( ([name, schema]) => {
-      const group = sharedSchemas[name.split('#')[0]].title
-      // if this schema is a child of some other schema that will be copied in this batch, then skip it
-      if (Object.keys(externalSchemas).find(s => name.startsWith(s+'/') && s.length < name.length)) {
-        console.log('Skipping: ' + name)
-        console.log('Because of: ' + Object.keys(externalSchemas).find(s => name.startsWith(s) && s.length < name.length))
-        return
-      }
-      openrpc.components['x-schemas'] = openrpc.components['x-schemas'] || {}
-      openrpc.components['x-schemas'][group] = openrpc.components['x-schemas'][group] || { uri: name.split("#")[0]}
-      openrpc.components['x-schemas'][group][name.split("/").pop()] = schema
-    })
-
-    //update references to external schemas to be local
-    Object.keys(externalSchemas).forEach(ref => {
-      const group = sharedSchemas[ref.split('#')[0]].title
-      replaceRef(ref, `#/components/x-schemas/${group}/${ref.split("#").pop().substring('/definitions/'.length)}`, openrpc)
-    })
+    openrpc = addExternalSchemas(openrpc, sharedSchemas)
 
     modules[key] = JSON.stringify(json, null, '\t')
 

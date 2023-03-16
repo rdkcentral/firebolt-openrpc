@@ -29,10 +29,9 @@ import isString from 'crocks/core/isString.js'
 import predicates from 'crocks/predicates/index.js'
 const { isObject, isArray, propEq, pathSatisfies, propSatisfies } = predicates
 
-import { isExcludedMethod, isRPCOnlyMethod, isProviderInterfaceMethod, getPayloadFromEvent, providerHasNoParameters, isTemporalSetMethod, hasMethodAttributes, getMethodAttributes, isEventMethodWithContext, getSemanticVersion, getSetterFor, getProvidedCapabilities, getProviderInterfaceMethods, isPolymorphicPullMethod } from '../shared/modules.mjs'
+import { isRPCOnlyMethod, isProviderInterfaceMethod, getPayloadFromEvent, providerHasNoParameters, isTemporalSetMethod, hasMethodAttributes, getMethodAttributes, isEventMethodWithContext, getSemanticVersion, getSetterFor, getProvidedCapabilities, isPolymorphicPullMethod } from '../shared/modules.mjs'
 import isEmpty from 'crocks/core/isEmpty.js'
-import { getExternalSchemaPaths, getLinkedSchemaPaths, getSchemaConstraints, isSchema, localizeDependencies } from '../shared/json-schema.mjs'
-import { getLinkFromRef } from '../shared/markdown.mjs'
+import { getLinkedSchemaPaths, getSchemaConstraints, isSchema, localizeDependencies } from '../shared/json-schema.mjs'
 
 // util for visually debugging crocks ADTs
 const _inspector = obj => {
@@ -110,7 +109,7 @@ const getLinkForSchema = (schema, json, templates, code=false) => {
       return link
   }
   else {
-      const [group, schema] = Object.entries(json.components['x-schemas']).find( ([key, value]) => json.components['x-schemas'][key] && json.components['x-schemas'][key][type]) || [null, null]
+      const [group, schema] = Object.entries(json['x-schemas']).find( ([key, value]) => json['x-schemas'][key] && json['x-schemas'][key][type]) || [null, null]
       if (group && schema) {
         if (copySchemasIntoModules) {
           link += `#\$\{LINK:schema:${type}\}`

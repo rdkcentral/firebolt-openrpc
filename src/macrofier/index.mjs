@@ -20,7 +20,7 @@
 
 import { emptyDir, readDir, readFiles, readJson, writeFiles, writeText } from '../shared/filesystem.mjs'
 import { getTemplate, getTemplateForModule } from '../shared/template.mjs'
-import { getModule, getSemanticVersion, isRPCOnlyMethod } from '../shared/modules.mjs'
+import { getModule } from '../shared/modules.mjs'
 import { logHeader, logSuccess } from '../shared/io.mjs'
 import path from 'path'
 import engine from './engine.mjs'
