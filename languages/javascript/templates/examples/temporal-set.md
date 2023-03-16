@@ -1,4 +1,4 @@
-import { ${module} } from '${pkg.name}'
+import { ${module} } from '${package.name}'
 
 const process = ${module}.${method.name}(function(${example.params}${if.params},${end.if.params}
     ${method.item} => {

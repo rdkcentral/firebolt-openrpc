@@ -17,7 +17,7 @@
  */
 
 import helpers from 'crocks/helpers/index.js'
-const { compose, getPathOr } = helpers
+const { compose, getPathOr, setPath } = helpers
 import safe from 'crocks/Maybe/safe.js'
 import find from 'crocks/Maybe/find.js'
 import getPath from 'crocks/Maybe/getPath.js'
@@ -28,7 +28,7 @@ import isEmpty from 'crocks/core/isEmpty.js'
 const { and, not } = logic
 import isString from 'crocks/core/isString.js'
 import predicates from 'crocks/predicates/index.js'
-import { getExternalSchemaPaths, isDefinitionReferencedBySchema, isNull, localizeDependencies } from './json-schema.mjs'
+import { getExternalSchemaPaths, isDefinitionReferencedBySchema, isNull, localizeDependencies, isSchema, getLocalSchemaPaths, replaceRef } from './json-schema.mjs'
 const { isObject, isArray, propEq, pathSatisfies, hasProp, propSatisfies } = predicates
 
 // util for visually debugging crocks ADTs
@@ -827,27 +827,39 @@ const addExternalMarkdown = (data = {}, descriptions = {}) => {
     return data
 }
 
-const removeUnusedSchemas = json => {
+// TODO: make this recursive, and check for group vs schema
+const removeUnusedSchemas = (json) => {
     const schema = JSON.parse(JSON.stringify(json))
-    if (schema.components && schema.components.schemas) {
-      let searching = true
-      while(searching) {
-        searching = false
-        schema.components && schema.components.schemas && Object.keys(schema.components.schemas).forEach(name => {
-          const used = isDefinitionReferencedBySchema('#/components/schemas/' + name, schema)
-  
-          if (!used) {
-            delete schema.components.schemas[name]
-            searching = true
-          }
+
+    const recurse = (schema, path) => {
+        let deleted = false
+        Object.keys(schema).forEach(name => {
+            if (isSchema(schema[name])) {
+                const used = isDefinitionReferencedBySchema(path + '/' + name, json)
+
+                if (!used) {
+                    delete schema[name]
+                    deleted = true
+                }
+                else {
+                }
+            }
+            else if (typeof schema[name] === 'object') {
+                deleted = deleted || recurse(schema[name], path + '/' + name)
+            }
         })
-      }
+        return deleted
     }
+
+    if (schema.components.schemas) {
+        while(recurse(schema.components.schemas, '#/components/schemas')) {}
+    }
+
     return schema
 }
 
-const getModule = (name, json) => {
-    const openrpc = JSON.parse(JSON.stringify(json))
+const getModule = (name, json, copySchemas) => {
+    let openrpc = JSON.parse(JSON.stringify(json))
     openrpc.methods = openrpc.methods
                         .filter(method => method.name.toLowerCase().startsWith(name.toLowerCase() + '.'))
                         .map(method => Object.assign(method, { name: method.name.split('.').pop() }))
@@ -856,6 +868,47 @@ const getModule = (name, json) => {
         openrpc.info.description = json.info['x-module-descriptions'][name]
     }
     delete openrpc.info['x-module-descriptions']
+    const copy = JSON.parse(JSON.stringify(openrpc))
+
+    // zap all of the schemas
+    openrpc.components.schemas = {}
+
+    // and recursively search in the copy for referenced schemas until we have them all
+    let searching = true
+    while (searching) {
+        searching = false
+        getLocalSchemaPaths(openrpc).forEach(path => {
+            const ref = getPathOr(null, path, copy) || getPathOr(null, path, openrpc)
+            const parts = ref.substring(2).split('/')
+            const schema = getPathOr(null, parts, copy)
+            const uri = getPathOr(null, parts.filter((p, i, array) => i < array.length-1), copy).uri
+            const destination = ref.substring(2).split('/')
+
+            // copy embedded schemas to the local schemas area if the flag is set
+            if (uri && copySchemas) {
+                // use 'schemas' instead of 'x-schemas'
+                destination[1] = 'schemas'
+                // drop the group name
+                destination.splice(2, 1)
+                replaceRef(ref, ref.replace(/\/x-schemas\/[a-zA-Z]+\//, '/schemas/'), openrpc)
+            }
+
+            // only copy things that aren't already there
+            if (schema && !getPathOr(null, destination, openrpc)) {
+                // if we move over a schema, then we need at least one more run of the while loop
+                searching = true
+                // if copySchemas is off, then make sure we also grab the x-schema URI
+                if (uri && !copySchemas) {
+                    openrpc.components[destination[1]][destination[2]] = {
+                        uri: uri,
+                        ...(openrpc.components[destination[1]][destination[2]] || {})
+                    }    
+                }
+                openrpc = setPath(destination, schema, openrpc)
+            }
+        })
+    }
+
     return removeUnusedSchemas(openrpc)
 }
 

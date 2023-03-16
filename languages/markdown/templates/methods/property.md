@@ -15,7 +15,7 @@ ${method.params}
 
 Promise resolution:
 
-${method.result}
+${method.result.link}
 
 ${method.capabilities}
 

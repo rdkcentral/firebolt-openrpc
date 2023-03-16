@@ -188,7 +188,12 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
       }
       else {
         const someJson = getPath(json['$ref'], moduleJson, schemas)
-        return getSchemaShape(moduleJson, someJson, schemas, name, options)
+        if (someJson) {
+          return getSchemaShape(moduleJson, someJson, schemas, name, options)
+        }
+        else {
+          '  '.repeat(level) + `${prefix}${title}${operator}`
+        }
       }
     }
     else if (json.hasOwnProperty('const')) {
@@ -325,11 +330,9 @@ function getSchemaShape(moduleJson = {}, json = {}, schemas = {}, name = '', opt
       }
       else {
         // TODO: this assumes that the title of the external schema matches the last node in the path (which isn't guaranteed)
-
-
         const schema = getSchema(json['$ref'].split('#')[0], schemas) || module
         const definition = getPath(json['$ref'], schema, schemas)
-        const name = definition.title || json['$ref'].split('/').pop()
+        const name = definition && definition.title || json['$ref'].split('/').pop()
 
         if (options.link) {
           let link = options.baseUrl + getLinkFromRef(json['$ref'], schemas, options.asPath)

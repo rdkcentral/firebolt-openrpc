@@ -24,6 +24,8 @@ const isNull = schema => {
   return (schema.type === 'null' || schema.const === null)
 }
 
+const isSchema = element => element.$ref || element.type || element.const || element.oneOf || element.anyOf || element.allOf
+
 const refToPath = ref => {
   let path = ref.split('#').pop().substr(1).split('/')
   return path.map(x => x.match(/^[0-9]+$/) ? parseInt(x) : x)
@@ -52,13 +54,18 @@ const getExternalSchemaPaths = obj => {
     .filter(x => !/^#/.test(getPathOr(null, x, obj)))
 }
 
-const localRefPaths = obj => {
+const getLocalSchemaPaths = obj => {
   return objectPaths(obj)
     .filter(x => /\/\$ref$/.test(x))
     .map(refToPath)
     .filter(x => /^#.+/.test(getPathOr(null, x, obj)))
 }
 
+const getLinkedSchemaPaths = obj => {
+  return objectPaths(obj)
+    .filter(x => /\/\$ref$/.test(x))
+    .map(refToPath)
+}
 
 // - Replace JSONSchema $ref in definitions w/ entire jsonschema
 // - move/flatten definitions up
@@ -154,7 +161,8 @@ const getPath = (uri = '', moduleJson = {}, schemas = {}) => {
     result = getPathOr(null, subPath.slice(1).split('/'), moduleJson)
   }
   if (!result) {
-    throw `getPath: Path '${uri}' not found in ${moduleJson ? (moduleJson.title || moduleJson.info.title) : moduleJson}.`
+    //throw `getPath: Path '${uri}' not found in ${moduleJson ? (moduleJson.title || moduleJson.info.title) : moduleJson}.`
+    return null
   }
   else {
     return result
@@ -163,6 +171,10 @@ const getPath = (uri = '', moduleJson = {}, schemas = {}) => {
 
 // grab a schema from another file in this project
 const getExternalPath = (uri = '', schemas = {}, localize = true, replace = true) => {
+  if (!schemas) {
+    return
+  }
+  
   const [mainPath, subPath] = uri.split('#')
   const json = schemas[mainPath] || schemas[mainPath + '/'] 
   
@@ -261,7 +273,7 @@ const localizeDependencies = (def, schema, schemas = {}, options = defaultLocali
   }
 
   let definition = JSON.parse(JSON.stringify(def))
-  let refs = localRefPaths(definition)
+  let refs = getLocalSchemaPaths(definition)
   let unresolvedRefs = []
 
   if (!options.externalOnly) {
@@ -291,7 +303,7 @@ const localizeDependencies = (def, schema, schemas = {}, options = defaultLocali
           }  
         }
       }
-      refs = localRefPaths(definition)
+      refs = getLocalSchemaPaths(definition)
     }
   }
   
@@ -417,6 +429,10 @@ const getExternalSchemas = (json = {}, schemas = {}) => {
   return returnedSchemas
 }
 
+const getLocalSchemas = (json = {}) => {
+  return Array.from(new Set(getLocalSchemaPaths(json).map(path => getPathOr(null, path, json))))
+}
+
 const hasTitle = (def, schema, schemas = {}) => {
   def = localizeDependencies(def, schema, schemas)
   return (true && def.title)
@@ -437,11 +453,15 @@ export {
   getSchemaConstraints,
   getExternalSchemas,
   getExternalSchemaPaths,
+  getLocalSchemas,
+  getLocalSchemaPaths,
+  getLinkedSchemaPaths,
   getPath,
   getExternalPath,
   hasTitle,
   isDefinitionReferencedBySchema,
   isNull,
+  isSchema,
   localizeDependencies,
   replaceUri,
   replaceRef,

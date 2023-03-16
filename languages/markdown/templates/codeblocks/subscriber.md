@@ -12,7 +12,7 @@ ${event.params}
 
 Promise resolution:
 
-${event.result}
+${method.result}
 
 #### Examples
 

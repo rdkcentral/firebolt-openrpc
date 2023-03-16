@@ -12,7 +12,7 @@ ${event.params}
 
 Event value:
 
-${method.result}
+${method.result.link}
 
 ${method.capabilities}
 

@@ -17,7 +17,7 @@
  */
 
 import helpers from 'crocks/helpers/index.js'
-const { compose } = helpers
+const { compose, getPathOr } = helpers
 import safe from 'crocks/Maybe/safe.js'
 import find from 'crocks/Maybe/find.js'
 import getPath from 'crocks/Maybe/getPath.js'
@@ -31,7 +31,7 @@ const { isObject, isArray, propEq, pathSatisfies, propSatisfies } = predicates
 
 import { isExcludedMethod, isRPCOnlyMethod, isProviderInterfaceMethod, getPayloadFromEvent, providerHasNoParameters, isTemporalSetMethod, hasMethodAttributes, getMethodAttributes, isEventMethodWithContext, getSemanticVersion, getSetterFor, getProvidedCapabilities, getProviderInterfaceMethods, isPolymorphicPullMethod } from '../shared/modules.mjs'
 import isEmpty from 'crocks/core/isEmpty.js'
-import { getExternalSchemaPaths, getSchemaConstraints, localizeDependencies } from '../shared/json-schema.mjs'
+import { getExternalSchemaPaths, getLinkedSchemaPaths, getSchemaConstraints, isSchema, localizeDependencies } from '../shared/json-schema.mjs'
 import { getLinkFromRef } from '../shared/markdown.mjs'
 
 // util for visually debugging crocks ADTs
@@ -51,8 +51,16 @@ let types = {
   getSchemaType: ()=>null
 }
 
+let config = {
+  copySchemasIntoModules: false
+}
+
 const setTyper = (t) => {
   types = t
+}
+
+const setConfig = (c) => {
+  config = c
 }
 
 const getTemplate = (name, templates) => {
@@ -82,6 +90,54 @@ const getTemplateForExampleResult = (method, templates) => {
   return template || JSON.stringify(method.examples[0].result.value, null, '\t')
 }
 
+const getLinkForSchema = (schema, json, templates, code=false) => {
+
+  const dirs = config.createModuleDirectories
+  const copySchemasIntoModules = config.copySchemasIntoModules
+
+  if (schema.schema) {
+    schema = schema.schema
+  }
+
+  const type = types.getSchemaType(json, schema)
+  const wrap = code ? '`' : ''
+  let link = `[${wrap}${type}${wrap}](`
+
+
+  // local - insert a bogus link, that we'll udpate later based on final table-of-contents
+  if (json.components.schemas[type]) {
+      link += `#\$\{LINK:schema:${type}\})`
+      return link
+  }
+  else {
+      const [group, schema] = Object.entries(json.components['x-schemas']).find( ([key, value]) => json.components['x-schemas'][key] && json.components['x-schemas'][key][type]) || [null, null]
+      if (group && schema) {
+        if (copySchemasIntoModules) {
+          link += `#\$\{LINK:schema:${type}\}`
+          return link
+        }
+        else {
+          const base = dirs ? '..' : '.'
+          if (dirs) {
+            link += `${base}/schemas/${group}/#${type})`
+          }
+          else {
+            link += `${base}/schemas/${group}.md#${type})`
+          }
+          return link
+        }
+      }
+  }
+
+  return ''
+  // didn't find one, so we're in a schema document, not a module
+  const uri = type.split('#')[0]
+  const title = 'Unknown'//json.info['x-uri-titles'][uri]
+  link += `./${title}#${type.split('/').pop()})`
+  return link
+}
+
+
 // Maybe methods array of objects
 const getMethods = compose(
   map(filter(isObject)),
@@ -90,6 +146,18 @@ const getMethods = compose(
 )
 
 // Maybe an array of <key, value> from the schema
+
+// const getSchemas = compose(
+//   map(map(entry => [entry.key, entry.value])),
+//   map(entries => entries.flat()),
+//   map(map(entry => isSchema(entry.value) ? entry : Object.entries(entry.value).map(([key, value]) => ({ key, value })))),
+//   map(map(([key, value]) => ({key, value}))),
+//   map(Object.entries), // Maybe Array<Array<key, value>>
+//   chain(safe(isObject)), // Maybe Object
+//   getPath(['components', 'schemas']) // Maybe any
+// )
+
+
 const getSchemas = compose(
   map(Object.entries), // Maybe Array<Array<key, value>>
   chain(safe(isObject)), // Maybe Object
@@ -264,6 +332,7 @@ const generateAggregateMacros = (openrpc, modules, templates, library) => Object
   })
 
 const generateMacros = (obj, templates, languages, options = {}) => {
+
   const imports = generateImports(obj, templates)
   const initialization = generateInitialization(obj, templates)
   const enums = generateEnums(obj, templates)
@@ -282,7 +351,7 @@ const generateMacros = (obj, templates, languages, options = {}) => {
   const events = eventsArray.length ? getTemplate('/sections/events', templates).replace(/\$\{event.list\}/g, eventsArray.map(m => m.body).join('\n')) : ''
   const eventList = eventsArray.map(m => makeEventName(m))
   const defaults = generateDefaults(obj, templates)
-  const schemasArray = generateSchemas(obj, templates, { baseUrl: '' })
+  const schemasArray = generateSchemas(obj, templates, { baseUrl: '' }).filter(s => (options.copySchemasIntoModules || !s.uri))
   const schemas = schemasArray.length ? getTemplate('/sections/schemas', templates).replace(/\$\{schema.list\}/g, schemasArray.map(s => s.body).join('\n')) : ''
   const module = getTemplate('/codeblocks/module', templates)
 
@@ -359,19 +428,43 @@ const insertMacros = (fContents = '', macros = {}) => {
 
 function insertTableofContents(content) {
   let toc = ''
+  const count = {}
+  const slugger = title => title.toLowerCase().replace(/ /g, '-').replace(/-+/g, '-').replace(/[^a-zA-Z-]/g, '')
+
   content.split('\n').filter(line => line.match(/^\#/)).map(line => {
     const match = line.match(/^(\#+) (.*)/)
     if (match) {
       const level = match[1].length
       if (level > 1 && level < 4) {
         const title = match[2]
-        const link = '#' + match[2].toLowerCase().replace(/ /g, '-').replace(/-+/g, '-').replace(/[^a-zA-Z-]/g, '')
+        const slug = slugger(title)
+        if (count.hasOwnProperty(slug)) {
+          count[slug] += 1
+        }
+        else {
+          count[slug] = 0
+        }
+        const link = '#' + slug + (count[slug] ? `-${count[slug]}` : '')
         toc += ' ' + '  '.repeat(level-1) + `- [${title}](${link})\n`  
       }
     }
   }).join('\n')
 
   content = content.replace(/\$\{toc\}/g, toc)
+
+  const matches = [...content.matchAll(/\$\{LINK\:([a-zA-Z]+)\:([a-zA-Z]+)\}/g)]
+  matches.forEach(match => {
+    const candidates = toc.split('\n').filter(line => line.indexOf(`](#${slugger(match[2])}`) >= 0)
+    const index = candidates.findIndex(line => line.indexOf(`- [${match[2]}](`) >= 0)
+
+    let extra = ''
+    
+    // add '-1' to schemas when there's more than once match
+    if (index > 0 && match[1] === 'schema') {
+      extra = '-1'
+    }
+    content = content.replace(match[0], `${slugger(match[2])}${extra}`)
+  })
 
   return content
 }
@@ -458,8 +551,7 @@ function generateSchemas(json, templates, options) {
 
   const schemas = json.definitions || (json.components && json.components.schemas) || {}
 
-  Object.entries(schemas).forEach(([name, schema]) => {
-
+  const generate = (name, schema, uri) => {
     // these are internal schemas used by the firebolt-openrpc tooling, and not meant to be used in code/doc generation
     if (['ListenResponse', 'ProviderRequest', 'ProviderResponse'].includes(name)) {
       return
@@ -484,7 +576,7 @@ function generateSchemas(json, templates, options) {
         content = content.replace(/\$\{schema.example\}/, schema.examples.map(ex => JSON.stringify(ex, null, '  ')).join('\n\n'))
     }
 
-    let seeAlso = getExternalSchemaLinks(schema, options)
+    let seeAlso = getRelatedSchemaLinks(schema, json, templates, options)
     if (seeAlso) {
         content = content.replace(/\$\{schema.seeAlso\}/, '\n\n' + seeAlso)
     }
@@ -494,27 +586,51 @@ function generateSchemas(json, templates, options) {
 
     content = content.replace(/\$\{.*?schema.*?\}\s*\n?/g, '')
 
-    results.push({
+    const result = uri ? {
+      uri: uri,
       name: schema.title || name,
       body: content
-    })
+    } : {
+      name: schema.title || name,
+      body: content
+    }
+
+    results.push(result)
+  }
+
+  // schemas may be 1 or 2 levels deeps
+  Object.entries(schemas).forEach( ([name, schema]) => {
+    if (isSchema(schema)) {
+      generate(name, schema)
+    }
+    else if (typeof schema === 'object') {
+      const uri = schema.uri
+      Object.entries(schema).forEach( ([name, schema]) => {
+        if (name !== 'uri') {
+          generate(name, schema, uri)
+        }
+      })
+    }
   })
 
   return results
 }
 
-function getExternalSchemaLinks(json = {}, options = {}) {
+function getRelatedSchemaLinks(schema = {}, json = {}, templates = {}, options = {}) {
   const seen = {}
   // Generate list of links to other Firebolt docs
   //  - get all $ref nodes that point to external files
   //  - dedupe them
   //  - convert them to the $ref value (which are paths to other schema files), instead of the path to the ref node itself
   //  - convert those into markdown links of the form [Schema](Schema#/link/to/element)
-  let links = getExternalSchemaPaths(json)
-      .map(path => getPathOr(null, path, json))
+  let links = getLinkedSchemaPaths(schema)
+      .map(path => getPathOr(null, path, schema))
       .filter(path => seen.hasOwnProperty(path) ? false : (seen[path] = true))
-      .map(path => options.baseUrl + getLinkFromRef(path, null, options.asPath))
-      .map(path => ' - [' + path.split("/").pop() + '](' + (options.asPath ? path.split('#')[0].toLowerCase() + '#' + path.split('#')[1].split('/').pop().toLowerCase()  : path) + ')')
+      .map(path => path.substring(2).split('/'))
+      .map(path => getPathOr(null, path, json))
+      .filter(schema => schema)
+      .map(schema => getLinkForSchema(schema, json, templates, true)) // need full module here, not just the schema
+      .filter(link => link)
       .join('\n')
 
   return links
@@ -838,7 +954,7 @@ function insertMethodMacros(template, methodObj, json, templates, examples={}) {
     .replace(/\$\{method\.capabilities\}/g, capabilities)
     .replace(/\$\{method\.result.name\}/g, result.name)
     .replace(/\$\{method\.result.summary\}/g, result.summary)
-    .replace(/\$\{method\.result.link\}/g, types.getSchemaType(json, result, null, {title: true, link: true, asPath: false})) //, baseUrl: options.baseUrl
+    .replace(/\$\{method\.result.link\}/g, getLinkForSchema(result, json, templates, true)) //, baseUrl: options.baseUrl
     .replace(/\$\{method\.result.type\}/g, types.getSchemaType(json, result, null, {title: true, asPath: false})) //, baseUrl: options.baseUrl
     .replace(/\$\{event\.result.type\}/, isEventMethod(methodObj) ? types.getSchemaType(json, result, null, { event: true, description: methodObj.result.summary, asPath: false }): '') //, baseUrl: options.baseUrl
     .replace(/\$\{method\.result\}/g,  generateResult(result.schema, json, templates))
@@ -1208,5 +1324,6 @@ export default {
   insertMacros,
   generateAggregateMacros,
   insertAggregateMacros,
-  setTyper
+  setTyper,
+  setConfig
 }

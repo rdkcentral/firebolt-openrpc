@@ -55,8 +55,10 @@ const run = async ({
     outputDirectory:    'content',
     sharedTemplates:    path.join(language, 'templates'),
     createModuleDirectories: asPath,
+    copySchemasIntoModules: config.copySchemasIntoModules,
     examples: examples,
-    templatesPerModule: [ 'index.md' ],
+    templatesPerModule: config.templatesPerModule,
+    templatesPerSchema: config.templatesPerSchema,
     libraryName: libraryName,
     hidePrivate: false
   })

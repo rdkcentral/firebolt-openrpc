@@ -1,4 +1,4 @@
-import { ${module} } from '${pkg.name}'
+import { ${module} } from '${package.name}'
 
 ${method.alternative}(value => {
   console.log(value)

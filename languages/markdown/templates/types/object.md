@@ -1,4 +1,4 @@
-${name} Type:
+${name}:
 
 | Property | Type | Description |
 |----------|------|-------------|
