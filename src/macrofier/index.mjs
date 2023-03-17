@@ -24,7 +24,7 @@ import { getModule } from '../shared/modules.mjs'
 import { logHeader, logSuccess } from '../shared/io.mjs'
 import path from 'path'
 import engine from './engine.mjs'
-import { getLocalSchemas, getPath, replaceRef } from '../shared/json-schema.mjs'
+import { getLocalSchemas, replaceRef } from '../shared/json-schema.mjs'
 
 /************************************************************************************************/
 /******************************************** MAIN **********************************************/
@@ -204,14 +204,15 @@ const macrofy = async (
 
         // Grab all schema groups w/ a URI string. These came from some external json-schema that was bundled into the OpenRPC
         const externalSchemas = {}
-        openrpc.components
-            && openrpc.components.schemas
-            && Object.entries(openrpc.components.schemas).forEach(([name, schema]) => {                
+        openrpc['x-schemas']
+            && Object.entries(openrpc['x-schemas']).forEach(([name, schema]) => {                
                 if (schema.uri) {
                     const id = schema.uri
                     externalSchemas[id] = externalSchemas[id] || { $id: id, info: {title: name }, methods: []}
                     externalSchemas[id].components = externalSchemas[id].components || {}
                     externalSchemas[id].components.schemas = externalSchemas[id].components.schemas || {}
+                    externalSchemas[id]['x-schemas'] = JSON.parse(JSON.stringify(openrpc['x-schemas']))
+
                     const schemas = JSON.parse(JSON.stringify(schema))
                     delete schemas.uri
                     Object.assign(externalSchemas[id].components.schemas, schemas)
@@ -223,18 +224,18 @@ const macrofy = async (
             getLocalSchemas(document).forEach((path) => {
                 const parts = path.split('/')
                 // Drop the grouping path element, since we've pulled this schema out into it's own document
-                if (parts.length === 5 && path.startsWith('#/components/schemas/' + document.info.title + '/')) {
-                    replaceRef(path, [parts[0], parts[1], parts[2], parts[4]].join('/'), document)
+                if (parts.length === 4 && path.startsWith('#/x-schemas/' + document.info.title + '/')) {
+                    replaceRef(path, ['#/components/schemas', parts[3]].join('/'), document)
                 }
                 // Add the fully qualified URI for any schema groups other than this one
-                else if (parts.length === 5 && path.startsWith('#/components/schemas/')) {
-                    const uri = openrpc.components.schemas[parts[3]].uri
+                else if (parts.length === 4 && path.startsWith('#/x-schemas/')) {
+                    const uri = openrpc['x-schemas'][parts[2]].uri
                     // store the case-senstive group title for later use
                     document.info['x-uri-titles'] = document.info['x-uri-titles'] || {}
-                    document.info['x-uri-titles'][uri] = parts[3]
+                    document.info['x-uri-titles'][uri] = document.info.title
                     openrpc.info['x-uri-titles'] = openrpc.info['x-uri-titles'] || {}
-                    openrpc.info['x-uri-titles'][uri] = parts[3]
-                    replaceRef(path, uri + '#/definitions/' + parts[4], document)
+                    openrpc.info['x-uri-titles'][uri] = document.info.title
+                    replaceRef(path, '#/x-schemas/' + parts[2] + '/' + parts[3], document)
                 }
             })
         })

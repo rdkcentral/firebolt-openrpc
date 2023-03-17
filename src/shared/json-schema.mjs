@@ -67,34 +67,6 @@ const getLinkedSchemaPaths = obj => {
     .map(refToPath)
 }
 
-// - Replace JSONSchema $ref in definitions w/ entire jsonschema
-// - move/flatten definitions up
-// - remove $schema & $id
-// - replace all githubusercontent URLs
-const flattenSchemas = (schema, meta) => {
-  delete schema.definitions[meta.title]['$ref']
-
-  Object.keys(meta).forEach(key => {
-    if (key === 'definitions') {
-      // copy up one level
-      Object.keys(meta[key]).forEach(dkey => {
-        schema[key][dkey] = meta[key][dkey]
-      })
-    }
-    else if (key[0] !== '$')
-      schema.definitions[meta.title][key] = meta[key]
-  })
-
-  updateRefUris(schema, "https://raw.githubusercontent.com/json-schema-tools/meta-schema/1.5.9/src/schema.json")
-  removeIgnoredAdditionalItems(schema)
-  schema.definitions.JSONSchema = {
-    "oneOf": [
-      { "$ref": "#/definitions/JSONSchemaObject" },
-      { "$ref": "#/definitions/JSONSchemaBoolean" }
-    ]    
-  }
-}
-
 const updateRefUris = (schema, uri) => {
   if (schema.hasOwnProperty('$ref') && (typeof schema['$ref'] === 'string')) {
     if (schema['$ref'].indexOf(uri+"#") === 0)
@@ -146,7 +118,7 @@ const replaceRef = (existing, replacement, schema) => {
   }
 }
 
-const getPath = (uri = '', moduleJson = {}, schemas = {}) => {
+const getPath = (uri = '', moduleJson = {}) => {
   const [mainPath, subPath] = (uri || '').split('#')
   let result
 
@@ -155,9 +127,10 @@ const getPath = (uri = '', moduleJson = {}, schemas = {}) => {
   }
 
   if (mainPath) {
-    result = getExternalPath(uri, schemas, true)
+    throw `Cannot call getPath with a fully qualified URI: ${uri}`
   }
-  else if (subPath) {
+
+  if (subPath) {
     result = getPathOr(null, subPath.slice(1).split('/'), moduleJson)
   }
   if (!result) {
@@ -169,90 +142,54 @@ const getPath = (uri = '', moduleJson = {}, schemas = {}) => {
   }
 }
 
-// grab a schema from another file in this project
-const getExternalPath = (uri = '', schemas = {}, localize = true, replace = true) => {
-  if (!schemas) {
-    return
+function getSchemaConstraints(schema, module, options = { delimiter: '\n' }) {
+  if (schema.schema) {
+    schema = schema.schema
   }
-  
-  const [mainPath, subPath] = uri.split('#')
-  const json = schemas[mainPath] || schemas[mainPath + '/'] 
-  
-  // copy to avoid side effects
-  let result
-
-  try {
-    result = JSON.parse(JSON.stringify(subPath ? getPathOr(null, subPath.slice(1).split('/'), json) : json))
-  }
-  catch (err) {
-    console.log(`Error loading ${uri}`)
-    console.log(err)
-    process.exit(100)
-  }
-
-  if (localize) {
-    result && (result = localizeDependencies(result, json, schemas))
-  }
-  else if (replace) {
-    result && replaceUri('', mainPath, result)
-  }
-
-  return result
-}
-
-const getSchema = (uri, schemas) => {
-  return getExternalPath(uri, schemas, false, false)
-}
-
-function getSchemaConstraints(json, module, schemas = {}, options = { delimiter: '\n' }) {
-  if (json.schema) {
-    json = json.schema
-  }
-
   const wrap = (str, wrapper) => wrapper + str + wrapper
 
-  if (json['$ref']) {
-    if (json['$ref'][0] === '#') {
-      return getSchemaConstraints(getPath(json['$ref'], module, schemas), module, schemas, options)
+  if (schema['$ref']) {
+    if (schema['$ref'][0] === '#') {
+      return getSchemaConstraints(getPath(schema['$ref'], module), module, options)
     }
     else {
       return ''
     }
   }
-  else if (json.type === 'string') {
+  else if (schema.type === 'string') {
     let constraints = []
 
-    typeof json.format === 'string'   ? constraints.push(`format: ${json.format}`) : null
-    typeof json.minLength === 'number' ? constraints.push(`minLength: ${json.minLength}`) : null
-    typeof json.maxLength === 'number' ? constraints.push(`maxLength: ${json.maxLength}`) : null
-    typeof json.pattern === 'string'   ? constraints.push(`pattern: ${json.pattern}`) : null
+    typeof schema.format === 'string'   ? constraints.push(`format: ${schema.format}`) : null
+    typeof schema.minLength === 'number' ? constraints.push(`minLength: ${schema.minLength}`) : null
+    typeof schema.maxLength === 'number' ? constraints.push(`maxLength: ${schema.maxLength}`) : null
+    typeof schema.pattern === 'string'   ? constraints.push(`pattern: ${schema.pattern}`) : null
 
     return constraints.join(options.delimiter)
   }
-  else if (json.type === 'integer' || json.type === 'number') {
+  else if (schema.type === 'integer' || schema.type === 'number') {
     let constraints = []
 
-    typeof json.minimum === 'number'          ? constraints.push(`minumum: ${json.minimum}`) : null
-    typeof json.maximum === 'number'          ? constraints.push(`maximum: ${json.maximum}`) : null
-    typeof json.exclusiveMaximum === 'number' ? constraints.push(`exclusiveMaximum: ${json.exclusiveMaximum}`) : null
-    typeof json.exclusiveMinimum === 'number' ? constraints.push(`exclusiveMinimum: ${json.exclusiveMinimum}`) : null
-    typeof json.multipleOf === 'number'       ? constraints.push(`multipleOf: ${json.multipleOf}`) : null
+    typeof schema.minimum === 'number'          ? constraints.push(`minumum: ${schema.minimum}`) : null
+    typeof schema.maximum === 'number'          ? constraints.push(`maximum: ${schema.maximum}`) : null
+    typeof schema.exclusiveMaximum === 'number' ? constraints.push(`exclusiveMaximum: ${schema.exclusiveMaximum}`) : null
+    typeof schema.exclusiveMinimum === 'number' ? constraints.push(`exclusiveMinimum: ${schema.exclusiveMinimum}`) : null
+    typeof schema.multipleOf === 'number'       ? constraints.push(`multipleOf: ${schema.multipleOf}`) : null
 
     return constraints.join(options.delimiter)    
   }
-  else if (json.type === 'array' && json.items) {
+  else if (schema.type === 'array' && schema.items) {
     let constraints = []
 
-    if (Array.isArray(json.items)) {
+    if (Array.isArray(schema.items)) {
 
     }
     else {
-      constraints = [getSchemaConstraints(json.items, module, options)]
+      constraints = [getSchemaConstraints(schema.items, module, options)]
     }
 
     return constraints.join(options.delimiter)    
   }
-  else if (json.oneOf || json.anyOf) {
+  else if (schema.oneOf || schema.anyOf) {
     return '' //See OpenRPC Schema for `oneOf` and `anyOf` details'
   }
   else {
@@ -266,13 +203,14 @@ const defaultLocalizeOptions = {
   keepRefsAndLocalizeAsComponent: false   // true: localizes external schemas into definition.components.schemas, and changes the $refs to be local (use only on root RPC docs)
 }
 
-const localizeDependencies = (def, schema, schemas = {}, options = defaultLocalizeOptions) => {
+// TODO: get rid of schemas param, after updating the validate task to use addExternalSchemas
+const localizeDependencies = (json, document, schemas = {}, options = defaultLocalizeOptions) => {
   if (typeof options === 'boolean') {
     // if we got a boolean, then inject it into the default options for the externalOnly value (for backwards compatibility)
     options = Object.assign(JSON.parse(JSON.stringify(defaultLocalizeOptions)), { externalOnly: options })
   }
 
-  let definition = JSON.parse(JSON.stringify(def))
+  let definition = JSON.parse(JSON.stringify(json))
   let refs = getLocalSchemaPaths(definition)
   let unresolvedRefs = []
 
@@ -283,7 +221,7 @@ const localizeDependencies = (def, schema, schemas = {}, options = defaultLocali
         const ref = getPathOr(null, path, definition)
         path.pop() // drop ref
         if (refToPath(ref).length > 1) {
-          let resolvedSchema = JSON.parse(JSON.stringify(getPathOr(null, refToPath(ref), schema)))
+          let resolvedSchema = JSON.parse(JSON.stringify(getPathOr(null, refToPath(ref), document)))
         
           if (!resolvedSchema) {
             resolvedSchema = { "$REF": ref}
@@ -316,11 +254,6 @@ const localizeDependencies = (def, schema, schemas = {}, options = defaultLocali
       path.pop() // drop ref
       let resolvedSchema
       
-      // only resolve our schemas for localization. TODO: make this a CLI param
-      if (ref.startsWith('https://meta.comcast.com/')) {
-        resolvedSchema = getExternalPath(ref, schemas, true)
-      }
-
       if (!resolvedSchema) {
         resolvedSchema = { "$REF": ref}
         unresolvedRefs.push([...path])
@@ -393,49 +326,8 @@ const localizeDependencies = (def, schema, schemas = {}, options = defaultLocali
   return definition
 }
 
-const getExternalSchemas = (json = {}, schemas = {}) => {
-  // make a copy for safety!
-  json = JSON.parse(JSON.stringify(json))
-
-  let refs = getExternalSchemaPaths(json)
-  const returnedSchemas = {}
-  const unresolvedRefs = []
-
-  while (refs.length > 0) {
-    for (let i=0; i<refs.length; i++) {
-      let path = refs[i]      
-      const ref = getPathOr(null, path, json)
-      path.pop() // drop ref
-      let resolvedSchema = getExternalPath(ref, schemas, false)
-      
-      if (!resolvedSchema) {
-        // rename it so the while loop ends
-        throw "Unresolved schema: " + ref
-      }
-      // replace the ref so we can recursively grab more refs if needed...
-      else if (path.length) {
-        returnedSchemas[ref] = JSON.parse(JSON.stringify(resolvedSchema))
-        // use a copy, so we don't pollute the returned schemas
-        json = setPath(path, JSON.parse(JSON.stringify(resolvedSchema)), json)
-      }
-      else {
-        delete json['$ref']
-        Object.assign(json, resolvedSchema)
-      }
-    }
-    refs = getExternalSchemaPaths(json)
-  }
-
-  return returnedSchemas
-}
-
 const getLocalSchemas = (json = {}) => {
   return Array.from(new Set(getLocalSchemaPaths(json).map(path => getPathOr(null, path, json))))
-}
-
-const hasTitle = (def, schema, schemas = {}) => {
-  def = localizeDependencies(def, schema, schemas)
-  return (true && def.title)
 }
 
 const isDefinitionReferencedBySchema = (name = '', moduleJson = {}) => {
@@ -449,22 +341,17 @@ const isDefinitionReferencedBySchema = (name = '', moduleJson = {}) => {
 }
 
 export {
-  getSchema,
   getSchemaConstraints,
-  getExternalSchemas,
   getExternalSchemaPaths,
   getLocalSchemas,
   getLocalSchemaPaths,
   getLinkedSchemaPaths,
   getPath,
-  getExternalPath,
-  hasTitle,
   isDefinitionReferencedBySchema,
   isNull,
   isSchema,
   localizeDependencies,
   replaceUri,
   replaceRef,
-  flattenSchemas,
   removeIgnoredAdditionalItems
 } 

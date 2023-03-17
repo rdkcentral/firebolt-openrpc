@@ -28,7 +28,7 @@ import isEmpty from 'crocks/core/isEmpty.js'
 const { and, not } = logic
 import isString from 'crocks/core/isString.js'
 import predicates from 'crocks/predicates/index.js'
-import { getExternalSchemaPaths, isDefinitionReferencedBySchema, isNull, localizeDependencies, isSchema, getLocalSchemaPaths, replaceRef, getExternalSchemas } from './json-schema.mjs'
+import { getExternalSchemaPaths, isDefinitionReferencedBySchema, isNull, localizeDependencies, isSchema, getLocalSchemaPaths, replaceRef } from './json-schema.mjs'
 const { isObject, isArray, propEq, pathSatisfies, hasProp, propSatisfies } = predicates
 
 // util for visually debugging crocks ADTs
@@ -227,10 +227,10 @@ const getParamsFromMethod = compose(
     getPath(['params'])
 )
 
-const getPayloadFromEvent = (event, json, schemas = {}) => {
+const getPayloadFromEvent = (event) => {
     const choices = (event.result.schema.oneOf || event.result.schema.anyOf)
     const choice = choices.find(schema => schema.title !== 'ListenResponse' && !(schema['$ref'] || '').endsWith('/ListenResponse'))
-    return localizeDependencies(choice, json, schemas)
+    return choice
 }
 
 const getSetterFor = (property, json) => json.methods && json.methods.find(m => m.tags && m.tags.find(t => t['x-setter-for'] === property))
@@ -827,27 +827,101 @@ const addExternalMarkdown = (data = {}, descriptions = {}) => {
     return data
 }
 
+// grab a schema from another file in this project (which must be loaded into the schemas parameter as Map<$id, json-schema-document>)
+const getExternalPath = (uri = '', schemas = {}) => {
+    if (!schemas) {
+      return
+    }
+    
+    const [mainPath, subPath] = uri.split('#')
+    const json = schemas[mainPath] || schemas[mainPath + '/'] 
+    
+    // copy to avoid side effects
+    let result
+  
+    try {
+      result = JSON.parse(JSON.stringify(subPath ? getPathOr(null, subPath.slice(1).split('/'), json) : json))
+    }
+    catch (err) {
+      console.log(`Error loading ${uri}`)
+      console.log(err)
+      process.exit(100)
+    }
+  
+    return result
+}
+
+const getExternalSchemas = (json = {}, schemas = {}) => {
+    // make a copy for safety!
+    json = JSON.parse(JSON.stringify(json))
+  
+    let refs = getExternalSchemaPaths(json)
+    const returnedSchemas = {}
+    const unresolvedRefs = []
+  
+    while (refs.length > 0) {
+      for (let i=0; i<refs.length; i++) {
+        let path = refs[i]      
+        const ref = getPathOr(null, path, json)
+        path.pop() // drop ref
+        let resolvedSchema = getExternalPath(ref, schemas)
+        
+        if (!resolvedSchema) {
+          // rename it so the while loop ends
+          throw "Unresolved schema: " + ref
+        }
+        // replace the ref so we can recursively grab more refs if needed...
+        else if (path.length) {
+          returnedSchemas[ref] = JSON.parse(JSON.stringify(resolvedSchema))
+          // use a copy, so we don't pollute the returned schemas
+          json = setPath(path, JSON.parse(JSON.stringify(resolvedSchema)), json)
+        }
+        else {
+          delete json['$ref']
+          Object.assign(json, resolvedSchema)
+        }
+      }
+      refs = getExternalSchemaPaths(json)
+    }
+  
+    return returnedSchemas
+}
+
 const addExternalSchemas = (json, sharedSchemas) => {
     json = JSON.parse(JSON.stringify(json))
-    const externalSchemas = getExternalSchemas(json, sharedSchemas)
-    Object.entries(externalSchemas).forEach( ([name, schema]) => {
-      const group = sharedSchemas[name.split('#')[0]].title
-      // if this schema is a child of some other schema that will be copied in this batch, then skip it
-      if (Object.keys(externalSchemas).find(s => name.startsWith(s+'/') && s.length < name.length)) {
-        console.log('Skipping: ' + name)
-        console.log('Because of: ' + Object.keys(externalSchemas).find(s => name.startsWith(s) && s.length < name.length))
-        return
-      }
-      json['x-schemas'] = json['x-schemas'] || {}
-      json['x-schemas'][group] = json['x-schemas'][group] || { uri: name.split("#")[0]}
-      json['x-schemas'][group][name.split("/").pop()] = schema
-    })
 
-    //update references to external schemas to be local
-    Object.keys(externalSchemas).forEach(ref => {
-      const group = sharedSchemas[ref.split('#')[0]].title
-      replaceRef(ref, `#/x-schemas/${group}/${ref.split("#").pop().substring('/definitions/'.length)}`, json)
-    })
+    let searching = true
+
+    while (searching) {
+        searching = false
+        const externalSchemas = getExternalSchemas(json, sharedSchemas)
+        Object.entries(externalSchemas).forEach( ([name, schema]) => {
+            const group = sharedSchemas[name.split('#')[0]].title
+            const id = sharedSchemas[name.split('#')[0]].$id
+            const refs = getLocalSchemaPaths(schema)
+            refs.forEach(ref => {
+                ref.pop() // drop the actual '$ref' so we can modify it
+                getPathOr(null, ref, schema).$ref = id + getPathOr(null, ref, schema).$ref
+            })
+            // if this schema is a child of some other schema that will be copied in this batch, then skip it
+            if (Object.keys(externalSchemas).find(s => name.startsWith(s+'/') && s.length < name.length)) {
+                console.log('Skipping: ' + name)
+                console.log('Because of: ' + Object.keys(externalSchemas).find(s => name.startsWith(s) && s.length < name.length))
+                throw "Skipping sub schema"
+                return
+            }
+            searching = true
+            json['x-schemas'] = json['x-schemas'] || {}
+            json['x-schemas'][group] = json['x-schemas'][group] || { uri: name.split("#")[0]}
+            json['x-schemas'][group][name.split("/").pop()] = schema
+        })
+    
+        //update references to external schemas to be local
+        Object.keys(externalSchemas).forEach(ref => {
+          const group = sharedSchemas[ref.split('#')[0]].title
+          replaceRef(ref, `#/x-schemas/${group}/${ref.split("#").pop().substring('/definitions/'.length)}`, json)
+        })    
+    }
 
     return json
 }

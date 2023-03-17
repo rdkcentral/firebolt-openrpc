@@ -42,6 +42,12 @@ const _inspector = obj => {
   }
 }
 
+// getMethodSignature(method, module, options = { destination: 'file.txt' })
+// getMethodSignatureParams(method, module, options = { destination: 'file.txt' })
+// getSchemaType(schema, module, options = { destination: 'file.txt', title: true })
+// getSchemaShape(schema, module, options = { name: 'Foo', destination: 'file.txt' })
+// getProviderInterface(capability, module, options = { destination: 'file.txt' } )
+
 let types = {
   getMethodSignature: ()=>null,
   getMethodSignatureParams: ()=>null,
@@ -52,6 +58,10 @@ let types = {
 
 let config = {
   copySchemasIntoModules: false
+}
+
+const state = {
+  destination: undefined
 }
 
 const setTyper = (t) => {
@@ -98,7 +108,7 @@ const getLinkForSchema = (schema, json, templates, code=false) => {
     schema = schema.schema
   }
 
-  const type = types.getSchemaType(json, schema)
+  const type = types.getSchemaType(schema, json, { destination: state.destination })
   const wrap = code ? '`' : ''
   let link = `[${wrap}${type}${wrap}](`
 
@@ -129,11 +139,6 @@ const getLinkForSchema = (schema, json, templates, code=false) => {
   }
 
   return ''
-  // didn't find one, so we're in a schema document, not a module
-  const uri = type.split('#')[0]
-  const title = 'Unknown'//json.info['x-uri-titles'][uri]
-  link += `./${title}#${type.split('/').pop()})`
-  return link
 }
 
 
@@ -331,6 +336,9 @@ const generateAggregateMacros = (openrpc, modules, templates, library) => Object
   })
 
 const generateMacros = (obj, templates, languages, options = {}) => {
+
+  // grab the options so we don't have to pass them from method to method
+  Object.assign(state, options)
 
   const imports = generateImports(obj, templates)
   const initialization = generateInitialization(obj, templates)
@@ -564,7 +572,7 @@ function generateSchemas(json, templates, options) {
     if (!schema.description) {
         content = content.replace(/\$\{if\.description\}.*?\{end\.if\.description\}/gms, '')
     }
-    const schemaShape = types.getSchemaShape(json, schema, null, name)
+    const schemaShape = types.getSchemaShape(schema, json, { name, destination: state.destination })
 
     content = content
         .replace(/\$\{schema.title\}/, (schema.title || name))
@@ -694,7 +702,7 @@ const generateProviderInitialization = (json, templates) => compose(
         name: getProviderInterfaceNameFromRPC(m.name),
         focus: ((m.tags.find(t => t['x-allow-focus']) || { 'x-allow-focus': false })['x-allow-focus']),
         response: ((m.tags.find(t => t['x-response']) || { 'x-response': null })['x-response']) !== null,
-        parameters: !providerHasNoParameters(getPayloadFromEvent(m, json))
+        parameters: !providerHasNoParameters(localizeDependencies(getPayloadFromEvent(m), json))
       }))
     return acc + getTemplate('/initializations/provider', templates)
       .replace(/\$\{capability\}/g, capability)
@@ -765,8 +773,6 @@ function generateMethods(json = {}, examples = {}, templates = {}) {
 
   // Code to generate methods
   const results = reduce((acc, methodObj, i, arr) => {
-    methodObj = localizeDependencies(methodObj, json)
-
     const result = {
       name: methodObj.name,
       body: '',
@@ -877,8 +883,8 @@ function insertMethodMacros(template, methodObj, json, templates, examples={}) {
   const event = JSON.parse(JSON.stringify(methodObj))
   
   if (isEventMethod(methodObj)) {
-    result.schema = JSON.parse(JSON.stringify(getPayloadFromEvent(methodObj, json)))
-    event.result.schema = getPayloadFromEvent(event, json)
+    result.schema = JSON.parse(JSON.stringify(getPayloadFromEvent(methodObj)))
+    event.result.schema = getPayloadFromEvent(event)
     event.params = event.params.filter(p => p.name !== 'listen')
   } 
 
@@ -898,9 +904,9 @@ function insertMethodMacros(template, methodObj, json, templates, examples={}) {
   const setterFor = methodObj.tags.find(t => t.name === 'setter') && methodObj.tags.find(t => t.name === 'setter')['x-setter-for'] || ''
   const pullsFor = methodObj.tags.find(t => t['x-pulls-for']) && methodObj.tags.find(t => t['x-pulls-for'])['x-pulls-for'] || ''
   const pullsForType = pullsFor ? pullsFor[0].toUpperCase() + pullsFor.substring(1) : (methodObj.tags.find(t => t.name === 'polymorphic-pull') ? methodObj.name[0].toUpperCase() + methodObj.name.substring(1) : '')
-  const pullsResult = pullsForType ? types.getSchemaShape(json, json.components.schemas[pullsForType + 'Result']) : ''
-  const pullsParams = pullsForType ? types.getSchemaShape(json, json.components.schemas[pullsForType + 'Parameters']) : ''
-
+  const pullsResult = pullsForType ? types.getSchemaShape(json.components.schemas[pullsForType + 'Result'], json, { destination: state.destination }) : ''
+  const pullsParams = pullsForType ? types.getSchemaShape(json.components.schemas[pullsForType + 'Parameters'], json, { destination: state.destination }) : ''
+ 
   let seeAlso = ''
 
   if (isPolymorphicPullMethod(methodObj)) {
@@ -914,7 +920,7 @@ function insertMethodMacros(template, methodObj, json, templates, examples={}) {
   if (isTemporalSetMethod(methodObj)) {
       itemName = result.schema.items.title || 'item'
       itemName = itemName.charAt(0).toLowerCase() + itemName.substring(1)
-      itemType = types.getSchemaType(json, result.schema.items)
+      itemType = types.getSchemaType(result.schema.items, json, { destination: state.destination })
   }
 
   template = insertExampleMacros(template, examples[methodObj.name] || [], methodObj, json, templates)
@@ -932,15 +938,15 @@ function insertMethodMacros(template, methodObj, json, templates, examples={}) {
     .replace(/\$\{if\.params\}(.*?)\$\{end\.if\.params\}/g, method.params.length ? '$1' : '')
     .replace(/\$\{if\.context\}(.*?)\$\{end\.if\.context\}/g, event.params.length ? '$1' : '')
     // Typed signature stuff
-    .replace(/\$\{method\.signature\}/g, types.getMethodSignature(json, methodObj, null, { isInterface: false }))
-    .replace(/\$\{method\.signature\.params\}/g, types.getMethodSignatureParams(json, methodObj))
+    .replace(/\$\{method\.signature\}/g, types.getMethodSignature(methodObj, json, { isInterface: false, destination: state.destination }))
+    .replace(/\$\{method\.signature\.params\}/g, types.getMethodSignatureParams(methodObj, json, { destination: state.destination }))
     .replace(/\$\{method\.context\}/g, method.context.join(', '))
     .replace(/\$\{method\.context\.array\}/g, JSON.stringify(method.context))
     .replace(/\$\{method\.Name\}/g, method.name[0].toUpperCase() + method.name.substr(1))
     .replace(/\$\{event\.name\}/g, method.name.toLowerCase()[2] + method.name.substr(3))
     .replace(/\$\{event\.params\}/g, eventParams)
     .replace(/\$\{event\.params\.table\.rows\}/g, eventParamsRows)
-    .replace(/\$\{event\.signature\.params\}/g, types.getMethodSignatureParams(json, event))
+    .replace(/\$\{event\.signature\.params\}/g, types.getMethodSignatureParams(event, json, { destination: state.destination }))
     .replace(/\$\{info\.title\}/g, info.title)
     .replace(/\$\{method\.property\.immutable\}/g, hasTag(methodObj, 'property:immutable'))
     .replace(/\$\{method\.property\.readonly\}/g, !getSetterFor(methodObj.name, json))
@@ -954,8 +960,8 @@ function insertMethodMacros(template, methodObj, json, templates, examples={}) {
     .replace(/\$\{method\.result.name\}/g, result.name)
     .replace(/\$\{method\.result.summary\}/g, result.summary)
     .replace(/\$\{method\.result.link\}/g, getLinkForSchema(result, json, templates, true)) //, baseUrl: options.baseUrl
-    .replace(/\$\{method\.result.type\}/g, types.getSchemaType(json, result, null, {title: true, asPath: false})) //, baseUrl: options.baseUrl
-    .replace(/\$\{event\.result.type\}/, isEventMethod(methodObj) ? types.getSchemaType(json, result, null, { event: true, description: methodObj.result.summary, asPath: false }): '') //, baseUrl: options.baseUrl
+    .replace(/\$\{method\.result.type\}/g, types.getSchemaType(result, json, {title: true, asPath: false, destination: state.destination })) //, baseUrl: options.baseUrl
+    .replace(/\$\{event\.result.type\}/, isEventMethod(methodObj) ? types.getSchemaType(result, json, { destination: state.destination, event: true, description: methodObj.result.summary, asPath: false }): '') //, baseUrl: options.baseUrl
     .replace(/\$\{method\.result\}/g,  generateResult(result.schema, json, templates))
     .replace(/\$\{method\.example.value\}/g,  JSON.stringify(methodObj.examples[0].result.value))
     .replace(/\$\{method\.alternative\}/g, method.alternative)
@@ -972,7 +978,7 @@ function insertMethodMacros(template, methodObj, json, templates, examples={}) {
   const matches = [...template.matchAll(/\$\{method\.params\[([0-9]+)\]\.type\}/g)]
   matches.forEach(match => {
     const index = parseInt(match[1])
-    template = template.replace(/\$\{method\.params\[([0-9]+)\]\.type\}/g, types.getSchemaType(json, methodObj.params[index]))
+    template = template.replace(/\$\{method\.params\[([0-9]+)\]\.type\}/g, types.getSchemaType(methodObj.params[index], json, { destination: state.destination }))
     template = template.replace(/\$\{method\.params\[([0-9]+)\]\.name\}/g, methodObj.params[index].name)
   })
   
@@ -1077,7 +1083,7 @@ function insertExampleMacros(template, examples, method, json, templates) {
 }
 
 function generateResult(result, json, templates) {
-  const type = types.getSchemaType(json, result)
+  const type = types.getSchemaType(result, json, { destination: state.destination })
 
   if (result.type === 'object' && result.properties) {
     let content = getTemplate('/types/object', templates).split('\n')
@@ -1100,7 +1106,7 @@ function generateResult(result, json, templates) {
 
 function insertSchemaMacros(template, title, schema, module) {
   return template.replace(/\$\{property\}/g, title)
-          .replace(/\$\{type\}/g, types.getSchemaType(module, schema))
+          .replace(/\$\{type\}/g, types.getSchemaType(schema, module, { destination: state.destination }))
           .replace(/\$\{description\}/g, schema.description || '')
           .replace(/\$\{name\}/g, title || '')
 }
@@ -1109,9 +1115,9 @@ function insertParameterMacros(template, param, method, module) {
 
 //| `${method.param.name}` | ${method.param.type} | ${method.param.required} | ${method.param.summary} ${method.param.constraints} |
 
-  let constraints = getSchemaConstraints(param, module, null)
-  let type = types.getSchemaType(module, param, null, { code: false, link: false, title: true, asPath: false }) //baseUrl: options.baseUrl
-  let typeLink = types.getSchemaType(module, param, null, { code: true, link: true, title: true, asPath: false }) //baseUrl: options.baseUrl
+  let constraints = getSchemaConstraints(param, module)
+  let type = types.getSchemaType(param, module, { destination: state.destination, code: false, link: false, title: true, asPath: false }) //baseUrl: options.baseUrl
+  let typeLink = types.getSchemaType(param, module, { destination: state.destination, code: true, link: true, title: true, asPath: false }) //baseUrl: options.baseUrl
 
   if (constraints && type) {
       constraints = '<br/>' + constraints
@@ -1158,7 +1164,7 @@ function generateProviderInterfaces(json, templates) {
 }
 
 function insertProviderInterfaceMacros(template, capability, moduleJson = {}, templates) {
-  const iface = types.getProviderInterface(moduleJson, capability, null)//.map(method => { method.name = method.name.charAt(9).toLowerCase() + method.name.substr(10); return method } )
+  const iface = types.getProviderInterface(capability, moduleJson, { destination: state.destination })//.map(method => { method.name = method.name.charAt(9).toLowerCase() + method.name.substr(10); return method } )
 
   const capitalize = str => str[0].toUpperCase() + str.substr(1)
   const uglyName = capability.split(":").slice(-2).map(capitalize).reverse().join('') + "Provider"
@@ -1170,18 +1176,18 @@ function insertProviderInterfaceMacros(template, capability, moduleJson = {}, te
 
   let interfaceShape = ''
   interfaceShape += `interface ${name} {\n`
-  interfaceShape += iface.map(method => `\t${types.getMethodSignature(moduleJson, method, null, { isInterface: true })}`).join('\n')
+  interfaceShape += iface.map(method => `\t${types.getMethodSignature(method, moduleJson, { destination: state.destination, isInterface: true })}`).join('\n')
   interfaceShape += '\n}\n'
 
   let propertiesShape = ''
   propertiesShape += `{\n`
-  propertiesShape += iface.map(method => `\t${types.getMethodSignature(moduleJson, method, null, { isInterface: false })}`).map(str => str.replace(/function (.*?)\(/, '$1: function(')).join('\n')
+  propertiesShape += iface.map(method => `\t${types.getMethodSignature(method, moduleJson, { destination: state.destination, isInterface: false })}`).map(str => str.replace(/function (.*?)\(/, '$1: function(')).join('\n')
   propertiesShape += '\n}\n'
 
   // todo generate example vanilla JS class that returns example result wrapped in promise
   let exampleClass = ''
   exampleClass += `interface ${name} {\n`
-  exampleClass += iface.map(method => `\t${types.getMethodSignature(moduleJson, method, null, { isInterface: true })}`).join('\n')
+  exampleClass += iface.map(method => `\t${types.getMethodSignature(method, moduleJson, { destination: state.destination, isInterface: true })}`).join('\n')
   exampleClass += '\n}\n'
 
   if (iface.length === 0) {
@@ -1201,7 +1207,7 @@ function insertProviderInterfaceMacros(template, capability, moduleJson = {}, te
                   name: 'provider'
               })
               const parametersSchema = method.params[0].schema
-              const parametersShape = types.getSchemaShape(moduleJson, parametersSchema, null)
+              const parametersShape = types.getSchemaShape(parametersSchema, moduleJson, { destination: state.destination })
               let methodBlock = insertMethodMacros(getTemplateForMethod(method, templates), method, moduleJson, templates)
               methodBlock = methodBlock.replace(/\${parameters\.shape\}/g, parametersShape)
               const hasProviderParameters = parametersSchema && parametersSchema.properties && Object.keys(parametersSchema.properties).length > 0
@@ -1294,7 +1300,7 @@ function insertProviderParameterMacros(data = '', parameters, module = {}, optio
 
   Object.entries(parameters.properties).forEach(([name, param]) => {
       let constraints = getSchemaConstraints(param, module)
-      let type = types.getSchemaType(module, param, null, { code: true, link: true, title: true, asPath: options.asPath, baseUrl: options.baseUrl })
+      let type = types.getSchemaType(param, module, { destination: state.destination, code: true, link: true, title: true, asPath: options.asPath, baseUrl: options.baseUrl })
 
       if (constraints && type) {
           constraints = '<br/>' + constraints
