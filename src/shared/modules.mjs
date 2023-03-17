@@ -991,6 +991,13 @@ const getModule = (name, json, copySchemas) => {
             const uri = getPathOr(null, parts.filter((p, i, array) => i < array.length-1), copy).uri
             const destination = ref.substring(2).split('/')
 
+            // Readability note - Value of destination[] is typically something like:
+            //
+            //   [ 'components', 'schemas', '<schema>' ] OR
+            //   [ 'x-schemas', '<schema's document.title>', '<schema>' ]
+            //
+            // The code below uses destination[0] + destination[1] etc... so the names aren't hard coded
+
             // copy embedded schemas to the local schemas area if the flag is set
             if (uri && copySchemas) {
                 // use '#/components/schemas/<name>' instead of '#/x-schemas/<group>/<name>'
@@ -1005,6 +1012,7 @@ const getModule = (name, json, copySchemas) => {
                 searching = true
                 // if copySchemas is off, then make sure we also grab the x-schema URI
                 if (uri && !copySchemas) {
+                    openrpc[destination[0]][destination[1]] = openrpc[destination[0]][destination[1]] || {}
                     openrpc[destination[0]][destination[1]][destination[2]] = {
                         uri: uri,
                         ...(openrpc[destination[0]][destination[1]][destination[2]] || {})
