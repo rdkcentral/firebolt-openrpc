@@ -277,6 +277,9 @@ const getPublicEvents = compose(
     getEvents
 )
 
+const hasPublicInterfaces = json => json.methods && json.methods.filter(m => m.tags && m.tags.find(t=>t['x-provides'])).length > 0
+const hasPublicAPIs = json => hasPublicInterfaces(json) || (json.methods && json.methods.filter( method => !method.tags.find(tag => tag.name === 'rpc-only')).length > 0)
+
 const eventDefaults = event => {
 
     event.tags = [
@@ -954,6 +957,10 @@ const removeUnusedSchemas = (json) => {
         while(recurse(schema.components.schemas, '#/components/schemas')) {}
     }
 
+    if (schema['x-schemas']) {
+        while(recurse(schema['x-schemas'], '#/x-schemas')) {}
+    }
+
     return schema
 }
 
@@ -971,6 +978,7 @@ const getModule = (name, json, copySchemas) => {
 
     // zap all of the schemas
     openrpc.components.schemas = {}
+    openrpc['x-schemas'] = {}
 
     // and recursively search in the copy for referenced schemas until we have them all
     let searching = true
@@ -1045,6 +1053,8 @@ export {
     isEventMethod,
     isEventMethodWithContext,
     isPublicEventMethod,
+    hasPublicAPIs,
+    hasPublicInterfaces,
     isPolymorphicReducer,
     isPolymorphicPullMethod,
     isTemporalSetMethod,

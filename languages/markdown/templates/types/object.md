@@ -1,5 +1,3 @@
-${name}:
-
 | Property | Type | Description |
 |----------|------|-------------|
-| ${property} | ${type} | ${description} | 
+| `${property}` | [${type}](${type.link}) | ${description} | 

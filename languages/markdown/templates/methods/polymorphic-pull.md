@@ -7,15 +7,9 @@ ${method.puller}
 
 To push data to the platform, e.g. during app launch, use `${method.name}(${method.params[1].name}: ${method.params[1].type})`:
 
-${if.javascript}
-
 ```typescript
 function ${method.name}(${method.params[1].name}: ${method.params[1].type}): Promise<${method.result.type}>
 ```
-
-${end.if.javascript}
-
-${if.params}
 
 Parameters: 
 
@@ -28,8 +22,6 @@ ${method.pulls.result}
 ```
 
 ${method.seeAlso}
-
-${end.if.params}
 
 Promise resolution:
 

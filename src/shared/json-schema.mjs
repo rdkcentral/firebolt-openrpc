@@ -163,6 +163,7 @@ function getSchemaConstraints(schema, module, options = { delimiter: '\n' }) {
     typeof schema.minLength === 'number' ? constraints.push(`minLength: ${schema.minLength}`) : null
     typeof schema.maxLength === 'number' ? constraints.push(`maxLength: ${schema.maxLength}`) : null
     typeof schema.pattern === 'string'   ? constraints.push(`pattern: ${schema.pattern}`) : null
+    typeof schema.enum === 'object' ? constraints.push(`values: \`${schema.enum.map(v => `'${v}'`).join(' \\| ')}\``) : null
 
     return constraints.join(options.delimiter)
   }

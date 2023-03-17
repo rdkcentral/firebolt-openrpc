@@ -20,7 +20,7 @@
 
 import { emptyDir, readDir, readFiles, readJson, writeFiles, writeText } from '../shared/filesystem.mjs'
 import { getTemplate, getTemplateForModule } from '../shared/template.mjs'
-import { getModule } from '../shared/modules.mjs'
+import { getModule, hasPublicAPIs } from '../shared/modules.mjs'
 import { logHeader, logSuccess } from '../shared/io.mjs'
 import path from 'path'
 import engine from './engine.mjs'
@@ -97,9 +97,6 @@ const macrofy = async (
 
         const staticCodeList = staticContent ? await readDir(staticContent, { recursive: true }) : []
         const staticModules = staticModuleNames.map(name => ( { info: { title: name } } ))
-
-        const hasPublicInterfaces = json => json.methods && json.methods.filter(m => m.tags && m.tags.find(t=>t['x-provides'])).length > 0
-        const hasPublicAPIs = json => hasPublicInterfaces(json) || (json.methods && json.methods.filter(m => !m.tags || !m.tags.map(t=>t.name).includes('rpc-only')).length > 0)
         
         let modules
         

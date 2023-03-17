@@ -29,7 +29,7 @@ import isString from 'crocks/core/isString.js'
 import predicates from 'crocks/predicates/index.js'
 const { isObject, isArray, propEq, pathSatisfies, propSatisfies } = predicates
 
-import { isRPCOnlyMethod, isProviderInterfaceMethod, getPayloadFromEvent, providerHasNoParameters, isTemporalSetMethod, hasMethodAttributes, getMethodAttributes, isEventMethodWithContext, getSemanticVersion, getSetterFor, getProvidedCapabilities, isPolymorphicPullMethod } from '../shared/modules.mjs'
+import { isRPCOnlyMethod, isProviderInterfaceMethod, getPayloadFromEvent, providerHasNoParameters, isTemporalSetMethod, hasMethodAttributes, getMethodAttributes, isEventMethodWithContext, getSemanticVersion, getSetterFor, getProvidedCapabilities, isPolymorphicPullMethod, hasPublicAPIs } from '../shared/modules.mjs'
 import isEmpty from 'crocks/core/isEmpty.js'
 import { getLinkedSchemaPaths, getSchemaConstraints, isSchema, localizeDependencies } from '../shared/json-schema.mjs'
 
@@ -99,8 +99,7 @@ const getTemplateForExampleResult = (method, templates) => {
   return template || JSON.stringify(method.examples[0].result.value, null, '\t')
 }
 
-const getLinkForSchema = (schema, json, templates, code=false) => {
-
+const getLinkForSchema = (schema, json) => {
   const dirs = config.createModuleDirectories
   const copySchemasIntoModules = config.copySchemasIntoModules
 
@@ -109,36 +108,30 @@ const getLinkForSchema = (schema, json, templates, code=false) => {
   }
 
   const type = types.getSchemaType(schema, json, { destination: state.destination })
-  const wrap = code ? '`' : ''
-  let link = `[${wrap}${type}${wrap}](`
-
 
   // local - insert a bogus link, that we'll udpate later based on final table-of-contents
   if (json.components.schemas[type]) {
-      link += `#\$\{LINK:schema:${type}\})`
-      return link
+    return `#\$\{LINK:schema:${type}\}`
   }
   else {
       const [group, schema] = Object.entries(json['x-schemas']).find( ([key, value]) => json['x-schemas'][key] && json['x-schemas'][key][type]) || [null, null]
       if (group && schema) {
         if (copySchemasIntoModules) {
-          link += `#\$\{LINK:schema:${type}\}`
-          return link
+          return `#\$\{LINK:schema:${type}\}`
         }
         else {
           const base = dirs ? '..' : '.'
           if (dirs) {
-            link += `${base}/schemas/${group}/#${type})`
+            return `${base}/schemas/${group}/#${type}`
           }
           else {
-            link += `${base}/schemas/${group}.md#${type})`
+            return `${base}/schemas/${group}.md#${type}`
           }
-          return link
         }
       }
   }
 
-  return ''
+  return '#'
 }
 
 
@@ -379,7 +372,8 @@ const generateMacros = (obj, templates, languages, options = {}) => {
     version: getSemanticVersion(obj),
     title: obj.info.title,
     description: obj.info.description,
-    module: module
+    module: module,
+    public: hasPublicAPIs(obj)
   }
 
   return macros
@@ -421,6 +415,13 @@ const insertMacros = (fContents = '', macros = {}) => {
   fContents = fContents.replace(/\$\{info\.title\}/g, macros.title)
   fContents = fContents.replace(/\$\{info\.description\}/g, macros.description)
   fContents = fContents.replace(/\$\{info\.version\}/g, macros.version.readable)
+  
+  if (macros.public) {
+    fContents = fContents.replace(/\$\{if\.public\}(.*?)\{end\.if\.public\}/gms, '$1')
+  }
+  else {
+    fContents = fContents.replace(/\$\{if\.public\}.*?\{end\.if\.public\}/gms, '')
+  }
 
   const examples = [...fContents.matchAll(/0 \/\* \$\{EXAMPLE\:(.*?)\} \*\//g)]
 
@@ -472,6 +473,9 @@ function insertTableofContents(content) {
     }
     content = content.replace(match[0], `${slugger(match[2])}${extra}`)
   })
+
+  // replace empty links with normal text
+  content = content.replace(/\[(.*?)\]\(\#\)/g, '$1')
 
   return content
 }
@@ -569,8 +573,15 @@ function generateSchemas(json, templates, options) {
     if (!schema.examples || schema.examples.length === 0) {
         content = content.replace(/\$\{if\.examples\}.*?\{end\.if\.examples\}/gms, '')
     }
+    else {
+      content = content.replace(/\$\{if\.examples\}(.*?)\{end\.if\.examples\}/gms, '$1')
+    }
+
     if (!schema.description) {
         content = content.replace(/\$\{if\.description\}.*?\{end\.if\.description\}/gms, '')
+    }
+    else {
+      content = content.replace(/\$\{if\.description\}(.*?)\{end\.if\.description\}/gms, '$1')
     }
     const schemaShape = types.getSchemaShape(schema, json, { name, destination: state.destination })
 
@@ -636,7 +647,7 @@ function getRelatedSchemaLinks(schema = {}, json = {}, templates = {}, options =
       .map(path => path.substring(2).split('/'))
       .map(path => getPathOr(null, path, json))
       .filter(schema => schema)
-      .map(schema => getLinkForSchema(schema, json, templates, true)) // need full module here, not just the schema
+      .map(schema => '[' + types.getSchemaType(schema, json) + '](' + getLinkForSchema(schema, json, true) + ')') // need full module here, not just the schema
       .filter(link => link)
       .join('\n')
 
@@ -747,6 +758,15 @@ function generateExamples(json = {}, mainTemplates = {}, languages = {}) {
       }])))
     }))
 
+    // delete non RPC examples from rpc-only methods
+    if (isRPCOnlyMethod(method)) {
+      examples[method.name] = examples[method.name].map(example => ({
+        json: example.json,
+        value: example.value,
+        languages: Object.fromEntries(Object.entries(example.languages).filter( ([k, v]) => k === 'JSON-RPC'))
+      }))
+    }
+
     // clean up JSON-RPC indentation, because it's easy and we can.
     examples[method.name].map(example => {
       if (example.languages['JSON-RPC']) {
@@ -765,9 +785,8 @@ function generateExamples(json = {}, mainTemplates = {}, languages = {}) {
 function generateMethods(json = {}, examples = {}, templates = {}) {
   const methods = compose(
     option([]),
-    map(filter(not(isRPCOnlyMethod))),
+//    map(filter(not(isRPCOnlyMethod))),
     map(filter(not(isProviderInterfaceMethod))),
-//    map(filter(not(isExcludedMethod))), see macrofier/index:hideExcluded
     getMethods
   )(json)
 
@@ -896,19 +915,21 @@ function insertMethodMacros(template, methodObj, json, templates, examples={}) {
 
   // grab some related methdos in case they are output together in a single template file
   const puller = json.methods.find(method => method.tags.find(tag => tag['x-pulls-for'] === methodObj.name))
+  const pullsFor = methodObj.tags.find(t => t['x-pulls-for']) && json.methods.find(method => method.name === methodObj.tags.find(t => t['x-pulls-for'])['x-pulls-for'])
   const pullerTemplate = (puller ? insertMethodMacros(getTemplate('/codeblocks/puller', templates), puller, json, templates, examples) : '')
   const setter = getSetterFor(methodObj.name, json)
   const setterTemplate = (setter ? insertMethodMacros(getTemplate('/codeblocks/setter', templates), setter, json, templates, examples) : '')
   const subscriber = json.methods.find(method => method.tags.find(tag => tag['x-alternative'] === methodObj.name))
   const subscriberTemplate = (subscriber ? insertMethodMacros(getTemplate('/codeblocks/subscriber', templates), subscriber, json, templates, examples) : '')
   const setterFor = methodObj.tags.find(t => t.name === 'setter') && methodObj.tags.find(t => t.name === 'setter')['x-setter-for'] || ''
-  const pullsFor = methodObj.tags.find(t => t['x-pulls-for']) && methodObj.tags.find(t => t['x-pulls-for'])['x-pulls-for'] || ''
-  const pullsForType = pullsFor ? pullsFor[0].toUpperCase() + pullsFor.substring(1) : (methodObj.tags.find(t => t.name === 'polymorphic-pull') ? methodObj.name[0].toUpperCase() + methodObj.name.substring(1) : '')
-  const pullsResult = pullsForType ? types.getSchemaShape(json.components.schemas[pullsForType + 'Result'], json, { destination: state.destination }) : ''
-  const pullsParams = pullsForType ? types.getSchemaShape(json.components.schemas[pullsForType + 'Parameters'], json, { destination: state.destination }) : ''
+  const pullsResult = (puller || pullsFor) ? localizeDependencies(pullsFor || methodObj, json).params[1].schema : null
+  const pullsParams = (puller || pullsFor) ? localizeDependencies(getPayloadFromEvent(puller || methodObj), json, null, {mergeAllOfs: true}).properties.parameters : null
+  const pullsResultType = pullsResult && types.getSchemaShape(pullsResult, json, { destination: state.destination })
+  const pullsForType = pullsResult && types.getSchemaType(pullsResult, json)
+  const pullsParamsType = pullsParams ? types.getSchemaShape(pullsParams, json, { destination: state.destination }) : ''
  
   let seeAlso = ''
-
+  
   if (isPolymorphicPullMethod(methodObj)) {
     seeAlso = `See also: [${pullsForType}](#${pullsForType.toLowerCase()}-1)` // this assumes the schema will be after the method...
   }
@@ -957,18 +978,19 @@ function insertMethodMacros(template, methodObj, json, templates, examples={}) {
     .replace(/\$\{method\.item\}/g, itemName)
     .replace(/\$\{method\.item\.type\}/g, itemType)
     .replace(/\$\{method\.capabilities\}/g, capabilities)
-    .replace(/\$\{method\.result.name\}/g, result.name)
-    .replace(/\$\{method\.result.summary\}/g, result.summary)
-    .replace(/\$\{method\.result.link\}/g, getLinkForSchema(result, json, templates, true)) //, baseUrl: options.baseUrl
-    .replace(/\$\{method\.result.type\}/g, types.getSchemaType(result, json, {title: true, asPath: false, destination: state.destination })) //, baseUrl: options.baseUrl
-    .replace(/\$\{event\.result.type\}/, isEventMethod(methodObj) ? types.getSchemaType(result, json, { destination: state.destination, event: true, description: methodObj.result.summary, asPath: false }): '') //, baseUrl: options.baseUrl
+    .replace(/\$\{method\.result\.name\}/g, result.name)
+    .replace(/\$\{method\.result\.summary\}/g, result.summary)
+    .replace(/\$\{method\.result\.link\}/g, getLinkForSchema(result, json)) //, baseUrl: options.baseUrl
+    .replace(/\$\{method\.result\.type\}/g, types.getSchemaType(result, json, {title: true, asPath: false, destination: state.destination })) //, baseUrl: options.baseUrl
+    .replace(/\$\{event\.result\.type\}/, isEventMethod(methodObj) ? types.getSchemaType(result, json, { destination: state.destination, event: true, description: methodObj.result.summary, asPath: false }): '') //, baseUrl: options.baseUrl
     .replace(/\$\{method\.result\}/g,  generateResult(result.schema, json, templates))
-    .replace(/\$\{method\.example.value\}/g,  JSON.stringify(methodObj.examples[0].result.value))
+    .replace(/\$\{method\.example\.value\}/g,  JSON.stringify(methodObj.examples[0].result.value))
     .replace(/\$\{method\.alternative\}/g, method.alternative)
-    .replace(/\$\{method\.pulls\.for\}/g, pullsFor )
+    .replace(/\$\{method\.pulls\.for\}/g, pullsFor ? pullsFor.name : '' )
     .replace(/\$\{method\.pulls\.type\}/g, pullsForType)
-    .replace(/\$\{method\.pulls\.result\}/g, pullsResult)
-    .replace(/\$\{method\.pulls\.params\}/g, pullsParams)
+    .replace(/\$\{method\.pulls\.result\}/g, pullsResultType)
+    .replace(/\$\{method\.pulls\.params.type\}/g, pullsParams ? pullsParams.title : '')
+    .replace(/\$\{method\.pulls\.params\}/g, pullsParamsType)
     .replace(/\$\{method\.setter\.for\}/g, setterFor )
     .replace(/\$\{method\.puller\}/g, pullerTemplate) // must be last!!
     .replace(/\$\{method\.setter\}/g, setterTemplate) // must be last!!
@@ -1004,7 +1026,6 @@ function insertExampleMacros(template, examples, method, json, templates) {
   examples.forEach(example => {
     index++
     let code = getTemplate('/codeblocks/example', templates)
-
     let first = true
     let languages = ''
     Object.entries(example.languages).forEach(([name, language]) => {
@@ -1099,6 +1120,20 @@ function generateResult(result, json, templates) {
   else if (type === 'string' && Array.isArray(result.enum)) {
     return insertSchemaMacros(getTemplate('/types/enum', templates), result, json)
   }
+  else if (result.$ref) {
+    const link = getLinkForSchema(result, json)
+
+    // if we get a real link use it
+    if (link !== '#') {
+      return `[${types.getSchemaType(result, json)}](${link})`
+    }
+    // otherwise this was a schema with no title, and we'll just copy it here
+    else {
+      const schema = localizeDependencies(result, json)
+      return getTemplate('/types/default', templates)
+              .replace(/\$\{type\}/, types.getSchemaShape(schema, json, { name: result.$ref.split("/").pop()}))
+    }
+  }
   else {
     return insertSchemaMacros(getTemplate('/types/default', templates), result.title, result, json)
   }
@@ -1106,7 +1141,8 @@ function generateResult(result, json, templates) {
 
 function insertSchemaMacros(template, title, schema, module) {
   return template.replace(/\$\{property\}/g, title)
-          .replace(/\$\{type\}/g, types.getSchemaType(schema, module, { destination: state.destination }))
+          .replace(/\$\{type\}/g, types.getSchemaType(schema, module, { destination: state.destination, code: false }))
+          .replace(/\$\{type.link\}/g, getLinkForSchema(schema, module))
           .replace(/\$\{description\}/g, schema.description || '')
           .replace(/\$\{name\}/g, title || '')
 }
@@ -1116,8 +1152,8 @@ function insertParameterMacros(template, param, method, module) {
 //| `${method.param.name}` | ${method.param.type} | ${method.param.required} | ${method.param.summary} ${method.param.constraints} |
 
   let constraints = getSchemaConstraints(param, module)
-  let type = types.getSchemaType(param, module, { destination: state.destination, code: false, link: false, title: true, asPath: false }) //baseUrl: options.baseUrl
-  let typeLink = types.getSchemaType(param, module, { destination: state.destination, code: true, link: true, title: true, asPath: false }) //baseUrl: options.baseUrl
+  let type = types.getSchemaType(param, module, { destination: state.destination, code: false, link: false, title: true, asPath: false, expandEnums: false }) //baseUrl: options.baseUrl
+  let typeLink = getLinkForSchema(param, module)
 
   if (constraints && type) {
       constraints = '<br/>' + constraints
@@ -1128,7 +1164,7 @@ function insertParameterMacros(template, param, method, module) {
       .replace(/\$\{method.param.summary\}/, param.summary || '')
       .replace(/\$\{method.param.required\}/, param.required || 'false')
       .replace(/\$\{method.param.type\}/, type) //getType(param))
-      .replace(/\$\{method.param.type.link\}/, type) //getType(param))
+      .replace(/\$\{method.param.link\}/, getLinkForSchema(param, module)) //getType(param))
       .replace(/\$\{method.param.constraints\}/, constraints) //getType(param)) 
 }
 

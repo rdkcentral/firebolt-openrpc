@@ -1,6 +1,6 @@
 ### ${method.name}
 
-${method.description}
+${method.summary}
 
 ${method.params}
 
@@ -8,30 +8,10 @@ Result:
 
 ${method.result}
 
-${if.examples}
-**Examples**
+${method.capabilities}
 
-${example.title}
+#### Examples
 
-<details>
-  <summary>JSON-RPC:</summary>
-
-Request:
-
-```json
-${example.jsonrpc}
-```
-
-Response:
-
-```json
-${example.response}
-```
-
-</details>
-
-${end.example}
-
-${end.if.examples}
+${method.examples}
 
 ---

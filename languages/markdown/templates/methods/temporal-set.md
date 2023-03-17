@@ -2,11 +2,9 @@
 
 ${method.summary}
 
-${if.javascript}
 ```typescript
 function ${method.name}(${method.signature.params}${if.context}, ${end.if.context}add: (${method.item}: ${method.item.type}) => void, remove?: (${method.item}: ${method.item.type}) => void ): Promise<Process>
 ```
-${end.if.javascript}
 
 Parameters:
 

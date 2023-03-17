@@ -113,7 +113,7 @@ function getProviderInterface(capability, module, { destination }) {
 
 const safeName = prop => prop.match(/[.+]/) ? '"' + prop + '"' : prop
 
-function getSchemaShape(schema = {}, module = {}, { name = '', level = 0, title, summary, descriptions = true, destination }) {
+function getSchemaShape(schema = {}, module = {}, { name = '', level = 0, title, summary, descriptions = true, destination } = {}) {
     schema = JSON.parse(JSON.stringify(schema))
     let structure = []
 
@@ -260,7 +260,7 @@ function getSchemaShape(schema = {}, module = {}, { name = '', level = 0, title,
     return structure.join('\n')
   }
 
-  function getSchemaType(schema, module, { destination, link = false, title = false, code = false, asPath = false, event = false, baseUrl = '' }) {
+  function getSchemaType(schema, module, { destination, link = false, title = false, code = false, asPath = false, event = false, expandEnums = true, baseUrl = '' } = {}) {
     if (schema.schema) {
       schema = schema.schema
     }
@@ -314,7 +314,7 @@ function getSchemaShape(schema = {}, module = {}, { name = '', level = 0, title,
       return `(${params}) => Promise<${result}>`
     }
     else if (schema.type === 'string' && schema.enum) {
-      let type = schema.enum.map(e => wrap(e, '\'')).join(' | ')
+      let type = expandEnums ? schema.enum.map(e => wrap(e, '\'')).join(' | ') : schema.type
       if (code) {
         type = wrap(type, '`')
       }

@@ -1,1 +1,1 @@
-| `${method.param.name}` | ${method.param.type.link} | ${method.param.required} | ${method.param.summary} ${method.param.constraints} |
+| `${method.param.name}` | [`${method.param.type}`](${method.param.link}) | ${method.param.required} | ${method.param.summary} ${method.param.constraints} |
