@@ -18,7 +18,6 @@
 
 import deepmerge from 'deepmerge'
 import { getPath, localizeDependencies } from './json-schema.mjs'
-import {  getProviderInterfaceMethods, getPayloadFromEvent } from './modules.mjs'
 
 const isSynchronous = m => !m.tags ? false : m.tags.map(t => t.name).find(s => s === 'synchronous')
 
@@ -33,82 +32,6 @@ function getMethodSignature(method, module, { destination, isInterface = false }
 
 function getMethodSignatureParams(method, module, { destination }) {
     return method.params.map( param => param.name + (!param.required ? '?' : '') + ': ' + getSchemaType(param.schema, module, {title: true, destination })).join(', ')
-}
-
-function getProviderInterface(capability, module, { destination }) {
-  module = JSON.parse(JSON.stringify(module))
-  const iface = getProviderInterfaceMethods(capability, module).map(method => localizeDependencies(method, module, null, { mergeAllOfs: true }))
-
-  iface.forEach(method => {
-    const payload = localizeDependencies(getPayloadFromEvent(method), module)
-    const focusable = method.tags.find(t => t['x-allow-focus'])
-
-    // remove `onRequest`
-    method.name = method.name.charAt(9).toLowerCase() + method.name.substr(10)
-
-    method.params = [
-      {
-        "name": "parameters",
-        "schema": payload.properties.parameters
-      },
-      {
-        "name": "session",
-        "schema": {
-          "type": focusable ? "FocusableProviderSession" : "ProviderSession"
-        }
-      }
-    ]
-
-    let exampleResult = null
-
-    if (method.tags.find(tag => tag['x-response'])) {
-      const result = method.tags.find(tag => tag['x-response'])['x-response']
-
-      method.result = {
-        "name": "result",
-        "schema": result
-      }
-
-      if (result.examples && result.examples[0]) {
-        exampleResult = result.examples[0]
-      }
-    }
-    else {
-      method.result = {
-        "name": "result",
-        "schema": {
-          "const": null
-        }
-      }
-    }
-
-    method.examples = method.examples.map( example => (
-      {
-        params: [
-          {
-            name: "parameters",
-            value: example.result.value.parameters
-          },
-          {
-            name: "session",
-            value: {
-              correlationId: example.result.value.correlationId
-            }
-          }
-        ],
-        result: {
-          name: "result",
-          value: exampleResult
-        }
-      }
-    ))
-
-    // remove event tag
-    method.tags = method.tags.filter(tag => tag.name !== 'event')
-  })
-
-
-  return iface
 }
 
 const safeName = prop => prop.match(/[.+]/) ? '"' + prop + '"' : prop
@@ -411,7 +334,6 @@ function getSchemaShape(schema = {}, module = {}, { name = '', level = 0, title,
   export default {
       getMethodSignature,
       getMethodSignatureParams,
-      getProviderInterface,
       getSchemaShape,
       getSchemaType
   }

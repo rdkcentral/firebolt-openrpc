@@ -42,7 +42,7 @@ Request:
 ${provider.interface.start}
 {
     "id": ${provider.interface.i},
-    "method": "${jsonrpc.module}.onRequest${provider.interface.Name}",
+    "method": "${info.title}.onRequest${provider.interface.Name}",
     "params": {
         "listen": true
     }
@@ -88,7 +88,7 @@ Request:
 ```json
 {
     "id": ${provider.interface.j},
-    "method": "${jsonrpc.module}.${provider.interface.name}Response",
+    "method": "${info.title}.${provider.interface.name}Response",
     "params": {
         "correlationId": ${provider.interface.example.correlationId},
         "result": ${provider.interface.example.result}

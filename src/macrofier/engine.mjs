@@ -29,7 +29,7 @@ import isString from 'crocks/core/isString.js'
 import predicates from 'crocks/predicates/index.js'
 const { isObject, isArray, propEq, pathSatisfies, propSatisfies } = predicates
 
-import { isRPCOnlyMethod, isProviderInterfaceMethod, getPayloadFromEvent, providerHasNoParameters, isTemporalSetMethod, hasMethodAttributes, getMethodAttributes, isEventMethodWithContext, getSemanticVersion, getSetterFor, getProvidedCapabilities, isPolymorphicPullMethod, hasPublicAPIs } from '../shared/modules.mjs'
+import { isRPCOnlyMethod, isProviderInterfaceMethod, getProviderInterface, getPayloadFromEvent, providerHasNoParameters, isTemporalSetMethod, hasMethodAttributes, getMethodAttributes, isEventMethodWithContext, getSemanticVersion, getSetterFor, getProvidedCapabilities, isPolymorphicPullMethod, hasPublicAPIs } from '../shared/modules.mjs'
 import isEmpty from 'crocks/core/isEmpty.js'
 import { getLinkedSchemaPaths, getSchemaConstraints, isSchema, localizeDependencies } from '../shared/json-schema.mjs'
 
@@ -46,12 +46,10 @@ const _inspector = obj => {
 // getMethodSignatureParams(method, module, options = { destination: 'file.txt' })
 // getSchemaType(schema, module, options = { destination: 'file.txt', title: true })
 // getSchemaShape(schema, module, options = { name: 'Foo', destination: 'file.txt' })
-// getProviderInterface(capability, module, options = { destination: 'file.txt' } )
 
 let types = {
   getMethodSignature: ()=>null,
   getMethodSignatureParams: ()=>null,
-  getProviderInterface: ()=>null,
   getSchemaShape: ()=>null,
   getSchemaType: ()=>null
 }
@@ -1200,7 +1198,7 @@ function generateProviderInterfaces(json, templates) {
 }
 
 function insertProviderInterfaceMacros(template, capability, moduleJson = {}, templates) {
-  const iface = types.getProviderInterface(capability, moduleJson, { destination: state.destination })//.map(method => { method.name = method.name.charAt(9).toLowerCase() + method.name.substr(10); return method } )
+  const iface = getProviderInterface(capability, moduleJson, { destination: state.destination })//.map(method => { method.name = method.name.charAt(9).toLowerCase() + method.name.substr(10); return method } )
 
   const capitalize = str => str[0].toUpperCase() + str.substr(1)
   const uglyName = capability.split(":").slice(-2).map(capitalize).reverse().join('') + "Provider"
@@ -1210,21 +1208,11 @@ function insertProviderInterfaceMacros(template, capability, moduleJson = {}, te
     name = moduleJson.info['x-interface-names'][capability] || name
   }
 
-  let interfaceShape = ''
-  interfaceShape += `interface ${name} {\n`
-  interfaceShape += iface.map(method => `\t${types.getMethodSignature(method, moduleJson, { destination: state.destination, isInterface: true })}`).join('\n')
-  interfaceShape += '\n}\n'
+  let interfaceShape = getTemplate('/codeblocks/interface', templates)
 
-  let propertiesShape = ''
-  propertiesShape += `{\n`
-  propertiesShape += iface.map(method => `\t${types.getMethodSignature(method, moduleJson, { destination: state.destination, isInterface: false })}`).map(str => str.replace(/function (.*?)\(/, '$1: function(')).join('\n')
-  propertiesShape += '\n}\n'
-
-  // todo generate example vanilla JS class that returns example result wrapped in promise
-  let exampleClass = ''
-  exampleClass += `interface ${name} {\n`
-  exampleClass += iface.map(method => `\t${types.getMethodSignature(method, moduleJson, { destination: state.destination, isInterface: true })}`).join('\n')
-  exampleClass += '\n}\n'
+  interfaceShape = interfaceShape.replace(/\$\{name\}/g, name)
+                                  .replace(/\$\{capability\}/g, capability)
+                                  .replace(/[ \t]*\$\{methods\}[ \t]*\n/g, iface.map(method => `\t${types.getMethodSignature(method, moduleJson, { destination: state.destination, isInterface: true })}`).join('\n') + '\n')
 
   if (iface.length === 0) {
       template = template.replace(/\$\{provider\.methods\}/gms, '')
@@ -1320,7 +1308,6 @@ function insertProviderInterfaceMacros(template, capability, moduleJson = {}, te
 
   template = template.replace(/\$\{provider\}/g, name)
   template = template.replace(/\$\{interface\}/g, interfaceShape)
-  template = template.replace(/\$\{properties\}/g, propertiesShape)
   template = template.replace(/\$\{capability\}/g, capability)
 
   return template
