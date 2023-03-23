@@ -645,7 +645,7 @@ function getRelatedSchemaLinks(schema = {}, json = {}, templates = {}, options =
       .map(path => path.substring(2).split('/'))
       .map(path => getPathOr(null, path, json))
       .filter(schema => schema)
-      .map(schema => '[' + types.getSchemaType(schema, json) + '](' + getLinkForSchema(schema, json, true) + ')') // need full module here, not just the schema
+      .map(schema => '[' + types.getSchemaType(schema, json, { destination: state.destination }) + '](' + getLinkForSchema(schema, json, true) + ')') // need full module here, not just the schema
       .filter(link => link)
       .join('\n')
 
@@ -923,7 +923,7 @@ function insertMethodMacros(template, methodObj, json, templates, examples={}) {
   const pullsResult = (puller || pullsFor) ? localizeDependencies(pullsFor || methodObj, json).params[1].schema : null
   const pullsParams = (puller || pullsFor) ? localizeDependencies(getPayloadFromEvent(puller || methodObj), json, null, {mergeAllOfs: true}).properties.parameters : null
   const pullsResultType = pullsResult && types.getSchemaShape(pullsResult, json, { destination: state.destination })
-  const pullsForType = pullsResult && types.getSchemaType(pullsResult, json)
+  const pullsForType = pullsResult && types.getSchemaType(pullsResult, json, { destination: state.destination })
   const pullsParamsType = pullsParams ? types.getSchemaShape(pullsParams, json, { destination: state.destination }) : ''
  
   let seeAlso = ''
@@ -1123,7 +1123,7 @@ function generateResult(result, json, templates) {
 
     // if we get a real link use it
     if (link !== '#') {
-      return `[${types.getSchemaType(result, json)}](${link})`
+      return `[${types.getSchemaType(result, json, { destination: state.destination })}](${link})`
     }
     // otherwise this was a schema with no title, and we'll just copy it here
     else {

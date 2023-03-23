@@ -4,5 +4,5 @@
     "createModuleDirectories": true,
     "copySchemasIntoModules": false,
     "templatesPerModule": [ "index.md" ],
-    "templatesPerSchema": [ "index.md" ]
+    "templatesPerSchema": [ "schemas/index.md" ]
 }

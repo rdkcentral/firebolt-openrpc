@@ -56,6 +56,7 @@ const run = async ({
     sharedTemplates:    path.join(language, 'templates'),
     staticContent:      path.join(language, 'src', 'shared'),
     templatesPerModule: config.templatesPerModule,
+    templatesPerSchema: config.templatesPerSchema,
     createModuleDirectories: config.createModuleDirectories,
     copySchemasIntoModules: config.copySchemasIntoModules,
     staticModuleNames: staticModuleNames,
