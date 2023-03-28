@@ -69,7 +69,6 @@ const macrofy = async (
             typer = typerModule.default
         }
         catch (_) {
-            console.dir(_)
             typer = (await import('../shared/typescript.mjs')).default
         }
 
