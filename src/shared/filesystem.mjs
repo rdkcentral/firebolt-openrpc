@@ -1,7 +1,8 @@
 import path from 'path'
 import { readFile, writeFile, readdir } from 'fs/promises'
-import { mkdirSync, lstatSync } from 'fs'
+import { lstatSync } from 'fs'
 import { emptyDir } from 'fs-extra'
+import { mkdirpSync as mkdirSync } from 'fs-extra'
 
 const readText = ref => readFile(ref)
                         .then(resp => resp.toString)
