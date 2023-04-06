@@ -587,8 +587,6 @@ function generateSchemas(json, templates, options) {
         content = content.replace(/.*\$\{schema.seeAlso\}/, '')
     }
 
-    content = content.replace(/\$\{.*?schema.*?\}\s*\n?/g, '')
-
     const result = uri ? {
       uri: uri,
       name: schema.title || name,
@@ -631,7 +629,7 @@ function getRelatedSchemaLinks(schema = {}, json = {}, templates = {}, options =
       .filter(path => seen.hasOwnProperty(path) ? false : (seen[path] = true))
       .map(path => path.substring(2).split('/'))
       .map(path => getPathOr(null, path, json))
-      .filter(schema => schema)
+      .filter(schema => schema.title)
       .map(schema => '[' + types.getSchemaType(schema, json, { destination: state.destination }) + '](' + getLinkForSchema(schema, json, true) + ')') // need full module here, not just the schema
       .filter(link => link)
       .join('\n')
