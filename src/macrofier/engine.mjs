@@ -140,19 +140,6 @@ const getMethods = compose(
   getPath(['methods'])
 )
 
-// Maybe an array of <key, value> from the schema
-
-// const getSchemas = compose(
-//   map(map(entry => [entry.key, entry.value])),
-//   map(entries => entries.flat()),
-//   map(map(entry => isSchema(entry.value) ? entry : Object.entries(entry.value).map(([key, value]) => ({ key, value })))),
-//   map(map(([key, value]) => ({key, value}))),
-//   map(Object.entries), // Maybe Array<Array<key, value>>
-//   chain(safe(isObject)), // Maybe Object
-//   getPath(['components', 'schemas']) // Maybe any
-// )
-
-
 const getSchemas = compose(
   map(Object.entries), // Maybe Array<Array<key, value>>
   chain(safe(isObject)), // Maybe Object
@@ -986,6 +973,7 @@ function insertMethodMacros(template, methodObj, json, templates, examples={}) {
     .replace(/\$\{method\.result\}/g,  generateResult(result.schema, json, templates))
     .replace(/\$\{method\.example\.value\}/g,  JSON.stringify(methodObj.examples[0].result.value))
     .replace(/\$\{method\.alternative\}/g, method.alternative)
+    .replace(/\$\{method\.alternative.link\}/g, '#'+(method.alternative || "").toLowerCase())
     .replace(/\$\{method\.pulls\.for\}/g, pullsFor ? pullsFor.name : '' )
     .replace(/\$\{method\.pulls\.type\}/g, pullsForType)
     .replace(/\$\{method\.pulls\.result\}/g, pullsResultType)

@@ -13,3 +13,5 @@ ${method.result}
 #### Examples
 
 ${method.examples}
+
+---

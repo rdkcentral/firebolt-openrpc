@@ -23,8 +23,4 @@ ${method.examples}
 
 ${method.setter}
 
----
-
 ${method.subscriber}
-
----

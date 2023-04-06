@@ -19,3 +19,5 @@ number
 #### Examples
 
 ${method.examples}
+
+---
