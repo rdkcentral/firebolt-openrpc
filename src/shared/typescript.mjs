@@ -17,7 +17,7 @@
  */
 
 import deepmerge from 'deepmerge'
-import { getPath, localizeDependencies } from './json-schema.mjs'
+import { getPath } from './json-schema.mjs'
 
 const isSynchronous = m => !m.tags ? false : m.tags.map(t => t.name).find(s => s === 'synchronous')
 
@@ -127,7 +127,22 @@ function getSchemaShape(schema = {}, module = {}, { name = '', level = 0, title,
       return '  '.repeat(level) + `${prefix}${theTitle}${operator} ` + schema.oneOf.map(s => getSchemaType(s, module, { name, level, title, summary, descriptions, destination })).join(' | ')
     }
     else if (schema.allOf) {
-      let union = deepmerge.all([...schema.allOf.map(x => x['$ref'] ? getPath(x['$ref'], module) || x : x), { name, level, title, summary, descriptions, destination }])
+      const merger = (key) => function(a, b) {
+        if (a.const) {
+          return JSON.parse(JSON.stringify(a))
+        }
+        else if (b.const) {
+          return JSON.parse(JSON.stringify(b))
+        }
+        else {
+          return deepmerge(a, b, {customMerge: merger})
+        }
+      }
+
+      let union = deepmerge.all([...schema.allOf.map(x => x['$ref'] ? getPath(x['$ref'], module) || x : x).reverse()], {
+        customMerge: merger
+      })
+
       if (schema.title) {
         union.title = schema.title
       }
