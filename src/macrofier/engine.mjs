@@ -881,9 +881,11 @@ function insertMethodMacros(template, methodObj, json, templates, examples={}) {
     method.alternative = getAlternativeMethod(methodObj)
   }
 
-  if (hasMethodAttributes(methodObj)) {
+  const flattenedMethod = localizeDependencies(methodObj, json)
+
+  if (hasMethodAttributes(flattenedMethod)) {
     method.transforms = {
-      methods: getMethodAttributes(methodObj)
+      methods: getMethodAttributes(flattenedMethod)
     }
   }
 

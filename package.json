@@ -2,7 +2,7 @@
   "name": "@firebolt-js/openrpc",
   "version": "2.0.0-next.0",
   "description": "The Firebolt SDK Code & Doc Generator",
-  "main": "languages/javascript/src/index.mjs",
+  "main": "languages/javascript/src/sdk.mjs",
   "type": "module",
   "bin": {
     "firebolt-openrpc": "./src/cli.mjs"
