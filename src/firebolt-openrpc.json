@@ -88,6 +88,38 @@
                 },
                 {
                     "if": {
+                        "required": [ "tags"],
+                        "properties": {
+                            "tags": {
+                                "type": "array",
+                                "contains": {
+                                    "$ref": "#/definitions/PropertyReadOnlyTag"
+                                }
+                            }
+                        }
+                    },
+                    "then": {
+                        "$ref": "#/definitions/PropertyReadOnlyMethod"
+                    }        
+                },
+                {
+                    "if": {
+                        "required": [ "tags"],
+                        "properties": {
+                            "tags": {
+                                "type": "array",
+                                "contains": {
+                                    "$ref": "#/definitions/PropertyImmutableTag"
+                                }
+                            }
+                        }
+                    },
+                    "then": {
+                        "$ref": "#/definitions/PropertyImmutableMethod"
+                    }        
+                },
+                {
+                    "if": {
                         "required": [ "tags", "name"],
                         "properties": {
                             "name": {
@@ -301,6 +333,12 @@
                             "$ref": "#/definitions/PropertyMethod"
                         },
                         {
+                            "$ref": "#/definitions/PropertyReadOnlyMethod"
+                        },
+                        {
+                            "$ref": "#/definitions/PropertyImmutableMethod"
+                        },
+                        {
                             "$ref": "#/definitions/ProviderMethod"
                         },
                         {
@@ -479,9 +517,53 @@
                     "items": {
                         "$ref": "#/definitions/ContextParameter"
                     }
+                },
+                "examples": {
+                    "type": "array",
+                    "minItems": 2
                 }
             }
         },
+        "PropertyReadOnlyMethod": {
+            "type": "object",
+            "required": [
+                "tags"
+            ],
+            "properties": {
+                "tags": {
+                    "type": "array",
+                    "contains": {
+                        "$ref": "#/definitions/PropertyReadOnlyTag"
+                    }
+                },
+                "params": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/ContextParameter"
+                    }
+                }
+            }
+        },
+        "PropertyImmutableMethod": {
+            "type": "object",
+            "required": [
+                "tags"
+            ],
+            "properties": {
+                "tags": {
+                    "type": "array",
+                    "contains": {
+                        "$ref": "#/definitions/PropertyImmutableTag"
+                    }
+                },
+                "params": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/ContextParameter"
+                    }
+                }
+            }
+        },        
         "TemporalSetMethod": {
             "type": "object",
             "properties": {
@@ -657,8 +739,58 @@
                         "name": {
                             "type": "string",
                             "enum": [
-                                "property",
-                                "property:readonly",
+                                "property"
+                            ]
+                        }
+                    },
+                    "propertyNames": {
+                        "type": "string",
+                        "enum": [
+                            "name",
+                            "x-alternative",
+                            "x-since"
+                        ]
+                    }
+                }
+            ]
+        },
+        "PropertyReadOnlyTag": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/Tag"
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "name": {
+                            "type": "string",
+                            "enum": [
+                                "property:readonly"
+                            ]
+                        }
+                    },
+                    "propertyNames": {
+                        "type": "string",
+                        "enum": [
+                            "name",
+                            "x-alternative",
+                            "x-since"
+                        ]
+                    }
+                }
+            ]
+        },
+        "PropertyImmutableTag": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/Tag"
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "name": {
+                            "type": "string",
+                            "enum": [
                                 "property:immutable"
                             ]
                         }
@@ -668,8 +800,7 @@
                         "enum": [
                             "name",
                             "x-alternative",
-                            "x-since",
-                            "x-setter-for"
+                            "x-since"
                         ]
                     }
                 }

@@ -118,7 +118,22 @@
                             "foo": "here's foo"
                         }
                     }
-                }
+                },
+                {
+                    "name": "Another Example",
+                    "params": [
+                        {
+                            "name": "parameter",
+                            "value": false
+                        }
+                    ],
+                    "result": {
+                        "name": "Another Result",
+                        "value": {
+                            "foo": "here's bar"
+                        }
+                    }
+                }                
             ]            
         },
         {

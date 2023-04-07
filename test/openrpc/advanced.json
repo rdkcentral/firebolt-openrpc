@@ -96,9 +96,22 @@
                     ],
                     "result": {
                         "name": "value",
+                        "value": false
+                    }
+                },
+                {
+                    "name": "Get the property for peacock",
+                    "params": [
+                        {
+                            "name": "appId",
+                            "value": "peacock"
+                        }
+                    ],
+                    "result": {
+                        "name": "value",
                         "value": true
                     }
-                }
+                }                
             ]
         },
         {
