@@ -1,8 +1,8 @@
 {
   "name": "@firebolt-js/openrpc",
-  "version": "1.8.0-next.2",
+  "version": "2.0.0-next.0",
   "description": "The Firebolt SDK Code & Doc Generator",
-  "main": "src/js/sdk/index.mjs",
+  "main": "languages/javascript/src/sdk.mjs",
   "type": "module",
   "bin": {
     "firebolt-openrpc": "./src/cli.mjs"
@@ -12,12 +12,12 @@
     "prepare:setup": "npx mkdirp ./dist/docs ./build/docs/markdown ./build/docs/wiki ./build/sdk/javascript/src",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --config=jest.config.json --detectOpenHandles",
     "build": "npm run validate && npm run build:docs && npm run build:sdk",
-    "validate": "node ./src/cli.mjs --task validate --source ./src --shared-schemas test/sharedSchemas && npm run build:openrpc && node ./src/cli.mjs --task validate --source ./build/sdk-open-rpc.json --shared-schemas test/sharedSchemas",
-    "build:openrpc": "node ./src/cli.mjs --task openrpc --source ./src --template ./src/template/openrpc/template.json --output ./build/sdk-open-rpc.json --shared-schemas test/sharedSchemas",
-    "build:sdk": "node ./src/cli.mjs --task sdk --source ./src/ --template ./src/local/template/js --output ./build/sdk/javascript/src --shared-schemas test/sharedSchemas",
-    "build:d": "node ./src/cli.mjs --task declarations --source ./src/ --output ./dist/lib/sdk.d.ts --shared-schemas src/schemas",
-    "build:docs": "node ./src/cli.mjs --task docs --source ./src/ --template ./src/template/markdown --output ./build/docs/markdown --shared-schemas test/sharedSchemas --as-path",
-    "build:wiki": "node ./src/cli.mjs --task docs --source ./src/ --template ./src/template/markdown --output ./build/docs/wiki --shared-schemas test/sharedSchemas",
+    "validate": "node ./src/cli.mjs validate --input ./test/openrpc --schemas test/schemas --transformations && npm run build:openrpc && node ./src/cli.mjs validate --input ./build/sdk-open-rpc.json",
+    "build:openrpc": "node ./src/cli.mjs openrpc --input ./test --template ./src/openrpc-template.json --output ./build/sdk-open-rpc.json --schemas test/schemas",
+    "build:sdk": "node ./src/cli.mjs sdk --input ./build/sdk-open-rpc.json --template ./test/sdk --output ./build/sdk/javascript/src --schemas test/schemas",
+    "build:d": "node ./src/cli.mjs declarations --input ./build/sdk-open-rpc.json --output ./dist/lib/sdk.d.ts --schemas src/schemas",
+    "build:docs": "node ./src/cli.mjs docs --input ./build/sdk-open-rpc.json --output ./build/docs/markdown --schemas test/schemas --as-path",
+    "build:wiki": "node ./src/cli.mjs docs --input ./build/sdk-open-rpc.json --output ./build/docs/wiki --schemas test/schemas",
     "dist": "npm run validate && npm run build:sdk && npm run build:docs && npm run test",
     "prepare": "husky install"
   },

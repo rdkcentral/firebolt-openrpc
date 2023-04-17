@@ -1,1 +1,0 @@
-// ${method.name} API is handled via listen('${event.name}', (data) => void)

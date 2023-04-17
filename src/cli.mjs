@@ -1,52 +1,67 @@
 #!/usr/bin/env node
 
-import sdk from '../util/sdk/index.mjs'
-import docs from '../util/docs/index.mjs'
-import validate from '../util/validate/index.mjs'
-import openrpc from '../util/openrpc/index.mjs'
-import declarations from '../util/declarations/index.mjs'
+import slice from './slice/index.mjs'
+import sdk from './sdk/index.mjs'
+import docs from './docs/index.mjs'
+import openrpc from './openrpc/index.mjs'
+import validate from './validate/index.mjs'
+
 import nopt from 'nopt'
 import path from 'path'
+import url from 'url'
 
 const knownOpts = {
-  'task': [String, null],
-  'source': [path],
-  'template': [path],
+  'input': [path],
   'output': [path],
-  'shared-schemas': [path],
-  'as-path': Boolean,
-  'static-modules': String
+  'sdk': [path],
+  'schemas': [path, Array],
+  'template': [path],
+  'static-module': [String, Array],
+  'language': [path],
+  'examples': [path, Array],
+  'as-path': [Boolean]
 }
+
 const shortHands = {
-  't': '--task',
-  's': '--source',
-  'tm': '--template',
-  'tm': '--template',
+  'i': '--input',
   'o': '--output',
-  'ap': '--as-path',
-  'sm': '--static-modules',
-  'ss': '--shared-schemas'
+  's': '--schemas',
+  'l': '--language',
+  'e': '--examples',
+  'p': '--as-path'
 }
-// Last 2 arguments are the defaults.
-const parsedArgs = nopt(knownOpts, shortHands, process.argv, 2)
+
+// Workaround for using __dirname in ESM
+const __dirname = url.fileURLToPath(new URL('.', import.meta.url))
+const javascript = path.join(__dirname, '..', 'languages', 'javascript')
+const jsonrpc = path.join(__dirname, '..', 'languages', 'jsonrpc')
+const markdown = path.join(__dirname, '..', 'languages', 'markdown')
+
+const defaults = {
+  language: process.argv[2] === 'docs' ? markdown : javascript,
+  examples: process.argv[2] === 'docs' ? [ javascript, jsonrpc ] : undefined
+}
+
+// Parse the arguments and merge with the defaults
+// Ignore args: 0 (node), 1 (cli.mjs), and 2 (the task name, which has no --option in front of it)
+const parsedArgs = Object.assign({}, defaults, nopt(knownOpts, shortHands, process.argv, 3))
+const task = process.argv[2]
 const signOff = () => console.log('\nThis has been a presentation of \x1b[38;5;202mFirebolt\x1b[0m \u{1F525} \u{1F529}\n')
 
-const util = parsedArgs.task
-
-if (util === 'sdk') {
-    sdk(parsedArgs).done(signOff)
+if (task === 'slice') {
+  slice(parsedArgs).then(signOff)
 }
-else if (util === 'docs') {
-    docs(parsedArgs).done(signOff)
+else if (task === 'sdk') {
+  sdk(parsedArgs).then(signOff)
 }
-else if (util === 'validate') {
-    validate(parsedArgs).done(signOff)
+else if (task === 'docs') {
+  docs(parsedArgs).then(signOff)
 }
-else if (util === 'openrpc') {
-    openrpc(parsedArgs).done(signOff)
+else if (task === 'validate') {
+  validate(parsedArgs).then(signOff)
 }
-else if (util === 'declarations') {
-    declarations(parsedArgs).done(signOff)
+else if (task === 'openrpc') {
+  openrpc(parsedArgs).then(signOff)
 } else {
   console.log("Invalid build type")
 }

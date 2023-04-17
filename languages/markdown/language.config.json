@@ -1,0 +1,8 @@
+{
+    "name": "Markdown",
+    "langcode": "markdown",
+    "createModuleDirectories": true,
+    "copySchemasIntoModules": false,
+    "templatesPerModule": [ "index.md" ],
+    "templatesPerSchema": [ "schemas/index.md" ]
+}
