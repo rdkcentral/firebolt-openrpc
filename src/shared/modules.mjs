@@ -1116,7 +1116,15 @@ const getSemanticVersion = json => {
 
     let numbers, rest
 
-    [numbers, rest] = str.split('-')
+    if (str.indexOf('-') >= 0) {
+        numbers = str.split('-')[0]
+        rest = str.substring(str.indexOf('-')+1)
+    }
+    else {
+        numbers = str
+    }
+
+//    [numbers, rest] = str.split('-')
 
     if (rest) {
         [version.tag, version.build] = (rest.indexOf('.') > -1) ? rest.split('.') : [rest, '']
