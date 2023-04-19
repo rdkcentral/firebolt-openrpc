@@ -1,4 +1,6 @@
   /**
    * ${method.summary}
-  ${method.params} */
+   * 
+${method.params.annotations}${if.deprecated}   * @deprecated ${method.deprecation}
+${end.if.deprecated}  */
   ${method.signature}

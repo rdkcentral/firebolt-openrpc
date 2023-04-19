@@ -9,5 +9,9 @@
     "copySchemasIntoModules": true,
     "aggregateFile": "/index.d.ts",
     "treeshakePattern": "(import|export).*?from\\s+['\"](.*?)['\"]",
-    "treeshakeTypes": [".js", ".mjs"]
+    "treeshakeTypes": [".js", ".mjs"],
+    "operators": {
+        "or": " | ",
+        "stringQuotation": "'"
+    }
 }

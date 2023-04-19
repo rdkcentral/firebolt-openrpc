@@ -17,7 +17,7 @@
  */
 
 import deepmerge from 'deepmerge'
-import { getPath } from './json-schema.mjs'
+import { getPath, localizeDependencies } from './json-schema.mjs'
 
 const isSynchronous = m => !m.tags ? false : m.tags.map(t => t.name).find(s => s === 'synchronous')
 
@@ -36,7 +36,7 @@ function getMethodSignatureParams(method, module, { destination }) {
 
 const safeName = prop => prop.match(/[.+]/) ? '"' + prop + '"' : prop
 
-function getSchemaShape(schema = {}, module = {}, { name = '', level = 0, title, summary, descriptions = true, destination } = {}) {
+function getSchemaShape(schema = {}, module = {}, { name = '', level = 0, title, summary, descriptions = true, destination, enums = true } = {}) {
     schema = JSON.parse(JSON.stringify(schema))
     let structure = []
 
@@ -44,7 +44,7 @@ function getSchemaShape(schema = {}, module = {}, { name = '', level = 0, title,
     let operator = (level == 0 ? ' =' : ':')
     let theTitle = (level === 0 ? schema.title || name : name)
 
-    if (level === 0 && schema.type === "string" && Array.isArray(schema.enum)) {
+    if (enums && level === 0 && schema.type === "string" && Array.isArray(schema.enum)) {
       return `enum ${schema.title || name} {\n\t` + schema.enum.map(value => value.split(':').pop().replace(/[\.\-]/g, '_').replace(/\+/g, '_plus').replace(/([a-z])([A-Z0-9])/g, '$1_$2').toUpperCase() + ` = '${value}'`).join(',\n\t') + '\n}\n'
     }
 
@@ -59,7 +59,7 @@ function getSchemaShape(schema = {}, module = {}, { name = '', level = 0, title,
       else {
         const someJson = getPath(schema['$ref'], module)
         if (someJson) {
-          return getSchemaShape(someJson, module, { name, level, title, summary, descriptions, destination })
+          return getSchemaShape(someJson, module, { name, level, title, summary, descriptions, destination, enums: false })
         }
         else {
           '  '.repeat(level) + `${prefix}${theTitle}${operator}`
@@ -90,32 +90,32 @@ function getSchemaShape(schema = {}, module = {}, { name = '', level = 0, title,
           structure.push(schemaShape)
         })
       }
-      else if (schema.propertyNames && schema.propertyNames.enum) {
-        schema.propertyNames.enum.forEach(prop => {
-          let type = 'any'
+      else if (schema.propertyNames) {
+        const { propertyNames } = localizeDependencies(schema, module)
+        if (propertyNames.enum) {
+          propertyNames.enum.forEach(prop => {
+            let type = 'any'
 
-          if (schema.additionalProperties && (typeof schema.additionalProperties === 'object')) {
-            type = getSchemaType(schema.additionalProperties, module)
-          }          
+            if (schema.additionalProperties && (typeof schema.additionalProperties === 'object')) {
+              type = getSchemaType(schema.additionalProperties, module)
+            }          
 
-          if (schema.patternProperties) {
-            Object.entries(schema.patternProperties).forEach(([pattern, schema]) => {
-              let regex = new RegExp(pattern)
-              if (prop.match(regex)) {
-                type = getSchemaType(schema, module)
-              }
-            })
-          }
-  
-          structure.push(getSchemaShape({type: type}, module, {name: safeName(prop), descriptions: descriptions, level: level+1}))
-        })
+            if (schema.patternProperties) {
+              Object.entries(schema.patternProperties).forEach(([pattern, schema]) => {
+                let regex = new RegExp(pattern)
+                if (prop.match(regex)) {
+                  type = getSchemaType(schema, module)
+                }
+              })
+            }
+    
+            structure.push(getSchemaShape({type: type}, module, {name: safeName(prop), descriptions: descriptions, level: level+1}))
+          })
+        }
       }
       else if (schema.additionalProperties && (typeof schema.additionalProperties === 'object')) {
         let type = getSchemaType(schema.additionalProperties, module, { destination })
         structure.push(getSchemaShape({type: type}, module, {name: '[property: string]', descriptions: descriptions, level: level+1}))
-      }
-      else if (schema.patternProperties) {
-        throw "patternProperties are not supported by Firebolt"
       }
   
       structure.push('  '.repeat(level) + '}')

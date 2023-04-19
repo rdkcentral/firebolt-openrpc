@@ -3,4 +3,4 @@
    * 
    * @param {Function} callback
    */
-  function listen(callback: (event: string, data: any) => void): Promise<number>
+  function listen(callback: (event: string, data: object) => void): Promise<number>

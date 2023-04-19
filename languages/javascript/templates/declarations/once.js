@@ -3,4 +3,4 @@
    * 
    * @param {Function} callback
    */
-  function once(callback: (event: string, data: any) => void): Promise<number>
+  function once(callback: (event: string, data: object) => void): Promise<number>

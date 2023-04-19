@@ -1,9 +1,11 @@
-    /**
-     * ${method.summary}
-     * 
-     * @param {'${event.name}'} event
-     * @param {Function} callback
-     */
+  /**
+   * ${method.summary}
+   * 
+   * @param {'${event.name}'} event
+   * @param {Function} callback
+   * 
+${if.deprecated}   * @deprecated ${method.deprecation}
+${end.if.deprecated}  */
     function listen(event: '${event.name}', ${event.signature.params}, callback: (data: ${method.result.type}) => void): Promise<number>
 
     /**
@@ -12,5 +14,6 @@
      * 
      * @param {'${event.name}'} event
      * @param {Function} callback
-     */
+${if.deprecated}   * @deprecated ${method.deprecation}
+${end.if.deprecated}  */
     function once(event: '${event.name}', ${event.signature.params}, callback: (data: ${method.result.type}) => void): Promise<number>

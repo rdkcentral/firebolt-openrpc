@@ -393,7 +393,7 @@ const insertMacros = (fContents = '', macros = {}) => {
   fContents = fContents.replace(/[ \t]*\/\* \$\{INITIALIZATION\} \*\/[ \t]*\n/, macros.initialization)
   fContents = fContents.replace(/[ \t]*\/\* \$\{DEFAULTS\} \*\/[ \t]*\n/, macros.defaults)
   fContents = fContents.replace(/\$\{events.array\}/g, JSON.stringify(macros.eventList))
-  fContents = fContents.replace(/\$\{events\}/g, macros.eventList)
+  fContents = fContents.replace(/\$\{events\}/g, macros.eventList.map(e => `${config.operators.stringQuotation}${e}${config.operators.stringQuotation}`).join(config.operators.or))
   fContents = fContents.replace(/\$\{major\}/g, macros.version.major)
   fContents = fContents.replace(/\$\{minor\}/g, macros.version.minor)
   fContents = fContents.replace(/\$\{patch\}/g, macros.version.patch)
@@ -402,10 +402,17 @@ const insertMacros = (fContents = '', macros = {}) => {
   fContents = fContents.replace(/\$\{info\.version\}/g, macros.version.readable)
   
   if (macros.public) {
-    fContents = fContents.replace(/\$\{if\.public\}(.*?)\{end\.if\.public\}/gms, '$1')
+    fContents = fContents.replace(/\$\{if\.public\}(.*?)\$\{end\.if\.public\}/gms, '$1')
   }
   else {
-    fContents = fContents.replace(/\$\{if\.public\}.*?\{end\.if\.public\}/gms, '')
+    fContents = fContents.replace(/\$\{if\.public\}.*?\$\{end\.if\.public\}/gms, '')
+  }
+
+  if (macros.eventList.length) {
+    fContents = fContents.replace(/\$\{if\.events\}(.*?)\$\{end\.if\.events\}/gms, '$1')
+  }
+  else {
+    fContents = fContents.replace(/\$\{if\.events\}.*?\$\{end\.if\.events\}/gms, '')
   }
 
   const examples = [...fContents.matchAll(/0 \/\* \$\{EXAMPLE\:(.*?)\} \*\//g)]
@@ -549,7 +556,7 @@ function generateSchemas(json, templates, options) {
 
   const generate = (name, schema, uri) => {
     // these are internal schemas used by the firebolt-openrpc tooling, and not meant to be used in code/doc generation
-    if (['ListenResponse', 'ProviderRequest', 'ProviderResponse'].includes(name)) {
+    if (['ListenResponse', 'ProviderRequest', 'ProviderResponse', 'FederatedResponse', 'FederatedRequest'].includes(name)) {
       return
     }    
 
@@ -879,9 +886,12 @@ function insertMethodMacros(template, methodObj, json, templates, examples={}) {
   const temporalRemoveName = isTemporalSetMethod(methodObj) ? `on${temporalItemName}Unvailable` : ''
   const params = methodObj.params && methodObj.params.length ? getTemplate('/sections/parameters', templates) + methodObj.params.map(p => insertParameterMacros(getTemplate('/parameters/default', templates), p, methodObj, json)).join('') : ''
   const paramsRows = methodObj.params && methodObj.params.length ? methodObj.params.map(p => insertParameterMacros(getTemplate('/parameters/default', templates), p, methodObj, json)).join('') : ''
+  const paramsAnnotations = methodObj.params && methodObj.params.length ? methodObj.params.map(p => insertParameterMacros(getTemplate('/parameters/annotations', templates), p, methodObj, json)).join('') : ''
+
+  const deprecated = methodObj.tags && methodObj.tags.find(t => t.name === 'deprecated')
+  const deprecation = deprecated ? deprecated['x-since'] ? `since version ${deprecated['x-since']}` : '' : ''
 
   const capabilities = getTemplate('/sections/capabilities', templates) + insertCapabilityMacros(getTemplate('/capabilities/default', templates), methodObj.tags.find(t => t.name === "capabilities"), methodObj, json)
-
 
   const result = JSON.parse(JSON.stringify(methodObj.result))
   const event = JSON.parse(JSON.stringify(methodObj))
@@ -938,6 +948,7 @@ function insertMethodMacros(template, methodObj, json, templates, examples={}) {
     // Parameter stuff
     .replace(/\$\{method\.params\}/g, params)
     .replace(/\$\{method\.params\.table\.rows\}/g, paramsRows)
+    .replace(/\$\{method\.params\.annotations\}/g, paramsAnnotations)
     .replace(/\$\{method\.params\.list\}/g, method.params)
     .replace(/\$\{method\.params\.array\}/g, JSON.stringify(methodObj.params.map(p => p.name)))
     .replace(/\$\{method\.params\.count}/g, methodObj.params ? methodObj.params.length : 0)
@@ -948,6 +959,7 @@ function insertMethodMacros(template, methodObj, json, templates, examples={}) {
     .replace(/\$\{method\.signature\.params\}/g, types.getMethodSignatureParams(methodObj, json, { destination: state.destination }))
     .replace(/\$\{method\.context\}/g, method.context.join(', '))
     .replace(/\$\{method\.context\.array\}/g, JSON.stringify(method.context))
+    .replace(/\$\{method\.deprecation\}/g, deprecation)
     .replace(/\$\{method\.Name\}/g, method.name[0].toUpperCase() + method.name.substr(1))
     .replace(/\$\{event\.name\}/g, method.name.toLowerCase()[2] + method.name.substr(3))
     .replace(/\$\{event\.params\}/g, eventParams)
@@ -981,7 +993,14 @@ function insertMethodMacros(template, methodObj, json, templates, examples={}) {
     .replace(/\$\{method\.puller\}/g, pullerTemplate) // must be last!!
     .replace(/\$\{method\.setter\}/g, setterTemplate) // must be last!!
     .replace(/\$\{method\.subscriber\}/g, subscriberTemplate) // must be last!!
-    
+
+  if (method.deprecated) {
+    template = template.replace(/\$\{if\.deprecated\}(.*?)\$\{end\.if\.deprecated\}/gms, '$1')
+  }
+  else {
+    template = template.replace(/\$\{if\.deprecated\}(.*?)\$\{end\.if\.deprecated\}/gms, '')
+  }
+
   // method.params[n].xxx macros
   const matches = [...template.matchAll(/\$\{method\.params\[([0-9]+)\]\.type\}/g)]
   matches.forEach(match => {
