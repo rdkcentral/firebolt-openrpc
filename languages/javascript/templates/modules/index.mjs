@@ -24,6 +24,7 @@
 
 export default {
 
+  /* ${EVENTS_ENUM} */
   /* ${ENUMS} */
   /* ${METHOD_LIST} */
 
