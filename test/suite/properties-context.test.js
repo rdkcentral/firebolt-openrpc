@@ -23,14 +23,25 @@ import { expect } from '@jest/globals';
 
 let propertySetterWasTriggered = false
 let propertySetterWasTriggeredWithValue = false
+let contextSentToGetter = false
+let contextSentToSetter = false
+let contextSentToSubscriber = false
+let contextSentToEvent = false
 
 beforeAll( () => {
 
     transport.onSend(json => {
         if (json.method === 'advanced.propertyWithContext') {
+            if (json.params.appId === 'some-app') {
+                contextSentToGetter = true
+            }
             transport.response(json.id, true)            
         }
         else if (json.method === 'advanced.onPropertyWithContextChanged') {
+            if (json.params.appId === 'some-app') {
+                contextSentToSubscriber = true
+            }
+
             // Confirm the listener is on
             transport.response(json.id, {
                 listening: true,
@@ -43,14 +54,23 @@ beforeAll( () => {
             })
         }
         else if (json.method === 'advanced.setPropertyWithContext') {
+            if (json.params.appId === 'some-app') {
+                contextSentToSetter = true
+            }
+
             propertySetterWasTriggered = true
             if (json.params.value === true) {
                 propertySetterWasTriggeredWithValue = true
             }
         }
+        else if (json.method === "advanced.onEventWithContext") {
+            if (json.params.appId === 'some-app') {
+                contextSentToEvent = true
+            }
+        }
     })
 
-    Advanced.propertyWithContext('hulu', true)
+    Advanced.propertyWithContext('some-app', true)
 
     return new Promise( (resolve, reject) => {
         setTimeout(resolve, 100)
@@ -58,18 +78,27 @@ beforeAll( () => {
 })
 
 test('Context Property get', () => {
-    return Advanced.propertyWithContext().then(result => {
+    return Advanced.propertyWithContext("some-app").then(result => {
         expect(result).toBe(true)
+        expect(contextSentToGetter).toBe(true)
     })
 });
 
 test('Context Property subscribe', () => {
-    return Advanced.propertyWithContext(value => {
+    return Advanced.propertyWithContext("some-app", value => {
         expect(value).toBe(false)
+        expect(contextSentToSubscriber).toBe(true)
     })
 });
 
 test('Context Property set', () => {
     expect(propertySetterWasTriggered).toBe(true)
     expect(propertySetterWasTriggeredWithValue).toBe(true)
+    expect(contextSentToSetter).toBe(true)
 });
+
+test('Event with context', () => {
+    Advanced.listen("eventWithContext", "some-app", (data) => {
+        expect(contextSentToEvent).toBe(true)
+    })
+})

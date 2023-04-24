@@ -21,9 +21,9 @@ function prop(moduleName, key, params, callbackOrValue = null, immutable, readon
     if (readonly) {
       throw new Error('Cannot set a value to a readonly property')
     }
-    return Transport.send(moduleName, 'set' + key[0].toUpperCase() + key.substring(1), {
+    return Transport.send(moduleName, 'set' + key[0].toUpperCase() + key.substring(1), Object.assign({
       value: callbackOrValue
-    })
+    }, params))
   }
   else if (numArgs < contextParameterCount) {
     throw new Error('Cannot get a value without all required context parameters.')

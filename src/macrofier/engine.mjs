@@ -795,11 +795,6 @@ function generateMethods(json = {}, examples = {}, templates = {}) {
 
     let template = getTemplateForMethod(methodObj, templates);
 
-    // TODO: move to initializations
-    if (isEventMethod(methodObj) && methodObj.params.length > 1) {
-      template += getTemplate('/methods/event-with-context', templates)
-    }
-
     if (template && template.length) {
       let javascript = insertMethodMacros(template, methodObj, json, templates, examples)
       result.body = javascript
@@ -956,7 +951,7 @@ function insertMethodMacros(template, methodObj, json, templates, examples={}) {
     .replace(/\$\{method\.params\.array\}/g, JSON.stringify(methodObj.params.map(p => p.name)))
     .replace(/\$\{method\.params\.count}/g, methodObj.params ? methodObj.params.length : 0)
     .replace(/\$\{if\.params\}(.*?)\$\{end\.if\.params\}/g, method.params.length ? '$1' : '')
-    .replace(/\$\{if\.context\}(.*?)\$\{end\.if\.context\}/g, event.params.length ? '$1' : '')
+    .replace(/\$\{if\.context\}(.*?)\$\{end\.if\.context\}/gms, event.params.length ? '$1' : '')
     // Typed signature stuff
     .replace(/\$\{method\.signature\}/g, types.getMethodSignature(methodObj, json, { isInterface: false, destination: state.destination }))
     .replace(/\$\{method\.signature\.params\}/g, types.getMethodSignatureParams(methodObj, json, { destination: state.destination }))

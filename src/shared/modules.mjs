@@ -436,9 +436,6 @@ const createTemporalEventMethod = (method, json, name) => {
     event.result.schema = method.result.schema.items
 
     event.tags = event.tags.filter(t => t.name !== 'temporal-set')
-    event.tags.push({
-        name: "rpc-only"
-    })
 
     event.params.unshift({
         name: "correlationId",
@@ -465,7 +462,7 @@ const createEventFromMethod = (method, json, name, correlationExtension, tagsToR
     const old_tags = method.tags.concat()
 
     event.tags[0][correlationExtension] = method.name
-    event.tags.push({
+    event.tags.unshift({
         name: 'rpc-only'
     })
 
@@ -485,7 +482,7 @@ const createTemporalStopMethod = (method, jsoname) => {
     stop.name = 'stop' + method.name.charAt(0).toUpperCase() + method.name.substr(1)
 
     stop.tags = stop.tags.filter(tag => tag.name !== 'temporal-set')
-    stop.tags.push({
+    stop.tags.unshift({
         name: "rpc-only"
     })
 
@@ -786,7 +783,7 @@ const generateProviderMethods = json => {
 
     providers.forEach(provider => {
         if (! isRPCOnlyMethod(provider)) {
-            provider.tags.push({
+            provider.tags.unshift({
                 "name": "rpc-only"
             })
         }
