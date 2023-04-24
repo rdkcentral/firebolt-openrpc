@@ -379,6 +379,9 @@ const insertMacros = (fContents = '', macros = {}) => {
     fContents += '\n' + macros.module
   }
   
+  const quote = config.operators ? config.operators.stringQuotation : '"'
+  const or = config.operators ? config.operators.or : ' | '
+
   fContents = fContents.replace(/\$\{module.list\}/g, macros.module)
   fContents = fContents.replace(/[ \t]*\/\* \$\{METHODS\} \*\/[ \t]*\n/, macros.methods)
   fContents = fContents.replace(/[ \t]*\/\* \$\{DECLARATIONS\} \*\/[ \t]*\n/, macros.declarations)
@@ -393,7 +396,7 @@ const insertMacros = (fContents = '', macros = {}) => {
   fContents = fContents.replace(/[ \t]*\/\* \$\{INITIALIZATION\} \*\/[ \t]*\n/, macros.initialization)
   fContents = fContents.replace(/[ \t]*\/\* \$\{DEFAULTS\} \*\/[ \t]*\n/, macros.defaults)
   fContents = fContents.replace(/\$\{events.array\}/g, JSON.stringify(macros.eventList))
-  fContents = fContents.replace(/\$\{events\}/g, macros.eventList.map(e => `${config.operators.stringQuotation}${e}${config.operators.stringQuotation}`).join(config.operators.or))
+  fContents = fContents.replace(/\$\{events\}/g, macros.eventList.map(e => `${quote}${e}${quote}`).join(or))
   fContents = fContents.replace(/\$\{major\}/g, macros.version.major)
   fContents = fContents.replace(/\$\{minor\}/g, macros.version.minor)
   fContents = fContents.replace(/\$\{patch\}/g, macros.version.patch)
