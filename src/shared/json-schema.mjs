@@ -209,7 +209,6 @@ const schemaReferencesItself = (schema, path) => {
   path = '#/' + path.join('/')
 
   if (paths.includes(path)) {
-    console.log("Skipping circular schema defintion: " + schema.title)
     return true
   }
   return false
