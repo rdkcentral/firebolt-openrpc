@@ -1,0 +1,14 @@
+{
+    "name": "C",
+    "langcode": "c",
+    "createModuleDirectories": false,
+    "templatesPerModule": [
+        "/include/Module.h",
+        "/src/Module.cpp"
+    ],
+    "templatesPerSchema": [
+        "/include/Common/Module.h",
+        "/src/Module_Common.cpp",
+        "/src/JsonData_Module.h"
+    ]
+}

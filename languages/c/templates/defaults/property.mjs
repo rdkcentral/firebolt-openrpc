@@ -1,0 +1,1 @@
+    ${method.name}: function () { return MockProps.mock('${info.title}', '${method.name}', arguments, ${method.example.value}) }
