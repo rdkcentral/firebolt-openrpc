@@ -16,10 +16,22 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-namespace FireboltSDK {
+#ifndef _${info.TITLE}_H
+#define _${info.TITLE}_H
+
+#include "Firebolt.h"
+#include "Common/${info.title}.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
     /* ${SCHEMAS} */
 
     /* ${DECLARATIONS} */
 
+#ifdef __cplusplus
 }
+#endif
+
+#endif // Header Include Guard
