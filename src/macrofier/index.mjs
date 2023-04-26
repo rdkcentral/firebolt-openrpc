@@ -68,13 +68,10 @@ const macrofy = async (
         let typer
 
         try {
-            console.log(path.join(sharedTemplates, '..', 'Types.mjs'))
             const typerModule = await import(path.join(sharedTemplates, '..', 'Types.mjs'))
             typer = typerModule.default
         }
         catch (_) {
-            console.log("Using default Typer")
-            console.dir(_)
             typer = (await import('../shared/typescript.mjs')).default
         }
 
