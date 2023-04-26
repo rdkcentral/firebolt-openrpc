@@ -2,4 +2,4 @@
    * Subscriber: ${method.summary}
    * 
    */
-function ${method.alternative}(callback: (value: ${method.result.type}) => void): Promise<number>
+function ${method.alternative}(subscriber: (${method.result.name}: ${method.result.type}) => void): Promise<number>

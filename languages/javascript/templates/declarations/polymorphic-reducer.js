@@ -1,6 +1,8 @@
   /**
    * ${method.summary}
-  ${method.params} */
-  ${method.signature}
+   * 
+${method.params.annotations}${if.deprecated}   * @deprecated ${method.deprecation}
+${end.if.deprecated}  */
+${method.signature}
 
 // TODO: generate reducer signature

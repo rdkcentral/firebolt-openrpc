@@ -105,7 +105,7 @@ const run = async ({
 
     addFormats(ajv)
     // explicitly add our custom extensions so we can keep strict mode on (TODO: put these in a JSON config?)
-    ajv.addVocabulary(['x-method', 'x-this-param', 'x-additional-params'])
+    ajv.addVocabulary(['x-method', 'x-this-param', 'x-additional-params', 'x-schemas', 'components'])
 
     const firebolt = ajv.compile(fireboltOpenRpcSpec)
     const jsonschema = ajv.compile(jsonSchemaSpec)
@@ -114,8 +114,46 @@ const run = async ({
     // Validate all shared schemas
     sharedSchemas && Object.keys(sharedSchemas).forEach(key => {
         const json = sharedSchemas[key]
+
+        const exampleSpec = {
+            "$id": "https://meta.rdkcentral.com/firebolt/dynamic/schema" + (json.title) +"/examples",
+            "title": "FireboltOpenRPCSchemaExamples",
+            "oneOf": [
+                {
+                    "type": "object",
+                    "properties": {
+                        "definitions": {
+                            "type": "object",
+                            "properties": {
+                            }
+                        }
+                    }
+                }
+            ],
+            "definitions": json.definitions
+        }
+
+        json.definitions && Object.entries(json.definitions).forEach( ([title, schema]) => {
+            const schemaWithoutExamples = JSON.parse(JSON.stringify(schema))
+            delete schemaWithoutExamples.examples
+            exampleSpec.oneOf[0].properties.definitions.properties[title] = {
+                type: "object",
+                properties: {
+                    examples: {
+                        type: "array",
+                        items: schema,
+                        minItems: 1
+                    }
+                }
+            }
+        })
+
+        const examples = ajv.compile(exampleSpec)        
+
         let result = validate(json, {}, ajv, jsonschema)
+        let exampleResult = validate(json, {}, ajv, examples)
         printResult(result, "JSON Schema")
+        printResult(exampleResult, "JSON Schema")
     })
 
     // Validate all modules
@@ -137,16 +175,115 @@ const run = async ({
             json = addExternalSchemas(json, sharedSchemas)
         }
 
+        const exampleSpec = {
+            "$id": "https://meta.rdkcentral.com/firebolt/dynamic/" + (json.info.title) +"/examples",
+            "title": "FireboltOpenRPCExamples",
+            "definitions": {
+                "Document": {
+                    "type": "object",
+                    "properties": {
+                        "methods": {
+                            "type": "array",
+                            "items": {
+                                "allOf": json.methods.map(method => ({
+                                    "if": {
+                                        "type": "object",
+                                        "properties": {
+                                            "name": {
+                                                "const": method.name
+                                            }
+                                        }
+                                    },
+                                    "then": {
+                                        "type": "object",
+                                        "properties": {
+                                            "examples": {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "result": {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "value": method.result.schema
+                                                            }
+                                                        },
+                                                        "params": method.params.length ? {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "allOf": method.params.map(param => ({
+                                                                    "if": {
+                                                                        "type": "object",
+                                                                        "properties": {
+                                                                            "name": {
+                                                                                "const": param.name
+                                                                            }
+                                                                        }
+                                                                    },
+                                                                    "then": {
+                                                                        "type": "object",
+                                                                        "properties": {
+                                                                            "value": param.schema
+                                                                        }
+                                                                    }
+                                                                }))
+                                                            },
+                                                            "if": {
+                                                                "type": "array" // always true, but avoids an empty allOf below
+                                                            },
+                                                            "then": method.params.filter(p => p.required).length ? {
+                                                                "allOf": method.params.filter(p => p.required).map(param => ({
+                                                                    "contains": {
+                                                                        "type": "object",
+                                                                        "properties": {
+                                                                            "name": {
+                                                                                "const": param.name
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                }))
+                                                            } : {}
+                                                        } : {}
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }))
+                            }
+                        }
+                    }
+                }
+            },
+            "x-schemas": json['x-schemas'],
+            "components": json.components
+        }
+
+        exampleSpec.oneOf = [
+            {
+                "$ref": "#/definitions/Document"
+            }
+        ]
+
+
+        const examples = ajv.compile(exampleSpec)
+
         try {
             const openrpcResult = validate(json, {}, ajv, openrpc)
             const fireboltResult = validate(json, {}, ajv, firebolt)
+            const exampleResult = validate(json, {}, ajv, examples)
 
-            if (openrpcResult.valid && fireboltResult.valid) {
+            if (openrpcResult.valid && fireboltResult.valid && exampleResult.valid) {
                 printResult(openrpcResult, "OpenRPC & Firebolt")
             }
             else {
                 printResult(openrpcResult, "OpenRPC")
                 printResult(fireboltResult, "Firebolt")
+                printResult(exampleResult, "Firebolt Examples")
+
+                if (!exampleResult.valid) {
+//                    console.dir(exampleSpec, { depth: 100 })
+                }
             }
         }
         catch (error) {

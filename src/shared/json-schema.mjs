@@ -204,6 +204,16 @@ const defaultLocalizeOptions = {
   keepRefsAndLocalizeAsComponent: false   // true: localizes external schemas into definition.components.schemas, and changes the $refs to be local (use only on root RPC docs)
 }
 
+const schemaReferencesItself = (schema, path) => {
+  const paths = getLocalSchemaPaths(schema).map(p => getPathOr(null, p, schema))
+  path = '#/' + path.join('/')
+
+  if (paths.includes(path)) {
+    return true
+  }
+  return false
+}
+
 // TODO: get rid of schemas param, after updating the validate task to use addExternalSchemas
 const localizeDependencies = (json, document, schemas = {}, options = defaultLocalizeOptions) => {
   if (typeof options === 'boolean') {
@@ -224,6 +234,10 @@ const localizeDependencies = (json, document, schemas = {}, options = defaultLoc
         if (refToPath(ref).length > 1) {
           let resolvedSchema = JSON.parse(JSON.stringify(getPathOr(null, refToPath(ref), document)))
         
+          if (schemaReferencesItself(resolvedSchema, refToPath(ref))) {
+            resolvedSchema = null
+          }
+
           if (!resolvedSchema) {
             resolvedSchema = { "$REF": ref}
             unresolvedRefs.push([...path])

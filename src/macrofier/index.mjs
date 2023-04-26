@@ -45,6 +45,7 @@ const macrofy = async (
         createModuleDirectories,
         copySchemasIntoModules,
         aggregateFile,
+        operators,
         hidePrivate = true,
         hideExcluded = false,
         staticModuleNames = [],
@@ -59,6 +60,8 @@ const macrofy = async (
 
     return new Promise( async (resolve, reject) => {
         const openrpc = await readJson(input)
+
+
 
         logHeader(`Generating ${headline} for version ${openrpc.info.title} ${openrpc.info.version}`)
 
@@ -75,7 +78,8 @@ const macrofy = async (
         engine.setTyper(typer)
         engine.setConfig({
             copySchemasIntoModules,
-            createModuleDirectories
+            createModuleDirectories,
+            operators
         })
 
         const moduleList = [...(new Set(openrpc.methods.map(method => method.name.split('.').shift())))]
