@@ -118,98 +118,42 @@ const run = async ({
         const exampleSpec = {
             "$id": "https://meta.rdkcentral.com/firebolt/dynamic/schema" + (json.title) +"/examples",
             "title": "FireboltOpenRPCSchemaExamples",
-            "definitions": {
-                "Document": {
+            "oneOf": [
+                {
                     "type": "object",
                     "properties": {
                         "definitions": {
                             "type": "object",
-                            "additionalProperties": {
-                                "allOf": json.definitions.map(method => ({
-                                    "if": {
-                                        "type": "object",
-                                        "properties": {
-                                            "name": {
-                                                "const": method.name
-                                            }
-                                        }
-                                    },
-                                    "then": {
-                                        "type": "object",
-                                        "properties": {
-                                            "examples": {
-                                                "type": "array",
-                                                "items": {
-                                                    "type": "object",
-                                                    "properties": {
-                                                        "result": {
-                                                            "type": "object",
-                                                            "properties": {
-                                                                "value": method.result.schema
-                                                            }
-                                                        },
-                                                        "params": method.params.length ? {
-                                                            "type": "array",
-                                                            "items": {
-                                                                "allOf": method.params.map(param => ({
-                                                                    "if": {
-                                                                        "type": "object",
-                                                                        "properties": {
-                                                                            "name": {
-                                                                                "const": param.name
-                                                                            }
-                                                                        }
-                                                                    },
-                                                                    "then": {
-                                                                        "type": "object",
-                                                                        "properties": {
-                                                                            "value": param.schema
-                                                                        }
-                                                                    }
-                                                                }))
-                                                            },
-                                                            "if": {
-                                                                "type": "array" // always true, but avoids an empty allOf below
-                                                            },
-                                                            "then": method.params.filter(p => p.required).length ? {
-                                                                "allOf": method.params.filter(p => p.required).map(param => ({
-                                                                    "contains": {
-                                                                        "type": "object",
-                                                                        "properties": {
-                                                                            "name": {
-                                                                                "const": param.name
-                                                                            }
-                                                                        }
-                                                                    }
-                                                                }))
-                                                            } : {}
-                                                        } : {}
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }))
+                            "properties": {
                             }
                         }
                     }
                 }
-            },
-            "x-schemas": json['x-schemas'],
-            "components": json.components
+            ],
+            "definitions": json.definitions
         }
 
-        exampleSpec.oneOf = [
-            {
-                "$ref": "#/definitions/Document"
+        json.definitions && Object.entries(json.definitions).forEach( ([title, schema]) => {
+            const schemaWithoutExamples = JSON.parse(JSON.stringify(schema))
+            delete schemaWithoutExamples.examples
+            exampleSpec.oneOf[0].properties.definitions.properties[title] = {
+                type: "object",
+                properties: {
+                    examples: {
+                        type: "array",
+                        items: schema,
+                        minItems: 1
+                    }
+                }
             }
-        ]
-
+        })
 
         const examples = ajv.compile(exampleSpec)        
 
         let result = validate(json, {}, ajv, jsonschema)
+        let exampleResult = validate(json, {}, ajv, examples)
         printResult(result, "JSON Schema")
+        printResult(exampleResult, "JSON Schema")
     })
 
     // Validate all modules
@@ -232,7 +176,7 @@ const run = async ({
         }
 
         const exampleSpec = {
-            "$id": "https://meta.rdkcentral.com/firebolt/dynamic/" + (json.title || json.info.title) +"/examples",
+            "$id": "https://meta.rdkcentral.com/firebolt/dynamic/" + (json.info.title) +"/examples",
             "title": "FireboltOpenRPCExamples",
             "definitions": {
                 "Document": {
