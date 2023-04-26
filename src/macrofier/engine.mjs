@@ -1007,7 +1007,7 @@ function insertMethodMacros(template, methodObj, json, templates, examples={}) {
   const matches = [...template.matchAll(/\$\{method\.params\[([0-9]+)\]\.type\}/g)]
   matches.forEach(match => {
     const index = parseInt(match[1])
-    template = template.replace(/\$\{method\.params\[([0-9]+)\]\.type\}/g, types.getSchemaType(methodObj.params[index], json, { destination: state.destination }))
+    template = template.replace(/\$\{method\.params\[([0-9]+)\]\.type\}/g, types.getSchemaType(methodObj.params[index].schema, json, { destination: state.destination }))
     template = template.replace(/\$\{method\.params\[([0-9]+)\]\.name\}/g, methodObj.params[index].name)
   })
   
