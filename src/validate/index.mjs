@@ -18,7 +18,7 @@
 
 import { readJson, readFiles, readDir } from "../shared/filesystem.mjs"
 import { addExternalMarkdown, addExternalSchemas, fireboltize } from "../shared/modules.mjs"
-import { removeIgnoredAdditionalItems, replaceRef, replaceUri } from "../shared/json-schema.mjs"
+import { removeIgnoredAdditionalItems, replaceUri } from "../shared/json-schema.mjs"
 import { validate, displayError } from "./validator/index.mjs"
 import { logHeader, logSuccess, logError } from "../shared/io.mjs"
 
