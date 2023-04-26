@@ -199,10 +199,6 @@ function getSchemaShape(schema = {}, module = {}, { name = '', level = 0, title,
   }
 
   function getSchemaType(schema, module, { destination, link = false, title = false, code = false, asPath = false, event = false, expandEnums = true, baseUrl = '' } = {}) {
-    if (schema.schema) {
-      schema = schema.schema
-    }
-  
     const wrap = (str, wrapper) => wrapper + str + wrapper
   
     if (schema['$ref']) {
@@ -327,6 +323,10 @@ function getSchemaShape(schema = {}, module = {}, { name = '', level = 0, title,
       return wrap('void', code ? '`' : '')
     }
   }
+
+  function getJsonType(schema, module, { destination, link = false, title = false, code = false, asPath = false, event = false, expandEnums = true, baseUrl = '' } = {}) {
+    return ''
+  }
   
   function getTypeScriptType(jsonType) {
     if (jsonType === 'integer') {
@@ -350,5 +350,6 @@ function getSchemaShape(schema = {}, module = {}, { name = '', level = 0, title,
       getMethodSignature,
       getMethodSignatureParams,
       getSchemaShape,
-      getSchemaType
+      getSchemaType,
+      getJsonType
   }

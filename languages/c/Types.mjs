@@ -21,6 +21,8 @@ import commonTypes from './src/types/CommonCppTypes.mjs'
 import headerCommonTypes from './src/types/CommonHeaderTypes.mjs'
 import headerTypes from './src/types/HeaderTypes.mjs'
 import cppTypes from './src/types/CppTypes.mjs'
+import typeScriptTypes from '../../src/shared/typescript.mjs'
+import { getNativeType } from './src/types/NativeHelpers.mjs'
 
 import path from "path"
 
@@ -31,8 +33,13 @@ const isSynchronous = m => !m.tags ? false : m.tags.map(t => t.name).find(s => s
 // getSchemaType(schema, module, options = { destination: 'file.txt' })
 // getSchemaShape(schema, module, options = { name: 'Foo', destination: 'file.txt' })
 
-function getMethodSignature(method, module, {  destination = '' } = {}) {    
-    return routeToDestination('getMethodSignature', arguments)
+function getMethodSignature(method, module, {  destination = '' } = {}) {
+    const returnType = getNativeType(method.result.schema)
+    const useHandle = !returnType
+    const extraParam = useHandle ? '${info.title}_${method.result.type}Handle* ${method.result.name}' : ''
+    
+
+    return (returnType || 'uint32_t') + ' ${info.title}_Get${method.Name}(' + extraParam + ')'
 }
 
 function getMethodSignatureParams(method, module, { destination = '' } = {}) {
@@ -44,8 +51,53 @@ function getSchemaShape(schema = {}, module = {}, { name = '', destination = '',
 }
 
 function getSchemaType(schema, module, { destination = '', link = false, title = false, code = false, asPath = false, baseUrl = '' } = {}) {
-    const value = routeToDestination('getSchemaType', arguments)
-    return value
+    let type = getNativeType(schema)
+
+    if (!type) {
+        type = typeScriptTypes.getSchemaType(...arguments)
+
+        const array = type.endsWith('[]')
+
+        if (array) {
+            type = type.substring(0, type.length-2)
+            type = `${type}ObjectArrayHandle`
+        }
+
+        type = `${module.info.title}_${type}`
+    }
+    return type
+}
+
+function getJsonType(schema, module, { destination = '', link = false, title = false, code = false, asPath = false, baseUrl = '' } = {}) {
+    let type = getSchemaType(...arguments)
+
+    // FireboltSDK::JSON::String&, etc.
+    // FireboltSDK::<Module>::<Schema>& 
+    // WPEFramework::Core::JSON::Boolean
+
+    const array = type.endsWith('[]')
+
+    if (array) {
+        type = type.substring(0, type.length-2)
+    }
+
+    let jsonType
+
+    if (type === 'string') {
+        jsonType = 'FireboltSDK::JSON::String'
+    }
+    else if (type === 'boolean') {
+        jsonType = 'WPEFramework::Core::JSON::Boolean'
+    }
+    else {
+        jsonType = `FireboltSDK::${module.info.title}::${getSchemaType(...arguments)}`
+    }
+
+    if (array) {
+        jsonType = `WPEFramework::Core::JSON::ArrayType<${jsonType}>`
+    }
+
+    return `${jsonType}&`
 }
 
 function routeToDestination(method, args) {
@@ -70,9 +122,22 @@ function routeToDestination(method, args) {
     return ''
 }
 
+function getPrimativeType(schema) {
+    if (schema.type === "boolean") {
+        return "bool"
+    }
+    else if (schema.type === "integer") {
+        return "uint32_t"
+    }
+    else if (schema.type === "number") { 
+        return 
+    }
+}
+
 export default {
     getMethodSignature,
     getMethodSignatureParams,
     getSchemaShape,
     getSchemaType,
+    getJsonType
 }

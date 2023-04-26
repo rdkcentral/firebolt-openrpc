@@ -16,11 +16,16 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-/* ${IMPORTS} */
-
-
-namespace FireboltSDK {
-
-    /* ${METHODS} */
-
+#include "FireboltSDK.h"
+#include "Common/${info.title}.h"
+#include "JsonData_${info.title}.h"
 }
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+    /* ${SCHEMAS}} */
+
+#ifdef __cplusplus
+}
+#endif
