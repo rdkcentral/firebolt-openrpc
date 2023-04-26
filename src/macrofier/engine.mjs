@@ -51,7 +51,8 @@ let types = {
   getMethodSignature: ()=>null,
   getMethodSignatureParams: ()=>null,
   getSchemaShape: ()=>null,
-  getSchemaType: ()=>null
+  getSchemaType: ()=>null,
+  getJsonType: ()=>null
 }
 
 let config = {
@@ -879,12 +880,15 @@ function insertMethodMacros(template, methodObj, json, templates, examples={}) {
     }
   }
 
+  const paramDelimiter = config.operators ? config.operators.paramDelimiter : ', '
+
   const temporalItemName = isTemporalSetMethod(methodObj) ? methodObj.result.schema.items && methodObj.result.schema.items.title || 'Item' : ''
   const temporalAddName = isTemporalSetMethod(methodObj) ? `on${temporalItemName}Available` : ''
   const temporalRemoveName = isTemporalSetMethod(methodObj) ? `on${temporalItemName}Unvailable` : ''
-  const params = methodObj.params && methodObj.params.length ? getTemplate('/sections/parameters', templates) + methodObj.params.map(p => insertParameterMacros(getTemplate('/parameters/default', templates), p, methodObj, json)).join('') : ''
+  const params = methodObj.params && methodObj.params.length ? getTemplate('/sections/parameters', templates) + methodObj.params.map(p => insertParameterMacros(getTemplate('/parameters/default', templates), p, methodObj, json)).join(paramDelimiter) : ''
   const paramsRows = methodObj.params && methodObj.params.length ? methodObj.params.map(p => insertParameterMacros(getTemplate('/parameters/default', templates), p, methodObj, json)).join('') : ''
   const paramsAnnotations = methodObj.params && methodObj.params.length ? methodObj.params.map(p => insertParameterMacros(getTemplate('/parameters/annotations', templates), p, methodObj, json)).join('') : ''
+  const paramsJson = methodObj.params && methodObj.params.length ? methodObj.params.map(p => insertParameterMacros(getTemplate('/parameters/json', templates), p, methodObj, json)).join('') : ''
 
   const deprecated = methodObj.tags && methodObj.tags.find(t => t.name === 'deprecated')
   const deprecation = deprecated ? deprecated['x-since'] ? `since version ${deprecated['x-since']}` : '' : ''
@@ -947,10 +951,11 @@ function insertMethodMacros(template, methodObj, json, templates, examples={}) {
     .replace(/\$\{method\.params\}/g, params)
     .replace(/\$\{method\.params\.table\.rows\}/g, paramsRows)
     .replace(/\$\{method\.params\.annotations\}/g, paramsAnnotations)
+    .replace(/\$\{method\.params\.json\}/g, paramsJson)
     .replace(/\$\{method\.params\.list\}/g, method.params)
     .replace(/\$\{method\.params\.array\}/g, JSON.stringify(methodObj.params.map(p => p.name)))
     .replace(/\$\{method\.params\.count}/g, methodObj.params ? methodObj.params.length : 0)
-    .replace(/\$\{if\.params\}(.*?)\$\{end\.if\.params\}/g, method.params.length ? '$1' : '')
+    .replace(/\$\{if\.params\}(.*?)\$\{end\.if\.params\}/gms, method.params.length ? '$1' : '')
     .replace(/\$\{if\.context\}(.*?)\$\{end\.if\.context\}/gms, event.params.length ? '$1' : '')
     // Typed signature stuff
     .replace(/\$\{method\.signature\}/g, types.getMethodSignature(methodObj, json, { isInterface: false, destination: state.destination }))
@@ -965,6 +970,7 @@ function insertMethodMacros(template, methodObj, json, templates, examples={}) {
     .replace(/\$\{event\.params\.table\.rows\}/g, eventParamsRows)
     .replace(/\$\{event\.signature\.params\}/g, types.getMethodSignatureParams(event, json, { destination: state.destination }))
     .replace(/\$\{info\.title\}/g, info.title)
+    .replace(/\$\{info\.TITLE\}/g, info.title.toUpperCase())
     .replace(/\$\{method\.property\.immutable\}/g, hasTag(methodObj, 'property:immutable'))
     .replace(/\$\{method\.property\.readonly\}/g, !getSetterFor(methodObj.name, json))
     .replace(/\$\{method\.temporalset\.add\}/g, temporalAddName)
@@ -977,8 +983,8 @@ function insertMethodMacros(template, methodObj, json, templates, examples={}) {
     .replace(/\$\{method\.result\.name\}/g, result.name)
     .replace(/\$\{method\.result\.summary\}/g, result.summary)
     .replace(/\$\{method\.result\.link\}/g, getLinkForSchema(result, json)) //, baseUrl: options.baseUrl
-    .replace(/\$\{method\.result\.type\}/g, types.getSchemaType(result, json, {title: true, asPath: false, destination: state.destination })) //, baseUrl: options.baseUrl
-    .replace(/\$\{event\.result\.type\}/, isEventMethod(methodObj) ? types.getSchemaType(result, json, { destination: state.destination, event: true, description: methodObj.result.summary, asPath: false }): '') //, baseUrl: options.baseUrl
+    .replace(/\$\{method\.result\.type\}/g, types.getSchemaType(result.schema, json, {title: true, asPath: false, destination: state.destination })) //, baseUrl: options.baseUrl
+    .replace(/\$\{event\.result\.type\}/, isEventMethod(methodObj) ? types.getSchemaType(result.schema, json, { destination: state.destination, event: true, description: methodObj.result.summary, asPath: false }): '') //, baseUrl: options.baseUrl
     .replace(/\$\{method\.result\}/g,  generateResult(result.schema, json, templates))
     .replace(/\$\{method\.example\.value\}/g,  JSON.stringify(methodObj.examples[0].result.value))
     .replace(/\$\{method\.alternative\}/g, method.alternative)
@@ -1156,20 +1162,23 @@ function insertParameterMacros(template, param, method, module) {
 //| `${method.param.name}` | ${method.param.type} | ${method.param.required} | ${method.param.summary} ${method.param.constraints} |
 
   let constraints = getSchemaConstraints(param, module)
-  let type = types.getSchemaType(param, module, { destination: state.destination, code: false, link: false, title: true, asPath: false, expandEnums: false }) //baseUrl: options.baseUrl
+  let type = types.getSchemaType(param.schema, module, { destination: state.destination, code: false, link: false, title: true, asPath: false, expandEnums: false }) //baseUrl: options.baseUrl
   let typeLink = getLinkForSchema(param, module)
+  let jsonType = types.getJsonType(param.schema, module, { destination: state.destination, code: false, link: false, title: true, asPath: false, expandEnums: false })
 
   if (constraints && type) {
       constraints = '<br/>' + constraints
   }
 
   return template
-      .replace(/\$\{method.param.name\}/, param.name)
-      .replace(/\$\{method.param.summary\}/, param.summary || '')
-      .replace(/\$\{method.param.required\}/, param.required || 'false')
-      .replace(/\$\{method.param.type\}/, type) //getType(param))
-      .replace(/\$\{method.param.link\}/, getLinkForSchema(param, module)) //getType(param))
-      .replace(/\$\{method.param.constraints\}/, constraints) //getType(param)) 
+      .replace(/\$\{method.param.name\}/g, param.name)
+      .replace(/\$\{method.param.Name\}/g, param.name[0].toUpperCase() + param.name.substring(1))
+      .replace(/\$\{method.param.summary\}/g, param.summary || '')
+      .replace(/\$\{method.param.required\}/g, param.required || 'false')
+      .replace(/\$\{method.param.type\}/g, type)
+      .replace(/\$\{json.param.type\}/g, jsonType)
+      .replace(/\$\{method.param.link\}/g, getLinkForSchema(param, module)) //getType(param))
+      .replace(/\$\{method.param.constraints\}/g, constraints) //getType(param)) 
 }
 
 function insertCapabilityMacros(template, capabilities, method, module) {
