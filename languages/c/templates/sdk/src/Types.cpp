@@ -16,22 +16,26 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include "Firebolt.h"
-#include "${info.title}.h"
-#include "JsonData_${info.title}.h"
-
-/* ${IMPORTS} */
-
+#include "Module.h"
+#include "Types.h"
+#include "TypesPriv.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-/* ${TYPES} */
+// String Type Handler Interfaces
+const char* FireboltTypes_String(FireboltTypes_StringHandle handle)
+{
+    FireboltSDK::String* str = static_cast<FireboltSDK::String*>(handle);
+    return (str->Value().c_str());
+}
+void FireboltTypes_StringHandle_Release(FireboltTypes_StringHandle handle)
+{
+    FireboltSDK::String* str = static_cast<FireboltSDK::String*>(handle);
+    delete str;
+}
 
 #ifdef __cplusplus
 }
 #endif
-
-/* ${ACCESSORS} */
-/* ${METHODS} */
