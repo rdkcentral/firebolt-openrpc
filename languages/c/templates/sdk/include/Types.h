@@ -16,22 +16,28 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include "Firebolt.h"
-#include "${info.title}.h"
-#include "JsonData_${info.title}.h"
+#ifndef _FIREBOLT_TYPES_H
+#define _FIREBOLT_TYPES_H
 
-/* ${IMPORTS} */
-
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-/* ${TYPES} */
+typedef enum {
+    Test1,
+    Test2,
+    Test3,
+    Test4
+} TestEnum;
+
+typedef void* FireboltTypes_StringHandle;
+const char* FireboltTypes_String(FireboltTypes_StringHandle handle);
+void FireboltTypes_StringHandle_Release(FireboltTypes_StringHandle handle);
 
 #ifdef __cplusplus
 }
 #endif
 
-/* ${ACCESSORS} */
-/* ${METHODS} */
+#endif // _FIREBOLT_TYPES_H
