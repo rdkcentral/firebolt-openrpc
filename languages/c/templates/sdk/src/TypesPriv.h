@@ -16,22 +16,40 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include "Firebolt.h"
-#include "${info.title}.h"
-#include "JsonData_${info.title}.h"
+#pragma once
 
-/* ${IMPORTS} */
+#include <string>
 
+namespace FireboltSDK {
+class String {
+    public:
+        String()
+            : _value()
+        {
+        }
+        String(const std::string& value)
+            : _value(value)
+        {
+        }
+        String(const String& copy)
+            : _value(copy._value)
+        {
+            
+        }
+        inline ~String() = default;
+        String& operator=(const String& RHS)
+        {
+            _value = RHS._value;
+            return (*this);
+        }
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+    public:
+        const std::string& Value() const
+        {
+            return _value;
+        }
 
-/* ${TYPES} */
-
-#ifdef __cplusplus
+    private:
+        std::string _value;
+    };
 }
-#endif
-
-/* ${ACCESSORS} */
-/* ${METHODS} */

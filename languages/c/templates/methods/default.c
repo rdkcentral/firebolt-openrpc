@@ -1,5 +1,5 @@
 /* ${method.name} - ${method.description} */
-uint32_t ${info.title}_${method.Name}(${method.params}${if.params}, ${end.if.params}${method.result.type}* ${method.result.name}) {
+uint32_t ${info.title}_${method.Name}(${method.params.list}${if.params}, ${end.if.params}${method.result.type}* ${method.result.name}) {
   uint32_t status = FireboltSDKErrorUnavailable;
   FireboltSDK::Transport<WPEFramework::Core::JSON::IElement>* transport = FireboltSDK::Accessor::Instance().GetTransport();
   if (transport != nullptr) {
