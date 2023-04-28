@@ -16,22 +16,16 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include "Firebolt.h"
-#include "${info.title}.h"
-#include "JsonData_${info.title}.h"
+#pragma once
 
-/* ${IMPORTS} */
-
-
-#ifdef __cplusplus
-extern "C" {
+#ifndef MODULE_NAME
+#define MODULE_NAME OpenRPCNativeSDK
 #endif
 
-/* ${TYPES} */
+#include <core/core.h>
+#include <tracing/tracing.h>
+#include <com/com.h>
+#include <websocket/websocket.h>
 
-#ifdef __cplusplus
-}
-#endif
-
-/* ${ACCESSORS} */
-/* ${METHODS} */
+#undef EXTERNAL
+#define EXTERNAL
