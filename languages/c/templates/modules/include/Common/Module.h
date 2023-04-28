@@ -25,6 +25,12 @@
 extern "C" {
 #endif
 
+    // Enums
+
+    /* ${ENUMS}} */
+
+    // Schemas
+
     /* ${SCHEMAS} */
 
 #ifdef __cplusplus

@@ -16,19 +16,26 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include "Firebolt.h"
-#include "${info.title}.h"
-#include "Common/${info.title}.h"
-#include "JsonData_${info.title}.h"
+namespace FireboltSDK {
+    class EXTERNAL Config : public WPEFramework::Core::JSON::Container {
+    public:
+        Config(const Config&) = delete;
+        Config& operator=(const Config&) = delete;
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+        Config()
+            : WPEFramework::Core::JSON::Container()
+            , Url(_T(""))
+            , WaitTime(1000)
+            , LogLevel(_T("Info"))
+        {
+            Add(_T("url"), &Url);
+            Add(_T("waittime"), &WaitTime);
+            Add(_T("loglevel"), &LogLevel);
+        }
 
-    /* ${TYPES} */
-    /* ${ACCESSORS} */
-    /* ${METHODS} */
-
-#ifdef __cplusplus
+    public:
+        WPEFramework::Core::JSON::String Url;
+        WPEFramework::Core::JSON::DecUInt32 WaitTime;
+        WPEFramework::Core::JSON::String LogLevel;
+    };
 }
-#endif

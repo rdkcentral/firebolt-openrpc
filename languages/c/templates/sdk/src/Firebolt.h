@@ -16,22 +16,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include "Firebolt.h"
-#include "${info.title}.h"
-#include "JsonData_${info.title}.h"
+#pragma once
 
-/* ${IMPORTS} */
-
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-/* ${TYPES} */
-
-#ifdef __cplusplus
-}
-#endif
-
-/* ${ACCESSORS} */
-/* ${METHODS} */
+#include "Transport/Transport.h"
+#include "Properties/Properties.h"
+#include "Accessor/Accessor.h"
+#include "Logger/Logger.h"
+#include "Types.h"

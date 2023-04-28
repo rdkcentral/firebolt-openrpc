@@ -20,7 +20,7 @@
 #define _${info.TITLE}_H
 
 #include "Firebolt.h"
-#include "Common/${info.title}.h"
+/* ${IMPORTS} */
 
 #ifdef __cplusplus
 extern "C" {
@@ -28,6 +28,7 @@ extern "C" {
 
     /* ${SCHEMAS} */
 
+    /* ${ACCESSORS} */
     /* ${DECLARATIONS} */
 
 #ifdef __cplusplus
