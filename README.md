@@ -1,83 +1,64 @@
 ---
-title: Firebolt OpenRPC Tools
+title: Firebolt OpenRPC 2.0
 ---
-# Firebolt OpenRPC Tools
+# Firebolt OpenRPC 2.0
 Tools to enable consistent Firebolt SDK and document generation.
 
-- [Firebolt OpenRPC Tools](#firebolt-openrpc-tools)
-  - [To Use](#to-use)
-  - [CLI Arguments](#cli-arguments)
-    - [SDK Generation](#sdk-generation)
-      - [Note on --static-modules](#note-on---static-modules)
-    - [Document Generation](#document-generation)
-      - [Note on --as-path](#note-on---as-path)
-    - [OpenRPC Generation](#openrpc-generation)
-    - [OpenRPC Validation](#openrpc-validation)
-  - [CLI Shorthands](#cli-shorthands)
+## Overview
+Version 2.0 of `firebolt-openrpc` has two major changes.
 
-## To Use
+- Support for slicing up an OpenRPC API into multiple SDK artifacts
+- Normalize most tasks to take a single OpenRPC document as input, rather than a directory full of "modules"
 
-  - First, `npm install`.
-  - Next, invoke the cli directly with `src/cli.js`. See below for arguments.
+### OpenRPC task
+The `openrpc` task takes a single OpenRPC document and "Fireboltizes" it, i.e. Interprets Firebolt method tags and inserts external Markdown descriptions via JSON-Schema $ref.
 
-Alternatively, you may install globally using `npm install -g @firebolt-js/openrpc`, which will install the cli and add it to your $PATH so it may be invoked with the `firebolt-openrpc` command.
+This task continues to support a directory of modules and will merge and Fireboltize them into a single file.
 
-Firebolt OpenRPC Tools require Node 16.
+### Slice task
+To support outputting multipel SDK's, there is a new `slice` task. This task takes a single OpenRPC document and slices it into separate OpenRPC documents based on a provided `sdk.config.json`, e.g.:
 
-## CLI Arguments
-
-`--task`: Tell the tool what you want it to do. Options are:
-
-  - `sdk`: Generate the SDK
-  - `docs`: Generate the docs
-  - `openrpc`: Generate the openrpc
-  - `validate` Validate the openrpc
-
-`--source`: The relative or absolute path to the folder or file that the task will use.
-
-`--template`: The relative or absolute path to the folder or file containing template resources for the task.
-
-`--output`: The relative or absolute path to the folder or file that will hold the task's generated output.
-
-`--as-path`: Used by the document generator. This is a toggle for generating content as files vs folders. More info below in [Document Generation](/#document-generation).
-
-`--static-modules`: String. Used by the SDK generator. "Static modules" are modules without an OpenRPC json document. More on this below.
-
-### SDK Generation
-
-Indicated by `--task sdk`. Generate the Firebolt SDKs from an OpenRPC spec. Currently, only the JavaScript SDK is supported.
-
-#### Note on --static-modules
-
-Static modules are modules without a corresponding OpenRPC json document. It will be included statically from the location supplied by the `--template` option. Listing your module in the `--static-modules` property ensures that it is properly exported by the SDK and wires up mock responses as well.
-
-### Document Generation
-
-Indicated by `--task docs`. Generate markdown docs from the OpenRPC spec.
-
-#### Note on --as-path
-
-When deploying docs to web servers, `--as-path` is generally used. For deploying to GitHub pages/wikis, do not use `--as-path`.
-
-This toggle will generate content as files vs folders. For exmaple, this:
+```json
+{
+  "info": {
+    "title": "Firebolt Core SDK",
+  },
+  "methods": [
+    {
+      "module": "Lifecycle",
+      "use": [
+        "xrn:firebolt:capability:lifecycle:ready"
+        "xrn:firebolt:capability:lifecycle:ready"
+      ],
+      "manage": [],
+      "provide": [
+        "xrn:firebolt:capability:discovery:entityInfo",
+        "xrn:firebolt:capability:discovery:purchases"
+      ]
+    }
+  ]
+}
 ```
-/docs/Topic.md
-```
-vs
-```
-/docs/Topic/index.md
-```
-It affects the output of:
 
-  - file names
-  - relative links
-  - relative images
+The `info.title` attribute is copied to the output, and each entry in the `methods` array is used to query methods from the input using module names and capabilities.
 
-### OpenRPC Generation
+Any `info.x-` extension attributes will also be copied from the sdk.config.json into the output OpenRPC document.
 
-Indicated by `--task openrpc`. Assembles a corpus of individual OpenRPC documents into a single OpenRPC document.
+Generally, this task is run using the output of the `openrpc` task as input, however, it's not required.
 
-#### Tags
+Wildcards are supported in `module` as well as `use`, `manage`, and `provide`.
+
+## SDK, Declarations, and Docs
+These tasks all take a single OpenRPC document and generate their respective artifacts.
+
+They all have the same arguments and are all implemented using shared code for more consistency.
+
+--input: The input OpenRPC document
+--output: The output location
+--template: An optional template directory for adding to and overriding the built in templates
+
+
+## Firebolt Method Tags
 * __event__ - When a method is tagged with this then it will be treated as an asynchronous event. The call to subscribe to the event will return a success reponse and then zero or more asynchronous responses with the same id. These responses correlate to the event happening. Events are documented in a different section of the module. The app can use the event not through a specific method call but by doing `Module.listen('eventName')`
 * __exclude-from-sdk__ - When a method is tagged with this then no SDK method is generated. Instead, custom code for that method is used. This is often used for methods that have client code associated with it instead of just calling the Transport directly.
 * __polymorphic-pull__ - Instructs the code generation to generate a single method that be used for both pushing data to Firebolt or registering a callback that Firebolt can use to pull data from the application.
@@ -89,19 +70,6 @@ Indicated by `--task openrpc`. Assembles a corpus of individual OpenRPC document
 * __property:readonly__ - Generates a single method that can be used as a getter and subscription based on the arguments the app gives to that method call.
 * __property:immutable__ - Generates a single method that can be used as a getter based on the arguments the app gives to that method call.
 
-### OpenRPC Validation
+## OpenRPC Validation
 
 Indicated by `--task validate`. Reads and validates a corpus of individual OpenRPC documents and validates the result of assembling them together into a single OpenRPC document.
-
-## CLI Shorthands
-
-Don't feel like typing? Use `-t` instead of `--task`. This table shows the mapping:
-
-| shorthand | command            |
-| --------- | ------------------ |
-| `-t`      | `--task`           |
-| `-s`      | `--source`         |
-| `-tm`     | `--template`       |
-| `-o`      | `--output`         |
-| `-ap`     | `--as-path`        |
-| `-sm`     | `--static-modules` |
