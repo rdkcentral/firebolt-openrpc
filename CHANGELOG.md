@@ -1,3 +1,15 @@
+# [2.0.0-next.1](https://github.com/rdkcentral/firebolt-openrpc/compare/v1.8.0-next.2...v2.0.0-next.1) (2023-05-01)
+
+
+### Features
+
+* **readme:** Update Readme for 2.0 ([3537aa0](https://github.com/rdkcentral/firebolt-openrpc/commit/3537aa01f5ec15efa7f202edcf2cde8e5b57d74f))
+
+
+### BREAKING CHANGES
+
+* **readme:** tagging this commit because all of the others were squashed
+
 # [1.8.0-next.2](https://github.com/rdkcentral/firebolt-openrpc/compare/v1.8.0-next.1...v1.8.0-next.2) (2023-01-31)
 
 
