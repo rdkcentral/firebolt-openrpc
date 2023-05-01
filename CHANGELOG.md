@@ -1,3 +1,28 @@
+# [2.0.0](https://github.com/rdkcentral/firebolt-openrpc/compare/v1.7.1...v2.0.0) (2023-05-01)
+
+
+### Bug Fixes
+
+* Capabilities for property setters to be manages instead of uses ([#77](https://github.com/rdkcentral/firebolt-openrpc/issues/77)) ([a2fa157](https://github.com/rdkcentral/firebolt-openrpc/commit/a2fa157fac3ace0c3cec9f283b59bc4768e17373))
+* Handle error in calls-metrics template ([322f636](https://github.com/rdkcentral/firebolt-openrpc/commit/322f636ca627c7c95ae58a16e8d3b334cf5ff3e2))
+* Handle error in calls-metrics template ([b737d09](https://github.com/rdkcentral/firebolt-openrpc/commit/b737d09f9d5b22c63cae75f2992f324b8a1541cb))
+* Improper null check of value ([eed458c](https://github.com/rdkcentral/firebolt-openrpc/commit/eed458c57eb8ba5701ea86097338041b79f88848))
+* Properly document context params ([#75](https://github.com/rdkcentral/firebolt-openrpc/issues/75)) ([325858c](https://github.com/rdkcentral/firebolt-openrpc/commit/325858c98116edd4708eacce644bbdb95a2e18e4))
+* **release:** Publish prereleases to NPM ([8947d81](https://github.com/rdkcentral/firebolt-openrpc/commit/8947d8120c51dfd05f23cf90475517b766fa1c4f))
+* Removes extra string added to params table ([0d51872](https://github.com/rdkcentral/firebolt-openrpc/commit/0d5187266a1466cefded2ac50a7e44aa4ef1a2df))
+* Trigger semantic release ([bb2ab26](https://github.com/rdkcentral/firebolt-openrpc/commit/bb2ab26b76e7515c0770f79d0ea65a436c930915))
+
+
+### Features
+
+* Add registerEventContext as an import for Capabilities module ([#83](https://github.com/rdkcentral/firebolt-openrpc/issues/83)) ([16409bd](https://github.com/rdkcentral/firebolt-openrpc/commit/16409bda1de97487493078e8cbe782b295b57412))
+* **readme:** Update Readme for 2.0 ([3537aa0](https://github.com/rdkcentral/firebolt-openrpc/commit/3537aa01f5ec15efa7f202edcf2cde8e5b57d74f))
+
+
+### BREAKING CHANGES
+
+* **readme:** tagging this commit because all of the others were squashed
+
 # [2.0.0-next.2](https://github.com/rdkcentral/firebolt-openrpc/compare/v2.0.0-next.1...v2.0.0-next.2) (2023-05-01)
 
 
