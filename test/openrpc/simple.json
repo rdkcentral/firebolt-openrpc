@@ -1,0 +1,304 @@
+{
+    "openrpc": "1.2.4",
+    "info": {
+        "title": "Simple",
+        "description": "Simple module for testing firebolt-openrpc",
+        "version": "0.0.0"
+    },
+    "methods": [
+        {
+            "name": "method",
+            "summary": "A method.",
+            "tags": [
+                {
+                    "name": "capabilities",
+                    "x-uses": ["xrn:firebolt:capability:test:test"]
+                }
+            ],
+            "description": "A method for testing basic method generation.",
+            "params": [
+                {
+                    "name": "parameter",
+                    "required": true,
+                    "schema": {
+                        "type": "boolean"
+                    },
+                    "summary": "A test parameter."
+                }
+            ],
+            "result": {
+                "name": "result",
+                "summary": "A result for testing basic method generation.",
+                "schema": {
+                    "type": "object",
+                    "required": [
+                        "foo"
+                    ],
+                    "properties": {
+                        "foo": {
+                            "type": "string",
+                            "description": "A required field in the result."
+                        },
+                        "bar": {
+                            "type": "number",
+                            "description": "An optional field in the result."
+                        }
+                    },
+                    "additionalProperties": false
+                }
+            },
+            "examples": [
+                {
+                    "name": "Default Example",
+                    "params": [
+                        {
+                            "name": "parameter",
+                            "value": true
+                        }
+                    ],
+                    "result": {
+                        "name": "Default Result",
+                        "value": {
+                            "foo": "here's foo"
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "property",
+            "summary": "A property.",
+            "tags": [
+                {
+                    "name": "property"
+                },
+                {
+                    "name": "capabilities",
+                    "x-uses": [
+                        "xrn:firebolt:capability:test:test"
+                    ]
+                }
+            ],
+            "description": "A property for testing basic property generation.",
+            "params": [
+            ],
+            "result": {
+                "name": "result",
+                "summary": "A result for testing basic method generation.",
+                "schema": {
+                    "type": "object",
+                    "required": [
+                        "foo"
+                    ],
+                    "properties": {
+                        "foo": {
+                            "type": "string",
+                            "description": "A required field in the result."
+                        },
+                        "bar": {
+                            "type": "number",
+                            "description": "An optional field in the result."
+                        }
+                    },
+                    "additionalProperties": false
+                }
+            },
+            "examples": [
+                {
+                    "name": "Default Example",
+                    "params": [
+                        {
+                            "name": "parameter",
+                            "value": true
+                        }
+                    ],
+                    "result": {
+                        "name": "Default Result",
+                        "value": {
+                            "foo": "here's foo"
+                        }
+                    }
+                },
+                {
+                    "name": "Another Example",
+                    "params": [
+                        {
+                            "name": "parameter",
+                            "value": false
+                        }
+                    ],
+                    "result": {
+                        "name": "Another Result",
+                        "value": {
+                            "foo": "here's bar"
+                        }
+                    }
+                }                
+            ]            
+        },
+        {
+            "name": "methodWithMarkdownDescription",
+            "summary": "A method that pulls it's description from an external markdown file.",
+            "description": {
+                "$ref": "file:../descriptions/modules/Simple/methodWithMarkdownDescription.md"
+            },
+            "tags": [
+                {
+                    "name": "capabilities",
+                    "x-uses": ["xrn:firebolt:capability:test:test"]
+                }
+            ],         
+            "params": [
+                {
+                    "name": "parameter",
+                    "required": true,
+                    "schema": {
+                        "type": "boolean"
+                    },
+                    "summary": "A test parameter."
+                }
+            ],
+            "result": {
+                "name": "result",
+                "summary": "A result for testing basic method generation.",
+                "schema": {
+                    "type": "object",
+                    "required": [
+                        "foo"
+                    ],
+                    "properties": {
+                        "foo": {
+                            "type": "string",
+                            "description": "A required field in the result."
+                        },
+                        "bar": {
+                            "type": "number",
+                            "description": "An optional field in the result."
+                        }
+                    },
+                    "additionalProperties": false
+                }
+            },
+            "examples": [
+                {
+                    "name": "Default Example",
+                    "params": [
+                        {
+                            "name": "parameter",
+                            "value": true
+                        }
+                    ],
+                    "result": {
+                        "name": "Default Result",
+                        "value": {
+                            "foo": "here's foo"
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "methodWithSchema",
+            "summary": "A method using a schema.",
+            "description": "A method for testing schema-dependent method generation.",
+            "tags": [
+                {
+                    "name": "capabilities",
+                    "x-uses": ["xrn:firebolt:capability:test:test"]
+                }
+            ],
+            "params": [
+                {
+                    "name": "title",
+                    "required": true,
+                    "schema": {
+                        "$ref": "https://meta.comcast.com/firebolt/types#/definitions/LocalizedString"
+                    },
+                    "summary": "A localized string test parameter."
+                }
+            ],
+            "result": {
+                "name": "result",
+                "summary": "A result for testing basic method generation.",
+                "schema": {
+                    "$ref": "https://meta.comcast.com/firebolt/types#/definitions/LocalizedString"
+                }
+            },
+            "examples": [
+                {
+                    "name": "Default Example",
+                    "params": [
+                        {
+                            "name": "title",
+                            "value": "test"
+                        }
+                    ],
+                    "result": {
+                        "name": "Default Result",
+                        "value": {
+                            "foo": "here's foo"
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "methodWithMethodAttribute",
+            "summary": "A method using a method-attribute transform.",
+            "description": "A method for testing sub-method generation.",
+            "tags": [
+                {
+                    "name": "capabilities",
+                    "x-uses": ["xrn:firebolt:capability:test:test"]
+                }
+            ],
+            "params": [
+                {
+                    "name": "title",
+                    "required": true,
+                    "schema": {
+                        "$ref": "https://meta.comcast.com/firebolt/types#/definitions/LocalizedString"
+                    },
+                    "summary": "A localized string test parameter."
+                }
+            ],
+            "result": {
+                "name": "result",
+                "summary": "A result for testing basic method generation.",
+                "schema": {
+                    "type": "object",
+                    "properties": {
+                        "aString": {
+                            "type": "string"
+                        },
+                        "aMethod": {
+                            "type": "string",
+                            "x-method": "Simple.method",
+                            "x-this-param": "accessory"
+                        }
+                    }
+                }
+            },
+            "examples": [
+                {
+                    "name": "Default Example",
+                    "params": [
+                        {
+                            "name": "title",
+                            "value": "test"
+                        }
+                    ],
+                    "result": {
+                        "name": "Default Result",
+                        "value": {
+                            "foo": "here's foo"
+                        }
+                    }
+                }
+            ]
+        }
+    ],
+    "components": {
+        "schemas": {}
+    }
+}
