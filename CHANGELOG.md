@@ -1,3 +1,10 @@
+# [2.0.0-next.2](https://github.com/rdkcentral/firebolt-openrpc/compare/v2.0.0-next.1...v2.0.0-next.2) (2023-05-01)
+
+
+### Bug Fixes
+
+* **release:** Publish prereleases to NPM ([8947d81](https://github.com/rdkcentral/firebolt-openrpc/commit/8947d8120c51dfd05f23cf90475517b766fa1c4f))
+
 # [2.0.0-next.1](https://github.com/rdkcentral/firebolt-openrpc/compare/v1.8.0-next.2...v2.0.0-next.1) (2023-05-01)
 
 
