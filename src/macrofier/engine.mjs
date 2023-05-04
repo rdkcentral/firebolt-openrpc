@@ -339,6 +339,16 @@ const generateMacros = (obj, templates, languages, options = {}) => {
   const eventList = eventsArray.map(m => makeEventName(m))
   const defaults = generateDefaults(obj, templates)
   const schemasArray = generateSchemas(obj, templates, { baseUrl: '', section: 'schemas' }).filter(s => (options.copySchemasIntoModules || !s.uri))
+  schemasArray.sort((a, b) => {
+    const aInB = b.body.toLowerCase().indexOf(a.name.toLowerCase()) !== -1;
+    const bInA = a.body.toLowerCase().indexOf(b.name.toLowerCase()) !== -1;
+    if(a.enum || (aInB && !bInA)) {
+      return -1
+    } else if(b.enum || (!aInB && bInA)) {
+      return 1
+    }
+    return 0;
+  })
   const accessorsArray = generateSchemas(obj, templates, { baseUrl: '', section: 'accessors' }).filter(s => (options.copySchemasIntoModules || !s.uri))
   const schemas = schemasArray.length ? getTemplate('/sections/schemas', templates).replace(/\$\{schema.list\}/g, schemasArray.map(s => s.body).join('\n')) : ''
   const typesArray = schemasArray.filter(x => !x.enum)
