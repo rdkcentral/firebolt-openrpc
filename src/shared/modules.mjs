@@ -553,7 +553,7 @@ const createSetterFromProperty = property => {
             if (t.name === 'capabilities') {
                 setter.tags.push({
                     name: 'capabilities',
-                    'x-manages': t['x-uses']
+                    'x-manages': t['x-uses'] || t['x-manages']
                 })
             } else {
                 setter.tags.push(t)
