@@ -29,7 +29,7 @@ function stopSession(module, method) {
     delete sessions[module.toLowerCase() + '.' + method]
 }
 
-function start(module, method, addName, removeName, params, add, remove, transforms) {
+function start(module, method, addName, removeName, params, add, remove, timeout, transforms) {
     let session = getSession(module, method)
 
     if (!eventEmitterInitialized) {
@@ -44,8 +44,8 @@ function start(module, method, addName, removeName, params, add, remove, transfo
         session = startSession(module, method)
     }
 
-    if (!add) {
-        throw `Error: ${module}.${method} requires at least one callback because results may be asynchronous.`
+    if (add && timeout) {
+        throw `Error: ${module}.${method} requires either a timeout, or at least one callback because results may be asynchronous.`
     }
 
     const requests = [
@@ -87,7 +87,7 @@ function start(module, method, addName, removeName, params, add, remove, transfo
     session.removeName = removeName
 
     results[0].promise.then( items => {
-        items && items.forEach(item => add(item))
+        add && items && items.forEach(item => add(item))
     })
 
     results[1].promise.then( id => {
@@ -113,41 +113,53 @@ function start(module, method, addName, removeName, params, add, remove, transfo
         })
     }
 
-    return {
-        stop: () => {
-            const requests = [
-                {
-                    module: module,
-                    method: `stop${method.charAt(0).toUpperCase() + method.substr(1)}`,
-                    params: {
-                        correlationId: session.id
+    if (add) {
+        return {
+            stop: () => {
+                const requests = [
+                    {
+                        module: module,
+                        method: `stop${method.charAt(0).toUpperCase() + method.substr(1)}`,
+                        params: {
+                            correlationId: session.id
+                        }
+                    },
+                    {
+                        module: module,
+                        method: addName,
+                        params: {
+                            listen: false
+                        }
                     }
-                },
-                {
-                    module: module,
-                    method: addName,
-                    params: {
-                        listen: false
-                    }
+                ]
+    
+                if (remove) {
+                    requests.push({
+                        module: module,
+                        method: removeName,
+                        params: {
+                            listen: false
+                        }
+                    })
                 }
-            ]
-
-            if (remove) {
-                requests.push({
-                    module: module,
-                    method: removeName,
-                    params: {
-                        listen: false
-                    }
-                })
+                Transport.send(requests)
+                stopSession(module, method)
             }
-            Transport.send(requests)
-            stopSession(module, method)
         }
     }
+    else if (timeout) {
+        return results[0].promise.then(results => {
+            stopSession(module, method)
+            return results.shift()
+        })
+    }
+    else {
+        return results[0].promise.then(results => {
+            stopSession(module, method)
+            return results
+        })
+    }
 }
-
-
 
 export default {
   start: start
