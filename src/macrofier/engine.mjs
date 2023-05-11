@@ -64,6 +64,8 @@ const state = {
   section: undefined
 }
 
+const capitalize = str => str[0].toUpperCase() + str.substr(1)
+
 const setTyper = (t) => {
   types = t
 }
@@ -335,6 +337,7 @@ const generateMacros = (obj, templates, languages, options = {}) => {
   const methods = methodsArray.length ? getTemplate('/sections/methods', templates).replace(/\$\{method.list\}/g, methodsArray.map(m => m.body).join('\n')) : ''
   const methodList = methodsArray.filter(m => m.body).map(m => m.name)
   const providerInterfaces = generateProviderInterfaces(obj, templates)
+  const enumsConversion = generateEnumsConversion(obj, templates)
   const events = eventsArray.length ? getTemplate('/sections/events', templates).replace(/\$\{event.list\}/g, eventsArray.map(m => m.body).join('\n')) : ''
   const eventList = eventsArray.map(m => makeEventName(m))
   const defaults = generateDefaults(obj, templates)
@@ -350,6 +353,7 @@ const generateMacros = (obj, templates, languages, options = {}) => {
     imports,
     initialization,
     enums,
+    enumsConversion,
     events,
     eventList,
     eventsEnum,
@@ -402,6 +406,7 @@ const insertMacros = (fContents = '', macros = {}) => {
   fContents = fContents.replace(/[ \t]*\/\* \$\{TYPES\} \*\/[ \t]*\n/, macros.types)
   fContents = fContents.replace(/[ \t]*\/\* \$\{PROVIDERS\} \*\/[ \t]*\n/, macros.providerInterfaces)
   fContents = fContents.replace(/[ \t]*\/\* \$\{ENUMS\} \*\/[ \t]*\n/, macros.enums)
+  fContents = fContents.replace(/[ \t]*\/\* \$\{ENUMS_CONVERSION\} \*\/[ \t]*\n/, macros.enumsConversion)
   fContents = fContents.replace(/[ \t]*\/\* \$\{IMPORTS\} \*\/[ \t]*\n/, macros.imports)
   fContents = fContents.replace(/[ \t]*\/\* \$\{INITIALIZATION\} \*\/[ \t]*\n/, macros.initialization)
   fContents = fContents.replace(/[ \t]*\/\* \$\{DEFAULTS\} \*\/[ \t]*\n/, macros.defaults)
@@ -486,8 +491,62 @@ function insertTableofContents(content) {
   return content
 }
 
+const isEnumType = x => x.type === 'string' && Array.isArray(x.enum)
+
+const getProperties = x => {
+   return Array.isArray(x.properties) ? x.properties[0] : x.properties
+}
+
+const isEnumProperties = schema => compose(
+    getProperties,
+    filter(enm => enm),
+    map(enm => (enm.length > 0)),
+    map(filter(isEnumType)),
+    map(props => props.map(([k, v]) => v)),
+    map(Object.entries),
+    filter(schema => isObject(schema))
+)(schema)
+
+const getEnumProperties = schema => compose(
+    getProperties,
+    filter(enm => enm),
+    map(filter(isEnumType)),
+    map(props => props.map(([k, v]) => {
+      if (isEnumType(v) == true) {
+        let type = Object.assign({}, v)
+        type.title = k
+        return type
+      } else {
+        return v
+      }
+    })),
+    map(Object.entries),
+    filter(schema => isObject(schema))
+)(schema)
+
+
+const convertEnumTemplate = (sch, templateName, templates) => {
+  const template = getTemplate(templateName, templates).split('\n')
+  let schema = isEnumType(sch) ? sch : getEnumProperties(sch)
+  for (var i = 0; i < template.length; i++) {
+    if (template[i].indexOf('${key}') >= 0) {
+      template[i] = schema.enum.map(value => {
+        const safeName = value.split(':').pop().replace(/[\.\-]/g, '_').replace(/\+/g, '_plus').replace(/([a-z])([A-Z0-9])/g, '$1_$2').toUpperCase()
+        return template[i].replace(/\$\{key\}/g, safeName)
+                          .replace(/\$\{value\}/g, value)
+      }).join('\n')
+      template[i] = template[i].replace(/,*$/, '');
+    }
+  }
+  return template.join('\n')
+                 .replace(/\$\{title\}/g, capitalize(schema.title))
+                 .replace(/\$\{description\}/g, schema.description ? ('- ' + schema.description) : '')
+                 .replace(/\$\{name\}/g, schema.title)
+                 .replace(/\$\{NAME\}/g, schema.title.toUpperCase())
+}
+
 const enumFinder = compose(
-  filter(x => x.type === 'string' && Array.isArray(x.enum) && x.title),
+  filter(x => ((isEnumType(x) && x.title) || isEnumProperties(x))),
   map(([_, val]) => val),
   filter(([_key, val]) => isObject(val))
 )
@@ -496,23 +555,22 @@ const generateEnums = (json, templates) => {
   return compose(
     option(''),
     map(reduce((acc, val) => acc.concat(val).concat('\n'), '')),
-    map(map((schema) => {
-      const template = getTemplate('/types/enum', templates).split('\n')
-      for (var i = 0; i < template.length; i++) {
-        if (template[i].indexOf('${key}') >= 0) {
-          template[i] = schema.enum.map(value => {
-            const safeName = value.split(':').pop().replace(/[\.\-]/g, '_').replace(/\+/g, '_plus').replace(/([a-z])([A-Z0-9])/g, '$1_$2').toUpperCase()
-            return template[i].replace(/\$\{key\}/g, safeName)
-                              .replace(/\$\{value\}/g, value)
-          }).join('\n')
-        }
-      }
-      return template.join('\n').replace(/\$\{name\}/g, schema.title).replace(/\$\{NAME\}/g, schema.title.toUpperCase())
-    })),
+    map(map((schema) => convertEnumTemplate(schema, '/types/enum', templates))),
     map(enumFinder),
     getSchemas
   )(json)
 }
+
+const generateEnumsConversion = (json, templates) => {
+  return compose(
+    option(''),
+    map(reduce((acc, val) => acc.concat(val).concat('\n'), '')),
+    map(map((schema) => convertEnumTemplate(schema, '/types/enum_conversion', templates))),
+    map(enumFinder),
+    getSchemas
+  )(json)
+}
+
 
 const generateEvents = (json, templates) => {
   const eventNames = eventsOrEmptyArray(json).map(makeEventName)
@@ -693,8 +751,6 @@ const generateImports = (json, templates) => {
   if (methodsWithXMethodsInResult(json).length) {
     imports += getTemplate('/imports/x-method', templates)
   }
-
-
 
   if (json['x-schemas'] && Object.keys(json['x-schemas']).length > 0) {
     imports += Object.keys(json['x-schemas']).map(shared => getTemplate('/imports/default', templates).replace(/\$\{info.title\}/g, shared)).join('\n')
@@ -1235,7 +1291,6 @@ function generateProviderInterfaces(json, templates) {
 function insertProviderInterfaceMacros(template, capability, moduleJson = {}, templates) {
   const iface = getProviderInterface(capability, moduleJson, { destination: state.destination, section: state.section })//.map(method => { method.name = method.name.charAt(9).toLowerCase() + method.name.substr(10); return method } )
 
-  const capitalize = str => str[0].toUpperCase() + str.substr(1)
   const uglyName = capability.split(":").slice(-2).map(capitalize).reverse().join('') + "Provider"
   let name = iface.length === 1 ? iface[0].name.charAt(0).toUpperCase() + iface[0].name.substr(1) + "Provider" : uglyName
 

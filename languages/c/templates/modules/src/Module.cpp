@@ -22,16 +22,27 @@
 
 /* ${IMPORTS} */
 
+namespace FireboltSDK {
+    namespace ${info.title} {
+    // Types
+
+       /* ${TYPES} */
+    }
+}
+
+namespace WPEFramework {
+    /* ${ENUMS_CONVERSION} */
+}
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-/* ${TYPES} */
+/* ${ACCESSORS} */
+/* ${METHODS} */
 
 #ifdef __cplusplus
 }
 #endif
 
-/* ${ACCESSORS} */
-/* ${METHODS} */
+

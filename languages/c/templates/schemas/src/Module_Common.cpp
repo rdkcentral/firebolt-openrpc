@@ -21,11 +21,15 @@
 #include "Common/${info.title}.h"
 #include "JsonData_${info.title}.h"
 
+namespace WPEFramework {
+
+    /* ${ENUMS_CONVERSION} */
+}
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-    /* ${TYPES} */
     /* ${ACCESSORS} */
     /* ${METHODS} */
 

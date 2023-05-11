@@ -42,15 +42,15 @@ ENUM_CONVERSION_END(Advertising_SkipRestriction)
 // TODO - this should be a global function in the main /src/ directory... not part of a language pack
 const keyName = val => val.split(':').pop().replace(/[\.\-]/g, '_').replace(/\+/g, '_plus').replace(/([a-z])([A-Z0-9])/g, '$1_$2').toUpperCase()
 
-function getJsonEnumConversion(schema, module, { name }) {
-    name = capitalize(schema.title || name)
-    let e = `ENUM_CONVERSION_BEGIN(${module.info.title}_${name})\n`
-
+function getJsonEnumConversion(schema, { name }) {
+    name = (schema.title || name)
+    let e = schema.description ? ('\n/* ${info.title} - ' + `${schema.description} */`) : ''
+    e += '\nENUM_CONVERSION_BEGIN(${info.title}_' + `${name})\n`
     schema.enum.forEach(value => {
-        e += `{ ${module.info.title.toUpperCase()}_${name.toUpperCase()}_${keyName(value)}, _T("${value}") },`
+        e += '    { ${info.TITLE}_' + `${name.toUpperCase()}_${keyName(value)}, _T("${value}") },\n`
     })
 
-    e += `ENUM_CONVERSION_END(${module.info.title}_${name})`
+    e += 'ENUM_CONVERSION_END(${info.title}_' + `${name})`
 
     return e
 }
