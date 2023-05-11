@@ -27,10 +27,12 @@ let contextSentToGetter = false
 let contextSentToSetter = false
 let contextSentToSubscriber = false
 let contextSentToEvent = false
+let bothContextSentToEvent = false
 
 beforeAll( () => {
 
     transport.onSend(json => {
+        console.dir(json)
         if (json.method === 'advanced.propertyWithContext') {
             if (json.params.appId === 'some-app') {
                 contextSentToGetter = true
@@ -68,6 +70,11 @@ beforeAll( () => {
                 contextSentToEvent = true
             }
         }
+        else if (json.method === "advanced.onEventWithTwoContext") {
+            if (json.params.appId === 'some-app' && json.params.state === 'inactive') {
+                bothContextSentToEvent = true
+            }
+        }
     })
 
     Advanced.propertyWithContext('some-app', true)
@@ -97,8 +104,14 @@ test('Context Property set', () => {
     expect(contextSentToSetter).toBe(true)
 });
 
-test('Event with context', () => {
+test('Event with single context param', () => {
     Advanced.listen("eventWithContext", "some-app", (data) => {
         expect(contextSentToEvent).toBe(true)
+    })
+})
+    
+test('Event with two context params', () => {
+    Advanced.listen("eventWithTwoContext", "some-app", "inactive", (data) => {
+        expect(bothContextSentToEvent).toBe(true)
     })
 })

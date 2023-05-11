@@ -12,7 +12,7 @@ function prop(moduleName, key, params, callbackOrValue = null, immutable, readon
     if (immutable) {
       throw new Error('Cannot subscribe to an immutable property')
     }
-    return Events.listen(moduleName, key + 'Changed', callbackOrValue)
+    return Events.listen(moduleName, key + 'Changed', ...Object.values(params), callbackOrValue)
   } else if (numArgs === (contextParameterCount) && callbackOrValue !== null) {
     // setter
     if (immutable) {
