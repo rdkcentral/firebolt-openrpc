@@ -632,14 +632,6 @@ function generateSchemas(json, templates, options) {
     if (isSchema(schema)) {
       list.push([name, schema])
     }
-    else if (typeof schema === 'object') {
-      const uri = schema.uri
-      Object.entries(schema).forEach( ([name, schema]) => {
-        if (name !== 'uri') {
-          list.push([name, schema, uri])
-        }
-      })
-    }
   })
 
   list.sort((a, b) => {
