@@ -201,7 +201,7 @@ const getClearArgs = function(...args) {
   const event = args.shift() || '*'
   const context = {}
   
-  for (let i = 0; i<args.length; i++) {
+  for (let i = 0; args.length; i++) {
     context[validContext[module][event][i]] = args.shift()
   }
 
