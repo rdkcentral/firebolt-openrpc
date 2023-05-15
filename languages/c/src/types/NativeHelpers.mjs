@@ -29,6 +29,7 @@ const { isObject, isArray, propEq, pathSatisfies, hasProp, propSatisfies } = pre
 
 const getModuleName = json => getPathOr(null, ['info', 'title'], json) || json.title || 'missing'
 
+const getFireboltStringType = () => 'FireboltTypes_StringHandle'
 const getHeaderText = () => {
 
     return `/*
@@ -84,34 +85,21 @@ const SdkTypesPrefix = 'Firebolt'
 const Indent = '    '
 
 const getNativeType = json => {
-    let type
-
-    if (json.const) {
-      if (typeof json.const === 'string') {
-        type = 'char*'
-      }
-      else if (typeof json.const === 'number') {
-        type = 'uint32_t'
-        if (json.const < 0)
-            type = 'int32_t'
-      } else if (typeof json.const === 'boolean'){
-        type = 'bool'
-      }
-    }
-    else if (json.type === 'string') {
-        type = 'char*'
-    }
-    else if (json.type === 'number' || json.type === 'integer') { //Lets keep it simple for now
-        type = 'uint32_t'
-        if ((json.minimum && json.minimum < 0)
-             || (json.exclusiveMinimum && json.exclusiveMinimum < 0)) {
-            type = 'int32_t'
-        }
-    }
-    else if (json.type === 'boolean') {
-      type = 'bool'
-    }
-    return type
+  let type
+  let jsonType = json.const ? typeof json.const : json.type
+  if (jsonType === 'string') {
+    type = 'char*'
+  }
+  else if (jsonType === 'number') {
+    type = 'float'
+  }
+  else if (jsonType === 'integer') {
+    type = 'int32_t'
+  }
+  else if (jsonType === 'boolean') {
+    type = 'bool'
+  }
+  return type
 }
 
 const getObjectHandleManagement = varName => {
@@ -126,38 +114,43 @@ bool ${varName}Handle_IsValid(${varName}Handle handle);
 }
 
 const getPropertyAccessors = (objName, propertyName, propertyType,  options = {level:0, readonly:false, optional:false}) => {
-
   let result = `${Indent.repeat(options.level)}${propertyType} ${objName}_Get_${propertyName}(${objName}Handle handle);` + '\n'
 
   if (!options.readonly) {
-    result += `${Indent.repeat(options.level)}void ${objName}_Set_${propertyName}(${objName}Handle handle, ${propertyType} ${propertyName.toLowerCase()});` + '\n'
+    let type = (propertyType === getFireboltStringType()) ? 'char*' : propertyType
+    result += `${Indent.repeat(options.level)}void ${objName}_Set_${propertyName}(${objName}Handle handle, ${type} ${propertyName.toLowerCase()});` + '\n'
   }
 
   if (options.optional === true) {
-    result += `${Indent.repeat(options.level)}bool ${objName}_has_${propertyName}(${objName}Handle handle);` + '\n'
-    result += `${Indent.repeat(options.level)}void ${objName}_clear_${propertyName}(${objName}Handle handle);` + '\n'
+    result += `${Indent.repeat(options.level)}bool ${objName}_Has_${propertyName}(${objName}Handle handle);` + '\n'
+    result += `${Indent.repeat(options.level)}void ${objName}_Clear_${propertyName}(${objName}Handle handle);` + '\n'
   }
 
   return result
 }
 
-const getMapAccessors = (typeName, nativeType,  level=0) => {
+const getMapAccessors = (typeName, accessorPropertyType, level = 0) => {
 
   let res
 
   res = `${Indent.repeat(level)}uint32_t ${typeName}_KeysCount(${typeName}Handle handle);` + '\n'
-  res += `${Indent.repeat(level)}void ${typeName}_AddKey(${typeName}Handle handle, char* key, ${nativeType} value);` + '\n'
+  res += `${Indent.repeat(level)}void ${typeName}_AddKey(${typeName}Handle handle, char* key, ${accessorPropertyType} value);` + '\n'
   res += `${Indent.repeat(level)}void ${typeName}_RemoveKey(${typeName}Handle handle, char* key);` + '\n'
-  res += `${Indent.repeat(level)}${nativeType} ${typeName}_FindKey(${typeName}Handle handle, char* key);` + '\n'
+  res += `${Indent.repeat(level)}${accessorPropertyType} ${typeName}_FindKey(${typeName}Handle handle, char* key);` + '\n'
 
   return res
 }
 
-const getTypeName = (moduleName, varName, upperCase = false) => {
-  let mName = upperCase ? moduleName.toUpperCase() : capitalize(moduleName)
-  let vName = upperCase ? varName.toUpperCase() : capitalize(varName) 
+const getTypeName = (moduleName, varName, prefixName = '', upperCase = false, capitalCase = true) => {
 
-  return `${mName}_${vName}`
+  let mName = upperCase ? moduleName.toUpperCase() : capitalize(moduleName)
+  let vName = upperCase ? varName.toUpperCase() : capitalCase ? capitalize(varName) : varName
+  if (prefixName.length > 0) {
+    prefixName = (prefixName !== varName) ? (upperCase ? prefixName.toUpperCase() : capitalize(prefixName)) : ''
+  }
+  prefixName = (prefixName.length > 0) ?(upperCase ? prefixName.toUpperCase() : capitalize(prefixName)) : prefixName
+  let name = (prefixName.length > 0) ? `${mName}_${prefixName}_${vName}` : `${mName}_${vName}`
+  return name
 }
 
 const getArrayAccessors = (arrayName, valueType) => {
@@ -201,25 +194,25 @@ const getIncludeDefinitions = (json = {}, jsonData = false) => {
     .concat([`#include "Firebolt/Types.h"`])
 }
 
-  function getPropertyGetterSignature(method, module, paramType) {
-    let m = `${capitalize(getModuleName(module))}_Get${capitalize(method.name)}`
-    return `${description(method.name, method.summary)}\nuint32 ${m}( ${paramType === 'char*' ? 'FireboltTypes_StringHandle' : paramType}* ${method.result.name || method.name} )`
-  }
+function getPropertyGetterSignature(method, module, paramType) {
+  let m = `${capitalize(getModuleName(module))}_Get${capitalize(method.name)}`
+  return `${description(method.name, method.summary)}\nuint32 ${m}( ${paramType === 'char*' ? 'FireboltTypes_StringHandle' : paramType}* ${method.result.name || method.name} )`
+}
 
-  function getPropertySetterSignature(method, module, paramType) {
-    let m = `${capitalize(getModuleName(module))}_Set${capitalize(method.name)}`
-    return `${description(method.name, method.summary)}\nuint32 ${m}( ${paramType} ${method.result.name || method.name} )`
-  }
+function getPropertySetterSignature(method, module, paramType) {
+  let m = `${capitalize(getModuleName(module))}_Set${capitalize(method.name)}`
+  return `${description(method.name, method.summary)}\nuint32 ${m}( ${paramType} ${method.result.name || method.name} )`
+}
 
-  function getPropertyEventCallbackSignature(method, module, paramType) {
-    return `typedef void (*On${capitalize(method.name)}Changed)(${paramType === 'char*' ? 'FireboltTypes_StringHandle' : paramType})`
-  }
+function getPropertyEventCallbackSignature(method, module, paramType) {
+  return `typedef void (*On${capitalize(method.name)}Changed)(${paramType === 'char*' ? 'FireboltTypes_StringHandle' : paramType})`
+}
 
-  function getPropertyEventSignature(method, module) {
-    return `${description(method.name, 'Listen to updates')}\n` + `uint32_t ${capitalize(getModuleName(module))}_Listen${capitalize(method.name)}Update(On${capitalize(method.name)}Changed notification, uint16_t* listenerId)`
-  }
+function getPropertyEventSignature(method, module) {
+  return `${description(method.name, 'Listen to updates')}\n` + `uint32_t ${capitalize(getModuleName(module))}_Listen${capitalize(method.name)}Update(On${capitalize(method.name)}Changed notification, uint16_t* listenerId)`
+}
 
-  export {
+export {
     getHeaderText,
     getIncludeGuardOpen,
     getStyleGuardOpen,
@@ -241,4 +234,4 @@ const getIncludeDefinitions = (json = {}, jsonData = false) => {
     getPropertyAccessors,
     isOptional,
     generateEnum
-  }
+}
