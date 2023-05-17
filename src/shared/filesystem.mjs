@@ -5,7 +5,7 @@ import { emptyDir } from 'fs-extra'
 import { mkdirpSync as mkdirSync } from 'fs-extra'
 
 const readText = ref => readFile(ref)
-                        .then(resp => resp.toString)
+                        .then(resp => resp.toString())
 
 const writeText = (ref, content) => {
     // make sure the directory exists
