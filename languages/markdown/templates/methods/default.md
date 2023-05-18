@@ -19,4 +19,3 @@ ${method.capabilities}
 ${method.examples}
 
 ---
-${end.method}
