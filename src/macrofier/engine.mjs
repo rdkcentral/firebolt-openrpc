@@ -778,8 +778,6 @@ function generateExamples(json = {}, mainTemplates = {}, languages = {}) {
 function generateMethods(json = {}, examples = {}, templates = {}) {
   const methods = compose(
     option([]),
-//    map(filter(not(isRPCOnlyMethod))),
-    map(filter(not(isProviderInterfaceMethod))),
     getMethods
   )(json)
 
