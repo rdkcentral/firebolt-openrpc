@@ -107,7 +107,7 @@ const getLinkForSchema = (schema, json) => {
 
   const type = types.getSchemaType(schema, json, { destination: state.destination })
 
-  // local - insert a bogus link, that we'll udpate later based on final table-of-contents
+  // local - insert a bogus link, that we'll update later based on final table-of-contents
   if (json.components.schemas[type]) {
     return `#\$\{LINK:schema:${type}\}`
   }
@@ -120,7 +120,7 @@ const getLinkForSchema = (schema, json) => {
         else {
           const base = dirs ? '..' : '.'
           if (dirs) {
-            return `${base}/schemas/${group}/#${type}`
+            return `${base}/${group}/schemas/#${type}`
           }
           else {
             return `${base}/schemas/${group}.md#${type}`
