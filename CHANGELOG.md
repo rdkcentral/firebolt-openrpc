@@ -1,3 +1,11 @@
+## [2.0.2-next.1](https://github.com/rdkcentral/firebolt-openrpc/compare/v2.0.1...v2.0.2-next.1) (2023-05-19)
+
+
+### Bug Fixes
+
+* Generate correct links to shared schemas ([02980a2](https://github.com/rdkcentral/firebolt-openrpc/commit/02980a2fe79bc2328ae08fbf00e5439c474f6c17))
+* Remove unused ${if.javascript} tag from subscriber.md ([84ab9db](https://github.com/rdkcentral/firebolt-openrpc/commit/84ab9dbec90971f44900773b2c2fc30a059e3d03))
+
 ## [2.0.1](https://github.com/rdkcentral/firebolt-openrpc/compare/v2.0.0...v2.0.1) (2023-05-19)
 
 ### Bug Fixes
