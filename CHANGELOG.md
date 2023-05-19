@@ -1,3 +1,10 @@
+## [2.0.1-next.3](https://github.com/rdkcentral/firebolt-openrpc/compare/v2.0.1-next.2...v2.0.1-next.3) (2023-05-19)
+
+
+### Bug Fixes
+
+* Generate correct links to shared schemas ([02980a2](https://github.com/rdkcentral/firebolt-openrpc/commit/02980a2fe79bc2328ae08fbf00e5439c474f6c17))
+
 ## [2.0.1-next.2](https://github.com/rdkcentral/firebolt-openrpc/compare/v2.0.1-next.1...v2.0.1-next.2) (2023-05-19)
 
 
