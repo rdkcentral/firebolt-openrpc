@@ -17,7 +17,7 @@
                     "x-uses": ["xrn:firebolt:capability:test:test"]
                 }
             ],
-            "summary": "A temporal set method that lists Advanced objects.",
+            "summary": "An event with one context parameter.",
             "params": [
                 {
                     "name": "appId",
@@ -45,6 +45,67 @@
                         {
                             "name": "appId",
                             "value": "hulu"
+                        }
+                    ],
+                    "result": {
+                        "name": "result",
+                        "value": {
+                            "foo": "bar"
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "onEventWithTwoContext",
+            "tags": [
+                {
+                    "name": "event"
+                },
+                {
+                    "name": "capabilities",
+                    "x-uses": ["xrn:firebolt:capability:test:test"]
+                }
+            ],
+            "summary": "An event with two context parameters.",
+            "params": [
+                {
+                    "name": "appId",
+                    "required": true,
+                    "schema": {
+                        "type": "string"
+                    }
+                },
+                {
+                    "name": "state",
+                    "required": true,
+                    "schema": {
+                        "type": "string"
+                    }
+                }
+            ],
+            "result": {
+                "name": "result",
+                "schema": {
+                    "type": "object",
+                    "properties": {
+                        "foo": {
+                            "type": "string"
+                        }
+                    }    
+                }
+            },
+            "examples": [
+                {
+                    "name": "Default Example",
+                    "params": [
+                        {
+                            "name": "appId",
+                            "value": "hulu"
+                        },
+                        {
+                            "name": "state",
+                            "value": "inactive"
                         }
                     ],
                     "result": {
