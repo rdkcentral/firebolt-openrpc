@@ -1,5 +1,11 @@
 ## [2.0.1](https://github.com/rdkcentral/firebolt-openrpc/compare/v2.0.0...v2.0.1) (2023-05-19)
 
+### Bug Fixes
+
+* Generate correct links to shared schemas ([02980a2](https://github.com/rdkcentral/firebolt-openrpc/commit/02980a2fe79bc2328ae08fbf00e5439c474f6c17))
+
+## [2.0.1-next.2](https://github.com/rdkcentral/firebolt-openrpc/compare/v2.0.1-next.1...v2.0.1-next.2) (2023-05-19)
+
 
 ### Bug Fixes
 
@@ -12,18 +18,6 @@
 * **temporal-set:** Code did not match spec ([e3069f1](https://github.com/rdkcentral/firebolt-openrpc/commit/e3069f1fdc0ba06c6e82e5596a29b161b30d6f02)), closes [#89](https://github.com/rdkcentral/firebolt-openrpc/issues/89)
 * **temporal-set:** Code did not match spec ([00fbae3](https://github.com/rdkcentral/firebolt-openrpc/commit/00fbae3fee20046c4d3fd8cebeb76f6025d27b9a))
 
-## [2.0.1-next.1](https://github.com/rdkcentral/firebolt-openrpc/compare/v2.0.0...v2.0.1-next.1) (2023-05-19)
-
-
-### Bug Fixes
-
-* Bug in readText ([b54597b](https://github.com/rdkcentral/firebolt-openrpc/commit/b54597bc96881e0a20b29f2303dae2fe68099b51))
-* Document provider notifications ([4515ff0](https://github.com/rdkcentral/firebolt-openrpc/commit/4515ff01151a82e055c911ccf5e885ffd0411d24))
-* **Events:** Support for multiple context parameters ([43d8318](https://github.com/rdkcentral/firebolt-openrpc/commit/43d83180130e75a183b62be8c01e4138e78b651b))
-* **property:** Copy manage or use caps from getter to setter ([41cb22e](https://github.com/rdkcentral/firebolt-openrpc/commit/41cb22eb81a3a82706bafd0548c6d4f7e90bf879))
-* Remove unused macro ([9f9b538](https://github.com/rdkcentral/firebolt-openrpc/commit/9f9b53846a2e6834a1b83ca26153d743fc308dd0))
-* **temporal-set:** Code did not match spec ([e3069f1](https://github.com/rdkcentral/firebolt-openrpc/commit/e3069f1fdc0ba06c6e82e5596a29b161b30d6f02)), closes [#89](https://github.com/rdkcentral/firebolt-openrpc/issues/89)
-* **temporal-set:** Code did not match spec ([00fbae3](https://github.com/rdkcentral/firebolt-openrpc/commit/00fbae3fee20046c4d3fd8cebeb76f6025d27b9a))
 
 # [2.0.0](https://github.com/rdkcentral/firebolt-openrpc/compare/v1.7.1...v2.0.0) (2023-05-01)
 
