@@ -325,6 +325,7 @@ const generateMacros = (obj, templates, languages, options = {}) => {
   const imports = generateImports(obj, templates)
   const initialization = generateInitialization(obj, templates)
   const enums = generateEnums(obj, templates)
+  const enumsConversion = generateEnumsConversion(obj, templates)
   const eventsEnum = generateEvents(obj, templates)
   const examples = generateExamples(obj, templates, languages)
 
@@ -337,7 +338,6 @@ const generateMacros = (obj, templates, languages, options = {}) => {
   const methods = methodsArray.length ? getTemplate('/sections/methods', templates).replace(/\$\{method.list\}/g, methodsArray.map(m => m.body).join('\n')) : ''
   const methodList = methodsArray.filter(m => m.body).map(m => m.name)
   const providerInterfaces = generateProviderInterfaces(obj, templates)
-  const enumsConversion = generateEnumsConversion(obj, templates)
   const events = eventsArray.length ? getTemplate('/sections/events', templates).replace(/\$\{event.list\}/g, eventsArray.map(m => m.body).join('\n')) : ''
   const eventList = eventsArray.map(m => makeEventName(m))
   const defaults = generateDefaults(obj, templates)
@@ -564,13 +564,13 @@ const generateEnums = (json, templates) => {
 const generateEnumsConversion = (json, templates) => {
   return compose(
     option(''),
+    map(val => val ? getTemplate('/sections/enum_conversion', templates).replace(/\$\{schema.list\}/g, val.trimEnd()): ''),
     map(reduce((acc, val) => acc.concat(val).concat('\n'), '')),
     map(map((schema) => convertEnumTemplate(schema, '/types/enum_conversion', templates))),
     map(enumFinder),
     getSchemas
   )(json)
 }
-
 
 const generateEvents = (json, templates) => {
   const eventNames = eventsOrEmptyArray(json).map(makeEventName)

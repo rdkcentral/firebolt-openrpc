@@ -30,9 +30,7 @@ namespace FireboltSDK {
     }
 }
 
-namespace WPEFramework {
-    /* ${ENUMS_CONVERSION} */
-}
+/* ${ENUMS_CONVERSION} */
 
 #ifdef __cplusplus
 extern "C" {
