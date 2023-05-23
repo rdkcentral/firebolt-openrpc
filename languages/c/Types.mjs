@@ -19,13 +19,15 @@
 import deepmerge from 'deepmerge'
 import { getPath } from '../../src/shared/json-schema.mjs'
 import { getTypeName, getModuleName, description, getObjectHandleManagement, getNativeType, getPropertyAccessors, capitalize, isOptional, generateEnum, getMapAccessors, getArrayAccessors } from './src/types/NativeHelpers.mjs'
-import { getObjectHandleManagementImpl, getPropertyAccessorsImpl } from './src/types/ImplHelpers.mjs'
+import { getObjectHandleManagementImpl, getPropertyAccessorsImpl, getPropertyGetterImpl } from './src/types/ImplHelpers.mjs'
 import { getJsonContainerDefinition } from './src/types/JSONHelpers.mjs'
+
 
 function getMethodSignature(method, module, { destination, isInterface = false }) {
     const extraParam = '${method.result.type}* ${method.result.name}'
 
-    const prefix = method.tags.find(t => t.name.split(":")[0] === "property") ? "Get" : ""
+    const prefix = method.tags.find(t =>  t.name.split(":")[0] === "property") ? "Get" : ""
+
 
     return 'uint32_t ${info.title}_' + prefix + '${method.Name}(' + extraParam + ')'
 }
@@ -36,9 +38,11 @@ function getMethodSignatureParams(method, module, { destination }) {
 
 const safeName = prop => prop.match(/[.+]/) ? '"' + prop + '"' : prop
 
-function getSchemaType(schema, module, { name, destination, link = false, title = false, code = false, asPath = false, event = false, expandEnums = true, baseUrl = '' } = {}) {
+function getSchemaType(schema, module, { name, destination, resultSchema = false, link = false, title = false, code = false, asPath = false, event = false, expandEnums = true, baseUrl = '' } = {}) {
     let type = ''
     let theTitle = schema.title || name || ('UnamedSchema' + (Math.floor(Math.random() * 100)))
+
+    let stringAsHandle = resultSchema || event
 
     if (schema['x-method']) {
         console.log(`WARNING UNHANDLED: x-method in ${theTitle}`)
@@ -55,7 +59,7 @@ function getSchemaType(schema, module, { name, destination, link = false, title 
         }
     }
     else if (schema.const) {
-        type = getNativeType(schema)
+        type = getNativeType(schema, stringAsHandle)
         return type
     }
     else if (schema.type === 'string' && schema.enum) {
@@ -111,13 +115,14 @@ function getSchemaType(schema, module, { name, destination, link = false, title 
         //TODO
     }
     else if (schema.type) {
-        type = getNativeType(schema)
+        type = getNativeType(schema, stringAsHandle)
         return type
     }
 
     // TODO: deal with dependencies
     return type
 }
+
 
 //function getSchemaShape(schema = {}, module = {}, { name = '', level = 0, title, summary, descriptions = true, destination, enums = true } = {})
 //  function getSchemaType()
@@ -185,7 +190,7 @@ function getSchemaShape(schema, module, { name = '', level = 0, title, summary, 
                     }
                     if (res && res.length > 0) {
                         let n = tName + '_' + capitalize(pname || prop.title)
-                        let def = getArrayAccessors(n + 'Array', res)
+                        let def = getArrayAccessors(n + 'Array', res, tName)
                         c_shape += '\n' + def
                     }
                     else {
@@ -332,7 +337,7 @@ function getJsonType(schema = {}, module = {}, { name = '', descriptions = false
         return `WPEFramework::Core::JSON::ArrayType<${res}>`
     }
     else if (schema.allOf) {
-        let union = deepmerge.all([...schema.allOf.map(x => x['$ref'] ? getPath(x['$ref'], module, schemas) || x : x)])
+        let union = deepmerge.all([...schema.allOf.map(x => x['$ref'] ? getPath(x['$ref'], module) || x : x)])
         if (schema.title) {
             union['title'] = schema.title
         }
@@ -361,6 +366,42 @@ function getJsonType(schema = {}, module = {}, { name = '', descriptions = false
     return type
 }
 
+const hasTag = (method, tag) => {
+    return method.tags && method.tags.filter(t => t.name === tag).length > 0
+}
+
+function getMethodImpl(schema, module) {
+
+    let paramList = []
+    let impl = ''
+
+    schema.params.map(param => {
+        /*
+            paramList = [{name='', nativeType='', jsonType='', required=boolean}]
+        */
+        paramList['nativeType'] = getSchemaType(param.schema, module, { title: true, name: param.name })
+        paramList['jsonType'] = getJsonType(param.schema, module, {name: param.name})
+        paramList['name'] = param.name
+        paramList['required'] = param.required
+
+    })
+
+    let resultType = schema.result && getSchemaType(schema.result.schema, module, { title: true, name: schema.result.name, resultSchema: true}) || ''
+    let resultJsonType = schema.result && getJsonType(schema.result.schema, module, {name: schema.result.name}) || ''
+
+
+    if(hasTag(schema, 'property') || hasTag(schema, 'property:readonly')) {
+        
+        impl = getPropertyGetterImpl(schema, module, resultType, resultJsonType, paramList)
+
+        impl += '\n'
+    }
+
+    return impl
+
+}
+
+
 function getTypeScriptType(jsonType) {
     if (jsonType === 'integer') {
         return 'number'
@@ -384,5 +425,6 @@ export default {
     getMethodSignatureParams,
     getSchemaShape,
     getSchemaType,
-    getJsonType
+    getJsonType,
+    getMethodImpl
 }

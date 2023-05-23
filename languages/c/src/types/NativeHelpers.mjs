@@ -24,6 +24,7 @@ const { chain, filter, reduce, option, map } = pointfree
 import predicates from 'crocks/predicates/index.js'
 import { getPath, getExternalSchemaPaths } from '../../../../src/shared/json-schema.mjs'
 import deepmerge from 'deepmerge'
+import { str } from 'ajv'
 
 const { isObject, isArray, propEq, pathSatisfies, hasProp, propSatisfies } = predicates
 
@@ -82,36 +83,27 @@ const isOptional = (prop, json) => (!json.required || !json.required.includes(pr
 const SdkTypesPrefix = 'Firebolt'
 
 const Indent = '    '
+const getFireboltStringType = () => 'FireboltTypes_StringHandle'
 
-const getNativeType = json => {
-    let type
-
-    if (json.const) {
-      if (typeof json.const === 'string') {
-        type = 'char*'
+const getNativeType = (json, stringAsHandle = false) => {
+  let type
+  let jsonType = json.const ? typeof json.const : json.type
+  if (jsonType === 'string') {
+      type = 'char*'
+      if(stringAsHandle) {
+        type = getFireboltStringType()
       }
-      else if (typeof json.const === 'number') {
-        type = 'uint32_t'
-        if (json.const < 0)
-            type = 'int32_t'
-      } else if (typeof json.const === 'boolean'){
-        type = 'bool'
-      }
-    }
-    else if (json.type === 'string') {
-        type = 'char*'
-    }
-    else if (json.type === 'number' || json.type === 'integer') { //Lets keep it simple for now
-        type = 'uint32_t'
-        if ((json.minimum && json.minimum < 0)
-             || (json.exclusiveMinimum && json.exclusiveMinimum < 0)) {
-            type = 'int32_t'
-        }
-    }
-    else if (json.type === 'boolean') {
-      type = 'bool'
-    }
-    return type
+  }
+  else if (jsonType === 'number') {
+      type = 'float'
+  }
+  else if (jsonType === 'integer') {
+      type = 'int32_t'
+  }
+  else if (jsonType === 'boolean') {
+    type = 'bool'
+  }
+  return type
 }
 
 const getObjectHandleManagement = varName => {
@@ -160,12 +152,12 @@ const getTypeName = (moduleName, varName, upperCase = false) => {
   return `${mName}_${vName}`
 }
 
-const getArrayAccessors = (arrayName, valueType) => {
+const getArrayAccessors = (arrayName, valueType, objectName) => {
 
-  let res = `uint32_t ${arrayName}_Size(${arrayName}Handle handle);` + '\n'
-  res += `${valueType} ${arrayName}_Get(${arrayName}Handle handle, uint32_t index);` + '\n'
-  res += `void ${arrayName}_Add(${arrayName}Handle handle, ${valueType} value);` + '\n'
-  res += `void ${arrayName}_Clear(${arrayName}Handle handle);` + '\n'
+  let res = `uint32_t ${arrayName}_Size(${objectName}Handle handle);` + '\n'
+  res += `${valueType} ${arrayName}_Get(${objectName}Handle handle, uint32_t index);` + '\n'
+  res += `void ${arrayName}_Add(${objectName}Handle handle, ${valueType} value);` + '\n'
+  res += `void ${arrayName}_Clear(${objectName}Handle handle);` + '\n'
 
   return res
 }
@@ -219,6 +211,7 @@ const getIncludeDefinitions = (json = {}, jsonData = false) => {
     return `${description(method.name, 'Listen to updates')}\n` + `uint32_t ${capitalize(getModuleName(module))}_Listen${capitalize(method.name)}Update(On${capitalize(method.name)}Changed notification, uint16_t* listenerId)`
   }
 
+  
   export {
     getHeaderText,
     getIncludeGuardOpen,
@@ -240,5 +233,6 @@ const getIncludeDefinitions = (json = {}, jsonData = false) => {
     getObjectHandleManagement,
     getPropertyAccessors,
     isOptional,
-    generateEnum
+    generateEnum,
+    getFireboltStringType
   }

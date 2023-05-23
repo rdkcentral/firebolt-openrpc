@@ -346,10 +346,15 @@ function getSchemaShape(schema = {}, module = {}, { name = '', level = 0, title,
     return acc
   }
 
+
+  function getMethodImpl(schema, module) {
+    return ''
+  }
   export default {
       getMethodSignature,
       getMethodSignatureParams,
       getSchemaShape,
       getSchemaType,
-      getJsonType
+      getJsonType,
+      getMethodImpl
   }

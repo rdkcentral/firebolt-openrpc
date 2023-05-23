@@ -33,6 +33,7 @@ import { isRPCOnlyMethod, isProviderInterfaceMethod, getProviderInterface, getPa
 import isEmpty from 'crocks/core/isEmpty.js'
 import { getLinkedSchemaPaths, getSchemaConstraints, isSchema, localizeDependencies } from '../shared/json-schema.mjs'
 
+
 // util for visually debugging crocks ADTs
 const _inspector = obj => {
   if (obj.inspect) {
@@ -52,7 +53,8 @@ let types = {
   getMethodSignatureParams: ()=>null,
   getSchemaShape: ()=>null,
   getSchemaType: ()=>null,
-  getJsonType: ()=>null
+  getJsonType: ()=>null,
+  getMethodImpl: ()=>null
 }
 
 let config = {
@@ -884,7 +886,7 @@ function insertMethodMacros(template, methodObj, json, templates, examples={}) {
     deprecated: isDeprecatedMethod(methodObj),
     context: []
   }
-
+ 
   if (isEventMethod(methodObj) && methodObj.params.length > 1) {
     method.context = methodObj.params.filter(p => p.name !== 'listen').map(p => p.name)
   }
@@ -945,7 +947,8 @@ function insertMethodMacros(template, methodObj, json, templates, examples={}) {
   const pullsResultType = pullsResult && types.getSchemaShape(pullsResult, json, { destination: state.destination, section: state.section })
   const pullsForType = pullsResult && types.getSchemaType(pullsResult, json, { destination: state.destination, section: state.section  })
   const pullsParamsType = pullsParams ? types.getSchemaShape(pullsParams, json, { destination: state.destination, section: state.section  }) : ''
- 
+  const methodImpl = types.getMethodImpl(methodObj, json)
+
   let seeAlso = ''
   
   if (isPolymorphicPullMethod(methodObj) && pullsForType) {
@@ -1003,7 +1006,7 @@ function insertMethodMacros(template, methodObj, json, templates, examples={}) {
     .replace(/\$\{method\.result\.name\}/g, result.name)
     .replace(/\$\{method\.result\.summary\}/g, result.summary)
     .replace(/\$\{method\.result\.link\}/g, getLinkForSchema(result, json)) //, baseUrl: options.baseUrl
-    .replace(/\$\{method\.result\.type\}/g, types.getSchemaType(result.schema, json, {title: true, asPath: false, destination: state.destination })) //, baseUrl: options.baseUrl
+    .replace(/\$\{method\.result\.type\}/g, types.getSchemaType(result.schema, json, {title: true, asPath: false, destination: state.destination, resultSchema: true })) //, baseUrl: options.baseUrl
     .replace(/\$\{event\.result\.type\}/, isEventMethod(methodObj) ? types.getSchemaType(result.schema, json, { destination: state.destination, event: true, description: methodObj.result.summary, asPath: false }): '') //, baseUrl: options.baseUrl
     .replace(/\$\{method\.result\}/g,  generateResult(result.schema, json, templates))
     .replace(/\$\{method\.example\.value\}/g,  JSON.stringify(methodObj.examples[0].result.value))
@@ -1018,6 +1021,7 @@ function insertMethodMacros(template, methodObj, json, templates, examples={}) {
     .replace(/\$\{method\.puller\}/g, pullerTemplate) // must be last!!
     .replace(/\$\{method\.setter\}/g, setterTemplate) // must be last!!
     .replace(/\$\{method\.subscriber\}/g, subscriberTemplate) // must be last!!
+    .replace(/\$\{method\.impl\}/g, methodImpl)
 
   if (method.deprecated) {
     template = template.replace(/\$\{if\.deprecated\}(.*?)\$\{end\.if\.deprecated\}/gms, '$1')
@@ -1033,7 +1037,6 @@ function insertMethodMacros(template, methodObj, json, templates, examples={}) {
     template = template.replace(/\$\{method\.params\[([0-9]+)\]\.type\}/g, types.getSchemaType(methodObj.params[index].schema, json, { destination: state.destination }))
     template = template.replace(/\$\{method\.params\[([0-9]+)\]\.name\}/g, methodObj.params[index].name)
   })
-  
   // Note that we do this twice to ensure all recursive macros are resolved
   template = insertExampleMacros(template, examples[methodObj.name] || [], methodObj, json, templates)
 

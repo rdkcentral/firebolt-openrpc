@@ -1,3 +1,8 @@
+import { getModuleName, getPropertyGetterSignature, description, getFireboltStringType } from './NativeHelpers.mjs'
+
+const getSdkNameSpace = () => 'FireboltSDK'
+const getJsonDataPrefix = () => 'JsonData_'
+
 const Indent = '\t'
 
 const getObjectHandleManagementImpl = (varName, jsonDataName) => {
@@ -288,7 +293,94 @@ const getMapAccessors = (objName, propertyName, propertyType, json = {}, options
   return result
 }
 
+/*
+paramList = [{name='', nativeType='', jsonType='', required=boolean}]
+*/
+function getPropertyParams(paramList) {
+  let impl = `    JsonObject jsonParameters;\n`
+  paramList.forEach(param => {
+    impl += `\n`
+    const jsonType = paramList.jsonType
+    if (jsonType.length) {
+      if (param.required) {
+        if (param.nativeType.includes('FireboltTypes_StringHandle')) {
+          impl += `${indents}    WPEFramework::Core::JSON::Variant ${capitalize(param.name)} = *(static_cast<${jsonType}*>(${param.name}));\n`
+        }
+        else {
+          impl += `${indents}    WPEFramework::Core::JSON::Variant ${capitalize(param.name)} = ${param.name};\n`
+        }
+        impl += `${indents}    jsonParameters.Set(_T("${param.name}"), ${capitalize(param.name)});\n`
+      }
+      else {
+        impl += `${indents}    if (${param.name} != nullptr) {\n`
+        if (param.nativeType.includes('char*')) {
+          impl += `${indents}        WPEFramework::Core::JSON::Variant ${capitalize(param.name)} = ${param.name};\n`
+        } else {
+
+          impl += `${indents}        WPEFramework::Core::JSON::Variant ${capitalize(param.name)} = *(${param.name});\n`
+        }
+        impl += `${indents}        jsonParameters.Set(_T("${param.name}"), ${capitalize(param.name)});\n`
+        impl += `${indents}    }\n`
+      }
+    }
+  })
+
+  return impl
+}
+
+/*
+paramList = [{name='', nativeType='', jsonType='', required=boolean}]
+*/
+
+function getPropertyGetterImpl(property, module, propType, container, paramList = []) {
+    
+  let methodName = getModuleName(module).toLowerCase() + '.' + property.name
+  let impl = ''
+  
+  let signature = getPropertyGetterSignature(property, module, propType)
+  //impl += `${description(property.name, property.summary)}\n`
+  impl += `${signature}\n{\n`
+  impl += `    const string method = _T("${methodName}");` + '\n'
+
+  if (container.length) {
+    impl += `    ${container} jsonResult;\n`
+  }
+  if (paramList.length > 0) {
+    impl += getPropertyParams(paramList)
+    impl += `\n    uint32_t status = ${getSdkNameSpace()}::Properties::Get(method, jsonParameters, jsonResult);`
+  } else {
+    impl += `\n    uint32_t status = ${getSdkNameSpace()}::Properties::Get(method, jsonResult);`
+  }
+
+  impl += `\n    if (status == FireboltSDKErrorNone) {\n`
+  if (container.length) {
+    impl += `        if (${property.result.name || property.name} != nullptr) {\n`
+
+    if (((propType === 'char*') || (propType === 'FireboltTypes_StringHandle'))) {
+      impl += `            ${container}* strResult = new ${container}(jsonResult);` + '\n'
+      impl += `            *${property.result.name || property.name} = static_cast<${getFireboltStringType()}>(strResult);` + '\n'
+    } else if ((property.type === 'object') || (property.type === 'array')) {
+      impl += `            WPEFramework::Core::ProxyType<${container}>* resultPtr = new WPEFramework::Core::ProxyType<${container}>();\n`
+      impl += `            *resultPtr = WPEFramework::Core::ProxyType<${container}>::Create();\n`
+      impl += `            *(*resultPtr) = jsonResult;\n`
+      impl += `            *${property.result.name || property.name} = static_cast<${propType}>(resultPtr);\n`
+    } else {
+      impl += `            *${property.result.name || property.name} = jsonResult.Value();\n`
+    }
+    impl += `        }\n`
+  }
+  impl += '    }' + '\n'
+  impl += '    return status;' + '\n'
+
+  impl += `}`
+
+
+  return impl
+}
+
+
 export {
     getObjectHandleManagementImpl,
-    getPropertyAccessorsImpl
+    getPropertyAccessorsImpl,
+    getPropertyGetterImpl
 }

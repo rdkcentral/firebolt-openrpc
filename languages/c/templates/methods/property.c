@@ -1,12 +1,27 @@
-/* ${method.name} - ${method.description} */
-uint32_t ${info.title}_Get${method.Name}(${method.params}${if.params}, ${end.if.params}${method.result.type}* ${method.result.name}) {
-  const string method = _T("${info.title}.${method.name}");
-  FireboltSDK::${info.title}::${method.result.type} jsonResult;
+${method.impl}
 
-  uint32_t status = FireboltSDK::Properties::Get(method, jsonResult);
-  if (status == FireboltSDKErrorNone) {
-    WPEFramework::Core::ProxyType<FireboltSDK::${info.title}::${method.result.type}>* resultPtr = new WPEFramework::Core::ProxyType<FireboltSDK::${info.title}::${method.result.type}>();
-    *${method.result.name} = static_cast<${info.title}_${method.result.type}Handle>(resultPtr);
-  }
-  return status;
+static void ${info.title}${method.Name}InnerCallback( void* userCB, const void* userData, void* response )
+{
+    WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::VariantContainer>* jsonResponse = static_cast<WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::VariantContainer>*>(response);
+    ASSERT(jsonResponse->IsValid() == true);
+    On${info.title}${method.Name}Changed callback = reinterpret_cast<On${info.title}${method.Name}Changed>(userCB);
+    callback(userData, static_cast<Types_BooleanMapHandle>(jsonResponse));
+
+}
+
+/* ${method.name} - ${method.description} */
+uint32_t ${info.title}_Register_${method.Name}Update( On${info.title}${method.Name}Changed userCB, const void* userData )
+{
+    const string eventName = _T("${info.title}.${method.name}");
+    uint32_t status = FireboltSDKErrorNone;
+    if (userCB != nullptr) {
+        JsonObject jsonParameters;
+
+        status = FireboltSDK::Properties::Subscribe<WPEFramework::Core::JSON::VariantContainer>(eventName, jsonParameters, ${info.title}${method.Name}InnerCallback, reinterpret_cast<void*>(userCB), userData);
+    }
+    return status;
+}
+uint32_t ${info.title}_Unregister_${method.Name}( On${info.title}${method.Name}Changed userCB)
+{
+    return FireboltSDK::Properties::Unsubscribe(_T("${info.title}.${method.name}"), reinterpret_cast<void*>(userCB));
 }
