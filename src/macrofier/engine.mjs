@@ -101,14 +101,9 @@ const getTemplateForExampleResult = (method, templates) => {
   return template || JSON.stringify(method.examples[0].result.value, null, '\t')
 }
 
-const getLinkForSchema = (schema, json) => {
+const getLinkForSchema = (schema, json, { name = '' } = {}) => {
   const dirs = config.createModuleDirectories
   const copySchemasIntoModules = config.copySchemasIntoModules
-
-  let name = schema.title || schema.name
-  if (schema.schema) {
-    schema = schema.schema
-  }
 
   const type = types.getSchemaType(schema, json, { name: name, destination: state.destination, section: state.section })
 
@@ -342,7 +337,7 @@ const generateMacros = (obj, templates, languages, options = {}) => {
   const events = eventsArray.length ? getTemplate('/sections/events', templates).replace(/\$\{event.list\}/g, eventsArray.map(m => m.body).join('\n')) : ''
   const eventList = eventsArray.map(m => makeEventName(m))
   const defaults = generateDefaults(obj, templates)
-  const schemasArray = generateSchemas(obj, templates, { baseUrl: '', section: 'schemas' }).filter(s => (options.copySchemasIntoModules || !s.uri)).reverse()
+  const schemasArray = generateSchemas(obj, templates, { baseUrl: '', section: 'schemas' }).filter(s => (options.copySchemasIntoModules || !s.uri))
   const accessorsArray = generateSchemas(obj, templates, { baseUrl: '', section: 'accessors' }).filter(s => (options.copySchemasIntoModules || !s.uri))
   const schemas = schemasArray.length ? getTemplate('/sections/schemas', templates).replace(/\$\{schema.list\}/g, schemasArray.map(s => s.body).filter(body => body).join('\n')) : ''
   const typesArray = schemasArray.filter(x => !x.enum)
@@ -637,7 +632,6 @@ function generateSchemas(json, templates, options) {
     }    
 
     let content = getTemplate('/schemas/default', templates)
-    content = content.trim()
 
     if (!schema.examples || schema.examples.length === 0) {
         content = content.replace(/\$\{if\.examples\}.*?\{end\.if\.examples\}/gms, '')
@@ -670,6 +664,9 @@ function generateSchemas(json, templates, options) {
     else {
         content = content.replace(/.*\$\{schema.seeAlso\}/, '')
     }
+    content = content.trim().length ? content.trimEnd() : content.trim()
+
+    const isEnum = x => x.type === 'string' && Array.isArray(x.enum) && x.title
 
     const result = uri ? {
       uri: uri,
@@ -723,7 +720,7 @@ function getRelatedSchemaLinks(schema = {}, json = {}, templates = {}, options =
       .map(path => path.substring(2).split('/'))
       .map(path => getPathOr(null, path, json))
       .filter(schema => schema.title)
-      .map(schema => '[' + types.getSchemaType(schema, json, { destination: state.destination, section: state.section  }) + '](' + getLinkForSchema(schema, json, true) + ')') // need full module here, not just the schema
+      .map(schema => '[' + types.getSchemaType(schema, json, { destination: state.destination, section: state.section  }) + '](' + getLinkForSchema(schema, json, { name: schema.title }) + ')') // need full module here, not just the schema
       .filter(link => link)
       .join('\n')
 
@@ -1067,10 +1064,10 @@ function insertMethodMacros(template, methodObj, json, templates, examples={}) {
     .replace(/\$\{method\.capabilities\}/g, capabilities)
     .replace(/\$\{method\.result\.name\}/g, result.name)
     .replace(/\$\{method\.result\.summary\}/g, result.summary)
-    .replace(/\$\{method\.result\.link\}/g, getLinkForSchema(result, json)) //, baseUrl: options.baseUrl
-    .replace(/\$\{method\.result\.type\}/g, types.getSchemaType(result.schema, json, {name: result.title || result.name, title: true, asPath: false, destination: state.destination })) //, baseUrl: options.baseUrl
-    .replace(/\$\{event\.result\.type\}/, isEventMethod(methodObj) ? types.getSchemaType(result.schema, json, { name: result.title || result.name, destination: state.destination, event: true, description: methodObj.result.summary, asPath: false }): '') //, baseUrl: options.baseUrl
-    .replace(/\$\{method\.result\}/g,  generateResult(result, json, templates))
+    .replace(/\$\{method\.result\.link\}/g, getLinkForSchema(result.schema, json, {name : result.name})) //, baseUrl: options.baseUrl
+    .replace(/\$\{method\.result\.type\}/g, types.getSchemaType(result.schema, json, {name: result.name, title: true, asPath: false, destination: state.destination })) //, baseUrl: options.baseUrl
+    .replace(/\$\{event\.result\.type\}/, isEventMethod(methodObj) ? types.getSchemaType(result.schema, json, { name: result.name, destination: state.destination, event: true, description: methodObj.result.summary, asPath: false }): '') //, baseUrl: options.baseUrl
+    .replace(/\$\{method\.result\}/g,  generateResult(result.schema, json, templates, { name : result.name }))
     .replace(/\$\{method\.example\.value\}/g,  JSON.stringify(methodObj.examples[0].result.value))
     .replace(/\$\{method\.alternative\}/g, method.alternative)
     .replace(/\$\{method\.alternative.link\}/g, '#'+(method.alternative || "").toLowerCase())
@@ -1198,11 +1195,8 @@ function insertExampleMacros(template, examples, method, json, templates) {
   return template.replace(/\$\{method\.examples\}/g, content)
 }
 
-function generateResult(schema, json, templates) {
+function generateResult(result, json, templates, { name = '' } = {}) {
 
-  let name = schema.name || schema.title
-  let result = schema.schema ? schema.schema : schema
- 
   const type = types.getSchemaType(result, json, { name: name, destination: state.destination, section: state.section  })
 
   if (result.type === 'object' && result.properties) {
@@ -1214,13 +1208,13 @@ function generateResult(schema, json, templates) {
       }
     }
 
-    return insertSchemaMacros(content.join('\n'), name, schema, json)
+    return insertSchemaMacros(content.join('\n'), name, result, json)
   }
   else if (type === 'string' && Array.isArray(result.enum)) {
-    return insertSchemaMacros(getTemplate('/types/enum', templates), name, schema, json)
+    return insertSchemaMacros(getTemplate('/types/enum', templates), name, result, json)
   }
   else if (result.$ref) {
-    const link = getLinkForSchema(schema, json)
+    const link = getLinkForSchema(result, json, { name: name})
 
     // if we get a real link use it
     if (link !== '#') {
@@ -1234,14 +1228,14 @@ function generateResult(schema, json, templates) {
     }
   }
   else {
-    return insertSchemaMacros(getTemplate('/types/default', templates), name, schema, json)
+    return insertSchemaMacros(getTemplate('/types/default', templates), name, result, json)
   }
 }
 
 function insertSchemaMacros(template, title, schema, module) {
   return template.replace(/\$\{property\}/g, title)
           .replace(/\$\{type\}/g, types.getSchemaType(schema.schema ? schema.schema : schema, module, { name: title, destination: state.destination, section: state.section, code: false }))
-          .replace(/\$\{type.link\}/g, getLinkForSchema(schema, module))
+          .replace(/\$\{type.link\}/g, getLinkForSchema(schema.schema ? schema.schema : schema, module, { name: title }))
           .replace(/\$\{description\}/g, schema.description || '')
           .replace(/\$\{name\}/g, title || '')
 }
@@ -1252,7 +1246,7 @@ function insertParameterMacros(template, param, method, module) {
 
   let constraints = getSchemaConstraints(param, module)
   let type = types.getSchemaType(param.schema, module, { name: param.name, destination: state.destination, section: state.section, code: false, link: false, title: true, asPath: false, expandEnums: false }) //baseUrl: options.baseUrl
-  let typeLink = getLinkForSchema(param, module)
+  let typeLink = getLinkForSchema(param.schema, module, { name: param.name })
   let jsonType = types.getJsonType(param.schema, module, { name: param.name, destination: state.destination, section: state.section, code: false, link: false, title: true, asPath: false, expandEnums: false })
 
   if (constraints && type) {
@@ -1266,7 +1260,7 @@ function insertParameterMacros(template, param, method, module) {
       .replace(/\$\{method.param.required\}/g, param.required || 'false')
       .replace(/\$\{method.param.type\}/g, type)
       .replace(/\$\{json.param.type\}/g, jsonType)
-      .replace(/\$\{method.param.link\}/g, getLinkForSchema(param, module)) //getType(param))
+      .replace(/\$\{method.param.link\}/g, getLinkForSchema(param.schema, module, { name: param.name} )) //getType(param))
       .replace(/\$\{method.param.constraints\}/g, constraints) //getType(param)) 
 }
 
