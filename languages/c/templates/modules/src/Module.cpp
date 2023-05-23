@@ -22,16 +22,25 @@
 
 /* ${IMPORTS} */
 
+namespace FireboltSDK {
+    namespace ${info.title} {
+
+        /* ${TYPES} */
+
+    }
+}
+
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-/* ${TYPES} */
+/* ${ACCESSORS} */
+/* ${METHODS} */
+
 
 #ifdef __cplusplus
 }
 #endif
 
-/* ${ACCESSORS} */
-/* ${METHODS} */
+

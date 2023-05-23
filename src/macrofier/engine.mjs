@@ -31,7 +31,7 @@ const { isObject, isArray, propEq, pathSatisfies, propSatisfies } = predicates
 
 import { isRPCOnlyMethod, isProviderInterfaceMethod, getProviderInterface, getPayloadFromEvent, providerHasNoParameters, isTemporalSetMethod, hasMethodAttributes, getMethodAttributes, isEventMethodWithContext, getSemanticVersion, getSetterFor, getProvidedCapabilities, isPolymorphicPullMethod, hasPublicAPIs } from '../shared/modules.mjs'
 import isEmpty from 'crocks/core/isEmpty.js'
-import { getLinkedSchemaPaths, getSchemaConstraints, isSchema, localizeDependencies } from '../shared/json-schema.mjs'
+import { getLinkedSchemaPaths, getSchemaConstraints, isSchema, localizeDependencies, isDefinitionReferencedBySchema } from '../shared/json-schema.mjs'
 
 // util for visually debugging crocks ADTs
 const _inspector = obj => {
@@ -564,6 +564,8 @@ function generateDefaults(json = {}, templates) {
   return reducer(json)
 }
 
+const isEnum = x => x.type && x.type === 'string' && Array.isArray(x.enum) && x.title
+
 function generateSchemas(json, templates, options) {
   let results = []
 
@@ -609,8 +611,6 @@ function generateSchemas(json, templates, options) {
         content = content.replace(/.*\$\{schema.seeAlso\}/, '')
     }
 
-    const isEnum = x => x.type === 'string' && Array.isArray(x.enum) && x.title
-
     const result = uri ? {
       uri: uri,
       name: schema.title || name,
@@ -625,20 +625,27 @@ function generateSchemas(json, templates, options) {
     results.push(result)
   }
 
+  const list = []
+
   // schemas may be 1 or 2 levels deeps
   Object.entries(schemas).forEach( ([name, schema]) => {
     if (isSchema(schema)) {
-      generate(name, schema)
-    }
-    else if (typeof schema === 'object') {
-      const uri = schema.uri
-      Object.entries(schema).forEach( ([name, schema]) => {
-        if (name !== 'uri') {
-          generate(name, schema, uri)
-        }
-      })
+      list.push([name, schema])
     }
   })
+
+  list.sort((a, b) => {
+    const aInB = isDefinitionReferencedBySchema('#/components/schemas/' + a[0], b[1])
+    const bInA = isDefinitionReferencedBySchema('#/components/schemas/' + b[0], a[1])
+    if(isEnum(a[1]) || (aInB && !bInA)) {
+      return -1
+    } else if(isEnum(b[1]) || (!aInB && bInA)) {
+      return 1
+    }
+    return 0;
+  })
+
+  list.forEach(item => generate(...item))
 
   return results
 }
