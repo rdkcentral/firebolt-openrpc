@@ -491,7 +491,7 @@ function insertTableofContents(content) {
   return content
 }
 
-const isEnumType = x => x.type === 'string' && Array.isArray(x.enum)
+const isEnumType = x => x.type !== 'undefined' && x.type === 'string' && Array.isArray(x.enum)
 
 const getProperties = x => {
    return Array.isArray(x.properties) ? x.properties[0] : x.properties
@@ -500,9 +500,8 @@ const getProperties = x => {
 const isEnumProperties = schema => compose(
     getProperties,
     filter(enm => enm),
-    map(enm => (enm.length > 0)),
-    map(filter(isEnumType)),
-    map(props => props.map(([k, v]) => v)),
+    map(filter(enm => enm)),
+    map(props => props.map(([k, v]) => ((v.type === 'object') ? isEnumProperties(v) : ((v.type === 'array') ? isEnumType(v.items[0] ? v.items[0] : v.items): isEnumType(v))))),
     map(Object.entries),
     filter(schema => isObject(schema))
 )(schema)
@@ -512,18 +511,21 @@ const getEnumProperties = schema => compose(
     filter(enm => enm),
     map(filter(isEnumType)),
     map(props => props.map(([k, v]) => {
+      let enm = v
       if (isEnumType(v) == true) {
-        let type = Object.assign({}, v)
-        type.title = k
-        return type
-      } else {
-        return v
+        enm = Object.assign({}, v)
+        enm.title = k
+      } else if (v.type === 'object') {
+        enm = getEnumProperties(v)
+      } else if (v.type === 'array') {
+        enm = Object.assign({}, (v.items[0] ? v.items[0] : v.items))
+        enm.title = k
       }
+      return enm
     })),
     map(Object.entries),
     filter(schema => isObject(schema))
 )(schema)
-
 
 const convertEnumTemplate = (sch, templateName, templates) => {
   const template = getTemplate(templateName, templates).split('\n')
