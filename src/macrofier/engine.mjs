@@ -65,6 +65,7 @@ const state = {
 }
 
 const capitalize = str => str[0].toUpperCase() + str.substr(1)
+const hasMethodsSchema = (json, options) => json.methods && json.methods.length
 
 const setTyper = (t) => {
   types = t
@@ -333,6 +334,11 @@ const generateMacros = (obj, templates, languages, options = {}) => {
   const declarations = declarationsArray.length ? getTemplate('/sections/declarations', templates).replace(/\$\{declaration\.list\}/g, declarationsArray.map(m => m.declaration).join('\n')) : ''
   const methods = methodsArray.length ? getTemplate('/sections/methods', templates).replace(/\$\{method.list\}/g, methodsArray.map(m => m.body).join('\n')) : ''
   const methodList = methodsArray.filter(m => m.body).map(m => m.name)
+  const methodTypesArray = generateSchemas(obj, templates, { baseUrl: '', section: 'methods_schemas' }).filter(s => (options.copySchemasIntoModules || !s.uri))
+  const methodTypes = methodTypesArray.length ? getTemplate('/sections/methods_types', templates).replace(/\$\{schema.list\}/g, methodTypesArray.map(s => s.body).filter(body => body).join('\n')) : ''
+  const methodAccessorsArray = generateSchemas(obj, templates, { baseUrl: '', section: 'methods_accessors' }).filter(s => (options.copySchemasIntoModules || !s.uri))
+  const methodAccessors = methodAccessorsArray.length ? getTemplate('/sections/methods_accessors', templates).replace(/\$\{schema.list\}/g, methodAccessorsArray.map(s => s.body).filter(body => body).join('\n')) : ''
+
   const providerInterfaces = generateProviderInterfaces(obj, templates)
   const events = eventsArray.length ? getTemplate('/sections/events', templates).replace(/\$\{event.list\}/g, eventsArray.map(m => m.body).join('\n')) : ''
   const eventList = eventsArray.map(m => makeEventName(m))
@@ -341,8 +347,9 @@ const generateMacros = (obj, templates, languages, options = {}) => {
   const accessorsArray = generateSchemas(obj, templates, { baseUrl: '', section: 'accessors' }).filter(s => (options.copySchemasIntoModules || !s.uri))
   const schemas = schemasArray.length ? getTemplate('/sections/schemas', templates).replace(/\$\{schema.list\}/g, schemasArray.map(s => s.body).filter(body => body).join('\n')) : ''
   const typesArray = schemasArray.filter(x => !x.enum)
-  const types = typesArray.length ? getTemplate('/sections/types', templates).replace(/\$\{schema.list\}/g, typesArray.map(s => s.body).filter(body => body).join('\n')) : ''
-  const accessors = accessorsArray.length ? getTemplate('/sections/accessors', templates).replace(/\$\{schema.list\}/g, accessorsArray.map(s => s.body).filter(body => body).join('\n')) : ''
+  const types = (typesArray.length ? getTemplate('/sections/types', templates).replace(/\$\{schema.list\}/g, typesArray.map(s => s.body).filter(body => body).join('\n')) : '') + methodTypes
+
+  const accessors = (accessorsArray.length ? getTemplate('/sections/accessors', templates).replace(/\$\{schema.list\}/g, accessorsArray.map(s => s.body).filter(body => body).join('\n')) : '') + methodAccessors
   const module = getTemplate('/codeblocks/module', templates)
 
   const macros = {
@@ -623,9 +630,9 @@ const isEnum = x => x.type && x.type === 'string' && Array.isArray(x.enum) && x.
 function generateSchemas(json, templates, options) {
   let results = []
 
-  const schemas = json.definitions || (json.components && json.components.schemas) || {}
+  const schemas = (options.section.includes('methods') ? (hasMethodsSchema(json) ? json.methods : '') : (json.definitions || (json.components && json.components.schemas) || {}))
 
-  const generate = (name, schema, uri) => {
+  const generate = (name, schema, uri, { prefix = '' } = {}) => {
     // these are internal schemas used by the firebolt-openrpc tooling, and not meant to be used in code/doc generation
     if (['ListenResponse', 'ProviderRequest', 'ProviderResponse', 'FederatedResponse', 'FederatedRequest'].includes(name)) {
       return
@@ -646,7 +653,7 @@ function generateSchemas(json, templates, options) {
     else {
       content = content.replace(/\$\{if\.description\}(.*?)\{end\.if\.description\}/gms, '$1')
     }
-    const schemaShape = types.getSchemaShape(schema, json, { name, destination: state.destination, section: options.section })
+    const schemaShape = types.getSchemaShape(schema, json, { name, prefix, destination: state.destination, section: options.section })
 
     content = content
         .replace(/\$\{schema.title\}/, (schema.title || name))
@@ -688,6 +695,18 @@ function generateSchemas(json, templates, options) {
   Object.entries(schemas).forEach( ([name, schema]) => {
     if (isSchema(schema)) {
       list.push([name, schema])
+    }
+    else if (schema.tags) {
+      if (!isDeprecatedMethod(schema)) {
+        schema.params.forEach(param => {
+          if (param.schema && (param.schema.type === 'object')) {
+            list.push([param.name, param.schema, '', { prefix : schema.name}])
+          }
+        })
+        if (schema.result.schema && (schema.result.schema.type === 'object')) {
+          list.push([schema.result.name, schema.result.schema, '', { prefix : schema.name}])
+        }
+      }
     }
   })
 
@@ -1224,7 +1243,7 @@ function generateResult(result, json, templates, { name = '' } = {}) {
     else {
       const sch = localizeDependencies(result, json)
       return getTemplate('/types/default', templates)
-              .replace(/\$\{type\}/, types.getSchemaShape(sch, json, { name: result.$ref.split("/").pop()}))
+              .replace(/\$\{type\}/, types.getSchemaShape(sch, json, { name: result.$ref.split("/").pop() }))
     }
   }
   else {

@@ -200,7 +200,6 @@ const macrofy = async (
                 }
             })
 
-            console.log()
         }
 
         // Grab all schema groups w/ a URI string. These came from some external json-schema that was bundled into the OpenRPC

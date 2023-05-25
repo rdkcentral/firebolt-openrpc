@@ -279,9 +279,6 @@ function getSchemaTypeInfo(module = {}, json = {}, name = '', schemas = {}, pref
     return structure
   }
   else if (json.anyOf) {
-    console.log("json.anyOf ---" + name)
-    console.log(json)
-    console.log(module)
     let mergedSchema = getMergedSchema(module, json, name, schemas)
     let prefixName = ((prefix.length > 0) && (name != prefix)) ? prefix : capitalize(name)
     return getSchemaTypeInfo(module, mergedSchema, '', schemas, prefixName, options)
