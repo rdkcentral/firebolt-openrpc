@@ -230,7 +230,7 @@ function getSchemaTypeInfo(module = {}, json = {}, name = '', schemas = {}, pref
   }
   else if (json.type === 'string' && json.enum) {
     //Enum
-    structure.name = capitalize(name || json.title)
+    structure.name = name || json.title
     let typeName = getTypeName(getModuleName(module), name || json.title, prefix, false, false)
     let res = description(capitalize(name || json.title), json.description) + '\n' + generateEnum(json, typeName)
     structure.json = json
@@ -280,7 +280,7 @@ function getSchemaTypeInfo(module = {}, json = {}, name = '', schemas = {}, pref
   }
   else if (json.anyOf) {
     let mergedSchema = getMergedSchema(module, json, name, schemas)
-    let prefixName = ((prefix.length > 0) && (name != prefix)) ? prefix : capitalize(name)
+    let prefixName = ((prefix.length > 0) && (!name.startsWith(prefix))) ? prefix : capitalize(name)
     return getSchemaTypeInfo(module, mergedSchema, '', schemas, prefixName, options)
   }
   else if (json.type === 'object') {
@@ -360,7 +360,7 @@ function getSchemaShapeInfo(json, module, schemas = {}, { name = '', prefix = ''
       let tName = getTypeName(getModuleName(module), name, prefix)
       c_shape += '\n' + (isHeader ? getObjectHandleManagement(tName) : getObjectHandleManagementImpl(tName, getJsonType(json, module, { name })))
       let props = []
-      let containerName = ((prefix.length > 0) && (name != prefix)) ? (prefix + capitalize(name)) : capitalize(name)
+      let containerName = ((prefix.length > 0) && (!name.startsWith(prefix))) ? (prefix + '_' + capitalize(name)) : capitalize(name)
       Object.entries(json.properties).forEach(([pname, prop]) => {
         let items
         var desc = '\n' + description(capitalize(pname), prop.description)
@@ -454,7 +454,7 @@ function getSchemaShapeInfo(json, module, schemas = {}, { name = '', prefix = ''
   else if (json.anyOf) {
     if (level > 0) {
       let mergedSchema = getMergedSchema(module, json, name, schemas)
-      let prefixName = ((prefix.length > 0) && (name != prefix)) ? prefix : capitalize(name)
+      let prefixName = ((prefix.length > 0) && (!name.startsWith(prefix))) ? prefix : capitalize(name)
       shape += getSchemaShapeInfo(mergedSchema, module, schemas, { name, prefix: prefixName, merged, level, title, summary, descriptions, destination, section, enums })
     }
   }
@@ -612,7 +612,6 @@ function getJsonTypeInfo(module = {}, json = {}, name = '', schemas, prefix = ''
     }
     res = getJsonTypeInfo(module, items, items.name || name, schemas, prefix)
     structure.deps = res.deps
-    let n = capitalize(name || json.title)
     structure.type.push(`WPEFramework::Core::JSON::ArrayType<${res.type}>`)
 
     return structure
@@ -635,7 +634,7 @@ function getJsonTypeInfo(module = {}, json = {}, name = '', schemas, prefix = ''
   }
   else if (json.anyOf) {
     let mergedSchema = getMergedSchema(module, json, name, schemas)
-    let prefixName = ((prefix.length > 0) && (name != prefix)) ? prefix : capitalize(name)
+    let prefixName = ((prefix.length > 0) && (!name.startsWith(prefix))) ? prefix : capitalize(name)
     structure = getJsonTypeInfo(module, mergedSchema, name, schemas, prefixName, {descriptions, level})
   }
   else if (json.type === 'object') {

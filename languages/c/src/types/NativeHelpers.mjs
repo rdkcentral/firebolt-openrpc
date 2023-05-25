@@ -172,15 +172,15 @@ const getMapAccessors = (typeName, accessorPropertyType, level = 0) => {
   return res
 }
 
-const getTypeName = (moduleName, varName, prefixName = '', upperCase = false, capitalCase = true) => {
+const getTypeName = (moduleName, varName, prefix = '', upperCase = false, capitalCase = true) => {
 
   let mName = upperCase ? moduleName.toUpperCase() : capitalize(moduleName)
   let vName = upperCase ? varName.toUpperCase() : capitalCase ? capitalize(varName) : varName
-  if (prefixName.length > 0) {
-    prefixName = (prefixName !== varName) ? (upperCase ? prefixName.toUpperCase() : capitalize(prefixName)) : ''
+  if (prefix.length > 0) {
+    prefix = (!varName.startsWith(prefix)) ? (upperCase ? prefix.toUpperCase() : capitalize(prefix)) : ''
   }
-  prefixName = (prefixName.length > 0) ?(upperCase ? prefixName.toUpperCase() : capitalize(prefixName)) : prefixName
-  let name = (prefixName.length > 0) ? `${mName}_${prefixName}_${vName}` : `${mName}_${vName}`
+  prefix = (prefix.length > 0) ?(upperCase ? prefix.toUpperCase() : capitalize(prefix)) : prefix
+  let name = (prefix.length > 0) ? `${mName}_${prefix}_${vName}` : `${mName}_${vName}`
   return name
 }
 
