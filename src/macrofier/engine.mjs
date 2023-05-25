@@ -720,7 +720,7 @@ function getRelatedSchemaLinks(schema = {}, json = {}, templates = {}, options =
       .map(path => path.substring(2).split('/'))
       .map(path => getPathOr(null, path, json))
       .filter(schema => schema.title)
-      .map(schema => '[' + types.getSchemaType(schema, json, { destination: state.destination, section: state.section  }) + '](' + getLinkForSchema(schema, json, { name: schema.title }) + ')') // need full module here, not just the schema
+      .map(schema => '[' + types.getSchemaType(schema, json, { name: schema.title, destination: state.destination, section: state.section  }) + '](' + getLinkForSchema(schema, json, { name: schema.title }) + ')') // need full module here, not just the schema
       .filter(link => link)
       .join('\n')
 

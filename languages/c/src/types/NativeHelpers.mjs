@@ -84,8 +84,39 @@ const SdkTypesPrefix = 'Firebolt'
 
 const Indent = '    '
 
+const getArrayElementSchema = (json, module, schemas = {}, name) => {
+  let result = ''
+  if (json.type === 'array' && json.items) {
+    if (Array.isArray(json.items)) {
+      result = json.items[0]
+    }
+    else {
+      // grab the type for the non-array schema
+      result = json.items
+    }
+    if (result['$ref']) {
+      result = getPath(result['$ref'], module, schemas)
+    }
+  }
+  else if (json.type == 'object') {
+    if (json.properties) {
+      Object.entries(json.properties).every(([pname, prop]) => {
+        if (prop.type === 'array') {
+          result = getArrayElementSchema(prop, module, schemas)
+          if (name === capitalize(pname)) {
+             return false
+          }
+        }
+        return true
+      })
+    }
+  }
+
+  return result
+}
+
 const getNativeType = json => {
-  let type
+  let type = ''
   let jsonType = json.const ? typeof json.const : json.type
   if (jsonType === 'string') {
     type = 'char*'
@@ -153,12 +184,12 @@ const getTypeName = (moduleName, varName, prefixName = '', upperCase = false, ca
   return name
 }
 
-const getArrayAccessors = (arrayName, valueType) => {
+const getArrayAccessors = (arrayName, propertyType, valueType) => {
 
-  let res = `uint32_t ${arrayName}_Size(${arrayName}Handle handle);` + '\n'
-  res += `${valueType} ${arrayName}_Get(${arrayName}Handle handle, uint32_t index);` + '\n'
-  res += `void ${arrayName}_Add(${arrayName}Handle handle, ${valueType} value);` + '\n'
-  res += `void ${arrayName}_Clear(${arrayName}Handle handle);` + '\n'
+  let res = `uint32_t ${arrayName}Array_Size(${propertyType}Handle handle);` + '\n'
+  res += `${valueType} ${arrayName}Array_Get(${propertyType}Handle handle, uint32_t index);` + '\n'
+  res += `void ${arrayName}Array_Add(${propertyType}Handle handle, ${valueType} value);` + '\n'
+  res += `void ${arrayName}Array_Clear(${propertyType}Handle handle);` + '\n'
 
   return res
 }
@@ -233,5 +264,6 @@ export {
     getObjectHandleManagement,
     getPropertyAccessors,
     isOptional,
-    generateEnum
+    generateEnum,
+    getArrayElementSchema
 }
