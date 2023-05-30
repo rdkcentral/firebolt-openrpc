@@ -75,7 +75,7 @@ const setConfig = (c) => {
 }
 
 const getTemplate = (name, templates) => {
-  return templates[Object.keys(templates).find(k => k.startsWith(name + '.'))] || ''
+  return templates[Object.keys(templates).find(k => k === name)] || templates[Object.keys(templates).find(k => k.startsWith(name + '.'))] || ''
 }
 
 const getTemplateTypeForMethod = (method, type, templates) => {
@@ -324,7 +324,7 @@ const generateMacros = (obj, templates, languages, options = {}) => {
 
   const imports = generateImports(obj, templates)
   const initialization = generateInitialization(obj, templates)
-  const enums = (options.destination && options.destination.endsWith(".cpp") ? generateEnumsConversion(obj, templates) : generateEnums(obj, templates))
+  const enums = generateEnums(obj, templates, { destination : (options.destination ? options.destination : '') })
   const eventsEnum = generateEvents(obj, templates)
   const examples = generateExamples(obj, templates, languages)
 
@@ -534,7 +534,7 @@ const convertEnumTemplate = (sch, templateName, templates) => {
         return template[i].replace(/\$\{key\}/g, safeName)
                           .replace(/\$\{value\}/g, value)
       }).join('\n')
-      if (!templateName.includes("enum_conversion")) {
+      if (!templateName.includes(".cpp")) {
         template[i] = template[i].replace(/,*$/, '');
       }
     }
@@ -552,22 +552,13 @@ const enumFinder = compose(
   filter(([_key, val]) => isObject(val))
 )
 
-const generateEnums = (json, templates) => {
+const generateEnums = (json, templates, options = { destination: '' }) => {
+  const suffix = options.destination.split('.').pop()
   return compose(
     option(''),
+    map(val => val ? (suffix && getTemplate(`/sections/enum.${suffix}`, templates) ? getTemplate(`/sections/enum.${suffix}`, templates).replace(/\$\{schema.list\}/g, val.trimEnd()) : val) : ''),
     map(reduce((acc, val) => acc.concat(val).concat('\n'), '')),
-    map(map((schema) => convertEnumTemplate(schema, '/types/enum', templates))),
-    map(enumFinder),
-    getSchemas
-  )(json)
-}
-
-const generateEnumsConversion = (json, templates) => {
-  return compose(
-    option(''),
-    map(val => val ? getTemplate('/sections/enum_conversion', templates).replace(/\$\{schema.list\}/g, val.trimEnd()): ''),
-    map(reduce((acc, val) => acc.concat(val).concat('\n'), '')),
-    map(map((schema) => convertEnumTemplate(schema, '/types/enum_conversion', templates))),
+    map(map((schema) => convertEnumTemplate(schema, suffix ? `/types/enum.${suffix}` : '/types/enum', templates))),
     map(enumFinder),
     getSchemas
   )(json)
