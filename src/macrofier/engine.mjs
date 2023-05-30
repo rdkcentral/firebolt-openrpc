@@ -534,7 +534,9 @@ const convertEnumTemplate = (sch, templateName, templates) => {
         return template[i].replace(/\$\{key\}/g, safeName)
                           .replace(/\$\{value\}/g, value)
       }).join('\n')
-      template[i] = template[i].replace(/,*$/, '');
+      if (!templateName.includes("enum_conversion")) {
+        template[i] = template[i].replace(/,*$/, '');
+      }
     }
   }
   return template.join('\n')
