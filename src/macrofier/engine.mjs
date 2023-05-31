@@ -556,7 +556,10 @@ const generateEnums = (json, templates, options = { destination: '' }) => {
   const suffix = options.destination.split('.').pop()
   return compose(
     option(''),
-    map(val => val ? (suffix && getTemplate(`/sections/enum.${suffix}`, templates) ? getTemplate(`/sections/enum.${suffix}`, templates).replace(/\$\{schema.list\}/g, val.trimEnd()) : val) : ''),
+    map(val => {
+      let template = getTemplate(`/sections/enum.${suffix}`, templates)
+      return template ? template.replace(/\$\{schema.list\}/g, val.trimEnd()) : val
+    }),
     map(reduce((acc, val) => acc.concat(val).concat('\n'), '')),
     map(map((schema) => convertEnumTemplate(schema, suffix ? `/types/enum.${suffix}` : '/types/enum', templates))),
     map(enumFinder),
