@@ -1223,7 +1223,7 @@ function generateResult(result, json, templates, { name = '' } = {}) {
 
     for (var i=0; i<content.length; i++) {
       if (content[i].indexOf("${property}") >= 0) {
-        content[i] = Object.entries(result.properties).map(([title, property]) => insertSchemaMacros(content[i], title || name, property, json)).join('\n')
+        content[i] = Object.entries(result.properties).map(([title, property]) => insertSchemaMacros(content[i], title, property, json)).join('\n')
       }
     }
 
@@ -1241,9 +1241,9 @@ function generateResult(result, json, templates, { name = '' } = {}) {
     }
     // otherwise this was a schema with no title, and we'll just copy it here
     else {
-      const sch = localizeDependencies(result, json)
+      const schema = localizeDependencies(result, json)
       return getTemplate('/types/default', templates)
-              .replace(/\$\{type\}/, types.getSchemaShape(sch, json, { name: result.$ref.split("/").pop() }))
+              .replace(/\$\{type\}/, types.getSchemaShape(schema, json, { name: result.$ref.split("/").pop() }))
     }
   }
   else {
@@ -1253,8 +1253,8 @@ function generateResult(result, json, templates, { name = '' } = {}) {
 
 function insertSchemaMacros(template, title, schema, module) {
   return template.replace(/\$\{property\}/g, title)
-          .replace(/\$\{type\}/g, types.getSchemaType(schema.schema ? schema.schema : schema, module, { name: title, destination: state.destination, section: state.section, code: false }))
-          .replace(/\$\{type.link\}/g, getLinkForSchema(schema.schema ? schema.schema : schema, module, { name: title }))
+          .replace(/\$\{type\}/g, types.getSchemaType(schema, module, { name: title, destination: state.destination, section: state.section, code: false }))
+          .replace(/\$\{type.link\}/g, getLinkForSchema(schema, module, { name: title }))
           .replace(/\$\{description\}/g, schema.description || '')
           .replace(/\$\{name\}/g, title || '')
 }
