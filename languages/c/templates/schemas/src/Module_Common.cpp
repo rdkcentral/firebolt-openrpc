@@ -21,11 +21,12 @@
 #include "Common/${info.title}.h"
 #include "JsonData_${info.title}.h"
 
+/* ${ENUMS} */
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-    /* ${TYPES} */
     /* ${ACCESSORS} */
     /* ${METHODS} */
 
