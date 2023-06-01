@@ -17,7 +17,9 @@
  */
 
 namespace FireboltSDK {
+    namespace ${info.title} {
+    // Types
 
-    /* ${DECLARATIONS} */
-
+       /* ${SCHEMAS}*/
+    }
 }
