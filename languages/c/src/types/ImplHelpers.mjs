@@ -336,7 +336,7 @@ function getPropertyGetterImpl(property, module, propType, container, paramList 
     
   let methodName = getModuleName(module).toLowerCase() + '.' + property.name
   let impl = ''
-  
+
   let signature = getPropertyGetterSignature(property, module, propType)
   //impl += `${description(property.name, property.summary)}\n`
   impl += `${signature}\n{\n`
@@ -359,7 +359,7 @@ function getPropertyGetterImpl(property, module, propType, container, paramList 
     if (((propType === 'char*') || (propType === 'FireboltTypes_StringHandle'))) {
       impl += `            ${container}* strResult = new ${container}(jsonResult);` + '\n'
       impl += `            *${property.result.name || property.name} = static_cast<${getFireboltStringType()}>(strResult);` + '\n'
-    } else if ((property.type === 'object') || (property.type === 'array')) {
+    } else if (propType.includes('Handle')) {
       impl += `            WPEFramework::Core::ProxyType<${container}>* resultPtr = new WPEFramework::Core::ProxyType<${container}>();\n`
       impl += `            *resultPtr = WPEFramework::Core::ProxyType<${container}>::Create();\n`
       impl += `            *(*resultPtr) = jsonResult;\n`

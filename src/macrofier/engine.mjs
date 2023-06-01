@@ -568,6 +568,50 @@ function generateDefaults(json = {}, templates) {
 
 const isEnum = x => x.type && x.type === 'string' && Array.isArray(x.enum) && x.title
 
+/*
+  schemasArray - [[name, obj], [name,obj]...]
+ */
+function sortSchemasByReference ( schemasArray = []) {
+
+  const graph = new Map();
+  // Build the graph
+  for (const obj of schemasArray) {
+    graph.set(obj[0], []);
+  }
+
+  for (const obj of schemasArray) {
+    for (const otherObj of schemasArray) {
+      if (obj !== otherObj && isDefinitionReferencedBySchema('#/components/schemas/' + obj[0], otherObj[1])) {
+        graph.get(obj[0]).push(otherObj[0]);
+      }
+    }
+  }
+
+  const sortedArray = [];
+  const visited = new Map();
+
+  const visit = (name) => {
+    visited.set(name, true);
+
+    for (const referencedObj of graph.get(name)) {
+      if (!visited.has(referencedObj)) {
+        visit(referencedObj);
+      }
+    }
+
+    sortedArray.unshift(schemasArray.find(obj => obj[0] === name));
+  }
+
+  // Perform topological sort
+  for (const obj of schemasArray) {
+    if (!visited.has(obj[0])) {
+      visit(obj[0]);
+    }
+  }
+
+  return sortedArray
+}
+
 function generateSchemas(json, templates, options) {
   let results = []
 
@@ -627,7 +671,7 @@ function generateSchemas(json, templates, options) {
     results.push(result)
   }
 
-  const list = []
+  let list = []
 
   // schemas may be 1 or 2 levels deeps
   Object.entries(schemas).forEach( ([name, schema]) => {
@@ -636,17 +680,7 @@ function generateSchemas(json, templates, options) {
     }
   })
 
-  list.sort((a, b) => {
-    const aInB = isDefinitionReferencedBySchema('#/components/schemas/' + a[0], b[1])
-    const bInA = isDefinitionReferencedBySchema('#/components/schemas/' + b[0], a[1])
-    if(isEnum(a[1]) || (aInB && !bInA)) {
-      return -1
-    } else if(isEnum(b[1]) || (!aInB && bInA)) {
-      return 1
-    }
-    return 0;
-  })
-
+  list = sortSchemasByReference(list)
   list.forEach(item => generate(...item))
 
   return results
@@ -919,6 +953,7 @@ function insertMethodMacros(template, methodObj, json, templates, examples={}) {
   const paramsRows = methodObj.params && methodObj.params.length ? methodObj.params.map(p => insertParameterMacros(getTemplate('/parameters/default', templates), p, methodObj, json)).join('') : ''
   const paramsAnnotations = methodObj.params && methodObj.params.length ? methodObj.params.map(p => insertParameterMacros(getTemplate('/parameters/annotations', templates), p, methodObj, json)).join('') : ''
   const paramsJson = methodObj.params && methodObj.params.length ? methodObj.params.map(p => insertParameterMacros(getTemplate('/parameters/json', templates), p, methodObj, json)).join('') : ''
+  const paramsWithTypes = methodObj.params && methodObj.params.length ? methodObj.params.map(p => insertParameterMacros(getTemplate('/parameters/default', templates), p, methodObj, json)).join(', ') : ''
 
   const deprecated = methodObj.tags && methodObj.tags.find(t => t.name === 'deprecated')
   const deprecation = deprecated ? deprecated['x-since'] ? `since version ${deprecated['x-since']}` : '' : ''
@@ -927,7 +962,7 @@ function insertMethodMacros(template, methodObj, json, templates, examples={}) {
 
   const result = JSON.parse(JSON.stringify(methodObj.result))
   const event = JSON.parse(JSON.stringify(methodObj))
-  
+
   if (isEventMethod(methodObj)) {
     result.schema = JSON.parse(JSON.stringify(getPayloadFromEvent(methodObj)))
     event.result.schema = getPayloadFromEvent(event)
@@ -957,7 +992,7 @@ function insertMethodMacros(template, methodObj, json, templates, examples={}) {
   const methodImpl = types.getMethodImpl(methodObj, json)
 
   let seeAlso = ''
-  
+
   if (isPolymorphicPullMethod(methodObj) && pullsForType) {
     seeAlso = `See also: [${pullsForType}](#${pullsForType.toLowerCase()}-1)` // this assumes the schema will be after the method...
   }
@@ -981,6 +1016,7 @@ function insertMethodMacros(template, methodObj, json, templates, examples={}) {
     // Parameter stuff
     .replace(/\$\{method\.params\}/g, params)
     .replace(/\$\{method\.params\.table\.rows\}/g, paramsRows)
+    .replace(/\$\{method\.params\.withTypes\}/g, paramsWithTypes)
     .replace(/\$\{method\.params\.annotations\}/g, paramsAnnotations)
     .replace(/\$\{method\.params\.json\}/g, paramsJson)
     .replace(/\$\{method\.params\.list\}/g, method.params)

@@ -69,7 +69,9 @@ function getSchemaType(schema, module, { name, destination, resultSchema = false
     }
     else if (Array.isArray(schema.type)) {
         let type = schema.type.find(t => t !== 'null')
-        console.log(`WARNING UNHANDLED: type is an array containing ${schema.type}`)
+        let sch = JSON.parse(JSON.stringify(schema))
+        sch.type = type
+        return getSchemaType(sch, module, { destination, link, title, code, asPath, event, expandEnums, baseUrl })
     }
     else if (schema.type === 'array' && schema.items) {
         let res
@@ -86,12 +88,7 @@ function getSchemaType(schema, module, { name, destination, resultSchema = false
             res = getSchemaType(schema.items, module, { destination, link, title, code, asPath, event, expandEnums, baseUrl })
         }
 
-        if (!schema.title && !name) {
-            console.log(`WARNING: generated name for ${module.info.title} schema w/ no title: ${theTitle}`)
-            console.dir(schema)
-        }
-
-        let n = getTypeName(getModuleName(module), theTitle)
+        let n = getTypeName(getModuleName(module), capitalize(res))
         return n + 'ArrayHandle'
     }
     else if (schema.allOf) {
@@ -317,7 +314,9 @@ function getJsonType(schema = {}, module = {}, { name = '', descriptions = false
     }
     else if (Array.isArray(schema.type)) {
         let type = schema.type.find(t => t !== 'null')
-        console.log(`WARNING UNHANDLED: type is an array containing ${schema.type}`)
+        let sch = JSON.parse(JSON.stringify(schema))
+        sch.type = type
+        return getJsonType(sch, module, { name: '', descriptions: descriptions, level: level })
     }
     else if (schema.type === 'array' && schema.items) {
         let res
@@ -390,10 +389,9 @@ function getMethodImpl(schema, module) {
     let resultJsonType = schema.result && getJsonType(schema.result.schema, module, {name: schema.result.name}) || ''
 
 
-    if(hasTag(schema, 'property') || hasTag(schema, 'property:readonly')) {
+    if(hasTag(schema, 'property') || hasTag(schema, 'property:readonly') || hasTag(schema, 'property:immutable')) {
         
         impl = getPropertyGetterImpl(schema, module, resultType, resultJsonType, paramList)
-
         impl += '\n'
     }
 
