@@ -64,6 +64,8 @@ const state = {
   section: undefined
 }
 
+const capitalize = str => str[0].toUpperCase() + str.substr(1)
+
 const setTyper = (t) => {
   types = t
 }
@@ -73,7 +75,7 @@ const setConfig = (c) => {
 }
 
 const getTemplate = (name, templates) => {
-  return templates[Object.keys(templates).find(k => k.startsWith(name + '.'))] || ''
+  return templates[Object.keys(templates).find(k => k === name)] || templates[Object.keys(templates).find(k => k.startsWith(name + '.'))] || ''
 }
 
 const getTemplateTypeForMethod = (method, type, templates) => {
@@ -322,7 +324,7 @@ const generateMacros = (obj, templates, languages, options = {}) => {
 
   const imports = generateImports(obj, templates)
   const initialization = generateInitialization(obj, templates)
-  const enums = generateEnums(obj, templates)
+  const enums = generateEnums(obj, templates, { destination : (options.destination ? options.destination : '') })
   const eventsEnum = generateEvents(obj, templates)
   const examples = generateExamples(obj, templates, languages)
 
@@ -486,29 +488,80 @@ function insertTableofContents(content) {
   return content
 }
 
+const isEnumType = x => x.type !== 'undefined' && x.type === 'string' && Array.isArray(x.enum)
+
+const getProperties = x => {
+   return Array.isArray(x.properties) ? x.properties[0] : x.properties
+}
+
+const isEnumProperties = schema => compose(
+    getProperties,
+    filter(enm => enm),
+    map(filter(enm => enm)),
+    map(props => props.map(([k, v]) => ((v.type === 'object') ? isEnumProperties(v) : ((v.type === 'array') ? isEnumType(v.items[0] ? v.items[0] : v.items): isEnumType(v))))),
+    map(Object.entries),
+    filter(schema => isObject(schema))
+)(schema)
+
+const getEnumProperties = schema => compose(
+    getProperties,
+    filter(enm => enm),
+    map(filter(isEnumType)),
+    map(props => props.map(([k, v]) => {
+      let enm = v
+      if (isEnumType(v) == true) {
+        enm = Object.assign({}, v)
+        enm.title = k
+      } else if (v.type === 'object') {
+        enm = getEnumProperties(v)
+      } else if (v.type === 'array') {
+        enm = Object.assign({}, (v.items[0] ? v.items[0] : v.items))
+        enm.title = k
+      }
+      return enm
+    })),
+    map(Object.entries),
+    filter(schema => isObject(schema))
+)(schema)
+
+const convertEnumTemplate = (sch, templateName, templates) => {
+  const template = getTemplate(templateName, templates).split('\n')
+  let schema = isEnumType(sch) ? sch : getEnumProperties(sch)
+  for (var i = 0; i < template.length; i++) {
+    if (template[i].indexOf('${key}') >= 0) {
+      template[i] = schema.enum.map(value => {
+        const safeName = value.split(':').pop().replace(/[\.\-]/g, '_').replace(/\+/g, '_plus').replace(/([a-z])([A-Z0-9])/g, '$1_$2').toUpperCase()
+        return template[i].replace(/\$\{key\}/g, safeName)
+                          .replace(/\$\{value\}/g, value)
+      }).join('\n')
+      if (!templateName.includes(".cpp")) {
+        template[i] = template[i].replace(/,*$/, '');
+      }
+    }
+  }
+  return template.join('\n')
+                 .replace(/\$\{title\}/g, capitalize(schema.title))
+                 .replace(/\$\{description\}/g, schema.description ? ('- ' + schema.description) : '')
+                 .replace(/\$\{name\}/g, schema.title)
+                 .replace(/\$\{NAME\}/g, schema.title.toUpperCase())
+}
+
 const enumFinder = compose(
-  filter(x => x.type === 'string' && Array.isArray(x.enum) && x.title),
+  filter(x => ((isEnumType(x) && x.title) || isEnumProperties(x))),
   map(([_, val]) => val),
   filter(([_key, val]) => isObject(val))
 )
 
-const generateEnums = (json, templates) => {
+const generateEnums = (json, templates, options = { destination: '' }) => {
+  const suffix = options.destination.split('.').pop()
   return compose(
     option(''),
+    map(val => {
+      let template = getTemplate(`/sections/enum.${suffix}`, templates)
+      return template ? template.replace(/\$\{schema.list\}/g, val.trimEnd()) : val
+    }),
     map(reduce((acc, val) => acc.concat(val).concat('\n'), '')),
-    map(map((schema) => {
-      const template = getTemplate('/types/enum', templates).split('\n')
-      for (var i = 0; i < template.length; i++) {
-        if (template[i].indexOf('${key}') >= 0) {
-          template[i] = schema.enum.map(value => {
-            const safeName = value.split(':').pop().replace(/[\.\-]/g, '_').replace(/\+/g, '_plus').replace(/([a-z])([A-Z0-9])/g, '$1_$2').toUpperCase()
-            return template[i].replace(/\$\{key\}/g, safeName)
-                              .replace(/\$\{value\}/g, value)
-          }).join('\n')
-        }
-      }
-      return template.join('\n').replace(/\$\{name\}/g, schema.title).replace(/\$\{NAME\}/g, schema.title.toUpperCase())
-    })),
+    map(map((schema) => convertEnumTemplate(schema, suffix ? `/types/enum.${suffix}` : '/types/enum', templates))),
     map(enumFinder),
     getSchemas
   )(json)
@@ -700,8 +753,6 @@ const generateImports = (json, templates) => {
   if (methodsWithXMethodsInResult(json).length) {
     imports += getTemplate('/imports/x-method', templates)
   }
-
-
 
   if (json['x-schemas'] && Object.keys(json['x-schemas']).length > 0) {
     imports += Object.keys(json['x-schemas']).map(shared => getTemplate('/imports/default', templates).replace(/\$\{info.title\}/g, shared)).join('\n')
@@ -1242,7 +1293,6 @@ function generateProviderInterfaces(json, templates) {
 function insertProviderInterfaceMacros(template, capability, moduleJson = {}, templates) {
   const iface = getProviderInterface(capability, moduleJson, { destination: state.destination, section: state.section })//.map(method => { method.name = method.name.charAt(9).toLowerCase() + method.name.substr(10); return method } )
 
-  const capitalize = str => str[0].toUpperCase() + str.substr(1)
   const uglyName = capability.split(":").slice(-2).map(capitalize).reverse().join('') + "Provider"
   let name = iface.length === 1 ? iface[0].name.charAt(0).toUpperCase() + iface[0].name.substr(1) + "Provider" : uglyName
 

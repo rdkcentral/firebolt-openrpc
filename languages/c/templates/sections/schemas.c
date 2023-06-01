@@ -1,3 +1,1 @@
-// Types & Enums
-
 ${schema.list}
