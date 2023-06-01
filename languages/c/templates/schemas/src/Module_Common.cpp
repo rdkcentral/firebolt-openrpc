@@ -21,7 +21,7 @@
 #include "Common/${info.title}.h"
 #include "JsonData_${info.title}.h"
 
-/* ${ENUMS_CONVERSION} */
+/* ${ENUMS} */
 
 #ifdef __cplusplus
 extern "C" {

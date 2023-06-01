@@ -50,36 +50,6 @@ function getJsonContainerDefinition (schema, name, props) {
   return c
 }
 
-/*
-
-ENUM_CONVERSION_BEGIN(Advertising_SkipRestriction)
-    { ADVERTISING_SKIPRESTRICTION_NONE, _T("none") },
-    { ADVERTISING_SKIPRESTRICTION_ADS_UNWATCHED, _T("adsUnwatched") },
-    { ADVERTISING_SKIPRESTRICTION_ADS_ALL, _T("adsAll") },
-    { ADVERTISING_SKIPRESTRICTION_ALL, _T("all") },
-ENUM_CONVERSION_END(Advertising_SkipRestriction)
-
-
-*/
-
-// TODO - this should be a global function in the main /src/ directory... not part of a language pack
-const keyName = val => val.split(':').pop().replace(/[\.\-]/g, '_').replace(/\+/g, '_plus').replace(/([a-z])([A-Z0-9])/g, '$1_$2').toUpperCase()
-
-function getJsonEnumConversion(schema, { name }) {
-    name = (schema.title || name)
-    let e = schema.description ? ('\n/* ${info.title} - ' + `${schema.description} */`) : ''
-    e += '\nENUM_CONVERSION_BEGIN(${info.title}_' + `${name})\n`
-    schema.enum.forEach(value => {
-        e += '    { ${info.TITLE}_' + `${name.toUpperCase()}_${keyName(value)}, _T("${value}") },\n`
-    })
-
-    e += 'ENUM_CONVERSION_END(${info.title}_' + `${name})`
-
-    return e
-}
-
 export {
-    getJsonContainerDefinition,
-    getJsonEnumConversion,
-    getJsonDataStructName
+    getJsonContainerDefinition
 }

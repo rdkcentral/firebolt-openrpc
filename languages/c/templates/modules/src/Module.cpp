@@ -29,7 +29,7 @@ namespace FireboltSDK {
     }
 }
 
-/* ${ENUMS_CONVERSION} */
+/* ${ENUMS} */
 
 #ifdef __cplusplus
 extern "C" {
