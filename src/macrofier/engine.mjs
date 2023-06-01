@@ -355,7 +355,6 @@ const generateMacros = (obj, templates, languages, options = {}) => {
     imports,
     initialization,
     enums,
-    enumsConversion,
     events,
     eventList,
     eventsEnum,
@@ -408,7 +407,6 @@ const insertMacros = (fContents = '', macros = {}) => {
   fContents = fContents.replace(/[ \t]*\/\* \$\{TYPES\} \*\/[ \t]*\n/, macros.types)
   fContents = fContents.replace(/[ \t]*\/\* \$\{PROVIDERS\} \*\/[ \t]*\n/, macros.providerInterfaces)
   fContents = fContents.replace(/[ \t]*\/\* \$\{ENUMS\} \*\/[ \t]*\n/, macros.enums)
-  fContents = fContents.replace(/[ \t]*\/\* \$\{ENUMS_CONVERSION\} \*\/[ \t]*\n/, macros.enumsConversion)
   fContents = fContents.replace(/[ \t]*\/\* \$\{IMPORTS\} \*\/[ \t]*\n/, macros.imports)
   fContents = fContents.replace(/[ \t]*\/\* \$\{INITIALIZATION\} \*\/[ \t]*\n/, macros.initialization)
   fContents = fContents.replace(/[ \t]*\/\* \$\{DEFAULTS\} \*\/[ \t]*\n/, macros.defaults)
