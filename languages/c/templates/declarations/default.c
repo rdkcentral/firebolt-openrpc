@@ -1,4 +1,5 @@
-  /**
-   * ${method.summary}
-  ${method.params} */
-  ${method.signature};
+/*
+ * ${method.summary}
+ * ${method.params}
+ */
+${method.signature};

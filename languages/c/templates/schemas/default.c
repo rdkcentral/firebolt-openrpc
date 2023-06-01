@@ -1,5 +1,4 @@
-    /**
-     * ${schema.description}
-     */
-
+/*
+ * ${schema.description}
+ */
 ${schema.shape}
