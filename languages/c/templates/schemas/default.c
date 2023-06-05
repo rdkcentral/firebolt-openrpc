@@ -1,4 +1,1 @@
-/*
- * ${schema.description}
- */
 ${schema.shape}
