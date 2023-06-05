@@ -18,365 +18,660 @@
 
 import deepmerge from 'deepmerge'
 import { getPath } from '../../src/shared/json-schema.mjs'
-import { getTypeName, getModuleName, description, getObjectHandleManagement, getNativeType, getPropertyAccessors, capitalize, isOptional, generateEnum, getMapAccessors, getArrayAccessors } from './src/types/NativeHelpers.mjs'
-import { getObjectHandleManagementImpl, getPropertyAccessorsImpl } from './src/types/ImplHelpers.mjs'
-import { getJsonContainerDefinition } from './src/types/JSONHelpers.mjs'
+import { getTypeName, getModuleName, description, getObjectHandleManagement, getNativeType, getPropertyAccessors, capitalize, isOptional, generateEnum, getMapAccessors, getArrayAccessors, getArrayElementSchema } from './src/types/NativeHelpers.mjs'
+import { getArrayAccessorsImpl, getMapAccessorsImpl, getObjectHandleManagementImpl, getPropertyAccessorsImpl } from './src/types/ImplHelpers.mjs'
+import { getJsonContainerDefinition, getJsonDataStructName } from './src/types/JSONHelpers.mjs'
+
+const getSdkNameSpace = () => 'FireboltSDK'
+const getJsonNativeTypeForOpaqueString = () => getSdkNameSpace() + '::JSON::String'
+const getEnumName = (name, prefix) => ((prefix.length > 0) ? (prefix + '_' + name) : name)
+
+const getRefModule = (title) => {
+  let module = {
+    info: {
+      title: `${title}`
+    }
+  }
+  return module
+}
+
+const hasProperties = (prop) => {
+  let hasProperty = false
+  if (prop.properties) {
+     hasProperty = true
+  } else if (prop.additionalProperties && ( prop.additionalProperties.type && (((prop.additionalProperties.type === 'object') && prop.additionalProperties.properties) || (prop.additionalProperties.type !== 'object')))) {
+     hasProperty = true
+  }
+  return hasProperty
+}
+
+function validJsonObjectProperties(json = {}) {
+
+  let valid = true
+  if (json.type === 'object' || (json.additonalProperties && typeof json.additonalProperties.type === 'object')) {
+    if (json.properties || json.additonalProperties) {
+      Object.entries(json.properties || json.additonalProperties).every(([pname, prop]) => {
+        if (!prop['$ref'] && (pname !== 'additionalProperties') &&
+           ((!prop.type && !prop.const && (prop.schema && !prop.schema.type)) || (Array.isArray(prop.type) && (prop.type.find(t => t === 'null'))))) {
+          valid = false
+        }
+        return valid
+      })
+    }
+  }
+  return valid
+}
+
+function union(schemas, module, commonSchemas) {
+
+  const result = {};
+  for (const schema of schemas) {
+    for (const [key, value] of Object.entries(schema)) {
+      if (!result.hasOwnProperty(key)) {
+        // If the key does not already exist in the result schema, add it
+        if (value && value.anyOf) {
+          result[key] = union(value.anyOf, module, commonSchemas)
+        } else if (key === 'title' || key === 'description' || key === 'required') {
+          //console.warn(`Ignoring "${key}"`)
+        } else {
+          result[key] = value;
+        }
+      } else if (key === 'type') {
+        // If the key is 'type', merge the types of the two schemas
+        if(result[key] === value) {
+          //console.warn(`Ignoring "${key}" that is already present and same`)
+        } else {
+          console.warn(`ERROR "${key}" is not same -${JSON.stringify(result, null, 4)} ${key} ${result[key]} - ${value}`);
+          throw "ERROR: type is not same"
+        }
+      } else {
+        //If the Key is a const then merge them into an enum
+        if(value && value.const) {
+          if(result[key].enum) {
+            result[key].enum = Array.from(new Set([...result[key].enum, value.const]))
+          }
+          else {
+            result[key].enum = Array.from(new Set([result[key].const, value.const]))
+            delete result[key].const
+          }
+        }
+        // If the key exists in both schemas and is not 'type', merge the values
+        else if (Array.isArray(result[key])) {
+          // If the value is an array, concatenate the arrays and remove duplicates
+          result[key] = Array.from(new Set([...result[key], ...value]))
+        } else if (result[key] && result[key].enum && value && value.enum) {
+          //If the value is an enum, merge the enums together and remove duplicates
+          result[key].enum = Array.from(new Set([...result[key].enum, ...value.enum]))
+        } else if (typeof result[key] === 'object' && typeof value === 'object') {
+          // If the value is an object, recursively merge the objects
+          result[key] = union([result[key], value], module, commonSchemas);
+        } else if (result[key] !== value) {
+          // If the value is a primitive and is not the same in both schemas, ignore it
+          //console.warn(`Ignoring conflicting value for key "${key}"`)
+        }
+      }
+    }
+  }
+  return result;
+}
+
+function getMergedSchema(module, json, name, schemas) {
+  let refsResolved = [...json.anyOf.map(x => x['$ref'] ? getPath(x['$ref'], module, schemas) || x : x)]
+  let allOfsResolved = refsResolved.map(sch => sch.allOf ? deepmerge.all([...sch.allOf.map(x => x['$ref'] ? getPath(x['$ref'], module, schemas) || x : x)]) : sch)
+
+  let mergedSchema = union(allOfsResolved, module, schemas)
+  if (json.title) {
+    mergedSchema['title'] = json.title
+  }
+  else {
+    mergedSchema['title'] = name
+  }
+
+  delete mergedSchema['$ref']
+  return mergedSchema
+}
+
+const deepMergeAll = (module, name, schema, schemas, options) => {
+  let nonRefsProperty = [...schema.allOf.map(x => x['$ref'] ? '' : x)].filter(elm => elm)
+  let refsProperty = [...schema.allOf.map(x => x['$ref'] ? getPath(x['$ref'], module, schemas) : '')].filter(elm => elm)
+  let mergedProperty = []
+  let mergedParamSchema = {
+    type: "object",
+    properties: {}
+  }
+
+  nonRefsProperty.forEach(p => {
+    if (p.properties) {
+      Object.entries(p.properties).every(([pname, prop]) => {
+        let present = false
+        refsProperty.forEach(refP => {
+          if (refP.properties) {
+            Object.entries(refP.properties).every(([refname, refprop]) => {
+              if (refname == pname) {
+                present = true
+              }
+              return !present
+            })
+          }
+        })
+        let prefixedName = (present == false) ? (name + capitalize(pname)) : pname
+        mergedParamSchema.properties[prefixedName] = prop
+        return true
+      })
+      mergedProperty.push(mergedParamSchema)
+    }
+  })
+  refsProperty.forEach(ref => mergedProperty.push(ref))
+  let union = deepmerge.all(mergedProperty)
+
+  return union
+}
 
 function getMethodSignature(method, module, { destination, isInterface = false }) {
-    const extraParam = '${method.result.type}* ${method.result.name}'
+  const extraParam = '${method.result.type}* ${method.result.name}'
 
-    const prefix = method.tags.find(t => t.name.split(":")[0] === "property") ? "Get" : ""
+  const prefix = method.tags.find(t => t.name.split(":")[0] === "property") ? "Get" : ""
 
-    return 'uint32_t ${info.title}_' + prefix + '${method.Name}(' + extraParam + ')'
+  return 'uint32_t ${info.title}_' + prefix + '${method.Name}(' + extraParam + ')'
 }
 
 function getMethodSignatureParams(method, module, { destination }) {
-    return method.params.map(param => param.name + (!param.required ? '?' : '') + ': ' + getSchemaType(param.schema, module, { title: true, destination })).join(', ')
+
+  return method.params.map(param => param.name + (!param.required ? '?' : '') + ': ' + getSchemaType(param.schema, module, { name: param.name, title: true, destination })).join(', ')
 }
 
 const safeName = prop => prop.match(/[.+]/) ? '"' + prop + '"' : prop
 
-function getSchemaType(schema, module, { name, destination, link = false, title = false, code = false, asPath = false, event = false, expandEnums = true, baseUrl = '' } = {}) {
-    let type = ''
-    let theTitle = schema.title || name || ('UnamedSchema' + (Math.floor(Math.random() * 100)))
-
-    if (schema['x-method']) {
-        console.log(`WARNING UNHANDLED: x-method in ${theTitle}`)
-        //throw "x-methods not supported yet"
-    }
-
-    if (schema['$ref']) {
-        if (schema['$ref'][0] === '#') {
-            //Ref points to local schema 
-            //Get Path to ref in this module and getSchemaType
-            let definition = getPath(schema['$ref'], module)
-            let tName = definition.title || schema['$ref'].split('/').pop()
-            return getSchemaType(definition, module, { name: tName, destination, link, title, code, asPath, event, expandEnums, baseUrl })
-        }
-    }
-    else if (schema.const) {
-        type = getNativeType(schema)
-        return type
-    }
-    else if (schema.type === 'string' && schema.enum) {
-        //Enum
-        let typeName = getTypeName(getModuleName(module), theTitle)
-        return typeName
-    }
-    else if (Array.isArray(schema.type)) {
-        let type = schema.type.find(t => t !== 'null')
-        console.log(`WARNING UNHANDLED: type is an array containing ${schema.type}`)
-    }
-    else if (schema.type === 'array' && schema.items) {
-        let res
-        if (Array.isArray(schema.items)) {
-            //TODO
-            const IsHomogenous = arr => new Set(arr.map(item => item.type ? item.type : typeof item)).size === 1
-            if (!IsHomogenous(schema.items)) {
-                throw 'Heterogenous Arrays not supported yet'
-            }
-            res = getSchemaType(schema.items[0], module, { destination, link, title, code, asPath, event, expandEnums, baseUrl })
-        }
-        else {
-            // grab the type for the non-array schema
-            res = getSchemaType(schema.items, module, { destination, link, title, code, asPath, event, expandEnums, baseUrl })
-        }
-
-        if (!schema.title && !name) {
-            console.log(`WARNING: generated name for ${module.info.title} schema w/ no title: ${theTitle}`)
-            console.dir(schema)
-        }
-
-        let n = getTypeName(getModuleName(module), theTitle)
-        return n + 'ArrayHandle'
-    }
-    else if (schema.allOf) {
-        let union = deepmerge.all([...schema.allOf.map(x => x['$ref'] ? getPath(x['$ref'], module) || x : x)])
-        if (theTitle) {
-            union['title'] = theTitle
-        }
-        delete union['$ref']
-        return getSchemaType(union, module, { destination, link, title, code, asPath, event, expandEnums, baseUrl })
-    }
-    else if (schema.oneOf || schema.anyOf) {
-        return type
-        //TODO
-    }
-    else if (schema.type === 'object') {
-        if (!schema.title && !name) {
-            console.log(`WARNING: generated name for ${module.info.title} schema w/ no title: ${theTitle}`)
-            console.dir(schema)
-        }
-        return getTypeName(getModuleName(module), theTitle) + 'Handle'
-        //TODO
-    }
-    else if (schema.type) {
-        type = getNativeType(schema)
-        return type
-    }
-
-    // TODO: deal with dependencies
-    return type
+function getSchemaType(schema, module, { name, prefix = '', destination, link = false, title = false, code = false, asPath = false, event = false, expandEnums = true, baseUrl = '' } = {}) {
+  let info = getSchemaTypeInfo(module, schema, name, module['x-schemas'], prefix, { title: title })
+  return info.type
 }
 
-//function getSchemaShape(schema = {}, module = {}, { name = '', level = 0, title, summary, descriptions = true, destination, enums = true } = {})
-//  function getSchemaType()
-function getSchemaShape(schema, module, { name = '', level = 0, title, summary, descriptions = true, destination = '', section = '', enums = true } = {}) {
-    const isHeader = destination.endsWith(".h")
-    const isCPP = (destination.endsWith(".cpp") && section !== 'accessors')
+function getSchemaTypeInfo(module = {}, json = {}, name = '', schemas = {}, prefix = '', options = {level: 0, descriptions: true, title: false}) {
 
-    schema = JSON.parse(JSON.stringify(schema))
+  if (json.schema) {
+    json = json.schema
+  }
 
-    let shape = ''
+  let structure = {}
+  structure["type"] = ''
+  structure["json"] = []
+  structure["name"] = {}
+  structure["namespace"] = {}
 
-    name = schema.title || name
+  if (json['$ref']) {
+    if (json['$ref'][0] === '#') {
+      //Ref points to local schema
+      //Get Path to ref in this module and getSchemaType
+      let definition = getPath(json['$ref'], module, schemas)
+      let tName = definition.title || json['$ref'].split('/').pop()
+      let schema = module
+      if (json['$ref'].includes('x-schemas')) {
+        schema = (getRefModule(json['$ref'].split('/')[2]))
+      }
 
-    if (!name) {
-        console.log(`WARNING: schema without a name in ${module.info.title}`)
-        return shape
+      const res = getSchemaTypeInfo(schema, definition, tName, schemas, '', options)
+      structure.type = res.type
+      structure.json = res.json
+      structure.name = res.name
+      structure.namespace = res.namespace
+      return structure
     }
-
-    if (schema['$ref']) {
-        if (schema['$ref'][0] === '#') {
-            //Ref points to local schema 
-            //Get Path to ref in this module and getSchemaType
-
-            const schema = getPath(schema['$ref'], module)
-            const tname = name || schema['$ref'].split('/').pop()
-            return getSchemaShape(schema, module, { name: tname, descriptions: descriptions, level: level })
-        }
-    }
-    //If the schema is a const,
-    else if (schema.hasOwnProperty('const') && !isCPP) {
-        if (level > 0) {
-
-            let t = description(name, schema.description)
-            typeName = getTypeName(getModuleName(module), name)
-            t += (isHeader ? getPropertyAccessors(typeName, capitalize(name), typeof schema.const, { level: level, readonly: true, optional: false }) : getPropertyAccessorsImpl(typeName, capitalize(name), getJsonType(schema, module, { level, name }), typeof schema.const, { level: level, readonly: true, optional: false }))
-            shape += '\n' + t
-        }
-    }
-    else if (schema.type === 'object') {
-        if (!name) {
-            console.log(`WARNING: unnamed schema in ${module.info.title}.`)
-            console.dir(schema)
-            shape = ''
-        }
-        else if (schema.properties) {
-            let tName = getTypeName(getModuleName(module), name)
-            let c_shape = description(name, schema.description)
-            let cpp_shape = ''
-            c_shape += '\n' + (isHeader ? getObjectHandleManagement(tName) : getObjectHandleManagementImpl(tName, getJsonType(schema, module, { name })))
-            Object.entries(schema.properties).forEach(([pname, prop]) => {
-                c_shape += '\n' + description(pname, prop.description)
-                let res
-                if (prop.type === 'array') {
-                    if (Array.isArray(prop.items)) {
-                        //TODO
-                        const IsHomogenous = arr => new Set(arr.map(item => item.type ? item.type : typeof item)).size === 1
-                        if (!IsHomogenous(prop.items)) {
-                            throw 'Heterogenous Arrays not supported yet'
-                        }
-                        res = getSchemaType(prop.items[0], module, { name: pname, level: level, descriptions: descriptions, title: true })
-                    }
-                    else {
-                        // grab the type for the non-array schema
-                        res = getSchemaType(prop.items, module, { name: pname, level: level, descriptions: descriptions, title: true })
-                    }
-                    if (res && res.length > 0) {
-                        let n = tName + '_' + capitalize(pname || prop.title)
-                        let def = getArrayAccessors(n + 'Array', res)
-                        c_shape += '\n' + def
-                    }
-                    else {
-                        console.log(`a. WARNING: Type undetermined for ${name}:${pname}`)
-                    }
-                } else {
-                    res = getSchemaType(prop, module, { name: pname, descriptions: descriptions, level: level + 1, title: true })
-                    if (res && res.length > 0) {
-                        c_shape += '\n' + (isHeader ? getPropertyAccessors(tName, capitalize(pname), res, { level: level, readonly: false, optional: isOptional(pname, schema) }) : getPropertyAccessorsImpl(tName, capitalize(pname), getJsonType(prop, module, { level, name }), res, { level: level, readonly: false, optional: isOptional(pname, schema) }))
-                    }
-                    else {
-                        console.log(`b. WARNING: Type undetermined for ${name}:${pname}`)
-                    }
-                }
-            })
-            cpp_shape += getJsonContainerDefinition(tName, Object.entries(schema.properties).map(([name, prop]) => ({ name, type: getJsonType(prop, module) })))
-
-            if (isCPP) {
-                shape += '\n' + cpp_shape
-            }
-            else {
-                shape += '\n' + c_shape
-            }
-        }
-        else if (schema.propertyNames && schema.propertyNames.enum) {
-            //propertyNames in object not handled yet
-        }
-        else if (schema.additionalProperties && (typeof schema.additionalProperties === 'object') && !isCPP) {
-            //This is a map of string to type in schema
-            //Get the Type
-            let type = getSchemaType(schema.additionalProperties, module, { name: name })
-            if (type && type.length > 0) {
-                let tName = getTypeName(getModuleName(module), name)
-                // type.deps.forEach(dep => structure.deps.add(dep))
-                let t = description(name, schema.description)
-                t += '\n' + (isHeader ? getObjectHandleManagement(tName) : getObjectHandleManagementImpl(tName, getJsonType(schema, module, { name })))
-                t += getMapAccessors(getTypeName(getModuleName(module), name), type, { descriptions: descriptions, level: level })
-                shape += '\n' + t
-            }
-            else {
-                console.log(`c. WARNING: Type undetermined for ${name}`)
-            }
-        }
-        else if (schema.patternProperties) {
-            console.log(`WARNING: patternProperties not supported yet...`)
-            //        throw "patternProperties are not supported by Firebolt"
-        }
-    }
-    else if (schema.anyOf) {
-
-    }
-    else if (schema.oneOf) {
-
-    }
-    else if (schema.allOf) {
-        let union = deepmerge.all([...schema.allOf.map(x => x['$ref'] ? getPath(x['$ref'], module) || x : x)])
-        if (name) {
-            union['title'] = name
-        }
-        delete union['$ref']
-        return getSchemaShape(union, module, { name, level, title, summary, descriptions, destination, section, enums })
-
-    }
-    else if (schema.type === 'array') {
-        let res = getSchemaType(schema, module, { name, level: 0, descriptions: descriptions })
-        //      res.deps.forEach(dep => structure.deps.add(dep))
+  }
+  else if (json.const) {
+    structure.type = getNativeType(json)
+    structure.json = json
+    return structure
+  }
+  else if (json['x-method']) {
+    console.log(`WARNING UNHANDLED: x-method in ${name}`)
+    return structure
+    //throw "x-methods not supported yet"
+  }
+  else if (json.type === 'string' && json.enum) {
+    //Enum
+    structure.name = name || json.title
+    let typeName = getTypeName(getModuleName(module), name || json.title, prefix, false, false)
+    let res = description(capitalize(name || json.title), json.description) + '\n' + generateEnum(json, typeName)
+    structure.json = json
+    structure.type = typeName
+    structure.namespace = getModuleName(module)
+    return structure
+  }
+  else if (Array.isArray(json.type)) {
+    let type = json.type.find(t => t !== 'null')
+    console.log(`WARNING UNHANDLED: type is an array containing ${json.type}`)
+  }
+  else if (json.type === 'array' && json.items && (validJsonObjectProperties(json) === true)) {
+    let res = ''
+    if (Array.isArray(json.items)) {
+            //TODO
+      const IsHomogenous = arr => new Set(arr.map( item => item.type ? item.type : typeof item)).size === 1
+      if (!IsHomogenous(json.items)) {
+        throw 'Heterogenous Arrays not supported yet'
+      }
+      res = getSchemaTypeInfo(module, json.items[0], json.items[0].name || name, schemas, prefix)
     }
     else {
-        let res = getSchemaType(schema, module, { name, level: level, descriptions: descriptions })
-        //      res.deps.forEach(dep => structure.deps.add(dep))
+      // grab the type for the non-array schema
+      res = getSchemaTypeInfo(module, json.items, json.items.name || name, schemas, prefix)
     }
-    //    console.dir(structure.deps)
+
+    let arrayName = capitalize(res.name) + capitalize(res.json.type)
+    let n = getTypeName(getModuleName(module), arrayName, prefix)
+    structure.name = res.name || name && (capitalize(name))
+    structure.type = n + 'ArrayHandle'
+    structure.json = json
+    structure.namespace = getModuleName(module)
+    return structure
+  }
+  else if (json.allOf) {
+    let title = json.title ? json.title : name
+    let union = deepMergeAll(module, title, json, schemas, options)
+    union['title'] = title
+
+    delete union['$ref']
+    return getSchemaTypeInfo(module, union, '', schemas, '', options)
+  }
+  else if (json.oneOf) {
+    structure.type = 'char*'
+    structure.json.type = 'string'
+    return structure
+  }
+  else if (json.anyOf) {
+    let mergedSchema = getMergedSchema(module, json, name, schemas)
+    let prefixName = ((prefix.length > 0) && (!name.startsWith(prefix))) ? prefix : capitalize(name)
+    return getSchemaTypeInfo(module, mergedSchema, '', schemas, prefixName, options)
+  }
+  else if (json.type === 'object') {
+    structure.json = json
+    if (hasProperties(json)) {
+      structure.type = getTypeName(getModuleName(module), json.title || name, prefix) + 'Handle'
+      structure.name = (json.name ? json.name : (json.title ? json.title : name))
+      structure.namespace = (json.namespace ? json.namespace : getModuleName(module))
+    }
+    else {
+      structure.type = 'char*'
+    }
+    if (name) {
+      structure.name = capitalize(name)
+    }
+
+    return structure
+  }
+  else if (json.type) {
+    structure.type = getNativeType(json)
+    structure.json = json
+    if (name || json.title) {
+      structure.name = capitalize(name || json.title)
+    }
+    structure.namespace = getModuleName(module)
+
+    return structure
+  }
+  return structure
+}
+
+function getSchemaShape(json, module, { name = '', prefix = '', level = 0, title, summary, descriptions = true, destination = '', section = '', enums = true } = {}) {
+
+  let shape = getSchemaShapeInfo(json, module, module['x-schemas'], { name, prefix, merged: false, level, title, summary, descriptions, destination, section, enums })
     return shape
 }
+function getSchemaShapeInfo(json, module, schemas = {}, { name = '', prefix = '', merged = false, level = 0, title, summary, descriptions = true, destination = '', section = '', enums = true } = {}) {
+  const isHeader = (destination.includes("JsonData_") !== true) && destination.endsWith(".h")
+  const isCPP = ((destination.endsWith(".cpp") || destination.includes("JsonData_")) && (section.includes('accessors') !== true))
+  json = JSON.parse(JSON.stringify(json))
 
-//  function getJsonType(schema, module, { destination, link = false, title = false, code = false, asPath = false, event = false, expandEnums = true, baseUrl = '' } = {}) {
+  name = json.title || name
+  let shape = ''
 
-const getJsonDataStructName = (modName, name) => `${capitalize(modName)}::${capitalize(name)}`
+  if (json['$ref']) {
+    if (json['$ref'][0] === '#') {
+      //Ref points to local schema
+      //Get Path to ref in this module and getSchemaType
+      const schema = getPath(json['$ref'], module, schemas)
+      const tname = schema.title || json['$ref'].split('/').pop()
+      if (json['$ref'].includes('x-schemas')) {
+        schema = (getRefModule(json['$ref'].split('/')[2]))
+      }
 
-const getJsonNativeType = json => {
-    let type
-    let jsonType = json.const ? typeof json.const : json.type
-
-    if (jsonType === 'string') {
-        type = 'WPEFramework::Core::JSON::String'
+      shape = getSchemaShapeInfo(schema, module, schemas, { name, prefix, merged, level, title, summary, descriptions, destination, section, enums })
     }
-    else if (jsonType === 'number' || json.type === 'integer') { //Lets keep it simple for now
-        type = 'WPEFramework::Core::JSON::Number'
+  }
+  //If the schema is a const,
+  else if (json.hasOwnProperty('const') && !isCPP) {
+    if (level > 0) {
+
+      let t = description(capitalize(name), json.description)
+      typeName = getTypeName(getModuleName(module), name, prefix)
+      t += (isHeader ? getPropertyAccessors(typeName, capitalize(name), typeof schema.const, { level: level, readonly: true, optional: false }) : getPropertyAccessorsImpl(typeName, getJsonType(schema, module, { level, name }), typeof schema.const, { level: level, readonly: true, optional: false }))
+            shape += '\n' + t
     }
-    else if (jsonType === 'boolean') {
-        type = 'WPEFramework::Core::JSON::Boolean'
+  }
+  else if (json.type === 'object') {
+    if (!name) {
+      console.log(`WARNING: unnamed schema in ${module.info.title}.`)
+      console.dir(json)
+      shape = ''
+    }
+    else if (json.properties && (validJsonObjectProperties(json) === true)) {
+      let c_shape = description(capitalize(name), json.description)
+      let cpp_shape = ''
+      let tName = getTypeName(getModuleName(module), name, prefix)
+      c_shape += '\n' + (isHeader ? getObjectHandleManagement(tName) : getObjectHandleManagementImpl(tName, getJsonType(json, module, { name })))
+      let props = []
+      let containerName = ((prefix.length > 0) && (!name.startsWith(prefix))) ? (prefix + '_' + capitalize(name)) : capitalize(name)
+      Object.entries(json.properties).forEach(([pname, prop]) => {
+        let items
+        var desc = '\n' + description(capitalize(pname), prop.description)
+        if (prop.type === 'array') {
+          if (Array.isArray(prop.items)) {
+            //TODO
+            const IsHomogenous = arr => new Set(arr.map( item => item.type ? item.type : typeof item)).size === 1
+            if (!IsHomogenous(prop.items)) {
+              throw 'Heterogenous Arrays not supported yet'
+            }
+            items = prop.items[0]
+          }
+          else {
+            // grab the type for the non-array schema
+            items = prop.items
+          }
+          let info = getSchemaTypeInfo(module, items, items.name || pname, schemas, prefix, {level : level, descriptions: descriptions, title: true})
+          if (info.type && info.type.length > 0) {
+            let objName = tName + '_' + capitalize(prop.title || pname)
+            let moduleName = info.namespace
+            info.json.namespace = info.namespace
+            let moduleProperty = getJsonTypeInfo(module, json, json.title || name, schemas, prefix)
+            let prefixName = ((prefix.length > 0) && items['$ref']) ? '' : prefix
+            let subModuleProperty = getJsonTypeInfo(module, info.json, info.name, schemas, prefix)
+
+            let t = description(capitalize(info.name), json.description) + '\n'
+            t += '\n' + (isHeader ? getArrayAccessors(objName, tName, info.type) : getArrayAccessorsImpl(tName, moduleProperty.type, (tName + 'Handle'), subModuleProperty.type, capitalize(pname || prop.title), info.type, info.json))
+            c_shape += '\n' + t
+            props.push({name: `${pname}`, type: `WPEFramework::Core::JSON::ArrayType<${subModuleProperty.type}>`})
+          }
+          else {
+            console.log(`a. WARNING: Type undetermined for ${name}:${pname}`)
+          }
+        } else {
+          if (((merged === false) || ((merged === true) && (pname.includes(name)))) && (prop.type === 'object' || prop.anyOf || prop.allOf)) {
+            shape += getSchemaShapeInfo(prop, module, schemas, { name : pname, prefix, merged: false, level: 1, title, summary, descriptions, destination, section, enums })
+          }
+          let info = getSchemaTypeInfo(module, prop, pname, module['x-schemas'], prefix, {descriptions: descriptions, level: level + 1, title: true})
+          if (info.type && info.type.length > 0) {
+            let subPropertyName = ((pname.length !== 0) ? capitalize(pname) : info.name)
+            let moduleProperty = getJsonTypeInfo(module, json, name, schemas, prefix)
+            let subProperty = getJsonTypeInfo(module, prop, pname, schemas, prefix)
+            c_shape += '\n' + description(capitalize(pname), info.json.description)
+            c_shape += '\n' + (isHeader ? getPropertyAccessors(tName, capitalize(pname), info.type, { level: 0, readonly: false, optional: isOptional(pname, json) }) : getPropertyAccessorsImpl(tName, moduleProperty.type, subProperty.type, subPropertyName, info.type, info.json, {readonly:false, optional:isOptional(pname, json)}))
+            let property = getJsonType(prop, module, { name : pname, prefix })
+            props.push({name: `${pname}`, type: `${property}`})
+          }
+          else {
+            console.log(`b. WARNING: Type undetermined for ${name}:${pname}`)
+          }
+        }
+      })
+
+      cpp_shape += getJsonContainerDefinition(json, containerName, props)
+
+      if (isCPP) {
+        shape += '\n' + cpp_shape
+      }
+      else {
+        shape += '\n' + c_shape
+      }
+    }
+    else if (json.propertyNames && json.propertyNames.enum) {
+      //propertyNames in object not handled yet
+    }
+    else if (json.additionalProperties && (typeof json.additionalProperties === 'object') && (validJsonObjectProperties(json) === true) && !isCPP) {
+      let info = getSchemaTypeInfo(module, json.additionalProperties, name, module['x-schemas'], prefix)
+      if (!info.type || (info.type.length === 0)) {
+        info.type = 'char*'
+        info.json = json.additionalProperties
+        info.json.type = 'string'
+      }
+
+      let tName = getTypeName(getModuleName(module), name, prefix)
+      let t = description(capitalize(name), json.description) + '\n'
+      let containerType = 'WPEFramework::Core::JSON::VariantContainer'
+
+      let subModuleProperty = getJsonTypeInfo(module, info.json, info.name, module['x-schemas'])
+      if (isCPP && ((info.json.type === 'object' && info.json.properties) || info.json.type === 'array')) {
+        // Handle Container generation here
+      }
+
+      t += '\n' + (isHeader ? getObjectHandleManagement(tName) : getObjectHandleManagementImpl(tName, containerType))
+      t += (isHeader ? getMapAccessors(tName, info.type, { descriptions: descriptions, level: level }) : getMapAccessorsImpl(tName, containerType, subModuleProperty.type, info.type, info.json, { readonly: true, optional: false }))
+      shape += '\n' + t
+    }
+    else if (json.patternProperties) {
+      console.log(`WARNING: patternProperties are not supported by Firebolt(inside getModuleName(module):${name})`)
+    }
+  }
+  else if (json.anyOf) {
+    if (level > 0) {
+      let mergedSchema = getMergedSchema(module, json, name, schemas)
+      let prefixName = ((prefix.length > 0) && (!name.startsWith(prefix))) ? prefix : capitalize(name)
+      shape += getSchemaShapeInfo(mergedSchema, module, schemas, { name, prefix: prefixName, merged, level, title, summary, descriptions, destination, section, enums })
+    }
+  }
+  else if (json.oneOf) {
+    //Just ignore schema shape, since this has to be treated as string
+  }
+  else if (json.allOf) {
+    let title = (json.title ? json.title : name)
+    let union = deepMergeAll(module, title, json, schemas)
+    union.title = title
+
+    delete union['$ref']
+
+    return getSchemaShapeInfo(union, module, schemas, { name, prefix, merged: true, level, title, summary, descriptions, destination, section, enums })
+  }
+  else if (json.type === 'array' && !isCPP) {
+    let j
+    if (Array.isArray(json.items)) {
+      //TODO
+      const IsHomogenous = arr => new Set(arr.map( item => item.type ? item.type : typeof item)).size === 1
+      if (!IsHomogenous(json.items)) {
+        throw 'Heterogenous Arrays not supported yet'
+      }
+      j = json.items[0]
     }
     else {
-        throw 'Unknown JSON Native Type !!!'
+      j = json.items
     }
-    return type
+
+    let info = getSchemaTypeInfo(module, j, j.name || name, schemas, prefix, {level : level, descriptions: descriptions, title: true})
+
+    if (info.type && info.type.length > 0) {
+      let type = getArrayElementSchema(json, module, schemas, info.name)
+      let arrayName = capitalize(info.name) + capitalize(type.type)
+      let objName = getTypeName(info.namespace, arrayName, prefix)
+      let tName = objName + 'Array'
+      let moduleName = info.namespace
+      info.json.namespace = info.namespace
+      let moduleProperty = getJsonTypeInfo(module, json, json.title || name, schemas, prefix)
+      let t = ''
+      if (level === 0) {
+        t += description(capitalize(info.name), json.description) + '\n'
+        t += '\n' + (isHeader ? getObjectHandleManagement(tName) : getObjectHandleManagementImpl(tName, moduleProperty.type))
+      }
+      t += '\n' + (isHeader ? getArrayAccessors(objName, tName, info.type) : getArrayAccessorsImpl(objName, moduleProperty.type, (tName + 'Handle'), getJsonNativeType(type), '', info.type, info.json))
+      shape += '\n' + t
+    }
+  }
+  else {
+    shape += '\n' + getSchemaType(module, json, name, schemas, prefix, {level: level, descriptions: descriptions})
+  }
+
+  return shape
 }
 
-function getJsonType(schema = {}, module = {}, { name = '', descriptions = false, level = 0 } = {}) {
+const getJsonNativeType = json => {
+  let type
+  let jsonType = json.const ? typeof json.const : json.type
 
-    let type = ''
+  if (jsonType === 'string') {
+    type = getSdkNameSpace() + '::JSON::String'
+  }
+  else if (jsonType === 'number') {
+    type = 'WPEFramework::Core::JSON::Float'
+  }
+  else if (json.type === 'integer') {
+    type = 'WPEFramework::Core::JSON::DecSInt32'
+  }
+  else if (jsonType === 'boolean') {
+    type = 'WPEFramework::Core::JSON::Boolean'
+  }
+  else {
+    throw 'Unknown JSON Native Type !!!'
+  }
+  return type
+}
 
-    if (schema['$ref']) {
-        if (schema['$ref'][0] === '#') {
-            //Ref points to local schema 
-            //Get Path to ref in this module and getSchemaType
-            let definition = getPath(schema['$ref'], module)
-            let tName = definition.title || schema['$ref'].split('/').pop()
-            return getJsonType(definition, module, { name: tName, descriptions: descriptions, level: level })
-        }
-    }
-    else if (schema.const) {
-        return getJsonNativeType(schema)
-    }
-    else if (schema['x-method']) {
-        console.log(`WARNING: x-methods are not supported yet...`)
-        return type
-        //throw "x-methods not supported yet"
-    }
-    else if (schema.type === 'string' && schema.enum) {
-        //Enum
-        let t = getSchemaType(schema, module, { name })
-        return 'WPEFramework::Core::JSON::EnumType<::' + t + '>'
-    }
-    else if (Array.isArray(schema.type)) {
-        let type = schema.type.find(t => t !== 'null')
-        console.log(`WARNING UNHANDLED: type is an array containing ${schema.type}`)
-    }
-    else if (schema.type === 'array' && schema.items) {
-        let res
-        if (Array.isArray(schema.items)) {
-            //TODO
-            const IsHomogenous = arr => new Set(arr.map(item => item.type ? item.type : typeof item)).size === 1
-            if (!IsHomogenous(schema.items)) {
-                throw 'Heterogenous Arrays not supported yet'
-            }
-            res = getJsonType(schema.items[0], module, { name: '' })
-        }
-        else {
-            // grab the type for the non-array schema
-            res = getJsonType(schema.items, module, { name: '' })
-        }
+function getJsonType(schema = {}, module = {}, { name = '', prefix = '', descriptions = false, level = 0 } = {}) {
+  let info = getJsonTypeInfo(module, schema, name, module['x-schemas'], prefix, { descriptions: descriptions, level: level })
+  return info.type
+}
 
-        return `WPEFramework::Core::JSON::ArrayType<${res}>`
+function getJsonTypeInfo(module = {}, json = {}, name = '', schemas, prefix = '', {descriptions = false, level = 0} = {}) {
+
+  if (json.schema) {
+    json = json.schema
+  }
+
+  let structure = {}
+  structure["deps"] = new Set() //To avoid duplication of local ref definitions
+  structure["type"] = []
+
+  if (json['$ref']) {
+    if (json['$ref'][0] === '#') {
+      //Ref points to local schema
+      //Get Path to ref in this module and getSchemaType
+      let definition = getPath(json['$ref'], module, schemas)
+      let tName = definition.title || json['$ref'].split('/').pop()
+
+      let schema = module
+      if (json['$ref'].includes('x-schemas')) {
+        schema = (getRefModule(json['$ref'].split('/')[2]))
+      }
+
+      const res = getJsonTypeInfo(schema, definition, tName, schemas, '', {descriptions, level})
+      structure.deps = res.deps
+      structure.type = res.type
+      return structure
     }
-    else if (schema.allOf) {
-        let union = deepmerge.all([...schema.allOf.map(x => x['$ref'] ? getPath(x['$ref'], module, schemas) || x : x)])
-        if (schema.title) {
-            union['title'] = schema.title
-        }
-        else {
-            union['title'] = name
-        }
-        delete union['$ref']
-        return getJsonType(union, module, { name: '', level, descriptions })
+  }
+  else if (json.const) {
+    structure.type = getJsonNativeType(json)
+    return structure
+  }
+  else if (json['x-method']) {
+    return structure
+    //throw "x-methods not supported yet"
+  }
+  else if (json.additionalProperties && (typeof json.additionalProperties === 'object')) {
+      //This is a map of string to type in schema
+      //Get the Type
+      let type = getJsonTypeInfo(module, json.additionalProperties, name, schemas, prefix)
+      if (type.type && type.type.length > 0) {
+          structure.type = 'WPEFramework::Core::JSON::VariantContainer';
+          return structure
+      }
+      else {
+        console.log(`WARNING: Type undetermined for ${name}`)
+      }
     }
-    else if (schema.oneOf || schema.anyOf) {
-        return type
-        //TODO
+  else if (json.type === 'string' && json.enum) {
+    //Enum
+    let t = 'WPEFramework::Core::JSON::EnumType<' + (json.namespace ? json.namespace : getModuleName(module)) + '_' + (getEnumName(name, prefix)) + '>'
+    structure.type.push(t)
+    return structure
+  }
+  else if (Array.isArray(json.type)) {
+    let type = json.type.find(t => t !== 'null')
+    console.log(`WARNING UNHANDLED: type is an array containing ${json.type}`)
+  }
+  else if (json.type === 'array' && json.items) {
+    let res
+    let items
+    if (Array.isArray(json.items)) {
+      //TODO
+      const IsHomogenous = arr => new Set(arr.map( item => item.type ? item.type : typeof item)).size === 1
+      if (!IsHomogenous(json.items)) {
+        throw 'Heterogenous Arrays not supported yet'
+      }
+      items = json.items[0]
     }
-    else if (schema.type === 'object') {
-        if (!schema.title && !name) {
-            console.log(`WARNING: schema with no name`)
-            console.dir(schema)
-            return 'Unknown'
-        }
-        return getJsonDataStructName(getModuleName(module), schema.title || name)
-        //TODO
+    else {
+      items = json.items
+      // grab the type for the non-array schema
     }
-    else if (schema.type) {
-        return getJsonNativeType(schema)
+    res = getJsonTypeInfo(module, items, items.name || name, schemas, prefix)
+    structure.deps = res.deps
+    structure.type.push(`WPEFramework::Core::JSON::ArrayType<${res.type}>`)
+
+    return structure
+  }
+  else if (json.allOf) {
+    let title = json.title ? json.title : name
+    let union = deepMergeAll(module, title, json, schemas)
+    union['title'] = title
+
+    delete union['$ref']
+    return getJsonTypeInfo(module, union, '', schemas, '', {descriptions, level})
+  }
+  else if (json.oneOf) {
+    structure.type = getJsonNativeTypeForOpaqueString()
+    return structure
+  }
+  else if (json.patternProperties) {
+    structure.type = getJsonNativeTypeForOpaqueString()
+    return structure
+  }
+  else if (json.anyOf) {
+    let mergedSchema = getMergedSchema(module, json, name, schemas)
+    let prefixName = ((prefix.length > 0) && (!name.startsWith(prefix))) ? prefix : capitalize(name)
+    structure = getJsonTypeInfo(module, mergedSchema, name, schemas, prefixName, {descriptions, level})
+  }
+  else if (json.type === 'object') {
+    if (hasProperties(json) !== true) {
+      structure.type = getJsonNativeTypeForOpaqueString()
     }
-    return type
+    else {
+      let schema = getSchemaTypeInfo(module, json, name, module['x-schemas'], prefix)
+      if (schema.namespace && schema.namespace.length > 0) {
+        structure.type.push(getJsonDataStructName(schema.namespace, json.title || name, prefix))
+      }
+    }
+    return structure
+  }
+  else if (json.type) {
+    structure.type = getJsonNativeType(json)
+    return structure
+  }
+  return structure
 }
 
 function getTypeScriptType(jsonType) {
-    if (jsonType === 'integer') {
-        return 'number'
-    }
-    else {
-        return jsonType
-    }
+  if (jsonType === 'integer') {
+    return 'number'
+  }
+  else {
+    return jsonType
+  }
 }
 
 const enumReducer = (acc, val, i, arr) => {
-    const keyName = val.split(':').pop().replace(/[\.\-]/g, '_').replace(/\+/g, '_plus').replace(/([a-z])([A-Z0-9])/g, '$1_$2').toUpperCase()
-    acc = acc + `    ${keyName} = '${val}'`
-    if (i < arr.length - 1) {
-        acc = acc.concat(',\n')
-    }
-    return acc
+  const keyName = val.split(':').pop().replace(/[\.\-]/g, '_').replace(/\+/g, '_plus').replace(/([a-z])([A-Z0-9])/g, '$1_$2').toUpperCase()
+  acc = acc + `    ${keyName} = '${val}'`
+  if (i < arr.length - 1) {
+    acc = acc.concat(',\n')
+  }
+  return acc
 }
 
 export default {

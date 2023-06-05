@@ -20,6 +20,6 @@ namespace FireboltSDK {
     namespace ${info.title} {
     // Types
 
-       /* ${SCHEMAS}*/
+       /* ${SCHEMAS} */
     }
 }
