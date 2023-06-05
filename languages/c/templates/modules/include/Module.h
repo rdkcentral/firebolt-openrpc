@@ -30,10 +30,6 @@ extern "C" {
 
 /* ${ENUMS} */
 
-// Types
-
-/* ${TYPES} */
-
 /* ${ACCESSORS} */
 
 /* ${DECLARATIONS} */
