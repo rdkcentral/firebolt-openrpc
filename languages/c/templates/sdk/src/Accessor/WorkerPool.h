@@ -69,4 +69,34 @@ namespace FireboltSDK {
         Dispatcher _dispatcher;
     };
 
+    class Worker : public WPEFramework::Core::IDispatch {
+    public:
+        typedef std::function<void(const void*)> Dispatcher;
+
+    protected:
+        Worker(const Dispatcher& dispatcher, const void* userData)
+            : _dispatcher(dispatcher)
+            , _userData(userData)
+        {
+        }
+
+    public:
+        Worker() = delete;
+        Worker(const Worker&) = delete;
+        Worker& operator=(const Worker&) = delete;
+
+        ~Worker() = default;
+
+    public:
+        static WPEFramework::Core::ProxyType<WPEFramework::Core::IDispatch> Create(const Dispatcher& dispatcher, const void* userData);
+
+        void Dispatch() override
+        {
+            _dispatcher(_userData);
+        }
+
+    private:
+        Dispatcher _dispatcher;
+        const void* _userData;
+    };
 }

@@ -27,13 +27,12 @@ extern "C" {
 // String Type Handler Interfaces
 const char* FireboltTypes_String(FireboltTypes_StringHandle handle)
 {
-    FireboltSDK::String* str = static_cast<FireboltSDK::String*>(handle);
-    return (str->Value().c_str());
+    return ((static_cast<FireboltSDK::JSON::String*>(handle))->Value().c_str());
 }
+
 void FireboltTypes_StringHandle_Release(FireboltTypes_StringHandle handle)
 {
-    FireboltSDK::String* str = static_cast<FireboltSDK::String*>(handle);
-    delete str;
+    delete static_cast<FireboltSDK::JSON::String*>(handle);
 }
 
 #ifdef __cplusplus

@@ -21,35 +21,36 @@
 #include <string>
 
 namespace FireboltSDK {
-class String {
+namespace JSON {
+class String : public WPEFramework::Core::JSON::String {
+    using Base = WPEFramework::Core::JSON::String;
     public:
         String()
-            : _value()
+            : Base()
+            , _value()
         {
         }
-        String(const std::string& value)
-            : _value(value)
+        String(const char value[])
+            : Base(value)
+            , _value(value)
         {
         }
-        String(const String& copy)
-            : _value(copy._value)
+        String& operator=(const char RHS[])
         {
-            
-        }
-        inline ~String() = default;
-        String& operator=(const String& RHS)
-        {
-            _value = RHS._value;
+            Base::operator = (RHS);
+            _value = RHS;
             return (*this);
         }
 
     public:
-        const std::string& Value() const
+        const string& Value() const
         {
+            _value = Base::Value();
             return _value;
         }
 
     private:
-        std::string _value;
+        mutable std::string _value;
     };
+}
 }
