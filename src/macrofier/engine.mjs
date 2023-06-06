@@ -29,7 +29,7 @@ import isString from 'crocks/core/isString.js'
 import predicates from 'crocks/predicates/index.js'
 const { isObject, isArray, propEq, pathSatisfies, propSatisfies } = predicates
 
-import { isRPCOnlyMethod, isProviderInterfaceMethod, getProviderInterface, getPayloadFromEvent, providerHasNoParameters, isTemporalSetMethod, hasMethodAttributes, getMethodAttributes, isEventMethodWithContext, getSemanticVersion, getSetterFor, getProvidedCapabilities, isPolymorphicPullMethod, hasPublicAPIs } from '../shared/modules.mjs'
+import { isRPCOnlyMethod, isProviderInterfaceMethod, getProviderInterface, getPayloadFromEvent, providerHasNoParameters, isTemporalSetMethod, hasMethodAttributes, getMethodAttributes, isEventMethodWithContext, getSemanticVersion, getSetterFor, getProvidedCapabilities, isPolymorphicPullMethod, isPolymorphicReducer, hasPublicAPIs } from '../shared/modules.mjs'
 import isEmpty from 'crocks/core/isEmpty.js'
 import { getLinkedSchemaPaths, getSchemaConstraints, isSchema, localizeDependencies, isDefinitionReferencedBySchema } from '../shared/json-schema.mjs'
 
@@ -646,12 +646,11 @@ function generateSchemas(json, templates, options) {
 
   const schemas = (options.section.includes('methods') ? (hasMethodsSchema(json) ? json.methods : '') : (json.definitions || (json.components && json.components.schemas) || {}))
 
-  const generate = (name, schema, uri, { prefix = '' } = {}) => {
+  const generate = (name, schema, uri, { prefix = '', type = '' } = {}) => {
     // these are internal schemas used by the firebolt-openrpc tooling, and not meant to be used in code/doc generation
     if (['ListenResponse', 'ProviderRequest', 'ProviderResponse', 'FederatedResponse', 'FederatedRequest'].includes(name)) {
       return
     }    
-
     let content = getTemplate('/schemas/default', templates)
 
     if (!schema.examples || schema.examples.length === 0) {
@@ -667,7 +666,7 @@ function generateSchemas(json, templates, options) {
     else {
       content = content.replace(/\$\{if\.description\}(.*?)\{end\.if\.description\}/gms, '$1')
     }
-    const schemaShape = types.getSchemaShape(schema, json, { name, prefix, destination: state.destination, section: options.section })
+    const schemaShape = types.getSchemaShape(schema, json, { name, prefix, type, destination: state.destination, section: options.section })
 
     content = content
         .replace(/\$\{schema.title\}/, (schema.title || name))
@@ -712,13 +711,18 @@ function generateSchemas(json, templates, options) {
     }
     else if (schema.tags) {
       if (!isDeprecatedMethod(schema)) {
-        schema.params.forEach(param => {
-          if (param.schema && (param.schema.type === 'object')) {
-            list.push([param.name, param.schema, '', { prefix : schema.name}])
+        if (isPolymorphicReducer(schema)) {
+          list.push([schema.name, schema, '', { type : 'reducer' }])
+        }
+        else {
+          schema.params.forEach(param => {
+            if (param.schema && (param.schema.type === 'object')) {
+              list.push([param.name, param.schema, '', { prefix : schema.name }])
+            }
+          })
+          if (schema.result.schema && (schema.result.schema.type === 'object')) {
+            list.push([schema.result.name, schema.result.schema, '', { prefix : schema.name }])
           }
-        })
-        if (schema.result.schema && (schema.result.schema.type === 'object')) {
-          list.push([schema.result.name, schema.result.schema, '', { prefix : schema.name}])
         }
       }
     }
