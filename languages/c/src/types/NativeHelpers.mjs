@@ -31,6 +31,11 @@ const { isObject, isArray, propEq, pathSatisfies, hasProp, propSatisfies } = pre
 const getModuleName = json => getPathOr(null, ['info', 'title'], json) || json.title || 'missing'
 
 const getFireboltStringType = () => 'FireboltTypes_StringHandle'
+const getSdkNameSpace = () => 'FireboltSDK'
+const getJsonDataPrefix = () => 'JsonData_'
+const wpeJsonNameSpace = () => 'WPEFramework::Core::JSON'
+const getJsonNativeTypeForOpaqueString = () => getSdkNameSpace() + '::JSON::String'
+
 const getHeaderText = () => {
 
     return `/*
@@ -84,7 +89,6 @@ const isOptional = (prop, json) => (!json.required || !json.required.includes(pr
 const SdkTypesPrefix = 'Firebolt'
 
 const Indent = '    '
-const getFireboltStringType = () => 'FireboltTypes_StringHandle'
 
 const getNativeType = (json, stringAsHandle = false) => {
   let type
@@ -271,6 +275,11 @@ export {
     getPropertyAccessors,
     isOptional,
     generateEnum,
-    getFireboltStringType
-    getArrayElementSchema
+    getFireboltStringType,
+    getArrayElementSchema,
+    getJsonDataPrefix,
+    getSdkNameSpace,
+    wpeJsonNameSpace,
+    getJsonNativeTypeForOpaqueString
+
 }

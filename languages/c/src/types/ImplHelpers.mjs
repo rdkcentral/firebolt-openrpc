@@ -1,13 +1,4 @@
-import { getModuleName, getPropertyGetterSignature, description, getFireboltStringType } from './NativeHelpers.mjs'
-
-const getSdkNameSpace = () => 'FireboltSDK'
-const getJsonDataPrefix = () => 'JsonData_'
-
-const Indent = '\t'
-
-const getSdkNameSpace = () => 'FireboltSDK'
-const wpeJsonNameSpace = () => 'WPEFramework::Core::JSON'
-const getFireboltStringType = () => 'FireboltTypes_StringHandle'
+import { getModuleName, getPropertyGetterSignature, getFireboltStringType, getSdkNameSpace, capitalize } from './NativeHelpers.mjs'
 
 const getObjectHandleManagementImpl = (varName, jsonDataName) => {
 
