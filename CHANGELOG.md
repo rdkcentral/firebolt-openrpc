@@ -1,3 +1,10 @@
+## [2.0.2-next.2](https://github.com/rdkcentral/firebolt-openrpc/compare/v2.0.2-next.1...v2.0.2-next.2) (2023-06-06)
+
+
+### Bug Fixes
+
+* **filesystem:** Don't call toString on binary files ([42746a1](https://github.com/rdkcentral/firebolt-openrpc/commit/42746a19af3cbd59481649914bca5cfaf76b6a16))
+
 ## [2.0.2-next.1](https://github.com/rdkcentral/firebolt-openrpc/compare/v2.0.1...v2.0.2-next.1) (2023-05-19)
 
 
