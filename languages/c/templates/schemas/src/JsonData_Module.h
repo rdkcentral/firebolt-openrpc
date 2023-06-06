@@ -16,6 +16,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#pragma once
+
+#include "Common/${info.title}.h"
+
 namespace FireboltSDK {
     namespace ${info.title} {
     // Types

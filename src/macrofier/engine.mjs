@@ -46,6 +46,7 @@ const _inspector = obj => {
 // getMethodSignatureParams(method, module, options = { destination: 'file.txt' })
 // getSchemaType(schema, module, options = { destination: 'file.txt', title: true })
 // getSchemaShape(schema, module, options = { name: 'Foo', destination: 'file.txt' })
+// getJsonType(schema, module, options = { name: 'Foo', prefix: '', descriptions: false, level: 0 })
 
 let types = {
   getMethodSignature: ()=>null,
@@ -133,6 +134,24 @@ const getLinkForSchema = (schema, json, { name = '' } = {}) => {
   return '#'
 }
 
+const getComponentExternalSchema = (json) => {
+  let refSchemas = []
+  if (json.components && json.components.schemas) {
+    Object.entries(json.components.schemas).forEach(([name, schema]) => {
+      let refs = getLinkedSchemaPaths(schema).map(path => getPathOr(null, path, schema))
+      refs.map(ref => {
+        let title = ''
+        if (ref.includes('x-schemas')) {
+          if (ref.split('/')[2] !== json.info.title) {
+            title = ref.split('/')[2]
+          }
+        }
+        title && !refSchemas.includes(title) ? refSchemas.push(title) : null
+      })
+    })
+  }
+  return (refSchemas)
+}
 
 // Maybe methods array of objects
 const getMethods = compose(
@@ -345,7 +364,7 @@ const generateMacros = (obj, templates, languages, options = {}) => {
   const schemasArray = generateSchemas(obj, templates, { baseUrl: '', section: 'schemas' }).filter(s => (options.copySchemasIntoModules || !s.uri))
   const accessorsArray = generateSchemas(obj, templates, { baseUrl: '', section: 'accessors' }).filter(s => (options.copySchemasIntoModules || !s.uri))
   const schemas = schemasArray.length ? getTemplate('/sections/schemas', templates).replace(/\$\{schema.list\}/g, schemasArray.map(s => s.body).filter(body => body).join('\n')) : ''
-  const typesArray = schemasArray.filter(x => !x.enum)
+  const typesArray = schemasArray.length ? schemasArray.filter(x => !x.enum) : ''
   const types = (typesArray.length ? getTemplate('/sections/types', templates).replace(/\$\{schema.list\}/g, typesArray.map(s => s.body).filter(body => body).join('\n')) : '') + methodTypes
 
   const accessors = (accessorsArray.length ? getTemplate('/sections/accessors', templates).replace(/\$\{schema.list\}/g, accessorsArray.map(s => s.body).filter(body => body).join('\n')) : '') + methodAccessors
@@ -742,7 +761,7 @@ function getRelatedSchemaLinks(schema = {}, json = {}, templates = {}, options =
 }
 
 const generateImports = (json, templates) => {
-  let imports = getTemplate('/imports/default', templates)
+  let imports = ''
 
   if (rpcMethodsOrEmptyArray(json).length) {
     imports += getTemplate('/imports/rpc', templates)
@@ -772,10 +791,14 @@ const generateImports = (json, templates) => {
     imports += getTemplate('/imports/x-method', templates)
   }
 
-  if (json['x-schemas'] && Object.keys(json['x-schemas']).length > 0) {
-    imports += Object.keys(json['x-schemas']).map(shared => getTemplate('/imports/default', templates).replace(/\$\{info.title\}/g, shared)).join('\n')
+  if (json['x-schemas'] && Object.keys(json['x-schemas']).length > 0 && !json.info['x-uri-titles']) {
+    imports += Object.keys(json['x-schemas']).map(shared => getTemplate('/imports/default', templates).replace(/\$\{info.title\}/g, shared)).join('')
   }
 
+  let componentExternalSchema = getComponentExternalSchema(json)
+  if (componentExternalSchema.length && json.info['x-uri-titles']) {
+    imports += componentExternalSchema.map(shared => getTemplate('/imports/common', templates).replace(/\$\{info.title\}/g, shared)).join('')
+  }
   return imports
 }
 
@@ -1021,7 +1044,7 @@ function insertMethodMacros(template, methodObj, json, templates, examples={}) {
   const pullsParamsType = pullsParams ? types.getSchemaShape(pullsParams, json, { destination: state.destination, section: state.section  }) : ''
  
   let seeAlso = ''
-  
+
   if (isPolymorphicPullMethod(methodObj) && pullsForType) {
     seeAlso = `See also: [${pullsForType}](#${pullsForType.toLowerCase()}-1)` // this assumes the schema will be after the method...
   }

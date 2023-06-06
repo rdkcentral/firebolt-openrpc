@@ -20,6 +20,7 @@
 #define _COMMON_${info.TITLE}_H
 
 #include "Firebolt.h"
+/* ${IMPORTS} */
 
 #ifdef __cplusplus
 extern "C" {
