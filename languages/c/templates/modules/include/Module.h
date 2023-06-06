@@ -26,10 +26,13 @@
 extern "C" {
 #endif
 
-    /* ${SCHEMAS} */
+// Enums
 
-    /* ${ACCESSORS} */
-    /* ${DECLARATIONS} */
+/* ${ENUMS} */
+
+/* ${ACCESSORS} */
+
+/* ${DECLARATIONS} */
 
 #ifdef __cplusplus
 }

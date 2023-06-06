@@ -1,5 +1,1 @@
-    /**
-     * ${schema.description}
-     */
-
 ${schema.shape}

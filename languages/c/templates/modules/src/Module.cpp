@@ -24,12 +24,12 @@
 
 namespace FireboltSDK {
     namespace ${info.title} {
-
-        /* ${TYPES} */
-
+    // Types
+       /* ${TYPES} */
     }
 }
 
+/* ${ENUMS} */
 
 #ifdef __cplusplus
 extern "C" {
@@ -37,7 +37,6 @@ extern "C" {
 
 /* ${ACCESSORS} */
 /* ${METHODS} */
-
 
 #ifdef __cplusplus
 }

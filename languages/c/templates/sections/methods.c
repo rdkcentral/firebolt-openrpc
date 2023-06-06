@@ -1,3 +1,4 @@
 
-    // Methods
+// Methods
+
 ${method.list}

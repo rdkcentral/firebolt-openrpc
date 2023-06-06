@@ -25,13 +25,11 @@
 extern "C" {
 #endif
 
-    // Enums
+// Enums
 
-    /* ${ENUMS} */
+/* ${ENUMS} */
 
-    // Types
-
-    /* ${TYPES} */
+/* ${TYPES} */
 
 #ifdef __cplusplus
 }

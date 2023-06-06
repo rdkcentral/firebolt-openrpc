@@ -1,3 +1,2 @@
 // Accessors
-
 ${schema.list}
