@@ -1048,7 +1048,6 @@ function insertMethodMacros(template, methodObj, json, templates, examples={}) {
   const pullsParamsType = pullsParams ? types.getSchemaShape(pullsParams, json, { destination: state.destination, section: state.section  }) : ''
  
   let seeAlso = ''
-
   if (isPolymorphicPullMethod(methodObj) && pullsForType) {
     seeAlso = `See also: [${pullsForType}](#${pullsForType.toLowerCase()}-1)` // this assumes the schema will be after the method...
   }
