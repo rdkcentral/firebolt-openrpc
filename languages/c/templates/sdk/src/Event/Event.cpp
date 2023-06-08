@@ -22,8 +22,7 @@
 namespace FireboltSDK {
     Event* Event::_singleton = nullptr;
     Event::Event()
-        : _id(0)
-        , _eventMap()
+        : _eventMap()
         , _adminLock()
         , _transport(nullptr)
     {
@@ -61,9 +60,9 @@ namespace FireboltSDK {
         _transport->SetEventHandler(this);
     }
 
-    uint32_t Event::Unsubscribe(const string& eventName, const uint32_t id)
+    uint32_t Event::Unsubscribe(const string& eventName, void* usercb)
     {
-        uint32_t status = Revoke(eventName, id);
+        uint32_t status = Revoke(eventName, usercb);
 
         if (status == FireboltSDKErrorNone) {
             if (_transport != nullptr) {
@@ -93,26 +92,26 @@ namespace FireboltSDK {
         _adminLock.Lock();
         EventMap::iterator eventIndex = _eventMap.find(eventName);
         if (eventIndex != _eventMap.end()) {
-            IdMap::iterator idIndex = eventIndex->second.begin();
-            while(idIndex != eventIndex->second.end()) {
+            CallbackMap::iterator callbackIndex = eventIndex->second.begin();
+            while(callbackIndex != eventIndex->second.end()) {
                 State state;
-                if (idIndex->second.state != State::REVOKED) {
-                    idIndex->second.state = State::EXECUTING;
+                if (callbackIndex->second.state != State::REVOKED) {
+                    callbackIndex->second.state = State::EXECUTING;
                 }
-                state = idIndex->second.state;
+                state = callbackIndex->second.state;
                 _adminLock.Unlock();
                 if (state == State::EXECUTING) {
-                    idIndex->second.lambda(idIndex->second.userdata, (jsonResponse->Result.Value()));
+                    callbackIndex->second.lambda(callbackIndex->first, callbackIndex->second.userdata, (jsonResponse->Result.Value()));
                 }
                 _adminLock.Lock();
-                if (idIndex->second.state == State::REVOKED) {
-                    idIndex = eventIndex->second.erase(idIndex);
+                if (callbackIndex->second.state == State::REVOKED) {
+                    callbackIndex = eventIndex->second.erase(callbackIndex);
                     if (eventIndex->second.size() == 0) {
                         _eventMap.erase(eventIndex);
                     }
                 } else {
-                    idIndex->second.state = State::IDLE;
-                    idIndex++;
+                    callbackIndex->second.state = State::IDLE;
+                    callbackIndex++;
                 }
             }
         }
@@ -121,19 +120,19 @@ namespace FireboltSDK {
         return FireboltSDKErrorNone;;
     }
 
-    uint32_t Event::Revoke(const string& eventName, const uint32_t id)
+    uint32_t Event::Revoke(const string& eventName, void* usercb)
     {
         uint32_t status = FireboltSDKErrorNone;
         _adminLock.Lock();
         EventMap::iterator eventIndex = _eventMap.find(eventName);
         if (eventIndex != _eventMap.end()) {
-            IdMap::iterator idIndex = eventIndex->second.find(id);
-            if (idIndex->second.state != State::EXECUTING) {
-                if (idIndex != eventIndex->second.end()) {
-                    eventIndex->second.erase(idIndex);
+            CallbackMap::iterator callbackIndex = eventIndex->second.find(usercb);
+            if (callbackIndex->second.state != State::EXECUTING) {
+                if (callbackIndex != eventIndex->second.end()) {
+                    eventIndex->second.erase(callbackIndex);
                 }
             } else {
-                idIndex->second.state = State::REVOKED;
+                callbackIndex->second.state = State::REVOKED;
             }
             if (eventIndex->second.size() == 0) {
                 _eventMap.erase(eventIndex);

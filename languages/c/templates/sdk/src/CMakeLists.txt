@@ -20,29 +20,30 @@ project(FireboltSDK)
 project_version(1.0.0)
 set(TARGET ${PROJECT_NAME})
 message("Setup ${TARGET} v${PROJECT_VERSION}")
+file(GLOB GENERATED_SOURCES "${GENERATED_CODE_PATH}/src/*.cpp")
 
-add_library(${TARGET} SHARED
-    Types.cpp
-    Module.cpp
+file(GLOB SOURCES *.cpp)
+add_library(${TARGET} ${FIREBOLT_LIBRARY_TYPE}
+    ${SOURCES}
     Logger/Logger.cpp
     Transport/Transport.cpp
     Accessor/Accessor.cpp
-    Event/Event.cpp)
+    Event/Event.cpp
+)
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-find_package(${NAMESPACE}Core CONFIG REQUIRED)
 find_package(${NAMESPACE}WebSocket CONFIG REQUIRED)
 
 target_link_libraries(${TARGET}
     PUBLIC
-        ${NAMESPACE}Core::${NAMESPACE}Core
         ${NAMESPACE}WebSocket::${NAMESPACE}WebSocket
 )
 
 target_include_directories(${TARGET}
     PRIVATE
         $<BUILD_INTERFACE:${GENERATED_CODE_PATH}/include>
-        $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
+        $<BUILD_INTERFACE:${GENERATED_CODE_PATH}/src>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include>
         $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}>
 )
 
@@ -66,20 +67,12 @@ InstallHeaders(TARGET ${TARGET} HEADERS . NAMESPACE ${FIREBOLT_NAMESPACE} DESTIN
 InstallHeaders(TARGET ${TARGET} EXCLUDE_ROOT_DIR HEADERS . NAMESPACE ${FIREBOLT_NAMESPACE}
     SOURCE ${GENERATED_CODE_PATH}/include DESTINATION ${FIREBOLT_NAMESPACE}/generated)
 InstallHeaders(TARGET ${TARGET} HEADERS . NAMESPACE ${FIREBOLT_NAMESPACE}
-    SOURCE ${CMAKE_SOURCE_DIR}/include DESTINATION ${FIREBOLT_NAMESPACE})
+    SOURCE ${CMAKE_CURRENT_SOURCE_DIR}/../include DESTINATION ${FIREBOLT_NAMESPACE})
 
-InstallLibraries(TARGET ${TARGET} SHARED LIBRARIES ${TARGET} DESTINATION ${FIREBOLT_NAMESPACE})
+InstallLibraries(TARGET ${TARGET} ${FIREBOLT_LIBRARY_TYPE} LIBDIR ${LIBDIR} LIBRARIES ${TARGET} DESTINATION ${FIREBOLT_NAMESPACE})
 InstallCMakeConfig(TARGETS ${TARGET})
 InstallPackageConfig(TARGETS ${TARGET} DESCRIPTION "Firebolt SDK Library")
 InstallCMakeConfigs(TARGET ${TARGET} DESTINATION ${FIREBOLT_NAMESPACE})
-
-add_custom_command(
-    TARGET ${TARGET}
-    POST_BUILD
-    COMMENT "=================== Installing JsonConfig ======================"
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/${FIREBOLT_NAMESPACE}/etc/${FIREBOLT_NAMESPACE}
-    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_BINARY_DIR}/config/${TARGET}.json ${CMAKE_BINARY_DIR}/${FIREBOLT_NAMESPACE}/etc/${FIREBOLT_NAMESPACE}/config.json
-)
 
 add_custom_command(
     TARGET ${TARGET}
@@ -89,5 +82,3 @@ add_custom_command(
     COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/${FIREBOLT_NAMESPACE}Config.cmake ${CMAKE_BINARY_DIR}/${FIREBOLT_NAMESPACE}/usr/lib/cmake/${FIREBOLT_NAMESPACE}
     COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_DIR}/cmake/*.cmake ${CMAKE_BINARY_DIR}/${FIREBOLT_NAMESPACE}/usr/lib/cmake/${FIREBOLT_NAMESPACE}
 )
-
-include(Config.cmake)

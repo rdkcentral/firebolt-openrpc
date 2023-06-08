@@ -72,8 +72,8 @@ function(InstallHeaders)
 endfunction(InstallHeaders)
 
 function(InstallLibraries)
-    set(optionsArgs SHARED)
-    set(oneValueArgs TARGET DESTINATION)
+    set(optionsArgs SHARED STATIC)
+    set(oneValueArgs TARGET DESTINATION LIBDIR)
     set(multiValueArgs LIBRARIES)
 
     cmake_parse_arguments(Argument "${optionsArgs}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN} )
@@ -92,11 +92,11 @@ function(InstallLibraries)
                     TARGET ${Argument_TARGET}
                     POST_BUILD
                     COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/${Argument_DESTINATION}/usr/lib
-                    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/Release/lib${LIBRARY}.so.${PROJECT_VERSION} ${CMAKE_BINARY_DIR}/${Argument_DESTINATION}/usr/lib
-                    COMMAND ${CMAKE_COMMAND} -D "LIBRARY=${CMAKE_BINARY_DIR}/Release/lib${LIBRARY}.so.${PROJECT_VERSION_MAJOR}" -D "DESTINATION=${CMAKE_BINARY_DIR}/${Argument_DESTINATION}/usr/lib" -P ${CMAKE_SOURCE_DIR}/cmake/CopySymlink.cmake
-                    COMMAND ${CMAKE_COMMAND} -D "LIBRARY=${CMAKE_BINARY_DIR}/Release/lib${LIBRARY}.so" -D "DESTINATION=${CMAKE_BINARY_DIR}/${Argument_DESTINATION}/usr/lib" -P ${CMAKE_SOURCE_DIR}/cmake/CopySymlink.cmake
+                    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_BINARY_DIR}/${Argument_LIBDIR}/lib${LIBRARY}.so.${PROJECT_VERSION} ${CMAKE_BINARY_DIR}/${Argument_DESTINATION}/usr/lib
+                    COMMAND ${CMAKE_COMMAND} -E create_symlink lib${LIBRARY}.so.${PROJECT_VERSION} ${CMAKE_BINARY_DIR}/${Argument_DESTINATION}/usr/lib/lib${LIBRARY}.so.${PROJECT_VERSION_MAJOR}
+                    COMMAND ${CMAKE_COMMAND} -E create_symlink lib${LIBRARY}.so.${PROJECT_VERSION_MAJOR} ${CMAKE_BINARY_DIR}/${Argument_DESTINATION}/usr/lib/lib${LIBRARY}.so
                 )
-             else()
+            elseif (Argument_STATIC)
                 add_custom_command(
                     TARGET ${Argument_TARGET}
                     POST_BUILD
@@ -119,13 +119,18 @@ function(InstallCMakeConfigs)
         message(FATAL_ERROR "Unknown keywords given to InstallCMakeConfigs(): \"${Argument_UNPARSED_ARGUMENTS}\"")
     endif()
     if (Argument_TARGET)
+        if (${CMAKE_VERSION} VERSION_LESS "3.25.0")
+            set(EXPORT_CONFIG_PATH "lib/cmake/${Argument_TARGET}")
+        else ()
+            set(EXPORT_CONFIG_PATH "*")
+        endif ()
         add_custom_command(
             TARGET ${Argument_TARGET}
             POST_BUILD
             COMMENT "=================== Installing CMakeConfigs ======================"
             COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/${Argument_DESTINATION}/usr/lib/cmake/${Argument_TARGET}
             COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_BINARY_DIR}/${Argument_TARGET}Config*.cmake ${CMAKE_BINARY_DIR}/${Argument_DESTINATION}/usr/lib/cmake/${Argument_TARGET}
-            COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/Export/lib/cmake/${Argument_TARGET}/${Argument_TARGET}Targets*.cmake ${CMAKE_BINARY_DIR}/${Argument_DESTINATION}/usr/lib/cmake/${Argument_TARGET}
+            COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/Export/${EXPORT_CONFIG_PATH}/${Argument_TARGET}Targets*.cmake ${CMAKE_BINARY_DIR}/${Argument_DESTINATION}/usr/lib/cmake/${Argument_TARGET}
         )
         if (EXISTS ${CMAKE_CURRENT_BINARY_DIR}/${Argument_TARGET}.pc)
             add_custom_command(

@@ -26,7 +26,7 @@ namespace FireboltSDK {
 
     class Event : public IEventHandler {
     public:
-        typedef std::function<uint32_t(const void*, const string& parameters)> DispatchFunction;
+        typedef std::function<uint32_t(void*, const void*, const string& parameters)> DispatchFunction;
     private:
         enum State : uint8_t {
             IDLE,
@@ -39,9 +39,8 @@ namespace FireboltSDK {
             const void* userdata;
             State state;
         };
-        using IdMap = std::map<uint32_t, CallbackData>;
-        using EventMap = std::map<string, IdMap>;
-  
+        using CallbackMap = std::map<void*, CallbackData>;
+        using EventMap = std::map<string, CallbackMap>;
 
         class Response : public WPEFramework::Core::JSON::Container {
         public:
@@ -64,28 +63,41 @@ namespace FireboltSDK {
             WPEFramework::Core::JSON::Boolean Listening;
         };
 
-    public:
+    private:
         Event();
+    public:
         ~Event() override;
         static Event& Instance();
         static void Dispose();
         void Configure(Transport<WPEFramework::Core::JSON::IElement>* transport);
 
     public:
-        template <typename PARAMETERS, typename CALLBACK>
-        uint32_t Subscribe(const string& eventName, const CALLBACK& callback, const void* userdata, uint32_t& id)
+        template <typename RESULT, typename CALLBACK>
+        uint32_t Subscribe(const string& eventName, const CALLBACK& callback, void* usercb, const void* userdata)
+        {
+            JsonObject jsonParameters;
+            return Subscribe<RESULT, CALLBACK>(eventName, jsonParameters, callback, usercb, userdata);
+        }
+
+        template <typename RESULT, typename CALLBACK>
+        uint32_t Subscribe(const string& eventName, JsonObject& jsonParameters, const CALLBACK& callback, void* usercb, const void* userdata)
         {
             uint32_t status = FireboltSDKErrorUnavailable;
             if (_transport != nullptr) {
 
-                status = Assign<PARAMETERS, CALLBACK>(eventName, callback, userdata, id);
+                status = Assign<RESULT, CALLBACK>(eventName, callback, usercb, userdata);
                 if (status == FireboltSDKErrorNone) {
-                    const string parameters("{\"listen\":true}");
                     Response response;
-                    status = _transport->Subscribe(eventName, parameters, response);
+
+                    WPEFramework::Core::JSON::Variant Listen = true;
+                    jsonParameters.Set(_T("listen"), Listen);
+                    string parameters;
+                    jsonParameters.ToString(parameters);
+
+                    status = _transport->Subscribe<Response>(eventName, parameters, response);
 
                     if (status != FireboltSDKErrorNone) {
-                        Revoke(eventName, id);
+                        Revoke(eventName, usercb);
                     } else if ((response.Listening.IsSet() == true) &&
                               (response.Listening.Value() == true)) {
                         status = FireboltSDKErrorNone;
@@ -95,23 +107,23 @@ namespace FireboltSDK {
                 }
             }
 
-            return ((status == FireboltSDKErrorInUse) ? FireboltSDKErrorNone: status);
+            return status;
         }
 
-        uint32_t Unsubscribe(const string& eventName, const uint32_t id);
+        uint32_t Unsubscribe(const string& eventName, void* usercb);
 
     private:
         template <typename PARAMETERS, typename CALLBACK>
-        uint32_t Assign(const string& eventName, const CALLBACK& callback, const void* userdata, uint32_t& id)
+        uint32_t Assign(const string& eventName, const CALLBACK& callback, void* usercb, const void* userdata)
         {
             uint32_t status = FireboltSDKErrorNone;
-            id = Id();
-            std::function<void(const void* userdata, void* parameters)> actualCallback = callback;
-            DispatchFunction implementation = [actualCallback](const void* userdata, const string& parameters) -> uint32_t {
+            std::function<void(void* usercb, const void* userdata, void* parameters)> actualCallback = callback;
+            DispatchFunction implementation = [actualCallback](void* usercb, const void* userdata, const string& parameters) -> uint32_t {
 
-                WPEFramework::Core::ProxyType<PARAMETERS> inbound = WPEFramework::Core::ProxyType<PARAMETERS>::Create();
-                inbound->FromString(parameters);
-                actualCallback(userdata, static_cast<void*>(&inbound));
+                WPEFramework::Core::ProxyType<PARAMETERS>* inbound = new WPEFramework::Core::ProxyType<PARAMETERS>();
+                *inbound = WPEFramework::Core::ProxyType<PARAMETERS>::Create();
+                (*inbound)->FromString(parameters);
+                actualCallback(usercb, userdata, static_cast<void*>(inbound));
                 return (FireboltSDKErrorNone);
             };
             CallbackData callbackData = {implementation, userdata, State::IDLE};
@@ -119,32 +131,31 @@ namespace FireboltSDK {
             _adminLock.Lock();
             EventMap::iterator eventIndex = _eventMap.find(eventName);
             if (eventIndex != _eventMap.end()) {
-                // Already registered, no need to register again;
-                status = FireboltSDKErrorInUse;
-                eventIndex->second.emplace(std::piecewise_construct, std::forward_as_tuple(id), std::forward_as_tuple(callbackData));
+                CallbackMap::iterator callbackIndex = eventIndex->second.find(usercb);
+                if (callbackIndex == eventIndex->second.end()) {
+                    eventIndex->second.emplace(std::piecewise_construct, std::forward_as_tuple(usercb), std::forward_as_tuple(callbackData));
+                } else {
+                    // Already registered, no need to register again;
+                    status = FireboltSDKErrorInUse;
+                }
             } else {
 
-                IdMap idMap;
-                idMap.emplace(std::piecewise_construct, std::forward_as_tuple(id), std::forward_as_tuple(callbackData));
-                _eventMap.emplace(std::piecewise_construct, std::forward_as_tuple(eventName), std::forward_as_tuple(idMap));
+                CallbackMap callbackMap;
+                callbackMap.emplace(std::piecewise_construct, std::forward_as_tuple(usercb), std::forward_as_tuple(callbackData));
+                _eventMap.emplace(std::piecewise_construct, std::forward_as_tuple(eventName), std::forward_as_tuple(callbackMap));
 
             }
 
             _adminLock.Unlock();
             return status;
         }
-        uint32_t Revoke(const string& eventName, const uint32_t id);
+        uint32_t Revoke(const string& eventName, void* usercb);
 
     private:
-        uint32_t Id() const
-        {
-            return (++_id);
-        }
         uint32_t ValidateResponse(const WPEFramework::Core::ProxyType<WPEFramework::Core::JSONRPC::Message>& jsonResponse, bool& enabled) override;
         uint32_t Dispatch(const string& eventName, const WPEFramework::Core::ProxyType<WPEFramework::Core::JSONRPC::Message>& jsonResponse) override;
  
     private:
-        mutable std::atomic<uint32_t> _id;
         EventMap _eventMap;
         WPEFramework::Core::CriticalSection _adminLock;
         Transport<WPEFramework::Core::JSON::IElement>* _transport;

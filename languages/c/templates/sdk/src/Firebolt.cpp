@@ -16,14 +16,25 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#pragma once
+#include "FireboltSDK.h"
 
-#ifndef MODULE_NAME
-#define MODULE_NAME OpenRPCNativeSDK
+
+#ifdef __cplusplus
+extern "C" {
 #endif
 
-#include <core/core.h>
-#include <websocket/websocket.h>
 
-#undef EXTERNAL
-#define EXTERNAL
+
+uint32_t FireboltSDK_Initialize(char* configLine) {
+    FireboltSDK::Accessor::Instance(configLine);
+    return FireboltSDKErrorNone;
+}
+
+uint32_t FireboltSDK_Deinitialize(void) {
+    FireboltSDK::Accessor::Dispose();
+    return FireboltSDKErrorNone;
+}
+
+#ifdef __cplusplus
+}
+#endif

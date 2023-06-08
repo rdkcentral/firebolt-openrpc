@@ -53,7 +53,6 @@ namespace FireboltSDK {
             _logLevel = logLevel;
             status = FireboltSDKErrorNone;
         }
-        printf("logLevel = %d _logLevel = %d\n", logLevel, _logLevel);
         return status;
     }
 
