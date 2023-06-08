@@ -20,17 +20,11 @@
 #define _FIREBOLT_TYPES_H
 
 #include <stdint.h>
+#include <stdbool.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-typedef enum {
-    Test1,
-    Test2,
-    Test3,
-    Test4
-} TestEnum;
 
 typedef void* FireboltTypes_StringHandle;
 const char* FireboltTypes_String(FireboltTypes_StringHandle handle);

@@ -21,22 +21,22 @@
 namespace FireboltSDK {
 
     Accessor* Accessor::_singleton = nullptr;
-    Accessor::Accessor()
-        : _threadCount(DefaultThreadCount)
-        , _queueSize(DefaultQueueSize)
-        , _workerPool()
+
+    Accessor::Accessor(const string& configLine)
+        : _workerPool()
         , _transport(nullptr)
+        , _config()
     {
         _singleton = this;
-        Config config;
-        LoadConfigs(config);
+        _config.FromString(configLine);
 
-        Logger::SetLogLevel(WPEFramework::Core::EnumerateType<Logger::LogLevel>(config.LogLevel.Value().c_str()).Value());
-        FIREBOLT_LOG_INFO(Logger::Category::OpenRPC, Logger::Module<Accessor>(), "Url = %s", config.Url.Value().c_str());
-        CreateTransport(config.Url.Value(), config.WaitTime.Value());
+        Logger::SetLogLevel(WPEFramework::Core::EnumerateType<Logger::LogLevel>(_config.LogLevel.Value().c_str()).Value());
+
+        FIREBOLT_LOG_INFO(Logger::Category::OpenRPC, Logger::Module<Accessor>(), "Url = %s", _config.WsUrl.Value().c_str());
+        CreateTransport(_config.WsUrl.Value().c_str(), _config.WaitTime.Value());
         CreateEventHandler();
 
-        _workerPool = WPEFramework::Core::ProxyType<WorkerPoolImplementation>::Create(_threadCount, WPEFramework::Core::Thread::DefaultStackSize(), _queueSize);
+        _workerPool = WPEFramework::Core::ProxyType<WorkerPoolImplementation>::Create(_config.WorkerPool.ThreadCount.Value(), _config.WorkerPool.StackSize.Value(), _config.WorkerPool.QueueSize.Value());
         WPEFramework::Core::WorkerPool::Assign(&(*_workerPool));
         _workerPool->Run();
     }
@@ -48,23 +48,6 @@ namespace FireboltSDK {
         WPEFramework::Core::IWorkerPool::Assign(nullptr);
         _workerPool->Stop();
         _singleton = nullptr;
-    }
-
-    void Accessor::LoadConfigs(Config& config)
-    {
-        string prefixPath;
-        WPEFramework::Core::SystemInfo::GetEnvironment("OPENRPC_NATIVE_SDK_PREFIX", prefixPath);
-        string configFilePath = (prefixPath.empty() != true) ?
-                                (prefixPath + '/' + Accessor::ConfigFile) : Accessor::ConfigFile;
-        WPEFramework::Core::File configFile(configFilePath);
-
-        if (configFile.Open(true) == true) {
-            WPEFramework::Core::OptionalType<WPEFramework::Core::JSON::Error> error;
-            config.IElement::FromFile(configFile, error);
-            if (error.IsSet() == true) {
-                FIREBOLT_LOG_ERROR(Logger::Category::OpenRPC, Logger::Module<Accessor>(), "Error in reading config");
-            }
-        }
     }
 
     uint32_t Accessor::CreateEventHandler()
@@ -84,14 +67,14 @@ namespace FireboltSDK {
         return Event::Instance();
     }
 
-    uint32_t Accessor::CreateTransport(const string& url, const uint32_t waitTime)
+    uint32_t Accessor::CreateTransport(const string& url, const uint32_t waitTime = DefaultWaitTime)
     {
         if (_transport != nullptr) {
             delete _transport;
         }
 
         _transport = new Transport<WPEFramework::Core::JSON::IElement>(static_cast<WPEFramework::Core::URL>(url), waitTime);
-        if (WaitForLinkReady(_transport, DefaultWaitTime) != FireboltSDKErrorNone) {
+        if (WaitForLinkReady(_transport, waitTime) != FireboltSDKErrorNone) {
             delete _transport;
             _transport = nullptr;
         }

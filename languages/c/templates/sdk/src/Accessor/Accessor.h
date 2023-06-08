@@ -19,7 +19,6 @@
 #pragma once
 
 #include "Module.h"
-#include "Config.h"
 #include "WorkerPool.h"
 #include "Transport/Transport.h"
 #include "Event/Event.h"
@@ -29,21 +28,69 @@ namespace FireboltSDK {
     class Accessor {
     private:
         static constexpr uint8_t JSONVersion = 2;
-        static constexpr const TCHAR* ConfigFile = _T("/etc/Firebolt/config.json");
-        static constexpr uint32_t DefaultWaitTime = 1000;
-        static constexpr uint8_t DefaultQueueSize = 8;
-        static constexpr uint8_t DefaultThreadCount = 3;
+
+    private:
+        //Singleton
+        Accessor(const string& configLine);
 
     public:
+        class EXTERNAL Config : public WPEFramework::Core::JSON::Container {
+        public:
+            Config(const Config&) = delete;
+            Config& operator=(const Config&) = delete;
+
+            class WorkerPoolConfig : public WPEFramework::Core::JSON::Container {
+                public:
+                    WorkerPoolConfig& operator=(const WorkerPoolConfig&);
+
+                    WorkerPoolConfig()
+                        : WPEFramework::Core::JSON::Container()
+                        , QueueSize(8)
+                        , ThreadCount(3)
+                        , StackSize(WPEFramework::Core::Thread::DefaultStackSize())
+                    {
+                        Add("queueSize", &QueueSize);
+                        Add("threadCount", &ThreadCount);
+                        Add("stackSize", &StackSize);
+                    }
+
+                    virtual ~WorkerPoolConfig() = default;
+
+                public:
+                    WPEFramework::Core::JSON::DecUInt32 QueueSize;
+                    WPEFramework::Core::JSON::DecUInt32 ThreadCount;
+                    WPEFramework::Core::JSON::DecUInt32 StackSize;
+                };
+
+
+            Config()
+                : WPEFramework::Core::JSON::Container()
+                , WaitTime(1000)
+                , LogLevel(_T("Info"))
+                , WorkerPool()
+                , WsUrl(_T("ws://127.0.0.1:9998"))
+            {
+                Add(_T("waitTime"), &WaitTime);
+                Add(_T("logLevel"), &LogLevel);
+                Add(_T("workerPool"), &WorkerPool);
+                Add(_T("wsUrl"), &WsUrl);
+            }
+
+        public:
+            WPEFramework::Core::JSON::DecUInt32 WaitTime;
+            WPEFramework::Core::JSON::String LogLevel;
+            WorkerPoolConfig WorkerPool;
+            WPEFramework::Core::JSON::String WsUrl;
+        };
+
         Accessor(const Accessor&) = delete;
         Accessor& operator= (const Accessor&) = delete;
-
-        Accessor();
+        Accessor() = delete;
         ~Accessor();
 
-        static Accessor& Instance()
+        static Accessor& Instance(const string& configLine = "")
         {
-            static Accessor *instance = new Accessor();
+            static Accessor *instance = new Accessor(configLine);
             ASSERT(instance != nullptr);
             return *instance;
         }
@@ -56,24 +103,20 @@ namespace FireboltSDK {
                 delete _singleton;
             }
         }
+        Event& GetEventManager();
+        Transport<WPEFramework::Core::JSON::IElement>* GetTransport();
 
+    private:
         uint32_t CreateEventHandler();
         uint32_t DestroyEventHandler();
-        Event& GetEventManager();
-
         uint32_t CreateTransport(const string& url, const uint32_t waitTime);
         uint32_t DestroyTransport();
-        Transport<WPEFramework::Core::JSON::IElement>* GetTransport();
         uint32_t WaitForLinkReady(Transport<WPEFramework::Core::JSON::IElement>* transport, const uint32_t waitTime);
 
     private:
-        void LoadConfigs(Config& config);
-
-    private:
-        uint8_t _threadCount;
-        uint8_t _queueSize;
         WPEFramework::Core::ProxyType<WorkerPoolImplementation> _workerPool;
         Transport<WPEFramework::Core::JSON::IElement>* _transport;
         static Accessor* _singleton;
+        Config _config;
     };
 }
