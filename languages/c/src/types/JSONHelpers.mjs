@@ -1,7 +1,5 @@
-const capitalize = str => str[0].toUpperCase() + str.substr(1)
-const getSdkNameSpace = () => 'FireboltSDK'
-const getJsonDataPrefix = () => 'JsonData_'
-const wpeJsonNameSpace = () => 'WPEFramework::Core::JSON'
+import { capitalize, getSdkNameSpace, getJsonDataPrefix, wpeJsonNameSpace } from './NativeHelpers.mjs'
+
 
 const getJsonDataStructName = (modName, name, prefix = '') => {
   let result =((prefix.length > 0) && (!name.startsWith(prefix)))  ? `${capitalize(modName)}::${getJsonDataPrefix()}${capitalize(prefix)}_${capitalize(name)}` : `${capitalize(modName)}::${getJsonDataPrefix()}${capitalize(name)}`
@@ -51,5 +49,6 @@ function getJsonContainerDefinition (schema, name, props) {
 }
 
 export {
-    getJsonContainerDefinition
+    getJsonContainerDefinition,
+    getJsonDataStructName
 }

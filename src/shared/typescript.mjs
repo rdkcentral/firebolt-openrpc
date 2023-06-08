@@ -327,7 +327,7 @@ function getSchemaShape(schema = {}, module = {}, { name = '', level = 0, title,
   function getJsonType(schema, module, { destination, link = false, title = false, code = false, asPath = false, event = false, expandEnums = true, baseUrl = '' } = {}) {
     return ''
   }
-  
+
   function getTypeScriptType(jsonType) {
     if (jsonType === 'integer') {
       return 'number'
@@ -346,10 +346,15 @@ function getSchemaShape(schema = {}, module = {}, { name = '', level = 0, title,
     return acc
   }
 
+ function getMethodImpl(schema, module) {
+   return ''
+ }
+
   export default {
       getMethodSignature,
       getMethodSignatureParams,
       getSchemaShape,
       getSchemaType,
-      getJsonType
+      getJsonType,
+      getMethodImpl
   }

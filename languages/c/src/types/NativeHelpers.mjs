@@ -24,12 +24,18 @@ const { chain, filter, reduce, option, map } = pointfree
 import predicates from 'crocks/predicates/index.js'
 import { getPath, getExternalSchemaPaths } from '../../../../src/shared/json-schema.mjs'
 import deepmerge from 'deepmerge'
+import { str } from 'ajv'
 
 const { isObject, isArray, propEq, pathSatisfies, hasProp, propSatisfies } = predicates
 
 const getModuleName = json => getPathOr(null, ['info', 'title'], json) || json.title || 'missing'
 
 const getFireboltStringType = () => 'FireboltTypes_StringHandle'
+const getSdkNameSpace = () => 'FireboltSDK'
+const getJsonDataPrefix = () => 'JsonData_'
+const wpeJsonNameSpace = () => 'WPEFramework::Core::JSON'
+const getJsonNativeTypeForOpaqueString = () => getSdkNameSpace() + '::JSON::String'
+
 const getHeaderText = () => {
 
     return `/*
@@ -84,6 +90,28 @@ const SdkTypesPrefix = 'Firebolt'
 
 const Indent = '    '
 
+const getNativeType = (json, stringAsHandle = false) => {
+  let type
+  let jsonType = json.const ? typeof json.const : json.type
+  if (jsonType === 'string') {
+      type = 'char*'
+      if(stringAsHandle) {
+        type = getFireboltStringType()
+      }
+  }
+  else if (jsonType === 'number') {
+      type = 'float'
+  }
+  else if (jsonType === 'integer') {
+      type = 'int32_t'
+
+  }
+  else if (jsonType === 'boolean') {
+    type = 'bool'
+  }
+  return type
+}
+
 const getArrayElementSchema = (json, module, schemas = {}, name) => {
   let result = ''
   if (json.type === 'array' && json.items) {
@@ -113,24 +141,6 @@ const getArrayElementSchema = (json, module, schemas = {}, name) => {
   }
 
   return result
-}
-
-const getNativeType = json => {
-  let type = ''
-  let jsonType = json.const ? typeof json.const : json.type
-  if (jsonType === 'string') {
-    type = 'char*'
-  }
-  else if (jsonType === 'number') {
-    type = 'float'
-  }
-  else if (jsonType === 'integer') {
-    type = 'int32_t'
-  }
-  else if (jsonType === 'boolean') {
-    type = 'bool'
-  }
-  return type
 }
 
 const getObjectHandleManagement = varName => {
@@ -211,36 +221,189 @@ const generateEnum = (schema, prefix)=> {
   }
 }
 
-const getIncludeDefinitions = (json = {}, jsonData = false) => {
-  return getExternalSchemaPaths(json)
-    .map(ref => {
-      const mod = ref.split('#')[0].split('/').pop()
-      let i = `#include "Common/${capitalize(mod)}.h"`
-      if(jsonData === true) {
-        i += '\n' + `#include "JsonData_${capitalize(mod)}.h"`
+const IsResultBooleanSuccess = (method) => (method && method.result && method.result.name === 'success' && (method.result.schema.type === 'boolean' || method.result.schema.const))
+
+const areParamsValid = (params) => params.every(p => p.type && (p.type.length > 0))
+
+const generateMethodParamsSignature = (params, event = false) => {
+    let signatureParams = ''
+    params.forEach(p => {
+      signatureParams += (signatureParams.length > 0) ? ', ' : ''
+      let type = p.nativeType
+
+      if ((event === true) && (type == 'char*')) {
+        type = getFireboltStringType()
       }
-      return i
+      if (p.required === true) {
+        signatureParams += `${type} ${p.name}`
+      }
+      else if (p.required === false) {
+        signatureParams += (((type === 'char*') || (type.includes('Handle') == true)) ? `${type} ${p.name}` : `${type}* ${p.name}`)
+      }
     })
-    .filter((item, index, arr) => arr.indexOf(item) === index)
-    .concat([`#include "Firebolt/Types.h"`])
+    return signatureParams
 }
 
-function getPropertyGetterSignature(method, module, paramType) {
-  let m = `${capitalize(getModuleName(module))}_Get${capitalize(method.name)}`
-  return `${description(method.name, method.summary)}\nuint32 ${m}( ${paramType === 'char*' ? 'FireboltTypes_StringHandle' : paramType}* ${method.result.name || method.name} )`
+const getParamsSignature = (info, signature, method, getter = true, eventCB = false, innerCB = false, anyOfParam) => {
+  let param = ''
+  let sig = {}
+  sig["signature"] = {}
+  sig["anyOfParam"] = {}
+
+  if (anyOfParam) {
+    signature +=  '_' + anyOfParam.json.title
+    param += `${anyOfParam.type} ${camelcase(anyOfParam.json.title)}`
+    sig.anyOfParam = anyOfParam
+  }
+
+  if (eventCB === true) {
+    if (innerCB === true) {
+      signature += 'InnerCallback'
+      param = 'void* userCB, const void* userData, void* response'
+    }
+    else {
+      signature += ')'
+      param = 'const void* userData' + (param.length > 0 ? ', ' : '') + param
+    }
+  }
+
+  signature += '( ' + param
+  if ((innerCB === false) && (info.params.length > 0) && areParamsValid(info.params)) {
+    signature += (param.length > 0 ? ', ' : '')
+    signature += generateMethodParamsSignature(info.params, eventCB)
+  }
+  if (innerCB === false) {
+    if (info["result"] && (info["result"].length > 0) && (IsResultBooleanSuccess(method) !== true)) {
+      if ((info.params.length > 0) || (param.length > 0)) {
+        signature += ', '
+      }
+      if (getter === true) {
+        signature += `${info["result"]}* ${method.result.name || method.name}`
+      }
+      else {
+        signature += `${info["result"]} ${method.result.name || method.name}`
+      }
+    } else if (info.params.length === 0 && param.length === 0) {
+      signature += 'void'
+    }
+  }
+  signature += ' )'
+  sig.signature = signature
+  info.signatures.push(sig)
+  return info
 }
 
-function getPropertySetterSignature(method, module, paramType) {
-  let m = `${capitalize(getModuleName(module))}_Set${capitalize(method.name)}`
-  return `${description(method.name, method.summary)}\nuint32 ${m}( ${paramType} ${method.result.name || method.name} )`
+function generateMethodSignature(signature, method, module, info, getter, eventCB = false, innerCB = false, prefix = '') {
+
+  info["signatures"] = []
+  if (info.anyOfParams) {
+    info.anyOfParams.forEach(param => {
+      info = getParamsSignature(info, signature, method, getter, eventCB, innerCB, param)
+    })
+  } else {
+    info = getParamsSignature(info, signature, method, getter, eventCB, innerCB)
+  }
+  return info
 }
 
-function getPropertyEventCallbackSignature(method, module, paramType) {
-  return `typedef void (*On${capitalize(method.name)}Changed)(${paramType === 'char*' ? 'FireboltTypes_StringHandle' : paramType})`
+function generateEventCallbackSignature(methodName, method, module, info, prefix = '') {
+  let signature = `typedef void ${methodName}`
+  return generateMethodSignature(signature, method, module, info, false, true, false)
 }
 
-function getPropertyEventSignature(method, module) {
-  return `${description(method.name, 'Listen to updates')}\n` + `uint32_t ${capitalize(getModuleName(module))}_Listen${capitalize(method.name)}Update(On${capitalize(method.name)}Changed notification, uint16_t* listenerId)`
+function generateEventInnerCallbackSignature(signature, method, module, info, prefix = '') {
+  return generateMethodSignature(signature, method, module, info, false, true, true)
+}
+
+function getEventParamsSignature(info, rsig, unrsig, callbackName, anyOfParam) {
+  let signature = {}
+  signature["rsig"] = []
+  signature["unrsig"] = []
+
+  if (anyOfParam) {
+    rsig += '_' + anyOfParam.json.title
+    unrsig += '_' + anyOfParam.json.title
+    callbackName += '_' + anyOfParam.json.title
+    signature["anyOfParam"] = anyOfParam
+  }
+
+  rsig += 'Update('
+  unrsig += 'Update('
+
+  let params = ''
+  if (areParamsValid(info.params)) {
+    params += generateMethodParamsSignature(info.params)
+    rsig += params
+  }
+
+  if (info["result"] && (info["result"].length > 0) && (IsResultBooleanSuccess(method) !== true)) {
+    info.result.push(`${info["result"]} ${method.result.name || method.name}`)
+  }
+  rsig += (params.length > 0) ? ',' : ''
+  rsig += ` ${callbackName} userCB, const void* userData )`
+  unrsig += ` ${callbackName} userCB)`
+
+  signature.rsig = rsig
+  signature.unrsig = unrsig
+  info.signatures.push(signature)
+
+  return info
+}
+
+function generateEventSignature(callbackName, method, module, info, prefix = '') {
+  let registersig = `uint32_t ${capitalize(getModuleName(module))}_Register_${capitalize(method.name)}`
+  let unregistersig = `uint32_t ${capitalize(getModuleName(module))}_Unregister_${capitalize(method.name)}`
+  info['result'] = ''
+
+  info["signatures"] = []
+  if (info.anyOfParams) {
+    info.anyOfParams.forEach(param => {
+      info = getEventParamsSignature(info, registersig, unregistersig, callbackName, param)
+    })
+  } else {
+    info = getEventParamsSignature(info, registersig, unregistersig, callbackName)
+  }
+  return info
+}
+
+function getPropertyGetterSignature(method, module, info) {
+  let signature = `uint32_t ${capitalize(getModuleName(module))}_Get${capitalize(method.name)}`
+  return generateMethodSignature(signature, method, module, info, true)
+}
+
+function getPropertySetterSignature(method, module, info) {
+  let signature = `uint32_t ${capitalize(getModuleName(module))}_Set${capitalize(method.name)}`
+  return generateMethodSignature(signature, method, module, info, false)
+}
+
+function getPropertyEventCallbackSignature(method, module, info) {
+  let methodName = capitalize(getModuleName(module)) + capitalize(method.name)
+  return generateEventCallbackSignature(`(*On${methodName}Changed`, method, module, info)
+}
+
+function getPropertyEventInnerCallbackSignature(method, module, info) {
+  let signature = `static void ${capitalize(getModuleName(module)) + capitalize(method.name)}`
+  return generateEventInnerCallbackSignature(signature, method, module, info)
+}
+
+function getPropertyEventSignature(method, module, info) {
+  let methodName = capitalize(getModuleName(module)) + capitalize(method.name)
+  return generateEventSignature(`On${methodName}Changed`, method, module, info)
+}
+
+function getEventCallbackSignature(method, module, info) {
+  let methodName = capitalize(getModuleName(module)) + capitalize(method.name)
+  return generateEventCallbackSignature(`(*${methodName}Callback`, method, module, info)
+}
+
+function getEventInnerCallbackSignature(method, module, info) {
+  let signature = `static void ${capitalize(getModuleName(module)) + capitalize(method.name)}`
+  return generateEventInnerCallbackSignature(signature, method, module, info)
+}
+
+function getEventSignature(method, module, info, prefix = '') {
+  let methodName = capitalize(getModuleName(module)) + capitalize(method.name)
+  return generateEventSignature(`${prefix}${methodName}Callback`, method, module, info)
 }
 
 export {
@@ -251,11 +414,14 @@ export {
     getIncludeGuardClose,
     getNativeType,
     getModuleName,
-    getIncludeDefinitions,
     getPropertyGetterSignature,
     getPropertySetterSignature,
-    getPropertyEventCallbackSignature,
     getPropertyEventSignature,
+    getPropertyEventCallbackSignature,
+    getPropertyEventInnerCallbackSignature,
+    getEventSignature,
+    getEventCallbackSignature,
+    getEventInnerCallbackSignature,
     getMapAccessors,
     getArrayAccessors,
     capitalize,
@@ -265,5 +431,10 @@ export {
     getPropertyAccessors,
     isOptional,
     generateEnum,
-    getArrayElementSchema
+    getFireboltStringType,
+    getArrayElementSchema,
+    getJsonDataPrefix,
+    getSdkNameSpace,
+    wpeJsonNameSpace,
+    getJsonNativeTypeForOpaqueString
 }
