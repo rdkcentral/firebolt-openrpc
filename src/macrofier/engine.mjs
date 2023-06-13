@@ -364,7 +364,7 @@ const generateMacros = (obj, templates, languages, options = {}) => {
   const schemasArray = generateSchemas(obj, templates, { baseUrl: '', section: 'schemas' }).filter(s => (options.copySchemasIntoModules || !s.uri))
   const accessorsArray = generateSchemas(obj, templates, { baseUrl: '', section: 'accessors' }).filter(s => (options.copySchemasIntoModules || !s.uri))
   const schemas = schemasArray.length ? getTemplate('/sections/schemas', templates).replace(/\$\{schema.list\}/g, schemasArray.map(s => s.body).filter(body => body).join('\n')) : ''
-  const typesArray = schemasArray.length ? schemasArray.filter(x => !x.enum) : ''
+  const typesArray = schemasArray.length ? schemasArray.filter(x => !x.enum) : []
   const types = (typesArray.length ? getTemplate('/sections/types', templates).replace(/\$\{schema.list\}/g, typesArray.map(s => s.body).filter(body => body).join('\n')) : '') + methodTypes
 
   const accessors = (accessorsArray.length ? getTemplate('/sections/accessors', templates).replace(/\$\{schema.list\}/g, accessorsArray.map(s => s.body).filter(body => body).join('\n')) : '') + methodAccessors
@@ -796,7 +796,7 @@ const generateImports = (json, templates) => {
 
   let componentExternalSchema = getComponentExternalSchema(json)
   if (componentExternalSchema.length && json.info['x-uri-titles']) {
-    imports += componentExternalSchema.map(shared => getTemplate('/imports/common', templates).replace(/\$\{info.title\}/g, shared)).join('')
+    imports += componentExternalSchema.map(shared => getTemplate('/imports/default', templates).replace(/\$\{info.title\}/g, shared)).join('')
   }
   return imports
 }
