@@ -167,23 +167,6 @@ const deepMergeAll = (module, name, schema, schemas, options) => {
   return union
 }
 
-const getPolymorphicReducerParamSchema = (method) => {
-  let reducedParamSchema = {
-    name: `${method.name}Params`,
-    schema: {
-      type: "array",
-      items: {
-        title: `${method.name}Param`,
-        type: "object",
-        properties: {}
-      }
-    },
-    required: true
-  }
-  method.params.forEach(p => reducedParamSchema.schema.items.properties[p.name] = p)
-  return reducedParamSchema
-}
-
 function getMethodSignature(method, module, { destination, isInterface = false }) {
   const extraParam = '${method.result.type}* ${method.result.name}'
 
@@ -329,12 +312,12 @@ function getSchemaTypeInfo(module = {}, json = {}, name = '', schemas = {}, pref
   return structure
 }
 
-function getSchemaShape(json, module, { name = '', prefix = '', type = '', level = 0, title, summary, descriptions = true, destination = '', section = '', enums = true } = {}) {
+function getSchemaShape(json, module, { name = '', prefix = '', level = 0, title, summary, descriptions = true, destination = '', section = '', enums = true } = {}) {
 
-  let shape = getSchemaShapeInfo(json, module, module['x-schemas'], { name, prefix, type, merged: false, level, title, summary, descriptions, destination, section, enums })
+  let shape = getSchemaShapeInfo(json, module, module['x-schemas'], { name, prefix, merged: false, level, title, summary, descriptions, destination, section, enums })
     return shape
 }
-function getSchemaShapeInfo(json, module, schemas = {}, { name = '', prefix = '', type = '', merged = false, level = 0, title, summary, descriptions = true, destination = '', section = '', enums = true } = {}) {
+function getSchemaShapeInfo(json, module, schemas = {}, { name = '', prefix = '', merged = false, level = 0, title, summary, descriptions = true, destination = '', section = '', enums = true } = {}) {
   let shape = ''
 
   if (destination && section) {
@@ -343,13 +326,6 @@ function getSchemaShapeInfo(json, module, schemas = {}, { name = '', prefix = ''
     json = JSON.parse(JSON.stringify(json))
 
     name = json.title || name
-
-    if (type === 'reducer') {
-      let recuderParam = getPolymorphicReducerParamSchema(json)
-      name = recuderParam.name
-      json = recuderParam.schema
-      type = ''
-    }
 
     if (json['$ref']) {
       if (json['$ref'][0] === '#') {
