@@ -338,7 +338,7 @@ const generateMacros = (obj, templates, languages, options = {}) => {
   // grab the options so we don't have to pass them from method to method
   Object.assign(state, options)
 
-  const imports = generateImports(obj, templates)
+  const imports = generateImports(obj, templates, { destination : (options.destination ? options.destination : '') })
   const initialization = generateInitialization(obj, templates)
   const enums = generateEnums(obj, templates, { destination : (options.destination ? options.destination : '') })
   const eventsEnum = generateEvents(obj, templates)
@@ -759,7 +759,7 @@ function getRelatedSchemaLinks(schema = {}, json = {}, templates = {}, options =
   return links
 }
 
-const generateImports = (json, templates) => {
+const generateImports = (json, templates, options = { destination: '' }) => {
   let imports = ''
 
   if (rpcMethodsOrEmptyArray(json).length) {
@@ -789,14 +789,21 @@ const generateImports = (json, templates) => {
   if (methodsWithXMethodsInResult(json).length) {
     imports += getTemplate('/imports/x-method', templates)
   }
+  const suffix = options.destination.split('.').pop()
+  const prefix = options.destination.split('/').pop().split('_')[0].toLowerCase()
+
+  let template = prefix ? getTemplate(`/imports/default.${prefix}`, templates) : ''
+  if (!template) {
+    template = getTemplate(suffix ? `/imports/default.${suffix}` : '/imports/default', templates)
+  }
 
   if (json['x-schemas'] && Object.keys(json['x-schemas']).length > 0 && !json.info['x-uri-titles']) {
-    imports += Object.keys(json['x-schemas']).map(shared => getTemplate('/imports/default', templates).replace(/\$\{info.title\}/g, shared)).join('')
+    imports += Object.keys(json['x-schemas']).map(shared => template.replace(/\$\{info.title\}/g, shared)).join('')
   }
 
   let componentExternalSchema = getComponentExternalSchema(json)
   if (componentExternalSchema.length && json.info['x-uri-titles']) {
-    imports += componentExternalSchema.map(shared => getTemplate('/imports/default', templates).replace(/\$\{info.title\}/g, shared)).join('')
+    imports += componentExternalSchema.map(shared => template.replace(/\$\{info.title\}/g, shared)).join('')
   }
   return imports
 }

@@ -18,6 +18,7 @@
 
 #pragma once
 
+/* ${IMPORTS} */
 #include "Common/${info.title}.h"
 
 namespace FireboltSDK {
