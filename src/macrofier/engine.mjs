@@ -329,7 +329,7 @@ const generateMacros = (obj, templates, languages, options = {}) => {
   const allMethodsArray = generateMethods(obj, examples, templates)
   const methodsArray = allMethodsArray.filter(m => !m.event && (!options.hideExcluded || !m.excluded))
   const eventsArray = allMethodsArray.filter(m => m.event && (!options.hideExcluded || !m.excluded))
-  const declarationsArray = allMethodsArray.filter(m => m.declaration)
+  const declarationsArray = allMethodsArray.filter(m => m.declaration && (!options.hideExcluded || !m.excluded))
 
   const declarations = declarationsArray.length ? getTemplate('/sections/declarations', templates).replace(/\$\{declaration\.list\}/g, declarationsArray.map(m => m.declaration).join('\n')) : ''
   const methods = methodsArray.length ? getTemplate('/sections/methods', templates).replace(/\$\{method.list\}/g, methodsArray.map(m => m.body).join('\n')) : ''
