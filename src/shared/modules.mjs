@@ -227,6 +227,13 @@ const isTemporalSetMethod = compose(
     getPath(['tags'])
 )
 
+const isProgressiveUpdateMethod = compose(
+    option(false),
+    map(_ => true),
+    chain(find(propEq('name', 'progressive-update'))),
+    getPath(['tags'])
+)
+
 const getMethodAttributes = compose(
     option(null),
     map(props => props.reduce( (val, item) => {
@@ -454,6 +461,110 @@ const createTemporalEventMethod = (method, json, name) => {
     })
 
     return event
+}
+
+const createProgressEventMethod = (method, json, name) => {
+    const event = createEventFromMethod(method, json, name, 'x-progress-for', ['progressive-update'])
+
+    event.result.schema = {
+        "$ref": "#/components/schemas/" + name
+    }
+
+    event.tags = event.tags.filter(t => t.name !== 'progressive-update')
+
+    event.examples && event.examples.forEach(example => {
+        example.result.value = {
+            percent: 0.25,
+            data: example.result.value
+        }
+    })
+
+    return event
+}
+
+const createCompleteEventMethod = (method, json, name) => {
+    const event = createEventFromMethod(method, json, name, 'x-complete-for', ['progressive-update'])
+
+    event.result.schema = method.result.schema
+    
+    event.tags = event.tags.filter(t => t.name !== 'progressive-update')
+
+    event.examples && event.examples.forEach(example => {
+        example.result.value = example.result.value
+    })
+
+    return event
+}
+
+const createErrorEventMethod = (method, json, name) => {
+    const event = createEventFromMethod(method, json, name, 'x-error-for', ['progressive-update'])
+    const errors = event.tags.find(t => t.name === 'progressive-update')['x-errors']
+    event.result.schema = {
+        $ref: "#/components/schemas/" + name
+    }
+    
+    event.tags = event.tags.filter(t => t.name !== 'progressive-update')
+
+    event.examples = errors.map((error, index) => ({
+        name: "Example #" + index,
+        params: [
+            {
+                "name": "listen",
+                "value": true
+            }
+        ],
+        result: {
+            "name": "result",
+            "value": error
+        }
+    }))
+
+    return event
+}
+// oneOf: errors.map(error => ({
+//     const: error
+// }))
+
+const createProgressResultSchema = (method, json, name) => {
+    return {
+        title: name,
+        type: "object",
+        properties: {
+            percent: {
+                type: "number",
+                minimum: 0,
+                maximum: 1
+            },
+            data: JSON.parse(JSON.stringify(method.result.schema)),
+        },
+        required: ["percent"]
+    }
+}
+
+const createCompleteResultSchema = (method, json, name) => {
+    const schema = JSON.parse(JSON.stringify(method.result.schema))
+    schema.title = name
+    return schema
+}
+
+const createErrorSchema = (method, json, name) => {
+    const errors = method.tags.find(t => t['x-errors'])['x-errors']
+
+    return {
+        title: name,
+        "type": "object",
+        "properties": {
+            "code": {
+                "type": "integer"
+            },
+            "message": {
+                "type": "string"
+            }
+        },
+        oneOf: errors.map(error => ({
+            const: error
+        }))
+    }
 }
 
 const createEventFromMethod = (method, json, name, correlationExtension, tagsToRemove = []) => {
@@ -777,6 +888,27 @@ const generateTemporalSetMethods = json => {
     return json
 }
 
+const generateProgressiveUpdateMethods = json => {
+    const progressives = json.methods.filter( m => m.tags && m.tags.find( t => t.name == 'progressive-update')) || []
+
+    progressives.forEach(progressive => json.methods.push(createProgressEventMethod(progressive, json, progressive.name.charAt(0).toUpperCase() + progressive.name.substring(1) + 'Progress')))
+    progressives.forEach(progressive => json.methods.push(createCompleteEventMethod(progressive, json, progressive.name.charAt(0).toUpperCase() + progressive.name.substring(1) + 'Complete')))
+    progressives.forEach(progressive => json.methods.push(createErrorEventMethod(progressive, json, progressive.name.charAt(0).toUpperCase() + progressive.name.substring(1) + 'Error')))
+
+    return json
+}
+
+const generateProgressiveUpdateSchemas = json => {
+    const progressives = json.methods.filter( m => m.tags && m.tags.find( t => t.name == 'progressive-update')) || []
+
+    const name = (method, type) => method.name.charAt(0).toUpperCase() + method.name.substring(1) + type
+
+    progressives.forEach(progressive => json.components.schemas[name(progressive, 'Progress')] = createProgressResultSchema(progressive, json, name(progressive, 'Progress')))
+    progressives.forEach(progressive => json.components.schemas[name(progressive, 'Complete')] = createCompleteResultSchema(progressive, json, name(progressive, 'Complete')))
+    progressives.forEach(progressive => json.components.schemas[name(progressive, 'Error')] = createErrorSchema(progressive, json, name(progressive, 'Error')))
+
+    return json
+}
 
 const generateProviderMethods = json => {
     const providers = json.methods.filter( m => m.name.startsWith('onRequest') && m.tags && m.tags.find( t => t.name == 'capabilities' && t['x-provides'])) || []
@@ -879,6 +1011,8 @@ const fireboltize = (json) => {
     json = generatePolymorphicPullEvents(json)
     json = generateProviderMethods(json)
     json = generateTemporalSetMethods(json)
+    json = generateProgressiveUpdateMethods(json)
+    json = generateProgressiveUpdateSchemas(json)
     json = generateEventListenerParameters(json)
     json = generateEventListenResponse(json)
     
@@ -1148,6 +1282,7 @@ export {
     isPolymorphicReducer,
     isPolymorphicPullMethod,
     isTemporalSetMethod,
+    isProgressiveUpdateMethod,
     isExcludedMethod,
     isRPCOnlyMethod,
     isProviderInterfaceMethod,

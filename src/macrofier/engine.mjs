@@ -29,7 +29,7 @@ import isString from 'crocks/core/isString.js'
 import predicates from 'crocks/predicates/index.js'
 const { isObject, isArray, propEq, pathSatisfies, propSatisfies } = predicates
 
-import { isRPCOnlyMethod, isProviderInterfaceMethod, getProviderInterface, getPayloadFromEvent, providerHasNoParameters, isTemporalSetMethod, hasMethodAttributes, getMethodAttributes, isEventMethodWithContext, getSemanticVersion, getSetterFor, getProvidedCapabilities, isPolymorphicPullMethod, hasPublicAPIs } from '../shared/modules.mjs'
+import { isRPCOnlyMethod, isProviderInterfaceMethod, getProviderInterface, getPayloadFromEvent, providerHasNoParameters, isTemporalSetMethod, hasMethodAttributes, getMethodAttributes, isEventMethodWithContext, getSemanticVersion, getSetterFor, getProvidedCapabilities, isPolymorphicPullMethod, hasPublicAPIs, isProgressiveUpdateMethod } from '../shared/modules.mjs'
 import isEmpty from 'crocks/core/isEmpty.js'
 import { getLinkedSchemaPaths, getSchemaConstraints, isSchema, localizeDependencies } from '../shared/json-schema.mjs'
 
@@ -90,6 +90,10 @@ const getTemplateForDeclaration = (method, templates) => {
 
 const getTemplateForExample = (method, templates) => {
   return getTemplateTypeForMethod(method, 'examples', templates)
+}
+
+const getTemplateForMock = (method, templates) => {
+  return getTemplateTypeForMethod(method, 'defaults', templates)
 }
 
 const getTemplateForExampleResult = (method, templates) => {
@@ -244,6 +248,12 @@ const eventsOrEmptyArray = compose(
 const temporalSets = compose(
   option([]),
   map(filter(isTemporalSetMethod)),
+  getMethods
+)
+
+const progressiveUpdates = compose(
+  option([]),
+  map(filter(isProgressiveUpdateMethod)),
   getMethods
 )
 
@@ -530,11 +540,7 @@ const generateEvents = (json, templates) => {
 function generateDefaults(json = {}, templates) {
   const reducer = compose(
     reduce((acc, val, i, arr) => {
-      if (isPropertyMethod(val)) {
-        acc += insertMethodMacros(getTemplate('/defaults/property', templates), val, json, templates)
-      } else {
-        acc += insertMethodMacros(getTemplate('/defaults/default', templates), val, json, templates)
-      }
+      acc += insertMethodMacros(getTemplateForMock(val, templates), val, json, templates)
       if (i < arr.length - 1) {
         acc = acc.concat(',\n')
       } else {
@@ -672,6 +678,10 @@ const generateImports = (json, templates) => {
 
   if (temporalSets(json).length) {
     imports += getTemplate('/imports/temporal-set', templates)
+  }
+
+  if (progressiveUpdates(json).length) {
+    imports += getTemplate('/imports/progressive-update', templates)
   }
 
   if (methodsWithXMethodsInResult(json).length) {
