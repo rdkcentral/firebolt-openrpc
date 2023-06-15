@@ -8,15 +8,15 @@ let eventEmitterInitialized = false
 const eventHandler = (id, value) => {
     const key = JSON.stringify(id)
     const session = Object.values(sessions).find(session => Object.keys(session.listeners).includes(key))
-    if (session.overseer) {
-        console.dir(session, { depth: 10 })
-        console.dir(key)
-        const event = Object.entries(session.eventIds).find(([name, value]) => value === key)
-        if (event) {
-            session.overseer(event[0], value)
+    if (session) {
+        if (session.overseer) {
+            const event = Object.entries(session.eventIds).find(([name, value]) => value === key)
+            if (event) {
+                session.overseer(event[0], value)
+            }
         }
+        session.listeners[key](value)
     }
-    session.listeners[key](value)
 }
 
 function getSession(module, method) {
@@ -103,7 +103,6 @@ function start(module, method, params, events, transforms, fyi) {
                 }
             })))            
 
-            console.dir(requests, { depth: 10})
             Transport.send(requests)
             stopSession(module, method)
         },

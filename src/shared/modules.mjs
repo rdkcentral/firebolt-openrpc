@@ -467,14 +467,14 @@ const createProgressEventMethod = (method, json, name) => {
     const event = createEventFromMethod(method, json, name, 'x-progress-for', ['progressive-update'])
 
     event.result.schema = {
-        "$ref": "#/components/schemas/" + name
+        "$ref": "#/components/schemas/" + method.name.charAt(0).toUpperCase() + method.name.substring(1) + 'Status'
     }
 
     event.tags = event.tags.filter(t => t.name !== 'progressive-update')
 
     event.examples && event.examples.forEach(example => {
         example.result.value = {
-            percent: 0.25,
+            progress: 0.25,
             data: example.result.value
         }
     })
@@ -485,12 +485,31 @@ const createProgressEventMethod = (method, json, name) => {
 const createCompleteEventMethod = (method, json, name) => {
     const event = createEventFromMethod(method, json, name, 'x-complete-for', ['progressive-update'])
 
-    event.result.schema = method.result.schema
+    event.result.schema = JSON.parse(JSON.stringify(method.result.schema))
     
     event.tags = event.tags.filter(t => t.name !== 'progressive-update')
 
     event.examples && event.examples.forEach(example => {
         example.result.value = example.result.value
+    })
+
+    return event
+}
+
+const createStopEventMethod = (method, json, name) => {
+    const event = createEventFromMethod(method, json, name, 'x-stop-for', ['progressive-update'])
+
+    event.result.schema = {
+        "$ref": "#/components/schemas/" + method.name.charAt(0).toUpperCase() + method.name.substring(1) + 'Status'
+    }
+
+    event.tags = event.tags.filter(t => t.name !== 'progressive-update')
+
+    event.examples && event.examples.forEach(example => {
+        example.result.value = {
+            progress: 0.75,
+            data: example.result.value
+        }
     })
 
     return event
@@ -530,21 +549,15 @@ const createProgressResultSchema = (method, json, name) => {
         title: name,
         type: "object",
         properties: {
-            percent: {
+            progress: {
                 type: "number",
                 minimum: 0,
                 maximum: 1
             },
             data: JSON.parse(JSON.stringify(method.result.schema)),
         },
-        required: ["percent"]
+        required: ["progress"]
     }
-}
-
-const createCompleteResultSchema = (method, json, name) => {
-    const schema = JSON.parse(JSON.stringify(method.result.schema))
-    schema.title = name
-    return schema
 }
 
 const createErrorSchema = (method, json, name) => {
@@ -893,6 +906,7 @@ const generateProgressiveUpdateMethods = json => {
 
     progressives.forEach(progressive => json.methods.push(createProgressEventMethod(progressive, json, progressive.name.charAt(0).toUpperCase() + progressive.name.substring(1) + 'Progress')))
     progressives.forEach(progressive => json.methods.push(createCompleteEventMethod(progressive, json, progressive.name.charAt(0).toUpperCase() + progressive.name.substring(1) + 'Complete')))
+    progressives.forEach(progressive => json.methods.push(createStopEventMethod(progressive, json, progressive.name.charAt(0).toUpperCase() + progressive.name.substring(1) + 'Stop')))
     progressives.forEach(progressive => json.methods.push(createErrorEventMethod(progressive, json, progressive.name.charAt(0).toUpperCase() + progressive.name.substring(1) + 'Error')))
 
     return json
@@ -903,8 +917,8 @@ const generateProgressiveUpdateSchemas = json => {
 
     const name = (method, type) => method.name.charAt(0).toUpperCase() + method.name.substring(1) + type
 
-    progressives.forEach(progressive => json.components.schemas[name(progressive, 'Progress')] = createProgressResultSchema(progressive, json, name(progressive, 'Progress')))
-    progressives.forEach(progressive => json.components.schemas[name(progressive, 'Complete')] = createCompleteResultSchema(progressive, json, name(progressive, 'Complete')))
+    progressives.forEach(progressive => json.components.schemas[name(progressive, 'Status')] = createProgressResultSchema(progressive, json, name(progressive, 'Status')))
+//    progressives.forEach(progressive => json.components.schemas[name(progressive, 'Result')] = createCompleteResultSchema(progressive, json, name(progressive, 'Result')))
     progressives.forEach(progressive => json.components.schemas[name(progressive, 'Error')] = createErrorSchema(progressive, json, name(progressive, 'Error')))
 
     return json

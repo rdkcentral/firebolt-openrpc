@@ -1,7 +1,8 @@
 interface ${method.Name}Process {
     stop(): void;
-    onProgress(callback: (progress: ${method.Name}Progress) => void): void;
+    onProgress(callback: (status: ${method.Name}Status) => void): void;
     onComplete(callback: (data: ${method.result.type}) => void): void;
+    onStop(callback: (status: ${method.Name}Status) => void): void;
     onError(callback: (error: ${method.Name}Error) => void): void;
  }
 

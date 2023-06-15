@@ -1,12 +1,16 @@
 import EventSession from "../Events/EventSession.mjs"
 
-function start(module, method, params, progressName, completeName, transforms) {
+function start(module, method, params, progressName, completeName, stopName, transforms) {
     const events = {}
     events[progressName] = {
         subscriber: 'onProgress'
     }
     events[completeName] = {
         subscriber: 'onComplete'
+    }
+
+    events[stopName] = {
+        subscriber: 'onStop'
     }
 
     const { process, promise } = EventSession.start(module, method, params, events, transforms, (event, value) => {
@@ -19,7 +23,7 @@ function start(module, method, params, progressName, completeName, transforms) {
     promise.then(result => {
         // dispatch the 0% progress event w/ the initial result
         EventSession.dispatch(module, method, progressName, {
-            percent: 0,
+            progress: 0,
             data: result
         })
     })
