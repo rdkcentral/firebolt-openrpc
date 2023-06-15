@@ -16,9 +16,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include "Firebolt.h"
-#include "${info.title}.h"
-#include "Common/${info.title}.h"
+#include "FireboltSDK.h"
+/* ${IMPORTS} */
 #include "JsonData_${info.title}.h"
 
 /* ${ENUMS} */

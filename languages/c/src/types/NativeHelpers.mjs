@@ -211,20 +211,6 @@ const generateEnum = (schema, prefix)=> {
   }
 }
 
-const getIncludeDefinitions = (json = {}, jsonData = false) => {
-  return getExternalSchemaPaths(json)
-    .map(ref => {
-      const mod = ref.split('#')[0].split('/').pop()
-      let i = `#include "Common/${capitalize(mod)}.h"`
-      if(jsonData === true) {
-        i += '\n' + `#include "JsonData_${capitalize(mod)}.h"`
-      }
-      return i
-    })
-    .filter((item, index, arr) => arr.indexOf(item) === index)
-    .concat([`#include "Firebolt/Types.h"`])
-}
-
 function getPropertyGetterSignature(method, module, paramType) {
   let m = `${capitalize(getModuleName(module))}_Get${capitalize(method.name)}`
   return `${description(method.name, method.summary)}\nuint32 ${m}( ${paramType === 'char*' ? 'FireboltTypes_StringHandle' : paramType}* ${method.result.name || method.name} )`
@@ -251,7 +237,6 @@ export {
     getIncludeGuardClose,
     getNativeType,
     getModuleName,
-    getIncludeDefinitions,
     getPropertyGetterSignature,
     getPropertySetterSignature,
     getPropertyEventCallbackSignature,
