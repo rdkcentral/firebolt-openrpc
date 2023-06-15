@@ -318,193 +318,201 @@ function getSchemaShape(json, module, { name = '', prefix = '', level = 0, title
     return shape
 }
 function getSchemaShapeInfo(json, module, schemas = {}, { name = '', prefix = '', merged = false, level = 0, title, summary, descriptions = true, destination = '', section = '', enums = true } = {}) {
-  const isHeader = (destination.includes("JsonData_") !== true) && destination.endsWith(".h")
-  const isCPP = ((destination.endsWith(".cpp") || destination.includes("JsonData_")) && (section.includes('accessors') !== true))
-  json = JSON.parse(JSON.stringify(json))
-
-  name = json.title || name
   let shape = ''
 
-  if (json['$ref']) {
-    if (json['$ref'][0] === '#') {
-      //Ref points to local schema
-      //Get Path to ref in this module and getSchemaType
-      const schema = getPath(json['$ref'], module, schemas)
-      const tname = schema.title || json['$ref'].split('/').pop()
-      if (json['$ref'].includes('x-schemas')) {
-        schema = (getRefModule(json['$ref'].split('/')[2]))
-      }
+  if (destination && section) {
+    const isHeader = (destination.includes("JsonData_") !== true) && destination.endsWith(".h")
+    const isCPP = ((destination.endsWith(".cpp") || destination.includes("JsonData_")) && (section.includes('accessors') !== true))
+    json = JSON.parse(JSON.stringify(json))
 
-      shape = getSchemaShapeInfo(schema, module, schemas, { name, prefix, merged, level, title, summary, descriptions, destination, section, enums })
-    }
-  }
-  //If the schema is a const,
-  else if (json.hasOwnProperty('const') && !isCPP) {
-    if (level > 0) {
+    name = json.title || name
 
-      let t = description(capitalize(name), json.description)
-      typeName = getTypeName(getModuleName(module), name, prefix)
-      t += (isHeader ? getPropertyAccessors(typeName, capitalize(name), typeof schema.const, { level: level, readonly: true, optional: false }) : getPropertyAccessorsImpl(typeName, getJsonType(schema, module, { level, name }), typeof schema.const, { level: level, readonly: true, optional: false }))
-            shape += '\n' + t
-    }
-  }
-  else if (json.type === 'object') {
-    if (!name) {
-      console.log(`WARNING: unnamed schema in ${module.info.title}.`)
-      console.dir(json)
-      shape = ''
-    }
-    else if (json.properties && (validJsonObjectProperties(json) === true)) {
-      let c_shape = description(capitalize(name), json.description)
-      let cpp_shape = ''
-      let tName = getTypeName(getModuleName(module), name, prefix)
-      c_shape += '\n' + (isHeader ? getObjectHandleManagement(tName) : getObjectHandleManagementImpl(tName, getJsonType(json, module, { name })))
-      let props = []
-      let containerName = ((prefix.length > 0) && (!name.startsWith(prefix))) ? (prefix + '_' + capitalize(name)) : capitalize(name)
-      Object.entries(json.properties).forEach(([pname, prop]) => {
-        let items
-        var desc = '\n' + description(capitalize(pname), prop.description)
-        if (prop.type === 'array') {
-          if (Array.isArray(prop.items)) {
-            //TODO
-            const IsHomogenous = arr => new Set(arr.map( item => item.type ? item.type : typeof item)).size === 1
-            if (!IsHomogenous(prop.items)) {
-              throw 'Heterogenous Arrays not supported yet'
-            }
-            items = prop.items[0]
-          }
-          else {
-            // grab the type for the non-array schema
-            items = prop.items
-          }
-          let info = getSchemaTypeInfo(module, items, items.name || pname, schemas, prefix, {level : level, descriptions: descriptions, title: true})
-          if (info.type && info.type.length > 0) {
-            let objName = tName + '_' + capitalize(prop.title || pname)
-            let moduleName = info.namespace
-            info.json.namespace = info.namespace
-            let moduleProperty = getJsonTypeInfo(module, json, json.title || name, schemas, prefix)
-            let prefixName = ((prefix.length > 0) && items['$ref']) ? '' : prefix
-            let subModuleProperty = getJsonTypeInfo(module, info.json, info.name, schemas, prefix)
-
-            let t = description(capitalize(info.name), json.description) + '\n'
-            t += '\n' + (isHeader ? getArrayAccessors(objName, tName, info.type) : getArrayAccessorsImpl(tName, moduleProperty.type, (tName + 'Handle'), subModuleProperty.type, capitalize(pname || prop.title), info.type, info.json))
-            c_shape += '\n' + t
-            props.push({name: `${pname}`, type: `WPEFramework::Core::JSON::ArrayType<${subModuleProperty.type}>`})
-          }
-          else {
-            console.log(`a. WARNING: Type undetermined for ${name}:${pname}`)
-          }
-        } else {
-          if (((merged === false) || ((merged === true) && (pname.includes(name)))) && (prop.type === 'object' || prop.anyOf || prop.allOf)) {
-            shape += getSchemaShapeInfo(prop, module, schemas, { name : pname, prefix, merged: false, level: 1, title, summary, descriptions, destination, section, enums })
-          }
-          let info = getSchemaTypeInfo(module, prop, pname, module['x-schemas'], prefix, {descriptions: descriptions, level: level + 1, title: true})
-          if (info.type && info.type.length > 0) {
-            let subPropertyName = ((pname.length !== 0) ? capitalize(pname) : info.name)
-            let moduleProperty = getJsonTypeInfo(module, json, name, schemas, prefix)
-            let subProperty = getJsonTypeInfo(module, prop, pname, schemas, prefix)
-            c_shape += '\n' + description(capitalize(pname), info.json.description)
-            c_shape += '\n' + (isHeader ? getPropertyAccessors(tName, capitalize(pname), info.type, { level: 0, readonly: false, optional: isOptional(pname, json) }) : getPropertyAccessorsImpl(tName, moduleProperty.type, subProperty.type, subPropertyName, info.type, info.json, {readonly:false, optional:isOptional(pname, json)}))
-            let property = getJsonType(prop, module, { name : pname, prefix })
-            props.push({name: `${pname}`, type: `${property}`})
-          }
-          else {
-            console.log(`b. WARNING: Type undetermined for ${name}:${pname}`)
-          }
+    if (json['$ref']) {
+      if (json['$ref'][0] === '#') {
+        //Ref points to local schema
+        //Get Path to ref in this module and getSchemaType
+        const schema = getPath(json['$ref'], module, schemas)
+        const tname = schema.title || json['$ref'].split('/').pop()
+        if (json['$ref'].includes('x-schemas')) {
+          schema = (getRefModule(json['$ref'].split('/')[2]))
         }
-      })
 
-      cpp_shape += getJsonContainerDefinition(json, containerName, props)
+        shape = getSchemaShapeInfo(schema, module, schemas, { name, prefix, merged, level, title, summary, descriptions, destination, section, enums })
+      }
+    }
+    //If the schema is a const,
+    else if (json.hasOwnProperty('const') && !isCPP) {
+      if (level > 0) {
 
-      if (isCPP) {
-        shape += '\n' + cpp_shape
+        let t = description(capitalize(name), json.description)
+        typeName = getTypeName(getModuleName(module), name, prefix)
+        t += (isHeader ? getPropertyAccessors(typeName, capitalize(name), typeof schema.const, { level: level, readonly: true, optional: false }) : getPropertyAccessorsImpl(typeName, getJsonType(schema, module, { level, name }), typeof schema.const, { level: level, readonly: true, optional: false }))
+        shape += '\n' + t
+      }
+    }
+    else if (json.type === 'object') {
+      if (!name) {
+        console.log(`WARNING: unnamed schema in ${module.info.title}.`)
+        console.dir(json)
+        shape = ''
+      }
+      else if (json.properties && (validJsonObjectProperties(json) === true)) {
+        let c_shape = description(capitalize(name), json.description)
+        let cpp_shape = ''
+        let tName = getTypeName(getModuleName(module), name, prefix)
+        c_shape += '\n' + (isHeader ? getObjectHandleManagement(tName) : getObjectHandleManagementImpl(tName, getJsonType(json, module, { name })))
+        let props = []
+        let containerName = ((prefix.length > 0) && (!name.startsWith(prefix))) ? (prefix + '_' + capitalize(name)) : capitalize(name)
+        Object.entries(json.properties).forEach(([pname, prop]) => {
+          let items
+          var desc = '\n' + description(capitalize(pname), prop.description)
+          if (prop.type === 'array') {
+            if (Array.isArray(prop.items)) {
+              //TODO
+              const IsHomogenous = arr => new Set(arr.map( item => item.type ? item.type : typeof item)).size === 1
+              if (!IsHomogenous(prop.items)) {
+                throw 'Heterogenous Arrays not supported yet'
+              }
+              items = prop.items[0]
+            }
+            else {
+              // grab the type for the non-array schema
+              items = prop.items
+            }
+
+            let info = getSchemaTypeInfo(module, items, items.name || pname, schemas, prefix, {level : level, descriptions: descriptions, title: true})
+            if (info.type && info.type.length > 0) {
+              let objName = tName + '_' + capitalize(prop.title || pname)
+              let moduleName = info.namespace
+              info.json.namespace = info.namespace
+              let moduleProperty = getJsonTypeInfo(module, json, json.title || name, schemas, prefix)
+              let prefixName = ((prefix.length > 0) && items['$ref']) ? '' : prefix
+              let subModuleProperty = getJsonTypeInfo(module, info.json, info.name, schemas, prefix)
+
+              let t = description(capitalize(info.name), json.description) + '\n'
+              t += '\n' + (isHeader ? getArrayAccessors(objName, tName, info.type) : getArrayAccessorsImpl(tName, moduleProperty.type, (tName + 'Handle'), subModuleProperty.type, capitalize(pname || prop.title), info.type, info.json))
+              c_shape += '\n' + t
+              props.push({name: `${pname}`, type: `WPEFramework::Core::JSON::ArrayType<${subModuleProperty.type}>`})
+            }
+            else {
+              console.log(`a. WARNING: Type undetermined for ${name}:${pname}`)
+            }
+          } else {
+            if (((merged === false) || ((merged === true) && (pname.includes(name)))) && (prop.type === 'object' || prop.anyOf || prop.allOf)) {
+              shape += getSchemaShapeInfo(prop, module, schemas, { name : pname, prefix, merged: false, level: 1, title, summary, descriptions, destination, section, enums })
+            }
+            let info = getSchemaTypeInfo(module, prop, pname, module['x-schemas'], prefix, {descriptions: descriptions, level: level + 1, title: true})
+            if (info.type && info.type.length > 0) {
+              let subPropertyName = ((pname.length !== 0) ? capitalize(pname) : info.name)
+              let moduleProperty = getJsonTypeInfo(module, json, name, schemas, prefix)
+              let subProperty = getJsonTypeInfo(module, prop, pname, schemas, prefix)
+              c_shape += '\n' + description(capitalize(pname), info.json.description)
+              c_shape += '\n' + (isHeader ? getPropertyAccessors(tName, capitalize(pname), info.type, { level: 0, readonly: false, optional: isOptional(pname, json) }) : getPropertyAccessorsImpl(tName, moduleProperty.type, subProperty.type, subPropertyName, info.type, info.json, {readonly:false, optional:isOptional(pname, json)}))
+              let property = getJsonType(prop, module, { name : pname, prefix })
+              props.push({name: `${pname}`, type: `${property}`})
+            }
+            else {
+              console.log(`b. WARNING: Type undetermined for ${name}:${pname}`)
+            }
+          }
+        })
+
+        cpp_shape += getJsonContainerDefinition(json, containerName, props)
+
+        if (isCPP) {
+          shape += '\n' + cpp_shape
+        }
+        else {
+          shape += '\n' + c_shape
+        }
+      }
+      else if (json.propertyNames && json.propertyNames.enum) {
+        //propertyNames in object not handled yet
+      }
+      else if (json.additionalProperties && (typeof json.additionalProperties === 'object') && (validJsonObjectProperties(json) === true) && !isCPP) {
+        let info = getSchemaTypeInfo(module, json.additionalProperties, name, module['x-schemas'], prefix)
+        if (!info.type || (info.type.length === 0)) {
+          info.type = 'char*'
+          info.json = json.additionalProperties
+          info.json.type = 'string'
+        }
+
+        let tName = getTypeName(getModuleName(module), name, prefix)
+        let t = description(capitalize(name), json.description) + '\n'
+        let containerType = 'WPEFramework::Core::JSON::VariantContainer'
+
+        let subModuleProperty = getJsonTypeInfo(module, info.json, info.name, module['x-schemas'])
+        if (isCPP && ((info.json.type === 'object' && info.json.properties) || info.json.type === 'array')) {
+          // Handle Container generation here
+        }
+
+        t += '\n' + (isHeader ? getObjectHandleManagement(tName) : getObjectHandleManagementImpl(tName, containerType))
+        t += (isHeader ? getMapAccessors(tName, info.type, { descriptions: descriptions, level: level }) : getMapAccessorsImpl(tName, containerType, subModuleProperty.type, info.type, info.json, { readonly: true, optional: false }))
+        shape += '\n' + t
+      }
+      else if (json.patternProperties) {
+        console.log(`WARNING: patternProperties are not supported by Firebolt(inside getModuleName(module):${name})`)
+      }
+    }
+    else if (json.anyOf) {
+      if (level > 0) {
+        let mergedSchema = getMergedSchema(module, json, name, schemas)
+        let prefixName = ((prefix.length > 0) && (!name.startsWith(prefix))) ? prefix : capitalize(name)
+        shape += getSchemaShapeInfo(mergedSchema, module, schemas, { name, prefix: prefixName, merged, level, title, summary, descriptions, destination, section, enums })
+      }
+    }
+    else if (json.oneOf) {
+      //Just ignore schema shape, since this has to be treated as string
+    }
+    else if (json.allOf) {
+      let title = (json.title ? json.title : name)
+      let union = deepMergeAll(module, title, json, schemas)
+      union.title = title
+
+      delete union['$ref']
+
+      return getSchemaShapeInfo(union, module, schemas, { name, prefix, merged: true, level, title, summary, descriptions, destination, section, enums })
+    }
+    else if (json.type === 'array') {
+      let j
+      if (Array.isArray(json.items)) {
+        //TODO
+        const IsHomogenous = arr => new Set(arr.map( item => item.type ? item.type : typeof item)).size === 1
+        if (!IsHomogenous(json.items)) {
+          throw 'Heterogenous Arrays not supported yet'
+        }
+        j = json.items[0]
       }
       else {
-        shape += '\n' + c_shape
+        j = json.items
       }
-    }
-    else if (json.propertyNames && json.propertyNames.enum) {
-      //propertyNames in object not handled yet
-    }
-    else if (json.additionalProperties && (typeof json.additionalProperties === 'object') && (validJsonObjectProperties(json) === true) && !isCPP) {
-      let info = getSchemaTypeInfo(module, json.additionalProperties, name, module['x-schemas'], prefix)
-      if (!info.type || (info.type.length === 0)) {
-        info.type = 'char*'
-        info.json = json.additionalProperties
-        info.json.type = 'string'
+      shape += getSchemaShapeInfo(j, module, schemas, { name: j.title || name, prefix, merged, level, title, summary, descriptions, destination, section, enums })
+
+      if (!isCPP) {
+        let info = getSchemaTypeInfo(module, j, j.title || name, schemas, prefix, {level : level, descriptions: descriptions, title: true})
+
+        if (info.type && info.type.length > 0) {
+          let type = getArrayElementSchema(json, module, schemas, info.name)
+          let arrayName = capitalize(name) + capitalize(type.type)
+          let objName = getTypeName(info.namespace, arrayName, prefix)
+          let tName = objName + 'Array'
+          let moduleName = info.namespace
+          info.json.namespace = info.namespace
+          let moduleProperty = getJsonTypeInfo(module, json, json.title || name, schemas, prefix)
+          let subModuleProperty = getJsonTypeInfo(module, j, j.title, schemas, prefix)
+          let t = ''
+          if (level === 0) {
+            t += description(capitalize(info.name), json.description) + '\n'
+            t += '\n' + (isHeader ? getObjectHandleManagement(tName) : getObjectHandleManagementImpl(tName, moduleProperty.type))
+          }
+          t += '\n' + (isHeader ? getArrayAccessors(objName, tName, info.type) : getArrayAccessorsImpl(objName, moduleProperty.type, (tName + 'Handle'), subModuleProperty.type, '', info.type, info.json))
+          shape += '\n' + t
+        }
       }
-
-      let tName = getTypeName(getModuleName(module), name, prefix)
-      let t = description(capitalize(name), json.description) + '\n'
-      let containerType = 'WPEFramework::Core::JSON::VariantContainer'
-
-      let subModuleProperty = getJsonTypeInfo(module, info.json, info.name, module['x-schemas'])
-      if (isCPP && ((info.json.type === 'object' && info.json.properties) || info.json.type === 'array')) {
-        // Handle Container generation here
-      }
-
-      t += '\n' + (isHeader ? getObjectHandleManagement(tName) : getObjectHandleManagementImpl(tName, containerType))
-      t += (isHeader ? getMapAccessors(tName, info.type, { descriptions: descriptions, level: level }) : getMapAccessorsImpl(tName, containerType, subModuleProperty.type, info.type, info.json, { readonly: true, optional: false }))
-      shape += '\n' + t
-    }
-    else if (json.patternProperties) {
-      console.log(`WARNING: patternProperties are not supported by Firebolt(inside getModuleName(module):${name})`)
-    }
-  }
-  else if (json.anyOf) {
-    if (level > 0) {
-      let mergedSchema = getMergedSchema(module, json, name, schemas)
-      let prefixName = ((prefix.length > 0) && (!name.startsWith(prefix))) ? prefix : capitalize(name)
-      shape += getSchemaShapeInfo(mergedSchema, module, schemas, { name, prefix: prefixName, merged, level, title, summary, descriptions, destination, section, enums })
-    }
-  }
-  else if (json.oneOf) {
-    //Just ignore schema shape, since this has to be treated as string
-  }
-  else if (json.allOf) {
-    let title = (json.title ? json.title : name)
-    let union = deepMergeAll(module, title, json, schemas)
-    union.title = title
-
-    delete union['$ref']
-
-    return getSchemaShapeInfo(union, module, schemas, { name, prefix, merged: true, level, title, summary, descriptions, destination, section, enums })
-  }
-  else if (json.type === 'array' && !isCPP) {
-    let j
-    if (Array.isArray(json.items)) {
-      //TODO
-      const IsHomogenous = arr => new Set(arr.map( item => item.type ? item.type : typeof item)).size === 1
-      if (!IsHomogenous(json.items)) {
-        throw 'Heterogenous Arrays not supported yet'
-      }
-      j = json.items[0]
     }
     else {
-      j = json.items
+      shape += '\n' + getSchemaType(module, json, name, schemas, prefix, {level: level, descriptions: descriptions})
     }
-
-    let info = getSchemaTypeInfo(module, j, j.name || name, schemas, prefix, {level : level, descriptions: descriptions, title: true})
-
-    if (info.type && info.type.length > 0) {
-      let type = getArrayElementSchema(json, module, schemas, info.name)
-      let arrayName = capitalize(info.name) + capitalize(type.type)
-      let objName = getTypeName(info.namespace, arrayName, prefix)
-      let tName = objName + 'Array'
-      let moduleName = info.namespace
-      info.json.namespace = info.namespace
-      let moduleProperty = getJsonTypeInfo(module, json, json.title || name, schemas, prefix)
-      let t = ''
-      if (level === 0) {
-        t += description(capitalize(info.name), json.description) + '\n'
-        t += '\n' + (isHeader ? getObjectHandleManagement(tName) : getObjectHandleManagementImpl(tName, moduleProperty.type))
-      }
-      t += '\n' + (isHeader ? getArrayAccessors(objName, tName, info.type) : getArrayAccessorsImpl(objName, moduleProperty.type, (tName + 'Handle'), getJsonNativeType(type), '', info.type, info.json))
-      shape += '\n' + t
-    }
-  }
-  else {
-    shape += '\n' + getSchemaType(module, json, name, schemas, prefix, {level: level, descriptions: descriptions})
   }
 
   return shape
