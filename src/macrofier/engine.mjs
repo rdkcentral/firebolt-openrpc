@@ -46,6 +46,7 @@ const _inspector = obj => {
 // getMethodSignatureParams(method, module, options = { destination: 'file.txt' })
 // getSchemaType(schema, module, options = { destination: 'file.txt', title: true })
 // getSchemaShape(schema, module, options = { name: 'Foo', destination: 'file.txt' })
+// getJsonType(schema, module, options = { name: 'Foo', prefix: '', descriptions: false, level: 0 })
 
 let types = {
   getMethodSignature: ()=>null,
@@ -133,6 +134,24 @@ const getLinkForSchema = (schema, json, { name = '' } = {}) => {
   return '#'
 }
 
+const getComponentExternalSchema = (json) => {
+  let refSchemas = []
+  if (json.components && json.components.schemas) {
+    Object.entries(json.components.schemas).forEach(([name, schema]) => {
+      let refs = getLinkedSchemaPaths(schema).map(path => getPathOr(null, path, schema))
+      refs.map(ref => {
+        let title = ''
+        if (ref.includes('x-schemas')) {
+          if (ref.split('/')[2] !== json.info.title) {
+            title = ref.split('/')[2]
+          }
+        }
+        title && !refSchemas.includes(title) ? refSchemas.push(title) : null
+      })
+    })
+  }
+  return (refSchemas)
+}
 
 // Maybe methods array of objects
 const getMethods = compose(
@@ -319,7 +338,7 @@ const generateMacros = (obj, templates, languages, options = {}) => {
   // grab the options so we don't have to pass them from method to method
   Object.assign(state, options)
 
-  const imports = generateImports(obj, templates)
+  const imports = generateImports(obj, templates, { destination : (options.destination ? options.destination : '') })
   const initialization = generateInitialization(obj, templates)
   const enums = generateEnums(obj, templates, { destination : (options.destination ? options.destination : '') })
   const eventsEnum = generateEvents(obj, templates)
@@ -345,7 +364,7 @@ const generateMacros = (obj, templates, languages, options = {}) => {
   const schemasArray = generateSchemas(obj, templates, { baseUrl: '', section: 'schemas' }).filter(s => (options.copySchemasIntoModules || !s.uri))
   const accessorsArray = generateSchemas(obj, templates, { baseUrl: '', section: 'accessors' }).filter(s => (options.copySchemasIntoModules || !s.uri))
   const schemas = schemasArray.length ? getTemplate('/sections/schemas', templates).replace(/\$\{schema.list\}/g, schemasArray.map(s => s.body).filter(body => body).join('\n')) : ''
-  const typesArray = schemasArray.filter(x => !x.enum)
+  const typesArray = schemasArray.length ? schemasArray.filter(x => !x.enum) : []
   const types = (typesArray.length ? getTemplate('/sections/types', templates).replace(/\$\{schema.list\}/g, typesArray.map(s => s.body).filter(body => body).join('\n')) : '') + methodTypes
 
   const accessors = (accessorsArray.length ? getTemplate('/sections/accessors', templates).replace(/\$\{schema.list\}/g, accessorsArray.map(s => s.body).filter(body => body).join('\n')) : '') + methodAccessors
@@ -634,7 +653,6 @@ function generateSchemas(json, templates, options) {
     if (['ListenResponse', 'ProviderRequest', 'ProviderResponse', 'FederatedResponse', 'FederatedRequest'].includes(name)) {
       return
     }    
-
     let content = getTemplate('/schemas/default', templates)
 
     if (!schema.examples || schema.examples.length === 0) {
@@ -697,11 +715,11 @@ function generateSchemas(json, templates, options) {
       if (!isDeprecatedMethod(schema)) {
         schema.params.forEach(param => {
           if (param.schema && (param.schema.type === 'object')) {
-            list.push([param.name, param.schema, '', { prefix : schema.name}])
+            list.push([param.name, param.schema, '', { prefix : schema.name }])
           }
         })
         if (schema.result.schema && (schema.result.schema.type === 'object')) {
-          list.push([schema.result.name, schema.result.schema, '', { prefix : schema.name}])
+          list.push([schema.result.name, schema.result.schema, '', { prefix : schema.name }])
         }
       }
     }
@@ -743,8 +761,8 @@ function getRelatedSchemaLinks(schema = {}, json = {}, templates = {}, options =
   return links
 }
 
-const generateImports = (json, templates) => {
-  let imports = getTemplate('/imports/default', templates)
+const generateImports = (json, templates, options = { destination: '' }) => {
+  let imports = ''
 
   if (rpcMethodsOrEmptyArray(json).length) {
     imports += getTemplate('/imports/rpc', templates)
@@ -773,11 +791,22 @@ const generateImports = (json, templates) => {
   if (methodsWithXMethodsInResult(json).length) {
     imports += getTemplate('/imports/x-method', templates)
   }
+  const suffix = options.destination.split('.').pop()
+  const prefix = options.destination.split('/').pop().split('_')[0].toLowerCase()
 
-  if (json['x-schemas'] && Object.keys(json['x-schemas']).length > 0) {
-    imports += Object.keys(json['x-schemas']).map(shared => getTemplate('/imports/default', templates).replace(/\$\{info.title\}/g, shared)).join('\n')
+  let template = prefix ? getTemplate(`/imports/default.${prefix}`, templates) : ''
+  if (!template) {
+    template = getTemplate(suffix ? `/imports/default.${suffix}` : '/imports/default', templates)
   }
 
+  if (json['x-schemas'] && Object.keys(json['x-schemas']).length > 0 && !json.info['x-uri-titles']) {
+    imports += Object.keys(json['x-schemas']).map(shared => template.replace(/\$\{info.title\}/g, shared)).join('')
+  }
+
+  let componentExternalSchema = getComponentExternalSchema(json)
+  if (componentExternalSchema.length && json.info['x-uri-titles']) {
+    imports += componentExternalSchema.map(shared => template.replace(/\$\{info.title\}/g, shared)).join('')
+  }
   return imports
 }
 
@@ -1021,9 +1050,8 @@ function insertMethodMacros(template, methodObj, json, templates, examples={}) {
   const pullsResultType = pullsResult && types.getSchemaShape(pullsResult, json, { destination: state.destination, section: state.section })
   const pullsForType = pullsResult && types.getSchemaType(pullsResult, json, { destination: state.destination, section: state.section  })
   const pullsParamsType = pullsParams ? types.getSchemaShape(pullsParams, json, { destination: state.destination, section: state.section  }) : ''
- 
+
   let seeAlso = ''
-  
   if (isPolymorphicPullMethod(methodObj) && pullsForType) {
     seeAlso = `See also: [${pullsForType}](#${pullsForType.toLowerCase()}-1)` // this assumes the schema will be after the method...
   }
