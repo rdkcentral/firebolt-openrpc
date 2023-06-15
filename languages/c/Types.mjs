@@ -202,8 +202,8 @@ function getMethodSignatureParams(method, module, { destination }) {
 
 const safeName = prop => prop.match(/[.+]/) ? '"' + prop + '"' : prop
 
-function getSchemaType(schema, module, { name, prefix = '', destination, resultSchema = false, link = false, title = false, code = false, asPath = false, event = false, expandEnums = true, baseUrl = '' } = {}) {
-  let info = getSchemaTypeInfo(module, schema, name, module['x-schemas'], prefix, { title: title, resultSchema : false, event : false })
+function getSchemaType(schema, module, { name, prefix = '', destination, resultSchema = true, link = false, title = false, code = false, asPath = false, event = false, expandEnums = true, baseUrl = '' } = {}) {
+  let info = getSchemaTypeInfo(module, schema, name, module['x-schemas'], prefix, { title: title, resultSchema : resultSchema, event : false })
   return info.type
 }
 
