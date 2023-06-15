@@ -538,6 +538,7 @@ function getSchemaShapeInfo(json, module, schemas = {}, { name = '', prefix = ''
       shape += '\n' + getSchemaType(module, json, name, schemas, prefix, {level: level, descriptions: descriptions})
     }
   }
+
   return shape
 }
 
