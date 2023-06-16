@@ -18,8 +18,8 @@
 
 import deepmerge from 'deepmerge'
 import { getPath } from '../../src/shared/json-schema.mjs'
-import { getTypeName, getModuleName, description, getObjectHandleManagement, getNativeType, getPropertyAccessors, capitalize, isOptional, generateEnum, getMapAccessors, getArrayAccessors, getArrayElementSchema } from './src/types/NativeHelpers.mjs'
-import { getArrayAccessorsImpl, getMapAccessorsImpl, getObjectHandleManagementImpl, getPropertyAccessorsImpl } from './src/types/ImplHelpers.mjs'
+import { getTypeName, getModuleName, description, getObjectHandleManagement, getNativeType, getPropertyAccessors, capitalize, isOptional, generateEnum, getMapAccessors, getArrayAccessors, getArrayElementSchema, getPropertyGetterSignature, getPropertyEventCallbackSignature, getPropertyEventRegisterSignature, getPropertyEventUnregisterSignature, getPropertySetterSignature } from './src/types/NativeHelpers.mjs'
+import { getArrayAccessorsImpl, getMapAccessorsImpl, getObjectHandleManagementImpl, getParameterInstantiation, getPropertyAccessorsImpl, getResultInstantiation } from './src/types/ImplHelpers.mjs'
 import { getJsonContainerDefinition, getJsonDataStructName } from './src/types/JSONHelpers.mjs'
 
 const getSdkNameSpace = () => 'FireboltSDK'
@@ -166,32 +166,64 @@ const deepMergeAll = (module, name, schema, schemas, options) => {
 
   return union
 }
+const hasTag = (method, tag) => {
+  return method.tags && method.tags.filter(t => t.name === tag).length > 0
+}
 
 function getMethodSignature(method, module, { destination, isInterface = false }) {
-  const extraParam = '${method.result.type}* ${method.result.name}'
 
-  const prefix = method.tags.find(t => t.name.split(":")[0] === "property") ? "Get" : ""
+  let signature = ''
+  let paramList = []
+  if(hasTag(method, 'property') || hasTag(method, 'property:readonly') || hasTag(method, 'property:immutable')) {
 
-  return 'uint32_t ${info.title}_' + prefix + '${method.Name}(' + extraParam + ')'
+    method.params.map(param => {
+      /*
+          paramList = [{name='', nativeType='', jsonType='', required=boolean}]
+      */
+      paramList['nativeType'] = getSchemaType(param.schema, module, { title: true, name: param.name })
+      paramList['jsonType'] = getJsonType(param.schema, module, {name: param.name})
+      paramList['name'] = param.name
+      paramList['required'] = param.required
+
+    })
+
+    let resultType = method.result && getSchemaType(method.result.schema, module, { title: true, name: method.result.name, resultSchema: true}) || ''
+
+    signature = getPropertyGetterSignature(method, module, resultType, paramList) + ';\n\n'
+
+    if(hasTag(method, 'property') || hasTag(method, 'property:readonly')) {
+      signature += getPropertyEventCallbackSignature(method, module, resultType, paramList) + ';\n\n'
+      signature += getPropertyEventRegisterSignature(method, module, paramList) + ';\n\n'
+      signature += getPropertyEventUnregisterSignature(method, module) + ';\n\n'
+    }
+
+    if(hasTag(method, 'property')) {
+      signature += getPropertySetterSignature(method, module, resultType, paramList) + ';\n\n'
+    }
+  }
+  return signature
 }
+
 
 function getMethodSignatureParams(method, module, { destination }) {
 
-  return method.params.map(param => param.name + (!param.required ? '?' : '') + ': ' + getSchemaType(param.schema, module, { name: param.name, title: true, destination })).join(', ')
+  return method.params.map(param => getSchemaType(param.schema, module, { name: param.name, title: true, destination }) + (!param.required ? '*' : '') + param.name ).join(', ')
 }
 
 const safeName = prop => prop.match(/[.+]/) ? '"' + prop + '"' : prop
 
-function getSchemaType(schema, module, { name, prefix = '', destination, link = false, title = false, code = false, asPath = false, event = false, expandEnums = true, baseUrl = '' } = {}) {
-  let info = getSchemaTypeInfo(module, schema, name, module['x-schemas'], prefix, { title: title })
+function getSchemaType(schema, module, { name, prefix = '', destination, resultSchema = false, link = false, title = false, code = false, asPath = false, event = false, expandEnums = true, baseUrl = '' } = {}) {
+  let info = getSchemaTypeInfo(module, schema, name, module['x-schemas'], prefix, { title: title, resultSchema: resultSchema, event: event })
   return info.type
 }
 
-function getSchemaTypeInfo(module = {}, json = {}, name = '', schemas = {}, prefix = '', options = {level: 0, descriptions: true, title: false}) {
+function getSchemaTypeInfo(module = {}, json = {}, name = '', schemas = {}, prefix = '', options = {level: 0, descriptions: true, title: false, resultSchema: false, event: false}) {
 
   if (json.schema) {
     json = json.schema
   }
+
+  let stringAsHandle = options.resultSchema || options.event
 
   let structure = {}
   structure["type"] = ''
@@ -219,7 +251,7 @@ function getSchemaTypeInfo(module = {}, json = {}, name = '', schemas = {}, pref
     }
   }
   else if (json.const) {
-    structure.type = getNativeType(json)
+    structure.type = getNativeType(json, stringAsHandle)
     structure.json = json
     return structure
   }
@@ -240,7 +272,9 @@ function getSchemaTypeInfo(module = {}, json = {}, name = '', schemas = {}, pref
   }
   else if (Array.isArray(json.type)) {
     let type = json.type.find(t => t !== 'null')
-    console.log(`WARNING UNHANDLED: type is an array containing ${json.type}`)
+    let sch = JSON.parse(JSON.stringify(json))
+    sch.type = type
+    return getSchemaTypeInfo(module, sch, name, schemas, prefix, options)
   }
   else if (json.type === 'array' && json.items && (validJsonObjectProperties(json) === true)) {
     let res = ''
@@ -300,7 +334,7 @@ function getSchemaTypeInfo(module = {}, json = {}, name = '', schemas = {}, pref
     return structure
   }
   else if (json.type) {
-    structure.type = getNativeType(json)
+    structure.type = getNativeType(json, stringAsHandle)
     structure.json = json
     if (name || json.title) {
       structure.name = capitalize(name || json.title)
@@ -601,7 +635,9 @@ function getJsonTypeInfo(module = {}, json = {}, name = '', schemas, prefix = ''
   }
   else if (Array.isArray(json.type)) {
     let type = json.type.find(t => t !== 'null')
-    console.log(`WARNING UNHANDLED: type is an array containing ${json.type}`)
+    let sch = JSON.parse(JSON.stringify(json))
+    sch.type = type
+    return getJsonTypeInfo(module, sch, name, schemas, prefix )
   }
   else if (json.type === 'array' && json.items) {
     let res
@@ -682,10 +718,40 @@ const enumReducer = (acc, val, i, arr) => {
   return acc
 }
 
+function getSchemaInstantiation(schema, module, name, { instantiationType = '' } = {}) {
+
+  console.log(`getSchemaInstantiation: instantiationType: ${instantiationType}`)
+  if(instantiationType === 'params') {
+    if (schema.params.length > 0) {
+      let paramList = []
+      schema.params.map(param => {
+        /*
+            paramList = [{name='', nativeType='', jsonType='', required=boolean}]
+        */
+        paramList['nativeType'] = getSchemaType(param.schema, module, { title: true, name: param.name })
+        paramList['jsonType'] = getJsonType(param.schema, module, {name: param.name})
+        paramList['name'] = param.name
+        paramList['required'] = param.required
+      })
+      return getParameterInstantiation(paramList)
+    }
+  } else if(instantiationType === 'result') {
+    console.log(`getSchemaInstantiation: result: ${JSON.stringify(schema,null,4)}`)
+    let resultType = getSchemaType(schema, module, { title: true, name: name, resultSchema: true}) || ''
+    let resultJsonType = getJsonType(schema, module, {name: name}) || ''
+
+    return getResultInstantiation(name, resultType, resultJsonType)
+  }
+
+  return ''
+}
+
+
 export default {
     getMethodSignature,
     getMethodSignatureParams,
     getSchemaShape,
     getSchemaType,
-    getJsonType
+    getJsonType,
+    getSchemaInstantiation
 }

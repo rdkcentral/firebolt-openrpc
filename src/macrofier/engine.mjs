@@ -47,13 +47,15 @@ const _inspector = obj => {
 // getSchemaType(schema, module, options = { destination: 'file.txt', title: true })
 // getSchemaShape(schema, module, options = { name: 'Foo', destination: 'file.txt' })
 // getJsonType(schema, module, options = { name: 'Foo', prefix: '', descriptions: false, level: 0 })
+// getSchemaInstantiation(schema, module, options = {type: 'params' | 'result' | 'event' | 'callback'})
 
 let types = {
   getMethodSignature: ()=>null,
   getMethodSignatureParams: ()=>null,
   getSchemaShape: ()=>null,
   getSchemaType: ()=>null,
-  getJsonType: ()=>null
+  getJsonType: ()=>null,
+  getSchemaInstantiation: ()=>null
 }
 
 let config = {
@@ -1048,6 +1050,8 @@ function insertMethodMacros(template, methodObj, json, templates, examples={}) {
   const pullsResultType = pullsResult && types.getSchemaShape(pullsResult, json, { destination: state.destination, section: state.section })
   const pullsForType = pullsResult && types.getSchemaType(pullsResult, json, { destination: state.destination, section: state.section  })
   const pullsParamsType = pullsParams ? types.getSchemaShape(pullsParams, json, { destination: state.destination, section: state.section  }) : ''
+  const paramInst = types.getSchemaInstantiation(methodObj, json, methodObj.name, {instantiationType: 'params'})
+  const resultInst = types.getSchemaInstantiation(result.schema, json, result.name, { instantiationType: 'result' } )
 
   let seeAlso = ''
   if (isPolymorphicPullMethod(methodObj) && pullsForType) {
@@ -1080,6 +1084,7 @@ function insertMethodMacros(template, methodObj, json, templates, examples={}) {
     .replace(/\$\{method\.params\.count}/g, methodObj.params ? methodObj.params.length : 0)
     .replace(/\$\{if\.params\}(.*?)\$\{end\.if\.params\}/gms, method.params.length ? '$1' : '')
     .replace(/\$\{if\.context\}(.*?)\$\{end\.if\.context\}/gms, event.params.length ? '$1' : '')
+    .replace(/\$\{method\.params\.instantiation\}/g,  paramInst)
     // Typed signature stuff
     .replace(/\$\{method\.signature\}/g, types.getMethodSignature(methodObj, json, { isInterface: false, destination: state.destination, section: state.section  }))
     .replace(/\$\{method\.signature\.params\}/g, types.getMethodSignatureParams(methodObj, json, { destination: state.destination, section: state.section  }))
@@ -1105,9 +1110,11 @@ function insertMethodMacros(template, methodObj, json, templates, examples={}) {
     .replace(/\$\{method\.result\.name\}/g, result.name)
     .replace(/\$\{method\.result\.summary\}/g, result.summary)
     .replace(/\$\{method\.result\.link\}/g, getLinkForSchema(result.schema, json, {name : result.name})) //, baseUrl: options.baseUrl
-    .replace(/\$\{method\.result\.type\}/g, types.getSchemaType(result.schema, json, {name: result.name, title: true, asPath: false, destination: state.destination })) //, baseUrl: options.baseUrl
+    .replace(/\$\{method\.result\.type\}/g, types.getSchemaType(result.schema, json, {name: result.name, title: true, asPath: false, destination: state.destination, resultSchema: true })) //, baseUrl: options.baseUrl
+    .replace(/\$\{method\.result\.json\}/, types.getJsonType(result.schema, json, { name: result.name, destination: state.destination, section: state.section, code: false, link: false, title: true, asPath: false, expandEnums: false }))    
     .replace(/\$\{event\.result\.type\}/, isEventMethod(methodObj) ? types.getSchemaType(result.schema, json, { name: result.name, destination: state.destination, event: true, description: methodObj.result.summary, asPath: false }): '') //, baseUrl: options.baseUrl
     .replace(/\$\{method\.result\}/g,  generateResult(result.schema, json, templates, { name : result.name }))
+    .replace(/\$\{method\.result\.instantiation\}/g,  resultInst)
     .replace(/\$\{method\.example\.value\}/g,  JSON.stringify(methodObj.examples[0].result.value))
     .replace(/\$\{method\.alternative\}/g, method.alternative)
     .replace(/\$\{method\.alternative.link\}/g, '#'+(method.alternative || "").toLowerCase())
@@ -1120,6 +1127,7 @@ function insertMethodMacros(template, methodObj, json, templates, examples={}) {
     .replace(/\$\{method\.puller\}/g, pullerTemplate) // must be last!!
     .replace(/\$\{method\.setter\}/g, setterTemplate) // must be last!!
     .replace(/\$\{method\.subscriber\}/g, subscriberTemplate) // must be last!!
+
 
   if (method.deprecated) {
     template = template.replace(/\$\{if\.deprecated\}(.*?)\$\{end\.if\.deprecated\}/gms, '$1')
