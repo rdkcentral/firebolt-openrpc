@@ -207,7 +207,7 @@ function getMethodSignature(method, module, { destination, isInterface = false }
 
 function getMethodSignatureParams(method, module, { destination }) {
 
-  return method.params.map(param => getSchemaType(param.schema, module, { name: param.name, title: true, destination }) + (!param.required ? '*' : '') + param.name ).join(', ')
+  return method.params.map(param => getSchemaType(param.schema, module, { name: param.name, title: true, destination }) + (!param.required ? '* ' : ' ') + param.name ).join(', ')
 }
 
 const safeName = prop => prop.match(/[.+]/) ? '"' + prop + '"' : prop
@@ -568,6 +568,9 @@ const getJsonNativeType = json => {
   else if (jsonType === 'boolean') {
     type = 'WPEFramework::Core::JSON::Boolean'
   }
+  else if (jsonType === 'null') {
+    type = 'void'
+  }
   else {
     throw 'Unknown JSON Native Type !!!'
   }
@@ -720,7 +723,6 @@ const enumReducer = (acc, val, i, arr) => {
 
 function getSchemaInstantiation(schema, module, name, { instantiationType = '' } = {}) {
 
-  console.log(`getSchemaInstantiation: instantiationType: ${instantiationType}`)
   if(instantiationType === 'params') {
     if (schema.params.length > 0) {
       let paramList = []
@@ -728,15 +730,17 @@ function getSchemaInstantiation(schema, module, name, { instantiationType = '' }
         /*
             paramList = [{name='', nativeType='', jsonType='', required=boolean}]
         */
-        paramList['nativeType'] = getSchemaType(param.schema, module, { title: true, name: param.name })
-        paramList['jsonType'] = getJsonType(param.schema, module, {name: param.name})
-        paramList['name'] = param.name
-        paramList['required'] = param.required
+        const parameter = {}
+        parameter['nativeType'] = getSchemaType(param.schema, module, { title: true, name: param.name })
+        parameter['jsonType'] = getJsonType(param.schema, module, {name: param.name})
+        parameter['name'] = param.name
+        parameter['required'] = param.required
+        paramList.push(parameter)
+
       })
       return getParameterInstantiation(paramList)
     }
   } else if(instantiationType === 'result') {
-    console.log(`getSchemaInstantiation: result: ${JSON.stringify(schema,null,4)}`)
     let resultType = getSchemaType(schema, module, { title: true, name: name, resultSchema: true}) || ''
     let resultJsonType = getJsonType(schema, module, {name: name}) || ''
 

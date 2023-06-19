@@ -134,6 +134,9 @@ const getNativeType = (json, stringAsHandle = false) => {
   else if (jsonType === 'boolean') {
     type = 'bool'
   }
+  else if (jsonType === 'null' ) {
+    type = 'void'
+  } 
   return type
 }
 

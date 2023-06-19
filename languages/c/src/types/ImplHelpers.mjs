@@ -1,3 +1,5 @@
+import { capitalize } from "./NativeHelpers.mjs"
+
 const Indent = '\t'
 
 const getSdkNameSpace = () => 'FireboltSDK'
@@ -296,7 +298,7 @@ function getParameterInstantiation(paramList, container = '') {
   let impl = `    ${container.length>0 ? container : 'JsonObject'} jsonParameters;\n`
   paramList.forEach(param => {
     impl += `\n`
-    const jsonType = paramList.jsonType
+    const jsonType = param.jsonType
     if (jsonType.length) {
       if (param.required) {
         if (param.nativeType.includes('FireboltTypes_StringHandle')) {
@@ -305,7 +307,7 @@ function getParameterInstantiation(paramList, container = '') {
         else {
           impl += `    WPEFramework::Core::JSON::Variant ${capitalize(param.name)} = ${param.name};\n`
         }
-        impl += `    jsonParameters.Set(_T("${param.name}"), ${capitalize(param.name)});\n`
+        impl += `    jsonParameters.Set(_T("${param.name}"), ${capitalize(param.name)});`
       }
       else {
         impl += `    if (${param.name} != nullptr) {\n`
@@ -316,7 +318,7 @@ function getParameterInstantiation(paramList, container = '') {
           impl += `        WPEFramework::Core::JSON::Variant ${capitalize(param.name)} = *(${param.name});\n`
         }
         impl += `        jsonParameters.Set(_T("${param.name}"), ${capitalize(param.name)});\n`
-        impl += `    }\n`
+        impl += `    }`
       }
     }
   })
