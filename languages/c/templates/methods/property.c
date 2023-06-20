@@ -4,7 +4,7 @@ uint32_t ${info.title}_Get${method.Name}( ${method.signature.params}${if.params}
     const string method = _T("${info.title}.${method.name}");
     JsonObject jsonParameters;
       ${if.params}
-${method.params.instantiation}
+${method.params.serialization}
       ${end.if.params}
 
     ${method.result.json} jsonResult;

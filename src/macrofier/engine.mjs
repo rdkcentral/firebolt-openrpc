@@ -1050,7 +1050,7 @@ function insertMethodMacros(template, methodObj, json, templates, examples={}) {
   const pullsResultType = pullsResult && types.getSchemaShape(pullsResult, json, { destination: state.destination, section: state.section })
   const pullsForType = pullsResult && types.getSchemaType(pullsResult, json, { destination: state.destination, section: state.section  })
   const pullsParamsType = pullsParams ? types.getSchemaShape(pullsParams, json, { destination: state.destination, section: state.section  }) : ''
-  const paramInst = types.getSchemaInstantiation(methodObj, json, methodObj.name, {instantiationType: 'params'})
+  const serializedParams = types.getSchemaInstantiation(methodObj, json, methodObj.name, {instantiationType: 'params'})
   const resultInst = types.getSchemaInstantiation(result.schema, json, result.name, { instantiationType: 'result' } )
 
   let seeAlso = ''
@@ -1084,7 +1084,7 @@ function insertMethodMacros(template, methodObj, json, templates, examples={}) {
     .replace(/\$\{method\.params\.count}/g, methodObj.params ? methodObj.params.length : 0)
     .replace(/\$\{if\.params\}(.*?)\$\{end\.if\.params\}/gms, method.params.length ? '$1' : '')
     .replace(/\$\{if\.context\}(.*?)\$\{end\.if\.context\}/gms, event.params.length ? '$1' : '')
-    .replace(/\$\{method\.params\.instantiation\}/g,  paramInst)
+    .replace(/\$\{method\.params\.serialization\}/g,  serializedParams)
     // Typed signature stuff
     .replace(/\$\{method\.signature\}/g, types.getMethodSignature(methodObj, json, { isInterface: false, destination: state.destination, section: state.section  }))
     .replace(/\$\{method\.signature\.params\}/g, types.getMethodSignatureParams(methodObj, json, { destination: state.destination, section: state.section  }))
