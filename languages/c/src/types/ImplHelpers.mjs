@@ -1,3 +1,5 @@
+import { capitalize } from "./NativeHelpers.mjs"
+
 const Indent = '\t'
 
 const getSdkNameSpace = () => 'FireboltSDK'
@@ -288,9 +290,68 @@ const getMapAccessorsImpl = (objName, containerType, subPropertyType, accessorPr
   return result
 }
 
+/*
+paramList = [{name='', nativeType='', jsonType='', required=boolean}]
+*/
+function getParameterInstantiation(paramList, container = '') {
+
+  let impl = `    ${container.length>0 ? container : 'JsonObject'} jsonParameters;\n`
+  paramList.forEach(param => {
+    impl += `\n`
+    const jsonType = param.jsonType
+    if (jsonType.length) {
+      if (param.required) {
+        if (param.nativeType.includes('FireboltTypes_StringHandle')) {
+          impl += `    WPEFramework::Core::JSON::Variant ${capitalize(param.name)} = *(static_cast<${jsonType}*>(${param.name}));\n`
+        }
+        else {
+          impl += `    WPEFramework::Core::JSON::Variant ${capitalize(param.name)} = ${param.name};\n`
+        }
+        impl += `    jsonParameters.Set(_T("${param.name}"), ${capitalize(param.name)});`
+      }
+      else {
+        impl += `    if (${param.name} != nullptr) {\n`
+        if (param.nativeType.includes('char*')) {
+          impl += `        WPEFramework::Core::JSON::Variant ${capitalize(param.name)} = ${param.name};\n`
+        } else {
+
+          impl += `        WPEFramework::Core::JSON::Variant ${capitalize(param.name)} = *(${param.name});\n`
+        }
+        impl += `        jsonParameters.Set(_T("${param.name}"), ${capitalize(param.name)});\n`
+        impl += `    }`
+      }
+    }
+  })
+
+  return impl
+}
+
+function getResultInstantiation (name, nativeType, container, indentLevel = 3) {
+
+  let impl = ''
+
+  if (nativeType === 'char*' || nativeType === 'FireboltTypes_StringHandle') {
+    impl += `${'    '.repeat(indentLevel)}${container}* strResult = new ${container}(jsonResult);` + '\n'
+    impl += `${'    '.repeat(indentLevel)}*${name} = static_cast<${getFireboltStringType()}>(strResult);`
+  } else if (nativeType.includes('Handle')) {
+    impl += `${'    '.repeat(indentLevel)}WPEFramework::Core::ProxyType<${container}>* resultPtr = new WPEFramework::Core::ProxyType<${container}>();\n`
+    impl += `${'    '.repeat(indentLevel)}*resultPtr = WPEFramework::Core::ProxyType<${container}>::Create();\n`
+    impl += `${'    '.repeat(indentLevel)}*(*resultPtr) = jsonResult;\n`
+    impl += `${'    '.repeat(indentLevel)}*${name} = static_cast<${nativeType}>(resultPtr);`
+  } else {
+    impl += `${'    '.repeat(indentLevel)}*${name} = jsonResult.Value();`
+  }
+
+  return impl
+
+}
+
+
 export {
     getArrayAccessorsImpl,
     getMapAccessorsImpl,
     getObjectHandleManagementImpl,
-    getPropertyAccessorsImpl
+    getPropertyAccessorsImpl,
+    getParameterInstantiation,
+    getResultInstantiation
 }
