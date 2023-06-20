@@ -346,10 +346,14 @@ function getSchemaShape(schema = {}, module = {}, { name = '', level = 0, title,
     return acc
   }
 
+  function getSchemaInstantiation(schema, module, { instantiationType }) {
+    return ''
+  }
   export default {
       getMethodSignature,
       getMethodSignatureParams,
       getSchemaShape,
       getSchemaType,
-      getJsonType
+      getJsonType,
+      getSchemaInstantiation
   }

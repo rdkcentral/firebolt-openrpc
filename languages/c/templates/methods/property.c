@@ -1,12 +1,21 @@
 /* ${method.name} - ${method.description} */
-uint32_t ${info.title}_Get${method.Name}(${method.params}${if.params}, ${end.if.params}${method.result.type}* ${method.result.name}) {
+uint32_t ${info.title}_Get${method.Name}( ${method.signature.params}${if.params}, ${end.if.params}${method.result.type}* ${method.result.name} )
+{
     const string method = _T("${info.title}.${method.name}");
-    FireboltSDK::${info.title}::${method.result.type} jsonResult;
+    JsonObject jsonParameters;
+      ${if.params}
+${method.params.serialization}
+      ${end.if.params}
 
-    uint32_t status = FireboltSDK::Properties::Get(method, jsonResult);
+    ${method.result.json} jsonResult;
+
+    uint32_t status = FireboltSDK::Properties::Get(method, jsonParameters, jsonResult);
     if (status == FireboltSDKErrorNone) {
-        WPEFramework::Core::ProxyType<FireboltSDK::${info.title}::${method.result.type}>* resultPtr = new WPEFramework::Core::ProxyType<FireboltSDK::${info.title}::${method.result.type}>();
-       *${method.result.name} = static_cast<${info.title}_${method.result.type}Handle>(resultPtr);
+        if (${method.result.name} != nullptr) {
+${method.result.instantiation}
+        }
     }
     return status;
 }
+
+${method.setter}
