@@ -115,23 +115,31 @@ const getArrayElementSchema = (json, module, schemas = {}, name) => {
   return result
 }
 
-const getNativeType = json => {
-  let type = ''
+const getNativeType = (json, stringAsHandle = false) => {
+  let type
   let jsonType = json.const ? typeof json.const : json.type
   if (jsonType === 'string') {
-    type = 'char*'
+      type = 'char*'
+      if(stringAsHandle) {
+        type = getFireboltStringType()
+      }
   }
   else if (jsonType === 'number') {
-    type = 'float'
+      type = 'float'
   }
   else if (jsonType === 'integer') {
-    type = 'int32_t'
+      type = 'int32_t'
+
   }
   else if (jsonType === 'boolean') {
     type = 'bool'
   }
+  else if (jsonType === 'null' ) {
+    type = 'void'
+  } 
   return type
 }
+
 
 const getObjectHandleManagement = varName => {
 
@@ -211,23 +219,52 @@ const generateEnum = (schema, prefix)=> {
   }
 }
 
-function getPropertyGetterSignature(method, module, paramType) {
-  let m = `${capitalize(getModuleName(module))}_Get${capitalize(method.name)}`
-  return `${description(method.name, method.summary)}\nuint32 ${m}( ${paramType === 'char*' ? 'FireboltTypes_StringHandle' : paramType}* ${method.result.name || method.name} )`
+/*
+paramList = [{name='', nativeType='', jsonType='', required=boolean}]
+*/
+
+const getContextParams = (paramList) => paramList.map(param => param.nativeType + (!param.required ? '*' : '') + ' ' + param.name).join(', ')
+
+function getPropertyGetterSignature(property, module, propType, paramList = []) {
+
+  let contextParams = ''
+  contextParams = getContextParams(paramList)
+  return `uint32_t ${capitalize(getModuleName(module))}_Get${capitalize(property.name)}( ${contextParams}${contextParams.length > 0 ? ', ':''}${propType}* ${property.result.name || property.name})`
 }
 
-function getPropertySetterSignature(method, module, paramType) {
-  let m = `${capitalize(getModuleName(module))}_Set${capitalize(method.name)}`
-  return `${description(method.name, method.summary)}\nuint32 ${m}( ${paramType} ${method.result.name || method.name} )`
+function getPropertySetterSignature(property, module, propType, paramList = []) {
+  let contextParams = ''
+  contextParams = getContextParams(paramList)
+  return `uint32_t ${capitalize(getModuleName(module))}_Set${capitalize(property.name)}( ${contextParams}${contextParams.length > 0 ? ', ':''}${propType} ${property.result.name || property.name})`
 }
 
-function getPropertyEventCallbackSignature(method, module, paramType) {
-  return `typedef void (*On${capitalize(method.name)}Changed)(${paramType === 'char*' ? 'FireboltTypes_StringHandle' : paramType})`
+function getPropertyEventCallbackSignature(property, module, propType, paramList = []) {
+
+  let contextParams = ''
+  contextParams = getContextParams(paramList)
+  return `/*Callback to listen to updates on ${property.Name} property*/\n` +
+  `typedef void (*On${capitalize(getModuleName(module))}${capitalize(property.name)}Changed)( ${contextParams}${contextParams.length > 0 ? ', ':''}const void* userData, ${propType} ${property.result.name || property.name})`
 }
 
-function getPropertyEventSignature(method, module) {
-  return `${description(method.name, 'Listen to updates')}\n` + `uint32_t ${capitalize(getModuleName(module))}_Listen${capitalize(method.name)}Update(On${capitalize(method.name)}Changed notification, uint16_t* listenerId)`
+function getPropertyEventInnerCallbackSignature(method, module, schemas) {
+  let signature = `static void ${capitalize(getModuleName(module)) + capitalize(method.name)}`
 }
+
+function getPropertyEventRegisterSignature(property, module, paramList = []) {
+  let contextParams = ''
+  contextParams = getContextParams(paramList)
+
+  return `/*Register to listen to updates on ${capitalize(property.name)} property*/\n` +
+  `uint32_t ${capitalize(getModuleName(module))}_Register_${capitalize(property.name)}Update( ${contextParams}${contextParams.length > 0 ? ', ':''}On${capitalize(getModuleName(module))}${capitalize(property.name)}Changed userCB, const void* userData )`
+
+}
+
+function getPropertyEventUnregisterSignature(property, module) {
+  return `/*Unregister to listen to updates on ${capitalize(property.name)} property*/\n` +
+  `uint32_t ${capitalize(getModuleName(module))}_Unregister_${capitalize(property.name)}Update( On${capitalize(getModuleName(module))}${capitalize(property.name)}Changed userCB )`
+
+}
+
 
 export {
     getHeaderText,
@@ -240,7 +277,8 @@ export {
     getPropertyGetterSignature,
     getPropertySetterSignature,
     getPropertyEventCallbackSignature,
-    getPropertyEventSignature,
+    getPropertyEventRegisterSignature,
+    getPropertyEventUnregisterSignature,
     getMapAccessors,
     getArrayAccessors,
     capitalize,
