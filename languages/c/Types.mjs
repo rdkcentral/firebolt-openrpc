@@ -18,8 +18,8 @@
 
 import deepmerge from 'deepmerge'
 import { getPath } from '../../src/shared/json-schema.mjs'
-import { getTypeName, getModuleName, description, getObjectHandleManagement, getNativeType, getPropertyAccessors, capitalize, isOptional, generateEnum, getMapAccessors, getArrayAccessors, getArrayElementSchema, getPropertyGetterSignature, getPropertyEventCallbackSignature, getPropertyEventRegisterSignature, getPropertyEventUnregisterSignature, getPropertySetterSignature } from './src/types/NativeHelpers.mjs'
-import { getArrayAccessorsImpl, getMapAccessorsImpl, getObjectHandleManagementImpl, getParameterInstantiation, getPropertyAccessorsImpl, getResultInstantiation } from './src/types/ImplHelpers.mjs'
+import { getTypeName, getModuleName, description, getObjectHandleManagement, getNativeType, getPropertyAccessors, capitalize, isOptional, generateEnum, getMapAccessors, getArrayAccessors, getArrayElementSchema, getPropertyGetterSignature, getPropertyEventCallbackSignature, getPropertyEventRegisterSignature, getPropertyEventUnregisterSignature, getPropertySetterSignature, getFireboltStringType } from './src/types/NativeHelpers.mjs'
+import { getArrayAccessorsImpl, getMapAccessorsImpl, getObjectHandleManagementImpl, getParameterInstantiation, getPropertyAccessorsImpl, getResultInstantiation, getCallbackParametersInstantiation, getCallbackResultInstantiation, getCallbackResponseInstantiation } from './src/types/ImplHelpers.mjs'
 import { getJsonContainerDefinition, getJsonDataStructName } from './src/types/JSONHelpers.mjs'
 
 const getSdkNameSpace = () => 'FireboltSDK'
@@ -170,44 +170,50 @@ const hasTag = (method, tag) => {
   return method.tags && method.tags.filter(t => t.name === tag).length > 0
 }
 
+function getParamList(schema, module) {
+  let paramList = []
+  if (schema.params.length > 0) {
+    schema.params.map(p => {
+      /*
+        param = {name='', nativeType='', jsonType='', required=boolean}
+      */
+      let param = {}
+      param['nativeType'] = getSchemaType(p.schema, module, { title: true, name: p.name })
+      param['jsonType'] = getJsonType(p.schema, module, {name: p.name})
+      param['name'] = p.name
+      param['required'] = p.required
+      paramList.push(param)
+    })
+
+  }
+  return paramList
+}
+
 function getMethodSignature(method, module, { destination, isInterface = false }) {
 
   let signature = ''
-  let paramList = []
-  if(hasTag(method, 'property') || hasTag(method, 'property:readonly') || hasTag(method, 'property:immutable')) {
-
-    method.params.map(param => {
-      /*
-          paramList = [{name='', nativeType='', jsonType='', required=boolean}]
-      */
-      paramList['nativeType'] = getSchemaType(param.schema, module, { title: true, name: param.name })
-      paramList['jsonType'] = getJsonType(param.schema, module, {name: param.name})
-      paramList['name'] = param.name
-      paramList['required'] = param.required
-
-    })
-
+  if (hasTag(method, 'property') || hasTag(method, 'property:readonly') || hasTag(method, 'property:immutable')) {
+    let paramList = getParamList(method, module)
     let resultType = method.result && getSchemaType(method.result.schema, module, { title: true, name: method.result.name, resultSchema: true}) || ''
 
     signature = getPropertyGetterSignature(method, module, resultType, paramList) + ';\n\n'
 
-    if(hasTag(method, 'property') || hasTag(method, 'property:readonly')) {
-      signature += getPropertyEventCallbackSignature(method, module, resultType, paramList) + ';\n\n'
-      signature += getPropertyEventRegisterSignature(method, module, paramList) + ';\n\n'
-      signature += getPropertyEventUnregisterSignature(method, module) + ';\n\n'
-    }
-
-    if(hasTag(method, 'property')) {
+    if (hasTag(method, 'property')) {
       signature += getPropertySetterSignature(method, module, resultType, paramList) + ';\n\n'
     }
   }
   return signature
 }
 
+function getMethodSignatureParams(method, module, { destination, callback= false } = {}) {
 
-function getMethodSignatureParams(method, module, { destination }) {
-
-  return method.params.map(param => getSchemaType(param.schema, module, { name: param.name, title: true, destination }) + (!param.required ? '* ' : ' ') + param.name ).join(', ')
+  return method.params.map(param => {
+    let type = getSchemaType(param.schema, module, { name: param.name, title: true, destination })
+    if ((callback === true) && (type === 'char*')) {
+      type = getFireboltStringType()
+    }
+    return type + (!param.required ? '* ' : ' ') + param.name
+  }).join(', ')
 }
 
 const safeName = prop => prop.match(/[.+]/) ? '"' + prop + '"' : prop
@@ -723,33 +729,31 @@ const enumReducer = (acc, val, i, arr) => {
 
 function getSchemaInstantiation(schema, module, name, { instantiationType = '' } = {}) {
 
-  if(instantiationType === 'params') {
-    if (schema.params.length > 0) {
-      let paramList = []
-      schema.params.map(param => {
-        /*
-            paramList = [{name='', nativeType='', jsonType='', required=boolean}]
-        */
-        const parameter = {}
-        parameter['nativeType'] = getSchemaType(param.schema, module, { title: true, name: param.name })
-        parameter['jsonType'] = getJsonType(param.schema, module, {name: param.name})
-        parameter['name'] = param.name
-        parameter['required'] = param.required
-        paramList.push(parameter)
-
-      })
-      return getParameterInstantiation(paramList)
-    }
-  } else if(instantiationType === 'result') {
+  if (instantiationType === 'params') {
+    return getParameterInstantiation(getParamList(schema, module))
+  }
+  else if (instantiationType === 'result') {
     let resultType = getSchemaType(schema, module, { title: true, name: name, resultSchema: true}) || ''
     let resultJsonType = getJsonType(schema, module, {name: name}) || ''
-
     return getResultInstantiation(name, resultType, resultJsonType)
+  }
+  else if (instantiationType === 'callback.params') {
+    let resultJsonType = getJsonType(schema.result.schema, module, {name: schema.result.name}) || ''
+    return getCallbackParametersInstantiation(getParamList(schema, module), resultJsonType)
+  }
+  else if (instantiationType === 'callback.result') {
+    let resultType = getSchemaType(schema.result.schema, module, { title: true, name: schema.result.name, resultSchema: true}) || ''
+    let resultJsonType = getJsonType(schema.result.schema, module, {name: schema.result.name}) || ''
+    return getCallbackResultInstantiation(resultType, resultJsonType)
+  }
+  else if (instantiationType === 'callback.response') {
+    let resultType = getSchemaType(schema.result.schema, module, { title: true, name: schema.result.name, resultSchema: true}) || ''
+    let resultJsonType = getJsonType(schema.result.schema, module, {name: schema.result.name}) || ''
+    return getCallbackResponseInstantiation(getParamList(schema, module), resultType, resultJsonType)
   }
 
   return ''
 }
-
 
 export default {
     getMethodSignature,

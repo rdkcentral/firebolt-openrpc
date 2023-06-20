@@ -1,10 +1,9 @@
-import { capitalize } from "./NativeHelpers.mjs"
+import { capitalize, getFireboltStringType } from "./NativeHelpers.mjs"
 
 const Indent = '\t'
 
 const getSdkNameSpace = () => 'FireboltSDK'
 const wpeJsonNameSpace = () => 'WPEFramework::Core::JSON'
-const getFireboltStringType = () => 'FireboltTypes_StringHandle'
 
 const getObjectHandleManagementImpl = (varName, jsonDataName) => {
 
@@ -320,8 +319,134 @@ function getParameterInstantiation(paramList, container = '') {
         impl += `        jsonParameters.Set(_T("${param.name}"), ${capitalize(param.name)});\n`
         impl += `    }`
       }
+      impl += '\n'
     }
   })
+
+  return impl
+}
+
+const isNativeType = (type) => (type === 'float' || type === 'char*' || type === 'int32_t' || type === 'bool')
+
+function getCallbackParametersInstantiation(paramList, container = '') {
+
+  let impl = ''
+
+  if (paramList.length > 0) {
+    paramList.forEach(param => {
+      if (param.required !== undefined) {
+        if (param.nativeType !== 'char*') {
+          impl += `    ${param.nativeType} ${param.name};\n`
+          if (param.required === false) {
+            impl += `    ${param.nativeType}* ${param.name}Ptr = nullptr;\n`
+          }
+        }
+        else {
+           impl += `    ${getFireboltStringType()} ${param.name};\n`
+        }
+      }
+    })
+    impl += `\n    WPEFramework::Core::ProxyType<${container}>* jsonResponse;\n`
+    impl += `    WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::VariantContainer>& var = *(static_cast<WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::VariantContainer>*>(response));
+
+    ASSERT(var.IsValid() == true);
+    if (var.IsValid() == true) {
+        WPEFramework::Core::JSON::VariantContainer::Iterator elements = var->Variants();
+
+        while (elements.Next()) {
+            if (strcmp(elements.Label(), "value") == 0) {
+
+                jsonResponse = new WPEFramework::Core::ProxyType<${container}>();
+                string objectStr;
+                elements.Current().Object().ToString(objectStr);
+                (*jsonResponse)->FromString(objectStr);
+            } else if (strcmp(elements.Label(), "context") == 0) {
+
+                WPEFramework::Core::JSON::VariantContainer::Iterator params = elements.Current().Object().Variants();
+                while (params.Next()) {\n`
+    let contextParams = ''
+
+    paramList.forEach(param => {
+      if (param.required !== undefined) {
+        if (isNativeType(param.nativeType) === true) {
+          if (contextParams.length > 0) {
+            contextParams += `                    else if (strcmp(elements.Label(), "${param.name}") == 0) {\n`
+          }
+          else {
+            contextParams += `                    if (strcmp(elements.Label(), "${param.name}") == 0) {\n`
+          }
+          if (param.nativeType === 'char*') {
+            contextParams += `                        ${getSdkNameSpace()}::JSON::String* ${param.name}Value = new ${getSdkNameSpace()}::JSON::String();
+                        *${param.name}Value = elements.Current().Value().c_str();
+                        ${param.name} = ${param.name}Value;\n`
+          }
+          else if (param.nativeType === 'bool') {
+            contextParams += `                        ${param.name} = elements.Current().Boolean();\n`
+          }
+          else if ((param.nativeType === 'float') || (param.nativeType === 'int32_t')) {
+            contextParams += `                        ${param.name} = elements.Current().Number();\n`
+          }
+          if ((param.nativeType !== 'char*') && (param.required === false)) {
+            contextParams += `                        ${param.name}Ptr = &${param.name};\n`
+          }
+          contextParams += `                    }\n`
+	}
+      }
+    })
+    impl += contextParams
+    impl += `                }
+            } else {
+                ASSERT(false);
+            }
+        }
+    }\n`
+  } else {
+
+    impl +=`    WPEFramework::Core::ProxyType<${container}>* jsonResponse = static_cast<WPEFramework::Core::ProxyType<${container}>*>(response);\n`
+  }
+
+  return impl
+}
+
+function getCallbackResultInstantiation(nativeType, container = '') {
+  let impl = ''
+  if (nativeType === 'char*' || nativeType === 'FireboltTypes_StringHandle') {
+    impl +=`
+        ${container}* jsonStrResponse = new ${container}();
+        *jsonStrResponse = *(*jsonResponse);
+        jsonResponse->Release();` + '\n'
+  }
+  return impl
+}
+
+function getCallbackResponseInstantiation(paramList, nativeType, container = '') {
+  let impl = ''
+
+  if (paramList.length > 0) {
+    paramList.forEach(param => {
+      if (param.required !== undefined) {
+        if (param.nativeType === 'char*') {
+          impl += `static_cast<${getFireboltStringType()}>(${param.name}), `
+        }
+        else if (param.required === true) {
+          impl += `${param.name}, `
+        }
+        else if (param.required === false) {
+          impl += `${param.name}Ptr, `
+        }
+      }
+    })
+  }
+
+  if (nativeType === 'char*' || nativeType === 'FireboltTypes_StringHandle') {
+    impl += `static_cast<${nativeType}>(jsonStrResponse)`
+  }
+  else if (nativeType.includes('Handle')) {
+    impl += `static_cast<${nativeType}>(jsonResponse)`
+  }
+  else {
+    impl += `static_cast<${nativeType}>((*jsonResponse)->Value())`
+  }
 
   return impl
 }
@@ -353,5 +478,8 @@ export {
     getObjectHandleManagementImpl,
     getPropertyAccessorsImpl,
     getParameterInstantiation,
+    getCallbackParametersInstantiation,
+    getCallbackResultInstantiation,
+    getCallbackResponseInstantiation,
     getResultInstantiation
 }
