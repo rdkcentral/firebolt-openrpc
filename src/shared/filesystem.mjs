@@ -40,6 +40,8 @@ const readDir = async (ref, options) => {
     return results.sort()
 }
 
+const binFormats = [ '.png', '.jpg', '.gif' ]
+
 const readFiles = (refs, base) => Promise.all(refs.map(ref => readFile(ref)))
                             .then(contents => {
                                 if (!refs || refs.length === 0) {
@@ -63,7 +65,12 @@ const readFiles = (refs, base) => Promise.all(refs.map(ref => readFile(ref)))
 
                                 const results = refs.map(v => [v.substring(index), null])
                                 for (let i=0; i<refs.length; i++) {
-                                    results[i][1] = contents[i].toString()
+                                    if (binFormats.find(suffix => refs[i].endsWith(suffix))) {
+                                        results[i][1] = contents[i]
+                                    }
+                                    else {
+                                        results[i][1] = contents[i].toString()
+                                    }
                                 }
                                 return Promise.resolve(Object.fromEntries(results))
                             })
