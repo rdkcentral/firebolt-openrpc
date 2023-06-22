@@ -10,5 +10,6 @@
         "/include/Common/Module.h",
         "/src/Module_Common.cpp",
         "/src/JsonData_Module.h"
-    ]
+    ],
+    "persistPermission": true
 }

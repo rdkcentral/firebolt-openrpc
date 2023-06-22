@@ -18,7 +18,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { emptyDir, readDir, readFiles, readJson, writeFiles, writeText } from '../shared/filesystem.mjs'
+import { emptyDir, readDir, readFiles, readFilesPermissions, readJson,
+         writeFiles, writeFilesPermissions, writeText } from '../shared/filesystem.mjs'
 import { getTemplate, getTemplateForModule } from '../shared/template.mjs'
 import { getModule, hasPublicAPIs } from '../shared/modules.mjs'
 import { logHeader, logSuccess } from '../shared/io.mjs'
@@ -42,6 +43,7 @@ const macrofy = async (
         staticContent,
         templatesPerModule,
         templatesPerSchema,
+        persistPermission,
         createModuleDirectories,
         copySchemasIntoModules,
         aggregateFile,
@@ -87,6 +89,12 @@ const macrofy = async (
         const sharedTemplateList = await readDir(sharedTemplates, { recursive: true })
         const templates = Object.assign(await readFiles(sharedTemplateList, sharedTemplates),
                                         await readFiles(sdkTemplateList, template)) // sdkTemplates are second so they win ties
+        let templatesPermission = {}
+        if (persistPermission) {
+            templatesPermission = Object.assign(await readFilesPermissions(sharedTemplateList, sharedTemplates),
+                                        await readFilesPermissions(sdkTemplateList, template))
+        }
+
         const exampleTemplates = {}
         for (var i=0; i<examples.length; i++) {
             const example = examples[i]
@@ -135,8 +143,13 @@ const macrofy = async (
 
                 const content = engine.insertAggregateMacros(templates[file], aggregateMacros)
                 outputFiles[path.join(output, outputFile)] = content
-
+                if (persistPermission) {
+                    templatesPermission[path.join(output, outputFile)] = templatesPermission[file]
+                }
                 logSuccess(`Generated macros for file ${path.relative(output, path.join(output, outputFile))}`)
+            }
+            if (persistPermission) {
+                delete templatesPermission[file]
             }
         })
 
@@ -262,7 +275,10 @@ const macrofy = async (
             await emptyDir(output)
         }
 
-        await writeFiles(outputFiles)    
+        await writeFiles(outputFiles)
+        if (persistPermission) {
+            await writeFilesPermissions(templatesPermission)
+        }
         logSuccess(`Wrote ${Object.keys(outputFiles).length} files.`)
 
         resolve()
