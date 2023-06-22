@@ -47,7 +47,7 @@ const _inspector = obj => {
 // getSchemaType(schema, module, options = { destination: 'file.txt', title: true })
 // getSchemaShape(schema, module, options = { name: 'Foo', destination: 'file.txt' })
 // getJsonType(schema, module, options = { name: 'Foo', prefix: '', descriptions: false, level: 0 })
-// getSchemaInstantiation(schema, module, options = {type: 'params' | 'result' | 'event' | 'callback'})
+// getSchemaInstantiation(schema, module, options = {type: 'params' | 'result' | 'callback.params'| 'callback.result' | 'callback.response'})
 
 let types = {
   getMethodSignature: ()=>null,
@@ -69,6 +69,19 @@ const state = {
 
 const capitalize = str => str[0].toUpperCase() + str.substr(1)
 const hasMethodsSchema = (json, options) => json.methods && json.methods.length
+
+const indent = (str, padding) => {
+  let first = true
+  return str.split('\n').map(line => {
+    if (first) {
+      first = false
+      return line
+    }
+    else {
+      return padding + line
+    }
+  }).join('\n')
+}
 
 const setTyper = (t) => {
   types = t
@@ -1024,9 +1037,9 @@ function insertMethodMacros(template, methodObj, json, templates, examples={}) {
   const capabilities = getTemplate('/sections/capabilities', templates) + insertCapabilityMacros(getTemplate('/capabilities/default', templates), methodObj.tags.find(t => t.name === "capabilities"), methodObj, json)
 
   const result = JSON.parse(JSON.stringify(methodObj.result))
-  const event = JSON.parse(JSON.stringify(methodObj))
+  const event = isEventMethod(methodObj) ? JSON.parse(JSON.stringify(methodObj)) : ''
   
-  if (isEventMethod(methodObj)) {
+  if (event) {
     result.schema = JSON.parse(JSON.stringify(getPayloadFromEvent(methodObj)))
     event.result.schema = getPayloadFromEvent(event)
     event.params = event.params.filter(p => p.name !== 'listen')
@@ -1054,6 +1067,12 @@ function insertMethodMacros(template, methodObj, json, templates, examples={}) {
   const pullsParamsType = pullsParams ? types.getSchemaShape(pullsParams, json, { destination: state.destination, section: state.section  }) : ''
   const serializedParams = types.getSchemaInstantiation(methodObj, json, methodObj.name, {instantiationType: 'params'})
   const resultInst = types.getSchemaInstantiation(result.schema, json, result.name, { instantiationType: 'result' } )
+  const serializedEventParams = event ? indent(types.getSchemaInstantiation(event, json, event.name, {instantiationType: 'params'}), '    ') : ''
+  const callbackSerializedParams = event ? types.getSchemaInstantiation(event, json, event.name, {instantiationType: 'callback.params'}) : ''
+  const callbackResultInst = event ? types.getSchemaInstantiation(event, json, event.name, {instantiationType: 'callback.result'}) : ''
+  const callbackResponseInst = event ? types.getSchemaInstantiation(event, json, event.name, {instantiationType: 'callback.response'}) : ''
+  const resultType = result.schema ? types.getSchemaType(result.schema, json, { name: result.name }) : ''
+  const resultJsonType = result.schema ? types.getJsonType(result.schema, json, { name: result.name }) : ''
 
   let seeAlso = ''
   if (isPolymorphicPullMethod(methodObj) && pullsForType) {
@@ -1085,8 +1104,9 @@ function insertMethodMacros(template, methodObj, json, templates, examples={}) {
     .replace(/\$\{method\.params\.array\}/g, JSON.stringify(methodObj.params.map(p => p.name)))
     .replace(/\$\{method\.params\.count}/g, methodObj.params ? methodObj.params.length : 0)
     .replace(/\$\{if\.params\}(.*?)\$\{end\.if\.params\}/gms, method.params.length ? '$1' : '')
-    .replace(/\$\{if\.context\}(.*?)\$\{end\.if\.context\}/gms, event.params.length ? '$1' : '')
-    .replace(/\$\{method\.params\.serialization\}/g,  serializedParams)
+    .replace(/\$\{if\.params.empty\}(.*?)\$\{end\.if\.params.empty\}/gms, method.params.length === 0 ? '$1' : '')
+    .replace(/\$\{if\.context\}(.*?)\$\{end\.if\.context\}/gms, event && event.params.length ? '$1' : '')
+    .replace(/\$\{method\.params\.serialization\}/g, serializedParams)
     // Typed signature stuff
     .replace(/\$\{method\.signature\}/g, types.getMethodSignature(methodObj, json, { isInterface: false, destination: state.destination, section: state.section  }))
     .replace(/\$\{method\.signature\.params\}/g, types.getMethodSignatureParams(methodObj, json, { destination: state.destination, section: state.section  }))
@@ -1098,8 +1118,15 @@ function insertMethodMacros(template, methodObj, json, templates, examples={}) {
     .replace(/\$\{event\.name\}/g, method.name.toLowerCase()[2] + method.name.substr(3))
     .replace(/\$\{event\.params\}/g, eventParams)
     .replace(/\$\{event\.params\.table\.rows\}/g, eventParamsRows)
-    .replace(/\$\{event\.signature\.params\}/g, types.getMethodSignatureParams(event, json, { destination: state.destination, section: state.section  }))
+    .replace(/\$\{if\.event\.params\}(.*?)\$\{end\.if\.event\.params\}/gms, event && event.params.length ? '$1' : '')
+    .replace(/\$\{event\.signature\.params\}/g, event ? types.getMethodSignatureParams(event, json, { destination: state.destination, section: state.section  }) : '')
+    .replace(/\$\{event\.signature\.callback\.params\}/g, event ? types.getMethodSignatureParams(event, json, { destination: state.destination, section: state.section, callback: true }) : '')
+    .replace(/\$\{event\.params\.serialization\}/g, serializedEventParams)
+    .replace(/\$\{event\.callback\.params\.serialization\}/g, callbackSerializedParams)
+    .replace(/\$\{event\.callback\.result\.instantiation\}/g, callbackResultInst)
+    .replace(/\$\{event\.callback\.response\.instantiation\}/g, callbackResponseInst)
     .replace(/\$\{info\.title\}/g, info.title)
+    .replace(/\$\{info\.Title\}/g, capitalize(info.title))
     .replace(/\$\{info\.TITLE\}/g, info.title.toUpperCase())
     .replace(/\$\{method\.property\.immutable\}/g, hasTag(methodObj, 'property:immutable'))
     .replace(/\$\{method\.property\.readonly\}/g, !getSetterFor(methodObj.name, json))
@@ -1115,9 +1142,10 @@ function insertMethodMacros(template, methodObj, json, templates, examples={}) {
     .replace(/\$\{method\.result\.link\}/g, getLinkForSchema(result.schema, json, {name : result.name})) //, baseUrl: options.baseUrl
     .replace(/\$\{method\.result\.type\}/g, types.getSchemaType(result.schema, json, {name: result.name, title: true, asPath: false, destination: state.destination, resultSchema: true })) //, baseUrl: options.baseUrl
     .replace(/\$\{method\.result\.json\}/, types.getJsonType(result.schema, json, { name: result.name, destination: state.destination, section: state.section, code: false, link: false, title: true, asPath: false, expandEnums: false }))    
-    .replace(/\$\{event\.result\.type\}/, isEventMethod(methodObj) ? types.getSchemaType(result.schema, json, { name: result.name, destination: state.destination, event: true, description: methodObj.result.summary, asPath: false }): '') //, baseUrl: options.baseUrl
+    .replace(/\$\{event\.result\.type\}/, isEventMethod(methodObj) ? types.getSchemaType(result.schema, json, { name: result.name, destination: state.destination, event: true, description: methodObj.result.summary, asPath: false }): '')
+    .replace(/\$\{event\.result\.json\.type\}/g, resultJsonType)
     .replace(/\$\{method\.result\}/g,  generateResult(result.schema, json, templates, { name : result.name }))
-    .replace(/\$\{method\.result\.instantiation\}/g,  resultInst)
+    .replace(/\$\{method\.result\.instantiation\}/g, resultInst)
     .replace(/\$\{method\.example\.value\}/g,  JSON.stringify(methodObj.examples[0].result.value))
     .replace(/\$\{method\.alternative\}/g, method.alternative)
     .replace(/\$\{method\.alternative.link\}/g, '#'+(method.alternative || "").toLowerCase())
@@ -1411,19 +1439,6 @@ function insertProviderInterfaceMacros(template, capability, moduleJson = {}, te
       while (match = template.match(regex)) {
           let methodsBlock = ''
   
-          const indent = (str, padding) => {
-              let first = true
-              return str.split('\n').map(line => {
-                  if (first) {
-                      first = false
-                      return line
-                  }
-                  else {
-                      return padding + line
-                  }
-              }).join('\n')
-          }
-
           let i = 1
           iface.forEach(method => {
 
@@ -1492,7 +1507,7 @@ export {
   generateMacros,
   insertMacros,
   generateAggregateMacros,
-  insertAggregateMacros,
+  insertAggregateMacros
 }
 
 export default {
