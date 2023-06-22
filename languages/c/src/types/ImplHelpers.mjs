@@ -463,7 +463,7 @@ function getResultInstantiation (name, nativeType, container, indentLevel = 3) {
     impl += `${'    '.repeat(indentLevel)}*resultPtr = WPEFramework::Core::ProxyType<${container}>::Create();\n`
     impl += `${'    '.repeat(indentLevel)}*(*resultPtr) = jsonResult;\n`
     impl += `${'    '.repeat(indentLevel)}*${name} = static_cast<${nativeType}>(resultPtr);`
-  } else {
+  } else if (nativeType) {
     impl += `${'    '.repeat(indentLevel)}*${name} = jsonResult.Value();`
   }
 
