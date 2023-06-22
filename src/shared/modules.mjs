@@ -467,7 +467,7 @@ const createProgressEventMethod = (method, json, name) => {
     const event = createEventFromMethod(method, json, name, 'x-progress-for', ['progressive-update'])
 
     event.result.schema = {
-        "$ref": "#/components/schemas/" + method.name.charAt(0).toUpperCase() + method.name.substring(1) + 'Status'
+        "$ref": "#/components/schemas/" + method.name.charAt(0).toUpperCase() + method.name.substring(1) + 'Progress'
     }
 
     event.tags = event.tags.filter(t => t.name !== 'progressive-update')
@@ -499,9 +499,7 @@ const createCompleteEventMethod = (method, json, name) => {
 const createStopEventMethod = (method, json, name) => {
     const event = createEventFromMethod(method, json, name, 'x-stop-for', ['progressive-update'])
 
-    event.result.schema = {
-        "$ref": "#/components/schemas/" + method.name.charAt(0).toUpperCase() + method.name.substring(1) + 'Status'
-    }
+    event.result.schema = JSON.parse(JSON.stringify(method.result.schema))
 
     event.tags = event.tags.filter(t => t.name !== 'progressive-update')
 
@@ -600,12 +598,12 @@ const createEventFromMethod = (method, json, name, correlationExtension, tagsToR
     return event
 }
 
-const createTemporalStopMethod = (method, jsoname) => {
+const createProcessStopMethod = (method, tag) => {
     const stop = JSON.parse(JSON.stringify(method))
 
     stop.name = 'stop' + method.name.charAt(0).toUpperCase() + method.name.substr(1)
 
-    stop.tags = stop.tags.filter(tag => tag.name !== 'temporal-set')
+    stop.tags = stop.tags.filter(tag => tag.name !== tag)
     stop.tags.unshift({
         name: "rpc-only"
     })
@@ -896,7 +894,7 @@ const generateTemporalSetMethods = json => {
 
     temporals.forEach(temporal => json.methods.push(createTemporalEventMethod(temporal, json, (temporal.result.schema.items.title || 'Item') + 'Available')))
     temporals.forEach(temporal => json.methods.push(createTemporalEventMethod(temporal, json, (temporal.result.schema.items.title || 'Item') + 'Unavailable')))
-    temporals.forEach(temporal => json.methods.push(createTemporalStopMethod(temporal, json)))
+    temporals.forEach(temporal => json.methods.push(createProcessStopMethod(temporal, 'temporal-set')))
 
     return json
 }
@@ -908,6 +906,7 @@ const generateProgressiveUpdateMethods = json => {
     progressives.forEach(progressive => json.methods.push(createCompleteEventMethod(progressive, json, progressive.name.charAt(0).toUpperCase() + progressive.name.substring(1) + 'Complete')))
     progressives.forEach(progressive => json.methods.push(createStopEventMethod(progressive, json, progressive.name.charAt(0).toUpperCase() + progressive.name.substring(1) + 'Stop')))
     progressives.forEach(progressive => json.methods.push(createErrorEventMethod(progressive, json, progressive.name.charAt(0).toUpperCase() + progressive.name.substring(1) + 'Error')))
+    progressives.forEach(progressive => json.methods.push(createProcessStopMethod(progressive, 'progressive-update')))
 
     return json
 }
@@ -917,8 +916,7 @@ const generateProgressiveUpdateSchemas = json => {
 
     const name = (method, type) => method.name.charAt(0).toUpperCase() + method.name.substring(1) + type
 
-    progressives.forEach(progressive => json.components.schemas[name(progressive, 'Status')] = createProgressResultSchema(progressive, json, name(progressive, 'Status')))
-//    progressives.forEach(progressive => json.components.schemas[name(progressive, 'Result')] = createCompleteResultSchema(progressive, json, name(progressive, 'Result')))
+    progressives.forEach(progressive => json.components.schemas[name(progressive, 'Progress')] = createProgressResultSchema(progressive, json, name(progressive, 'Progress')))
     progressives.forEach(progressive => json.components.schemas[name(progressive, 'Error')] = createErrorSchema(progressive, json, name(progressive, 'Error')))
 
     return json
