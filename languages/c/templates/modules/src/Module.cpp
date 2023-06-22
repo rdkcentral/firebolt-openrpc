@@ -35,6 +35,7 @@ extern "C" {
 
 /* ${ACCESSORS} */
 /* ${METHODS} */
+/* ${EVENTS} */
 
 #ifdef __cplusplus
 }

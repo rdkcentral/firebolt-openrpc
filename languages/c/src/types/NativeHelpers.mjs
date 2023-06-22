@@ -120,7 +120,7 @@ const getNativeType = (json, stringAsHandle = false) => {
   let jsonType = json.const ? typeof json.const : json.type
   if (jsonType === 'string') {
       type = 'char*'
-      if(stringAsHandle) {
+      if (stringAsHandle) {
         type = getFireboltStringType()
       }
   }
@@ -139,7 +139,6 @@ const getNativeType = (json, stringAsHandle = false) => {
   } 
   return type
 }
-
 
 const getObjectHandleManagement = varName => {
 
@@ -229,13 +228,16 @@ function getPropertyGetterSignature(property, module, propType, paramList = []) 
 
   let contextParams = ''
   contextParams = getContextParams(paramList)
-  return `uint32_t ${capitalize(getModuleName(module))}_Get${capitalize(property.name)}( ${contextParams}${contextParams.length > 0 ? ', ':''}${propType}* ${property.result.name || property.name})`
+  return `uint32_t ${capitalize(getModuleName(module))}_Get${capitalize(property.name)}( ${contextParams}${contextParams.length > 0 ? ', ':''}${propType}* ${property.result.name || property.name} )`
 }
 
 function getPropertySetterSignature(property, module, propType, paramList = []) {
   let contextParams = ''
   contextParams = getContextParams(paramList)
-  return `uint32_t ${capitalize(getModuleName(module))}_Set${capitalize(property.name)}( ${contextParams}${contextParams.length > 0 ? ', ':''}${propType} ${property.result.name || property.name})`
+  if (propType === getFireboltStringType()) {
+    propType = 'char*'
+  }
+  return `uint32_t ${capitalize(getModuleName(module))}_Set${capitalize(property.name)}( ${contextParams}${contextParams.length > 0 ? ', ':''}${propType} ${property.result.name || property.name} )`
 }
 
 function getPropertyEventCallbackSignature(property, module, propType, paramList = []) {
@@ -288,5 +290,6 @@ export {
     getPropertyAccessors,
     isOptional,
     generateEnum,
-    getArrayElementSchema
+    getArrayElementSchema,
+    getFireboltStringType
 }
