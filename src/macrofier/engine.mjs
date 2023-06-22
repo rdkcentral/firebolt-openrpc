@@ -175,11 +175,42 @@ const getMethods = compose(
   getPath(['methods'])
 )
 
-const getSchemas = compose(
+const getComponentSchemas = compose(
   map(Object.entries), // Maybe Array<Array<key, value>>
   chain(safe(isObject)), // Maybe Object
   getPath(['components', 'schemas']) // Maybe any
 )
+
+const getSchemas = (schema) => {
+  let methods = getMethods(schema)
+  let components = getComponentSchemas(schema)
+  let allSchema = []
+
+  methods.map((schemas) => {
+    Object.entries(schemas).forEach( ([name, schema]) => {
+      if (schema.tags) {
+        schema.params.forEach(param => {
+          if (param.schema) {
+            let sch = Object.assign({}, param.schema)
+            sch.title = param.name
+            allSchema.push([param.name, sch])
+          }
+        })
+        if (schema.result.schema) {
+          let sch = Object.assign({}, schema.result.schema)
+          sch.title = schema.result.name
+          allSchema.push([schema.result.name, sch])
+        }
+      }
+    })
+  })
+  components.map((schemas) => {
+    Object.entries(schemas).forEach( ([name, schema]) => {
+       allSchema.push(schema)
+    })
+  })
+  return [allSchema]
+}
 
 // TODO: import from shared/modules.mjs
 const isDeprecatedMethod = compose(
@@ -592,7 +623,6 @@ const enumFinder = compose(
 const generateEnums = (json, templates, options = { destination: '' }) => {
   const suffix = options.destination.split('.').pop()
   return compose(
-    option(''),
     map(val => {
       let template = getTemplate(`/sections/enum.${suffix}`, templates)
       return template ? template.replace(/\$\{schema.list\}/g, val.trimEnd()) : val
@@ -725,15 +755,15 @@ function generateSchemas(json, templates, options) {
       list.push([name, schema])
     }
     else if (schema.tags) {
-      if (!isDeprecatedMethod(schema)) {
-        schema.params.forEach(param => {
-          if (param.schema && (param.schema.type === 'object')) {
-            list.push([param.name, param.schema, '', { prefix : schema.name }])
-          }
-        })
-        if (schema.result.schema && (schema.result.schema.type === 'object')) {
-          list.push([schema.result.name, schema.result.schema, '', { prefix : schema.name }])
+      schema.params.forEach(param => {
+        if (param.schema && ((param.schema.type === 'object') || (param.schema.type === 'array'))) {
+          let found = !!list.find(entry => JSON.stringify(param.schema) === JSON.stringify(entry[1]))
+          found === false ? list.push([param.name, param.schema, '']) : ''
         }
+      })
+      if (schema.result.schema && ((schema.result.schema.type === 'object') || (schema.result.schema.type === 'array'))) {
+        let found = !!list.find(entry => JSON.stringify(schema.result.schema) === JSON.stringify(entry[1]))
+        found === false ? list.push([schema.result.name, schema.result.schema, '']) : ''
       }
     }
   })
@@ -1041,7 +1071,7 @@ function insertMethodMacros(template, methodObj, json, templates, examples={}) {
     result.schema = JSON.parse(JSON.stringify(getPayloadFromEvent(methodObj)))
     event.result.schema = getPayloadFromEvent(event)
     event.params = event.params.filter(p => p.name !== 'listen')
-  } 
+  }
 
   const eventParams = event.params && event.params.length ? getTemplate('/sections/parameters', templates) + event.params.map(p => insertParameterMacros(getTemplate('/parameters/default', templates), p, event, json)).join('') : ''
   const eventParamsRows = event.params && event.params.length ? event.params.map(p => insertParameterMacros(getTemplate('/parameters/default', templates), p, event, json)).join('') : ''
@@ -1102,9 +1132,12 @@ function insertMethodMacros(template, methodObj, json, templates, examples={}) {
     .replace(/\$\{method\.params\.array\}/g, JSON.stringify(methodObj.params.map(p => p.name)))
     .replace(/\$\{method\.params\.count}/g, methodObj.params ? methodObj.params.length : 0)
     .replace(/\$\{if\.params\}(.*?)\$\{end\.if\.params\}/gms, method.params.length ? '$1' : '')
-    .replace(/\$\{if\.params.empty\}(.*?)\$\{end\.if\.params.empty\}/gms, method.params.length === 0 ? '$1' : '')
+    .replace(/\$\{if\.result\}(.*?)\$\{end\.if\.result\}/gms, resultType ? '$1' : '')
+    .replace(/\$\{if\.params\.empty\}(.*?)\$\{end\.if\.params\.empty\}/gms, method.params.length === 0 ? '$1' : '')
+    .replace(/\$\{if\.signature\.empty\}(.*?)\$\{end\.if\.signature\.empty\}/gms, (method.params.length === 0 && resultType === '') ? '$1' : '')
     .replace(/\$\{if\.context\}(.*?)\$\{end\.if\.context\}/gms, event && event.params.length ? '$1' : '')
     .replace(/\$\{method\.params\.serialization\}/g, serializedParams)
+    .replace(/\$\{method\.params\.serialization\.with\.indent\}/g, indent(serializedParams, '    '))
     // Typed signature stuff
     .replace(/\$\{method\.signature\}/g, types.getMethodSignature(methodObj, json, { isInterface: false, destination: state.destination, section: state.section  }))
     .replace(/\$\{method\.signature\.params\}/g, types.getMethodSignatureParams(methodObj, json, { destination: state.destination, section: state.section  }))
@@ -1142,6 +1175,7 @@ function insertMethodMacros(template, methodObj, json, templates, examples={}) {
     .replace(/\$\{event\.result\.type\}/, isEventMethod(methodObj) ? types.getSchemaType(result.schema, json, { name: result.name, destination: state.destination, event: true, description: methodObj.result.summary, asPath: false }): '')
     .replace(/\$\{event\.result\.json\.type\}/g, resultJsonType)
     .replace(/\$\{method\.result\}/g,  generateResult(result.schema, json, templates, { name : result.name }))
+    .replace(/\$\{method\.result\.json\.type\}/g, resultJsonType)
     .replace(/\$\{method\.result\.instantiation\}/g, resultInst)
     .replace(/\$\{method\.example\.value\}/g,  JSON.stringify(methodObj.examples[0].result.value))
     .replace(/\$\{method\.alternative\}/g, method.alternative)
