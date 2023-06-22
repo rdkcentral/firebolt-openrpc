@@ -175,15 +175,15 @@ const getMethods = compose(
   getPath(['methods'])
 )
 
-const getComponentSchemas = compose(
+const getSchemas = compose(
   map(Object.entries), // Maybe Array<Array<key, value>>
   chain(safe(isObject)), // Maybe Object
   getPath(['components', 'schemas']) // Maybe any
 )
 
-const getSchemas = (schema) => {
+const getAllSchemas = (schema) => {
   let methods = getMethods(schema)
-  let components = getComponentSchemas(schema)
+  let components = getSchemas(schema)
   let allSchema = []
 
   methods.map((schemas) => {
@@ -206,7 +206,7 @@ const getSchemas = (schema) => {
   })
   components.map((schemas) => {
     Object.entries(schemas).forEach( ([name, schema]) => {
-       allSchema.push(schema)
+      allSchema.push(schema)
     })
   })
   return [allSchema]
@@ -386,7 +386,7 @@ const generateMacros = (obj, templates, languages, options = {}) => {
 
   const imports = generateImports(obj, templates, { destination : (options.destination ? options.destination : '') })
   const initialization = generateInitialization(obj, templates)
-  const enums = generateEnums(obj, templates, { destination : (options.destination ? options.destination : '') })
+  const enums = generateEnums(obj, templates, { destination : (options.destination ? options.destination : ''), includeAnonymous : options.includeAnonymousSchema })
   const eventsEnum = generateEvents(obj, templates)
   const examples = generateExamples(obj, templates, languages)
 
@@ -620,9 +620,10 @@ const enumFinder = compose(
   filter(([_key, val]) => isObject(val))
 )
 
-const generateEnums = (json, templates, options = { destination: '' }) => {
+const generateEnums = (json, templates, options = { destination: '', includeAnonymous: false }) => {
   const suffix = options.destination.split('.').pop()
   return compose(
+    options.includeAnonymous ? map(enm => enm): option(''),
     map(val => {
       let template = getTemplate(`/sections/enum.${suffix}`, templates)
       return template ? template.replace(/\$\{schema.list\}/g, val.trimEnd()) : val
@@ -630,7 +631,7 @@ const generateEnums = (json, templates, options = { destination: '' }) => {
     map(reduce((acc, val) => acc.concat(val).concat('\n'), '')),
     map(map((schema) => convertEnumTemplate(schema, suffix ? `/types/enum.${suffix}` : '/types/enum', templates))),
     map(enumFinder),
-    getSchemas
+    options.includeAnonymous ? getAllSchemas: getSchemas
   )(json)
 }
 

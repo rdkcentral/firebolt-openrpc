@@ -44,6 +44,7 @@ const macrofy = async (
         templatesPerModule,
         templatesPerSchema,
         persistPermission,
+        includeAnonymousSchema,
         createModuleDirectories,
         copySchemasIntoModules,
         aggregateFile,
@@ -159,7 +160,7 @@ const macrofy = async (
 
             // Pick the index and defaults templates for each module.
             templatesPerModule.forEach(t => {
-                const macros = engine.generateMacros(module, templates, exampleTemplates, {hideExcluded: hideExcluded, copySchemasIntoModules: copySchemasIntoModules, destination: t})
+                const macros = engine.generateMacros(module, templates, exampleTemplates, {hideExcluded: hideExcluded, copySchemasIntoModules: copySchemasIntoModules, includeAnonymousSchema: includeAnonymousSchema, destination: t})
                 let content = getTemplateForModule(module.info.title, t, templates)
 
                 // NOTE: whichever insert is called first also needs to be called again last, so each phase can insert recursive macros from the other
@@ -174,7 +175,7 @@ const macrofy = async (
             })
 
             if (primaryOutput) {
-                const macros = engine.generateMacros(module, templates, exampleTemplates, {hideExcluded: hideExcluded, copySchemasIntoModules: copySchemasIntoModules, destination: primaryOutput})
+                const macros = engine.generateMacros(module, templates, exampleTemplates, {hideExcluded: hideExcluded, copySchemasIntoModules: copySchemasIntoModules, includeAnonymousSchema: includeAnonymousSchema, destination: primaryOutput})
                 macros.append = append
                 outputFiles[primaryOutput] = engine.insertMacros(outputFiles[primaryOutput], macros)
             }
@@ -256,7 +257,7 @@ const macrofy = async (
         Object.values(externalSchemas).forEach( document => {
             if (templatesPerSchema) {
                 templatesPerSchema.forEach( t => {
-                    const macros = engine.generateMacros(document, templates, exampleTemplates, {hideExcluded: hideExcluded, destination: t})
+                    const macros = engine.generateMacros(document, templates, exampleTemplates, {hideExcluded: hideExcluded, includeAnonymousSchema: includeAnonymousSchema, destination: t})
                     let content = getTemplate('/schemas', t, templates)
         
                     // NOTE: whichever insert is called first also needs to be called again last, so each phase can insert recursive macros from the other

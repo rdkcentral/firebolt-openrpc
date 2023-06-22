@@ -58,6 +58,7 @@ const run = async ({
     templatesPerModule: config.templatesPerModule,
     templatesPerSchema: config.templatesPerSchema,
     persistPermission: config.persistPermission,
+    includeAnonymousSchema: config.includeAnonymousSchema,
     operators: config.operators,
     createModuleDirectories: config.createModuleDirectories,
     copySchemasIntoModules: config.copySchemasIntoModules,
