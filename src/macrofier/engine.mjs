@@ -42,6 +42,13 @@ const _inspector = obj => {
   }
 }
 
+const filterBlackListedSchemas = (module) => {
+//  const blackList = ["Parameters", "1Discovery", "SecondScreen", "Intents", "Entertainment", "Lifecycle", "Advertising", "Account", "Authentication", "Accessibility", "Capabilities", "Keyboard", "Localization", "SecureStorage", "Metrics", "Profile", "Types", "Device"]
+  //const blackList = ["Parameters", "Discovery", "1Entertainment", "Intents"]
+  const blackList = []
+  return blackList.includes(getModuleName(module))
+}
+
 // getMethodSignature(method, module, options = { destination: 'file.txt' })
 // getMethodSignatureParams(method, module, options = { destination: 'file.txt' })
 // getSchemaType(schema, module, options = { destination: 'file.txt', title: true })
@@ -367,9 +374,11 @@ const makeProviderMethod = x => x.name["onRequest".length].toLowerCase() + x.nam
 //import { default as platform } from '../Platform/defaults'
 const generateAggregateMacros = (openrpc, modules, templates, library) => Object.values(modules)
   .reduce((acc, module) => {
+  if (filterBlackListedSchemas(module) === false) {
     acc.exports += insertMacros(getTemplate('/codeblocks/export', templates) + '\n', generateMacros(module, templates))
     acc.mockImports += insertMacros(getTemplate('/codeblocks/mock-import', templates) + '\n', generateMacros(module, templates))
     acc.mockObjects += insertMacros(getTemplate('/codeblocks/mock-parameter', templates) + '\n', generateMacros(module, templates))
+  }
     return acc
   }, {
     exports: '',
@@ -685,6 +694,24 @@ function generateDefaults(json = {}, templates) {
   return reducer(json)
 }
 
+function sortSchemasByReference(schemas = []) {
+  let indexA = 0;
+  while (indexA < schemas.length) {
+
+    let swapped = false
+    for (let indexB = indexA + 1; indexB < schemas.length; ++indexB) {
+      const bInA = isDefinitionReferencedBySchema('#/components/schemas/' + schemas[indexB][0], schemas[indexA][1])
+      if ((isEnum(schemas[indexB][1]) && !isEnum(schemas[indexA][1])) || (bInA === true))  {
+        [schemas[indexA], schemas[indexB]] = [schemas[indexB], schemas[indexA]]
+        swapped = true
+        break
+      }
+    }
+    indexA = swapped ? indexA : ++indexA
+  }
+  return schemas
+}
+
 const isEnum = x => x.type && x.type === 'string' && Array.isArray(x.enum) && x.title
 
 function generateSchemas(json, templates, options) {
@@ -694,6 +721,7 @@ function generateSchemas(json, templates, options) {
 
   const generate = (name, schema, uri, { prefix = '' } = {}) => {
     // these are internal schemas used by the firebolt-openrpc tooling, and not meant to be used in code/doc generation
+//    if (['ListenResponse', 'ProviderRequest', 'ProviderResponse', 'FederatedResponse', 'FederatedRequest'].find(item => name.includes(item))) {
     if (['ListenResponse', 'ProviderRequest', 'ProviderResponse', 'FederatedResponse', 'FederatedRequest'].includes(name)) {
       return
     }    
@@ -748,7 +776,7 @@ function generateSchemas(json, templates, options) {
     results.push(result)
   }
 
-  const list = []
+  let list = []
 
   // schemas may be 1 or 2 levels deeps
   Object.entries(schemas).forEach( ([name, schema]) => {
@@ -769,17 +797,7 @@ function generateSchemas(json, templates, options) {
     }
   })
 
-  list.sort((a, b) => {
-    const aInB = isDefinitionReferencedBySchema('#/components/schemas/' + a[0], b[1])
-    const bInA = isDefinitionReferencedBySchema('#/components/schemas/' + b[0], a[1])
-    if(isEnum(a[1]) || (aInB && !bInA)) {
-      return -1
-    } else if(isEnum(b[1]) || (!aInB && bInA)) {
-      return 1
-    }
-    return 0;
-  })
-
+  list = sortSchemasByReference(list)
   list.forEach(item => generate(...item))
 
   return results
@@ -1093,7 +1111,13 @@ function insertMethodMacros(template, methodObj, json, templates, examples={}) {
   const pullsParams = (puller || pullsFor) ? localizeDependencies(getPayloadFromEvent(puller || methodObj), json, null, {mergeAllOfs: true}).properties.parameters : null
   const pullsResultType = pullsResult && types.getSchemaShape(pullsResult, json, { destination: state.destination, section: state.section })
   const pullsForType = pullsResult && types.getSchemaType(pullsResult, json, { destination: state.destination, section: state.section  })
+   
+  const pullsForJsonType = pullsResult && types.getSchemaInstantiation(pullsResult, json, pullsResult.name, {instantiationType: 'pull.param.type'})
   const pullsParamsType = pullsParams ? types.getSchemaShape(pullsParams, json, { destination: state.destination, section: state.section  }) : ''
+  const pullsForParamType = pullsResult && types.getSchemaType(pullsParams, json, { destination: state.destination, section: state.section  })
+  const pullsParamType = pullsParams ? types.getSchemaInstantiation(pullsParams, json, pullsParams.title, {instantiationType: 'pull.param.type'}) : ''
+  const pullsEventParamName = event ? types.getSchemaInstantiation(event.result, json, event.name, {instantiationType: 'pull.param.name'}) : ''
+  
   const serializedParams = types.getSchemaInstantiation(methodObj, json, methodObj.name, {instantiationType: 'params'})
   const resultInst = types.getSchemaInstantiation(result.schema, json, result.name, { instantiationType: 'result' } )
   const serializedEventParams = event ? indent(types.getSchemaInstantiation(event, json, event.name, {instantiationType: 'params'}), '    ') : ''
@@ -1175,6 +1199,7 @@ function insertMethodMacros(template, methodObj, json, templates, examples={}) {
     .replace(/\$\{method\.result\.json\}/, types.getJsonType(result.schema, json, { name: result.name, destination: state.destination, section: state.section, code: false, link: false, title: true, asPath: false, expandEnums: false }))    
     .replace(/\$\{event\.result\.type\}/, isEventMethod(methodObj) ? types.getSchemaType(result.schema, json, { name: result.name, destination: state.destination, event: true, description: methodObj.result.summary, asPath: false }): '')
     .replace(/\$\{event\.result\.json\.type\}/g, resultJsonType)
+    .replace(/\$\{event\.pulls\.param\.name\}/g, pullsEventParamName)
     .replace(/\$\{method\.result\}/g,  generateResult(result.schema, json, templates, { name : result.name }))
     .replace(/\$\{method\.result\.json\.type\}/g, resultJsonType)
     .replace(/\$\{method\.result\.instantiation\}/g, resultInst)
@@ -1183,9 +1208,12 @@ function insertMethodMacros(template, methodObj, json, templates, examples={}) {
     .replace(/\$\{method\.alternative.link\}/g, '#'+(method.alternative || "").toLowerCase())
     .replace(/\$\{method\.pulls\.for\}/g, pullsFor ? pullsFor.name : '' )
     .replace(/\$\{method\.pulls\.type\}/g, pullsForType)
+    .replace(/\$\{method\.pulls\.json\.type\}/g, pullsForJsonType)
     .replace(/\$\{method\.pulls\.result\}/g, pullsResultType)
     .replace(/\$\{method\.pulls\.params.type\}/g, pullsParams ? pullsParams.title : '')
     .replace(/\$\{method\.pulls\.params\}/g, pullsParamsType)
+    .replace(/\$\{method\.pulls\.param\.type\}/g, pullsForParamType)
+    .replace(/\$\{method\.pulls\.param\.json.type\}/g, pullsParamType)
     .replace(/\$\{method\.setter\.for\}/g, setterFor )
     .replace(/\$\{method\.puller\}/g, pullerTemplate) // must be last!!
     .replace(/\$\{method\.setter\}/g, setterTemplate) // must be last!!
@@ -1539,7 +1567,8 @@ export {
   generateMacros,
   insertMacros,
   generateAggregateMacros,
-  insertAggregateMacros
+  insertAggregateMacros,
+  filterBlackListedSchemas
 }
 
 export default {
@@ -1548,5 +1577,6 @@ export default {
   generateAggregateMacros,
   insertAggregateMacros,
   setTyper,
-  setConfig
+  setConfig,
+  filterBlackListedSchemas
 }

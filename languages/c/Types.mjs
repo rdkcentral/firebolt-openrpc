@@ -422,7 +422,6 @@ function getSchemaShapeInfo(json, module, schemas = {}, { name = '', prefix = ''
             let info = getSchemaTypeInfo(module, items, items.name || pname, schemas, prefix, {level : level, descriptions: descriptions, title: true})
             if (info.type && info.type.length > 0) {
               let objName = tName + '_' + capitalize(prop.title || pname)
-              let moduleName = info.namespace
               info.json.namespace = info.namespace
               let moduleProperty = getJsonTypeInfo(module, json, json.title || name, schemas, prefix)
               let prefixName = ((prefix.length > 0) && items['$ref']) ? '' : prefix
@@ -533,9 +532,13 @@ function getSchemaShapeInfo(json, module, schemas = {}, { name = '', prefix = ''
         if (info.type && info.type.length > 0) {
           let type = getArrayElementSchema(json, module, schemas, info.name)
           let arrayName = capitalize(info.name) + capitalize(type.type)
-          let objName = getTypeName(info.namespace, arrayName, prefix)
+          let namespace = info.namespace
+          if (type && type.type === 'object') {
+            namespace = getModuleName(module)
+	  }
+          let objName = getTypeName(namespace, arrayName, prefix)
           let tName = objName + 'Array'
-          let moduleName = info.namespace
+
           info.json.namespace = info.namespace
           let moduleProperty = getJsonTypeInfo(module, json, json.title || name, schemas, prefix)
           let subModuleProperty = getJsonTypeInfo(module, j, j.title, schemas, prefix)
@@ -752,6 +755,13 @@ function getSchemaInstantiation(schema, module, name, { instantiationType = '' }
     let resultType = getSchemaType(schema.result.schema, module, { title: true, name: schema.result.name, resultSchema: true}) || ''
     let resultJsonType = getJsonType(schema.result.schema, module, {name: schema.result.name}) || ''
     return getCallbackResponseInstantiation(getParamList(schema, module), resultType, resultJsonType)
+  }
+  else if (instantiationType === 'pull.param.type') {
+    return getJsonType(schema, module, {name: name}) || ''
+  }
+  else if (instantiationType === 'pull.param.name') {
+    let resultJsonType = getJsonType(schema, module, {name: name}) || ''
+    return resultJsonType && resultJsonType[0].split('_')[1] || ''
   }
 
   return ''

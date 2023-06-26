@@ -157,6 +157,7 @@ const macrofy = async (
         let append = false
 
         modules.forEach(module => {
+	if (engine.filterBlackListedSchemas(module) === false) {
 
             // Pick the index and defaults templates for each module.
             templatesPerModule.forEach(t => {
@@ -181,6 +182,7 @@ const macrofy = async (
             }
 
             append = true
+	}
         })
         
         if (treeshakePattern && treeshakeEntry) {
@@ -255,6 +257,7 @@ const macrofy = async (
                 
         // Output any schema templates for each bundled external schema document
         Object.values(externalSchemas).forEach( document => {
+            if (engine.filterBlackListedSchemas(document) === false) {
             if (templatesPerSchema) {
                 templatesPerSchema.forEach( t => {
                     const macros = engine.generateMacros(document, templates, exampleTemplates, {hideExcluded: hideExcluded, includeAnonymousSchema: includeAnonymousSchema, destination: t})
@@ -269,6 +272,7 @@ const macrofy = async (
                     logSuccess(`Generated macros for schema ${path.relative(output, location)}`)
                 })
             }
+	    }
         })
 
         if (clearTargetDirectory) {
