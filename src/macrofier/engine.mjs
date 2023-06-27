@@ -1068,10 +1068,16 @@ function insertMethodMacros(template, methodObj, json, templates, examples = {})
   const pullsResult = (puller || pullsFor) ? localizeDependencies(pullsFor || methodObj, json).params[1].schema : null
   const pullsParams = (puller || pullsFor) ? localizeDependencies(getPayloadFromEvent(puller || methodObj), json, null, { mergeAllOfs: true }).properties.parameters : null
   const pullsResultType = pullsResult && types.getSchemaShape(pullsResult, json, { destination: state.destination, section: state.section })
-  const pullsForType = pullsResult && types.getSchemaType(pullsResult, json, { destination: state.destination, section: state.section })
-  const pullsParamsType = pullsParams ? types.getSchemaShape(pullsParams, json, { destination: state.destination, section: state.section }) : ''
+  const pullsForType = pullsResult && types.getSchemaType(pullsResult, json, { destination: state.destination, section: state.section  })
+
+  const pullsForJsonType = pullsResult ? types.getJsonType(pullsResult, json, { name: pullsResult.name }) : ''
+  const pullsParamsType = pullsParams ? types.getSchemaShape(pullsParams, json, { destination: state.destination, section: state.section  }) : ''
+  const pullsForParamType = pullsParams ? types.getSchemaType(pullsParams, json, { destination: state.destination, section: state.section  }) : ''
+  const pullsForParamJsonType = pullsParams ? types.getJsonType(pullsParams, json, { name: pullsParams.title }) : ''
+  const pullsEventParamName = event ? types.getSchemaInstantiation(event.result, json, event.name, { instantiationType: 'pull.param.name' }) : ''
+
   const serializedParams = types.getSchemaInstantiation(methodObj, json, methodObj.name, { instantiationType: 'params' })
-  const resultInst = types.getSchemaInstantiation(result.schema, json, result.name, { instantiationType: 'result' })
+  const resultInst = types.getSchemaInstantiation(result.schema, json, result.name, { instantiationType: 'result' } )
   const serializedEventParams = event ? indent(types.getSchemaInstantiation(event, json, event.name, { instantiationType: 'params' }), '    ') : ''
   const callbackSerializedParams = event ? types.getSchemaInstantiation(event, json, event.name, { instantiationType: 'callback.params' }) : ''
   const callbackResultInst = event ? types.getSchemaInstantiation(event, json, event.name, { instantiationType: 'callback.result' }) : ''
@@ -1148,6 +1154,7 @@ function insertMethodMacros(template, methodObj, json, templates, examples = {})
     .replace(/\$\{method\.result\.json\}/, types.getJsonType(result.schema, json, { name: result.name, destination: state.destination, section: state.section, code: false, link: false, title: true, asPath: false, expandEnums: false }))
     .replace(/\$\{event\.result\.type\}/, isEventMethod(methodObj) ? types.getSchemaType(result.schema, json, { name: result.name, destination: state.destination, event: true, description: methodObj.result.summary, asPath: false }) : '')
     .replace(/\$\{event\.result\.json\.type\}/g, resultJsonType)
+    .replace(/\$\{event\.pulls\.param\.name\}/g, pullsEventParamName)
     .replace(/\$\{method\.result\}/g, generateResult(result.schema, json, templates, { name: result.name }))
     .replace(/\$\{method\.result\.instantiation\}/g, resultInst)
     .replace(/\$\{method\.example\.value\}/g, JSON.stringify(methodObj.examples[0].result.value))
@@ -1155,9 +1162,12 @@ function insertMethodMacros(template, methodObj, json, templates, examples = {})
     .replace(/\$\{method\.alternative.link\}/g, '#' + (method.alternative || "").toLowerCase())
     .replace(/\$\{method\.pulls\.for\}/g, pullsFor ? pullsFor.name : '')
     .replace(/\$\{method\.pulls\.type\}/g, pullsForType)
+    .replace(/\$\{method\.pulls\.json\.type\}/g, pullsForJsonType)
     .replace(/\$\{method\.pulls\.result\}/g, pullsResultType)
     .replace(/\$\{method\.pulls\.params.type\}/g, pullsParams ? pullsParams.title : '')
     .replace(/\$\{method\.pulls\.params\}/g, pullsParamsType)
+    .replace(/\$\{method\.pulls\.param\.type\}/g, pullsForParamType)
+    .replace(/\$\{method\.pulls\.param\.json.type\}/g, pullsForParamJsonType)
     .replace(/\$\{method\.setter\.for\}/g, setterFor)
     .replace(/\$\{method\.puller\}/g, pullerTemplate) // must be last!!
     .replace(/\$\{method\.setter\}/g, setterTemplate) // must be last!!
