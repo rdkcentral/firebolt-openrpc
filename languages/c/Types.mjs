@@ -205,15 +205,21 @@ function getMethodSignature(method, module, { destination, isInterface = false }
   return signature
 }
 
-function getMethodSignatureParams(method, module, { destination, callback= false } = {}) {
-
-  return method.params.map(param => {
+function getMethodSignatureParams(method, module, { destination, callback = false } = {}) {
+  let signatureParams = ''
+  let polymorphicPull = method.tags.find(t => t.name === 'polymorphic-pull')
+  method.params.map(param => {
+    if (polymorphicPull && (param.name === 'correlationId')) {
+      return
+    }
+    signatureParams += (signatureParams.length > 0) ? ', ' : ''
     let type = getSchemaType(param.schema, module, { name: param.name, title: true, destination })
     if ((callback === true) && (type === 'char*')) {
       type = getFireboltStringType()
     }
-    return type + (!param.required ? '* ' : ' ') + param.name
-  }).join(', ')
+    signatureParams += type + (!param.required ? '* ' : ' ') + param.name
+  })
+  return signatureParams
 }
 
 const safeName = prop => prop.match(/[.+]/) ? '"' + prop + '"' : prop
@@ -306,6 +312,7 @@ function getSchemaTypeInfo(module = {}, json = {}, name = '', schemas = {}, pref
     return structure
   }
   else if (json.allOf) {
+//    console.log("name = ", name, " json = ", json) 
     let title = json.title ? json.title : name
     let union = deepMergeAll(module, title, json, schemas, options)
     union['title'] = title
@@ -743,24 +750,21 @@ function getSchemaInstantiation(schema, module, name, { instantiationType = '' }
     return getResultInstantiation(name, resultType, resultJsonType)
   }
   else if (instantiationType === 'callback.params') {
-    let resultJsonType = getJsonType(schema.result.schema, module, {name: schema.result.name}) || ''
+    let resultJsonType = getJsonType(schema.result.schema, module, { name: schema.result.name }) || ''
     return getCallbackParametersInstantiation(getParamList(schema, module), resultJsonType)
   }
   else if (instantiationType === 'callback.result') {
     let resultType = getSchemaType(schema.result.schema, module, { title: true, name: schema.result.name, resultSchema: true}) || ''
-    let resultJsonType = getJsonType(schema.result.schema, module, {name: schema.result.name}) || ''
+    let resultJsonType = getJsonType(schema.result.schema, module, { name: schema.result.name }) || ''
     return getCallbackResultInstantiation(resultType, resultJsonType)
   }
   else if (instantiationType === 'callback.response') {
     let resultType = getSchemaType(schema.result.schema, module, { title: true, name: schema.result.name, resultSchema: true}) || ''
-    let resultJsonType = getJsonType(schema.result.schema, module, {name: schema.result.name}) || ''
+    let resultJsonType = getJsonType(schema.result.schema, module, { name: schema.result.name }) || ''
     return getCallbackResponseInstantiation(getParamList(schema, module), resultType, resultJsonType)
   }
-  else if (instantiationType === 'pull.param.type') {
-    return getJsonType(schema, module, {name: name}) || ''
-  }
   else if (instantiationType === 'pull.param.name') {
-    let resultJsonType = getJsonType(schema, module, {name: name}) || ''
+    let resultJsonType = getJsonType(schema, module, { name: name }) || ''
     return resultJsonType && resultJsonType[0].split('_')[1] || ''
   }
 

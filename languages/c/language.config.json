@@ -12,5 +12,6 @@
         "/src/JsonData_Module.h"
     ],
     "persistPermission": true,
-    "includeAnonymousSchema": true
+    "includeAnonymousSchema": true,
+    "createPolymophicMethods": true
 }

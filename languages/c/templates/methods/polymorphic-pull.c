@@ -1,10 +1,16 @@
 /* ${method.name} - ${method.description} */
-uint32_t ${info.title}_Push${method.Name}(${method.signature.params})
+uint32_t ${info.title}_Push${method.Name}( ${method.signature.params} )
 {
     uint32_t status = FireboltSDKErrorUnavailable;
-      ${if.params}
-${method.params.serialization}
-      ${end.if.params}
+
+    JsonObject jsonParameters;
+
+    WPEFramework::Core::JSON::Variant CorrelationId = "";
+    jsonParameters.Set(_T("correlationId"), CorrelationId);
+
+    WPEFramework::Core::JSON::Variant Result = result;
+    jsonParameters.Set(_T("result"), Result);
+
     FireboltSDK::Transport<WPEFramework::Core::JSON::IElement>* transport = FireboltSDK::Accessor::Instance().GetTransport();
     if (transport != nullptr) {
         WPEFramework::Core::JSON::Boolean jsonResult;

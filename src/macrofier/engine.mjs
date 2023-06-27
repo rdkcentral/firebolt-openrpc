@@ -29,7 +29,7 @@ import isString from 'crocks/core/isString.js'
 import predicates from 'crocks/predicates/index.js'
 const { isObject, isArray, propEq, pathSatisfies, propSatisfies } = predicates
 
-import { isRPCOnlyMethod, isProviderInterfaceMethod, getProviderInterface, getPayloadFromEvent, providerHasNoParameters, isTemporalSetMethod, hasMethodAttributes, getMethodAttributes, isEventMethodWithContext, getSemanticVersion, getSetterFor, getProvidedCapabilities, isPolymorphicPullMethod, hasPublicAPIs } from '../shared/modules.mjs'
+import { isRPCOnlyMethod, isProviderInterfaceMethod, getProviderInterface, getPayloadFromEvent, providerHasNoParameters, isTemporalSetMethod, hasMethodAttributes, getMethodAttributes, isEventMethodWithContext, getSemanticVersion, getSetterFor, getProvidedCapabilities, isPolymorphicPullMethod, hasPublicAPIs, createPolymorphicMethods } from '../shared/modules.mjs'
 import isEmpty from 'crocks/core/isEmpty.js'
 import { getLinkedSchemaPaths, getSchemaConstraints, isSchema, localizeDependencies, isDefinitionReferencedBySchema } from '../shared/json-schema.mjs'
 
@@ -966,12 +966,53 @@ function generateExamples(json = {}, mainTemplates = {}, languages = {}) {
   return examples
 }
 
+/*function generatePolymorphicMethods(method, json) {
+  let anyOfParams = []
+  let methodParams = []
+  method.params.forEach(p => {
+    if (p.schema) {
+      if (p.schema['$ref'] && (p.schema['$ref'][0] === '#')) {
+        let definition = getPath(p.schema['$ref'], json, json['x-schemas'])
+        let tName = definition.title || p.schema['$ref'].split('/').pop()
+        console.log("definition = ", definition)
+
+/*            if (param.schema.anyOf) {
+                if (anyOfParams.length > 0) {
+                }
+                else {
+                    param.schema.anyOf.forEach(anyOf => {
+                        anyOfParams.push(anyOf)
+//                        console.log("anyOf --- " ,anyOf) 
+                    })
+                    methodParams.push(anyOfParams)
+                }
+            }
+            else {
+                methodParams.push(param)
+            } 
+      }
+    }
+  })
+}*/
+
 function generateMethods(json = {}, examples = {}, templates = {}) {
   const methods = compose(
     option([]),
     getMethods
   )(json)
 
+  let generatedMethods = []
+  methods.forEach(method => {
+    let polymorphicMethods = createPolymorphicMethods(method, json)
+    if (polymorphicMethods.length > 1) {
+       polymorphicMethods.forEach(polymorphicMethod => {
+         generatedMethods.push(polymorphicMethod)
+       })
+    }
+    else {
+       generatedMethods.push(method)
+    }
+  })
   // Code to generate methods
   const results = reduce((acc, methodObj, i, arr) => {
     const result = {
@@ -999,7 +1040,7 @@ function generateMethods(json = {}, examples = {}, templates = {}) {
     acc.push(result)
 
     return acc
-  }, [], methods)
+  }, [], generatedMethods)
 
   // TODO: might be useful to pass in local macro for an array with all capability & provider interface names
   if (json.methods && json.methods.find(isProviderInterfaceMethod)) {
@@ -1051,6 +1092,13 @@ function insertMethodMacros(template, methodObj, json, templates, examples={}) {
     deprecated: isDeprecatedMethod(methodObj),
     context: []
   }
+
+/*  let methods = createPolymorphicMethods(methodObj, json)
+  if (methods.length > 1) {
+    methods.forEach(method => {
+      insertMethodMacros(template, method, json, templates, examples={}) {
+    }
+  }*/
 
   if (isEventMethod(methodObj) && methodObj.params.length > 1) {
     method.context = methodObj.params.filter(p => p.name !== 'listen').map(p => p.name)
@@ -1112,18 +1160,18 @@ function insertMethodMacros(template, methodObj, json, templates, examples={}) {
   const pullsResultType = pullsResult && types.getSchemaShape(pullsResult, json, { destination: state.destination, section: state.section })
   const pullsForType = pullsResult && types.getSchemaType(pullsResult, json, { destination: state.destination, section: state.section  })
    
-  const pullsForJsonType = pullsResult && types.getSchemaInstantiation(pullsResult, json, pullsResult.name, {instantiationType: 'pull.param.type'})
+  const pullsForJsonType = pullsResult ? types.getJsonType(pullsResult, json, { name: pullsResult.name }) : ''
   const pullsParamsType = pullsParams ? types.getSchemaShape(pullsParams, json, { destination: state.destination, section: state.section  }) : ''
-  const pullsForParamType = pullsResult && types.getSchemaType(pullsParams, json, { destination: state.destination, section: state.section  })
-  const pullsParamType = pullsParams ? types.getSchemaInstantiation(pullsParams, json, pullsParams.title, {instantiationType: 'pull.param.type'}) : ''
-  const pullsEventParamName = event ? types.getSchemaInstantiation(event.result, json, event.name, {instantiationType: 'pull.param.name'}) : ''
-  
-  const serializedParams = types.getSchemaInstantiation(methodObj, json, methodObj.name, {instantiationType: 'params'})
+  const pullsForParamType = pullsParams ? types.getSchemaType(pullsParams, json, { destination: state.destination, section: state.section  }) : ''
+  const pullsForParamJsonType = pullsParams ? types.getJsonType(pullsParams, json, { name: pullsParams.title }) : ''
+  const pullsEventParamName = event ? types.getSchemaInstantiation(event.result, json, event.name, { instantiationType: 'pull.param.name' }) : ''
+ 
+  const serializedParams = types.getSchemaInstantiation(methodObj, json, methodObj.name, { instantiationType: 'params' })
   const resultInst = types.getSchemaInstantiation(result.schema, json, result.name, { instantiationType: 'result' } )
-  const serializedEventParams = event ? indent(types.getSchemaInstantiation(event, json, event.name, {instantiationType: 'params'}), '    ') : ''
-  const callbackSerializedParams = event ? types.getSchemaInstantiation(event, json, event.name, {instantiationType: 'callback.params'}) : ''
-  const callbackResultInst = event ? types.getSchemaInstantiation(event, json, event.name, {instantiationType: 'callback.result'}) : ''
-  const callbackResponseInst = event ? types.getSchemaInstantiation(event, json, event.name, {instantiationType: 'callback.response'}) : ''
+  const serializedEventParams = event ? indent(types.getSchemaInstantiation(event, json, event.name, { instantiationType: 'params' }), '    ') : ''
+  const callbackSerializedParams = event ? types.getSchemaInstantiation(event, json, event.name, { instantiationType: 'callback.params' }) : ''
+  const callbackResultInst = event ? types.getSchemaInstantiation(event, json, event.name, { instantiationType: 'callback.result' }) : ''
+  const callbackResponseInst = event ? types.getSchemaInstantiation(event, json, event.name, { instantiationType: 'callback.response' }) : ''
   const resultType = result.schema ? types.getSchemaType(result.schema, json, { name: result.name }) : ''
   const resultJsonType = result.schema ? types.getJsonType(result.schema, json, { name: result.name }) : ''
 
@@ -1165,7 +1213,7 @@ function insertMethodMacros(template, methodObj, json, templates, examples={}) {
     .replace(/\$\{method\.params\.serialization\.with\.indent\}/g, indent(serializedParams, '    '))
     // Typed signature stuff
     .replace(/\$\{method\.signature\}/g, types.getMethodSignature(methodObj, json, { isInterface: false, destination: state.destination, section: state.section  }))
-    .replace(/\$\{method\.signature\.params\}/g, types.getMethodSignatureParams(methodObj, json, { destination: state.destination, section: state.section  }))
+    .replace(/\$\{method\.signature\.params\}/g, types.getMethodSignatureParams(methodObj, json, { destination: state.destination, section: state.section }))
     .replace(/\$\{method\.context\}/g, method.context.join(', '))
     .replace(/\$\{method\.context\.array\}/g, JSON.stringify(method.context))
     .replace(/\$\{method\.deprecation\}/g, deprecation)
@@ -1174,7 +1222,7 @@ function insertMethodMacros(template, methodObj, json, templates, examples={}) {
     .replace(/\$\{event\.params\}/g, eventParams)
     .replace(/\$\{event\.params\.table\.rows\}/g, eventParamsRows)
     .replace(/\$\{if\.event\.params\}(.*?)\$\{end\.if\.event\.params\}/gms, event && event.params.length ? '$1' : '')
-    .replace(/\$\{event\.signature\.params\}/g, event ? types.getMethodSignatureParams(event, json, { destination: state.destination, section: state.section  }) : '')
+    .replace(/\$\{event\.signature\.params\}/g, event ? types.getMethodSignatureParams(event, json, { destination: state.destination, section: state.section }) : '')
     .replace(/\$\{event\.signature\.callback\.params\}/g, event ? types.getMethodSignatureParams(event, json, { destination: state.destination, section: state.section, callback: true }) : '')
     .replace(/\$\{event\.params\.serialization\}/g, serializedEventParams)
     .replace(/\$\{event\.callback\.params\.serialization\}/g, callbackSerializedParams)
@@ -1213,7 +1261,7 @@ function insertMethodMacros(template, methodObj, json, templates, examples={}) {
     .replace(/\$\{method\.pulls\.params.type\}/g, pullsParams ? pullsParams.title : '')
     .replace(/\$\{method\.pulls\.params\}/g, pullsParamsType)
     .replace(/\$\{method\.pulls\.param\.type\}/g, pullsForParamType)
-    .replace(/\$\{method\.pulls\.param\.json.type\}/g, pullsParamType)
+    .replace(/\$\{method\.pulls\.param\.json.type\}/g, pullsForParamJsonType)
     .replace(/\$\{method\.setter\.for\}/g, setterFor )
     .replace(/\$\{method\.puller\}/g, pullerTemplate) // must be last!!
     .replace(/\$\{method\.setter\}/g, setterTemplate) // must be last!!

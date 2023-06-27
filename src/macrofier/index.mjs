@@ -45,6 +45,7 @@ const macrofy = async (
         templatesPerSchema,
         persistPermission,
         includeAnonymousSchema,
+        createPolymophicMethods,
         createModuleDirectories,
         copySchemasIntoModules,
         aggregateFile,
@@ -120,6 +121,7 @@ const macrofy = async (
             modules = moduleList.map(name => getModule(name, openrpc, copySchemasIntoModules))
         }
 
+         
         const aggregateMacros = engine.generateAggregateMacros(openrpc, modules.concat(staticModules), templates, libraryName)
 
         const outputFiles = Object.fromEntries(Object.entries(await readFiles( staticCodeList, staticContent))

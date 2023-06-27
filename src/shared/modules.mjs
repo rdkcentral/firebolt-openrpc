@@ -28,7 +28,7 @@ import isEmpty from 'crocks/core/isEmpty.js'
 const { and, not } = logic
 import isString from 'crocks/core/isString.js'
 import predicates from 'crocks/predicates/index.js'
-import { getExternalSchemaPaths, isDefinitionReferencedBySchema, isNull, localizeDependencies, isSchema, getLocalSchemaPaths, replaceRef } from './json-schema.mjs'
+import { getExternalSchemaPaths, isDefinitionReferencedBySchema, isNull, localizeDependencies, isSchema, getLocalSchemaPaths, replaceRef, getLinkedSchemaPaths } from './json-schema.mjs'
 const { isObject, isArray, propEq, pathSatisfies, hasProp, propSatisfies } = predicates
 
 // util for visually debugging crocks ADTs
@@ -854,6 +854,108 @@ const generateEventListenResponse = json => {
     return json
 }
 
+const getRefPath = (uri = '', moduleJson = {}) => {
+  const [mainPath, subPath] = (uri || '').split('#')
+  let result
+
+  if (!uri) {
+    throw "getPath requires a non-null uri parameter"
+  }
+
+  if (mainPath) {
+    throw `Cannot call getPath with a fully qualified URI: ${uri}`
+  }
+
+  if (subPath) {
+    result = getPathOr(null, subPath.slice(1).split('/'), moduleJson)
+  }
+  if (!result) {
+    //throw `getPath: Path '${uri}' not found in ${moduleJson ? (moduleJson.title || moduleJson.info.title) : moduleJson}.`
+    return null
+  }
+  else {
+    return result
+  }
+}
+
+const createPolymorphicMethods = (method, json) => {
+    let anyOfParams = []
+    let methodParams = []
+    method.params.forEach(p => {
+        if (p.schema) {
+            if (p.schema['$ref'] && (p.schema['$ref'][0] === '#')) {
+            let definition = getRefPath(p.schema['$ref'], json, json['x-schemas'])
+//            let tName = definition.title || p.schema['$ref'].split('/').pop()
+            console.log("definition = ", definition)
+	    }
+            let param = localizeDependencies(p, json)
+            if (param.schema.anyOf) {
+                if (anyOfParams.length > 0) {
+                }
+                else {
+                    param.schema.anyOf.forEach(anyOf => {
+                        anyOfParams.push(anyOf)
+                    })
+                    methodParams.push(anyOfParams)
+                }
+            }
+            else {
+                methodParams.push(param)
+            }
+        }
+    })
+    let polymorphicMethodSchemas = []
+    if (anyOfParams.length > 0) {
+        let polymorphicMethodSchema = {
+            name: {},
+            tags: {},
+            summary: `${method.summary}`,
+            params: {},
+            result: {},
+            examples: {}
+        }
+        anyOfParams.forEach(anyOf => {
+            polymorphicMethodSchema.name = `${method.name}With${anyOf.title}`
+            let params = []
+            methodParams.forEach(param => {
+                if (param === anyOfParams) {
+                    anyOf.name = anyOf.title
+                    delete anyOf.title
+                    if (anyOf.schema === undefined) {
+                        anyOf.schema = {}
+                        if (anyOf.oneOf) {
+                          anyOf.schema.oneOf = anyOf.oneOf
+                          delete anyOf.oneOf
+			}
+                        else if (anyOf.anyOf) {
+                          anyOf.schema.anyOf = anyOf.anyOf
+                          delete anyOf.anyOf
+			}
+                        else if (anyOf.allOf) {
+                          anyOf.schema.allOf = anyOf.allOf
+                          delete anyOf.allOf
+			}
+		    }
+
+                    params.push(anyOf)
+                }
+                else {
+                    params.push(param)
+                }
+            })
+            polymorphicMethodSchema.params = params
+            polymorphicMethodSchema.tags = method.tags
+            polymorphicMethodSchema.result = method.result
+            polymorphicMethodSchema.examples = method.examples
+            polymorphicMethodSchemas.push(Object.assign({}, polymorphicMethodSchema))
+        })
+    }
+    else {
+      polymorphicMethodSchemas = method
+    }
+    return polymorphicMethodSchemas
+}
+
 const getPathFromModule = (module, path) => {
     console.error("DEPRECATED: getPathFromModule")
     
@@ -1175,5 +1277,6 @@ export {
     getSemanticVersion,
     addExternalMarkdown,
     addExternalSchemas,
-    getExternalMarkdownPaths
+    getExternalMarkdownPaths,
+    createPolymorphicMethods
 }
