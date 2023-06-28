@@ -29,7 +29,7 @@ import isString from 'crocks/core/isString.js'
 import predicates from 'crocks/predicates/index.js'
 const { isObject, isArray, propEq, pathSatisfies, propSatisfies } = predicates
 
-import { isRPCOnlyMethod, isProviderInterfaceMethod, getProviderInterface, getPayloadFromEvent, providerHasNoParameters, isTemporalSetMethod, isCallsMetricsMethod, isExcludedMethod, hasMethodAttributes, getMethodAttributes, isEventMethodWithContext, getSemanticVersion, getSetterFor, getProvidedCapabilities, isPolymorphicPullMethod, hasPublicAPIs } from '../shared/modules.mjs'
+import { isRPCOnlyMethod, isProviderInterfaceMethod, getProviderInterface, getPayloadFromEvent, providerHasNoParameters, isTemporalSetMethod, hasMethodAttributes, getMethodAttributes, isEventMethodWithContext, getSemanticVersion, getSetterFor, getProvidedCapabilities, isPolymorphicPullMethod, hasPublicAPIs, createPolymorphicMethods } from '../shared/modules.mjs'
 import isEmpty from 'crocks/core/isEmpty.js'
 import { getLinkedSchemaPaths, getSchemaConstraints, isSchema, localizeDependencies, isDefinitionReferencedBySchema } from '../shared/json-schema.mjs'
 
@@ -158,7 +158,7 @@ const getComponentExternalSchema = (json) => {
         let title = ''
         if (ref.includes('x-schemas')) {
           if (ref.split('/')[2] !== json.info.title) {
-            title = ref.split('/')[2]
+            title = ref.split('/')[2].toLowerCase()
           }
         }
         title && !refSchemas.includes(title) ? refSchemas.push(title) : null
@@ -426,7 +426,7 @@ const generateMacros = (obj, templates, languages, options = {}) => {
   const eventsEnum = generateEvents(obj, templates)
   const examples = generateExamples(obj, templates, languages)
 
-  const allMethodsArray = generateMethods(obj, examples, templates)
+  const allMethodsArray = generateMethods(obj, examples, templates, { polymorphic : options.createPolymorphicMethods })
   const methodsArray = allMethodsArray.filter(m => !m.event && (!options.hideExcluded || !m.excluded))
   const eventsArray = allMethodsArray.filter(m => m.event && (!options.hideExcluded || !m.excluded))
   const declarationsArray = allMethodsArray.filter(m => m.declaration)
@@ -951,11 +951,29 @@ function generateExamples(json = {}, mainTemplates = {}, languages = {}) {
   return examples
 }
 
-function generateMethods(json = {}, examples = {}, templates = {}) {
+function generateMethods(json = {}, examples = {}, templates = {}, options = { polymorphic: false }) {
   const methods = compose(
     option([]),
     getMethods
   )(json)
+
+  let methodList = []
+  if (options.polymorphic) {
+    methods.forEach(method => {
+      let polymorphicMethods = createPolymorphicMethods(method, json)
+      if (polymorphicMethods.length > 1) {
+         polymorphicMethods.forEach(polymorphicMethod => {
+           methodList.push(polymorphicMethod)
+         })
+      }
+      else {
+         methodList.push(method)
+      }
+    })
+  }
+  else {
+    methodList = methods
+  }
 
   // Code to generate methods
   const results = reduce((acc, methodObj, i, arr) => {
@@ -970,21 +988,21 @@ function generateMethods(json = {}, examples = {}, templates = {}) {
     let template = getTemplateForMethod(methodObj, templates);
 
     if (template && template.length) {
-      let javascript = insertMethodMacros(template, methodObj, json, templates, examples)
+      let javascript = insertMethodMacros(template, methodObj, json, templates, options, examples)
       result.body = javascript
     }
 
     template = getTemplateForDeclaration(methodObj, templates)
 
     if (template && template.length) {
-      let javascript = insertMethodMacros(template, methodObj, json, templates, examples)
+      let javascript = insertMethodMacros(template, methodObj, json, templates, options, examples)
       result.declaration = javascript
     }
 
     acc.push(result)
 
     return acc
-  }, [], methods)
+  }, [], methodList)
 
   // TODO: might be useful to pass in local macro for an array with all capability & provider interface names
   if (json.methods && json.methods.find(isProviderInterfaceMethod)) {
@@ -1022,7 +1040,7 @@ function generateMethods(json = {}, examples = {}, templates = {}) {
 }
 
 // TODO: this is called too many places... let's reduce that to just generateMethods
-function insertMethodMacros(template, methodObj, json, templates, examples = {}) {
+function insertMethodMacros(template, methodObj, json, templates, options = { polymorphic: false }, examples={}) {
   const moduleName = getModuleName(json)
 
   const info = {
@@ -1086,11 +1104,11 @@ function insertMethodMacros(template, methodObj, json, templates, examples = {})
   // grab some related methdos in case they are output together in a single template file
   const puller = json.methods.find(method => method.tags.find(tag => tag['x-pulls-for'] === methodObj.name))
   const pullsFor = methodObj.tags.find(t => t['x-pulls-for']) && json.methods.find(method => method.name === methodObj.tags.find(t => t['x-pulls-for'])['x-pulls-for'])
-  const pullerTemplate = (puller ? insertMethodMacros(getTemplate('/codeblocks/puller', templates), puller, json, templates, examples) : '')
+  const pullerTemplate = (puller ? insertMethodMacros(getTemplate('/codeblocks/puller', templates), puller, json, templates, options, examples) : '')
   const setter = getSetterFor(methodObj.name, json)
-  const setterTemplate = (setter ? insertMethodMacros(getTemplate('/codeblocks/setter', templates), setter, json, templates, examples) : '')
+  const setterTemplate = (setter ? insertMethodMacros(getTemplate('/codeblocks/setter', templates), setter, json, templates, options, examples) : '')
   const subscriber = json.methods.find(method => method.tags.find(tag => tag['x-alternative'] === methodObj.name))
-  const subscriberTemplate = (subscriber ? insertMethodMacros(getTemplate('/codeblocks/subscriber', templates), subscriber, json, templates, examples) : '')
+  const subscriberTemplate = (subscriber ? insertMethodMacros(getTemplate('/codeblocks/subscriber', templates), subscriber, json, templates, options, examples) : '')
   const setterFor = methodObj.tags.find(t => t.name === 'setter') && methodObj.tags.find(t => t.name === 'setter')['x-setter-for'] || ''
   const pullsResult = (puller || pullsFor) ? localizeDependencies(pullsFor || methodObj, json).params[1].schema : null
   const pullsParams = (puller || pullsFor) ? localizeDependencies(getPayloadFromEvent(puller || methodObj), json, null, { mergeAllOfs: true }).properties.parameters : null
@@ -1131,6 +1149,7 @@ function insertMethodMacros(template, methodObj, json, templates, examples = {})
   template = insertExampleMacros(template, examples[methodObj.name] || [], methodObj, json, templates)
 
   template = template.replace(/\$\{method\.name\}/g, method.name)
+    .replace(/\$\{method\.json\.name\}/g, options.polymorphic ? methodObj.actualName || method.name : method.name)
     .replace(/\$\{method\.summary\}/g, methodObj.summary)
     .replace(/\$\{method\.description\}/g, methodObj.description
       || methodObj.summary)

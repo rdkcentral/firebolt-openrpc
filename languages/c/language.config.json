@@ -12,5 +12,6 @@
         "/src/module_common.cpp",
         "/src/jsondata_module.h"
     ],
-    "persistPermission": true
+    "persistPermission": true,
+    "createPolymorphicMethods": true
 }

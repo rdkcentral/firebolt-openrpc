@@ -1,4 +1,4 @@
-/* ${method.name} - ${method.description} */
+/* ${method.json.name} - ${method.description} */
 static void ${info.Title}${method.Name}InnerCallback( void* userCB, const void* userData, void* response )
 {
 ${event.callback.params.serialization}
@@ -29,7 +29,7 @@ ${event.callback.params.serialization}
             WPEFramework::Core::JSON::Boolean jsonResult;
             uint32_t status = transport->Invoke(_T("${info.title}.${method.pulls.for}"), jsonParameters, jsonResult);
             if (status == FireboltSDKErrorNone) {
-                FIREBOLT_LOG_INFO(FireboltSDK::Logger::Category::OpenRPC, FireboltSDK::Logger::Module<FireboltSDK::Accessor>(), "${info.Title}.${method.name} is successfully pushed with status as %d", jsonResult.Value());
+                FIREBOLT_LOG_INFO(FireboltSDK::Logger::Category::OpenRPC, FireboltSDK::Logger::Module<FireboltSDK::Accessor>(), "${info.Title}.${method.json.name} is successfully pushed with status as %d", jsonResult.Value());
                 status = (jsonResult.Value() == true) ? FireboltSDKErrorNone : FireboltSDKErrorNotSupported;
             }
         } else {
@@ -39,7 +39,7 @@ ${event.callback.params.serialization}
 }
 uint32_t ${info.Title}_Register_${method.Name}( ${info.Title}${method.Name}Callback userCB, const void* userData )
 {
-    const string eventName = _T("${info.title}.${method.name}");
+    const string eventName = _T("${info.title}.${method.json.name}");
     uint32_t status = FireboltSDKErrorNone;
 
     if (userCB != nullptr) {
@@ -50,5 +50,5 @@ uint32_t ${info.Title}_Register_${method.Name}( ${info.Title}${method.Name}Callb
 }
 uint32_t ${info.Title}_Unregister_${method.Name}( ${info.Title}${method.Name}Callback userCB)
 {
-    return FireboltSDK::Event::Instance().Unsubscribe(_T("${info.title}.${method.name}"), reinterpret_cast<void*>(userCB));
+    return FireboltSDK::Event::Instance().Unsubscribe(_T("${info.title}.${method.json.name}"), reinterpret_cast<void*>(userCB));
 }
