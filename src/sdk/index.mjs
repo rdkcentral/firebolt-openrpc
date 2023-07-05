@@ -61,6 +61,7 @@ const run = async ({
     operators: config.operators,
     createModuleDirectories: config.createModuleDirectories,
     copySchemasIntoModules: config.copySchemasIntoModules,
+    extractSubSchemas: config.extractSubSchemas,
     staticModuleNames: staticModuleNames,
     hideExcluded: true,
     aggregateFile: config.aggregateFile,

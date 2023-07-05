@@ -46,7 +46,7 @@ const macrofy = async (
         persistPermission,
         createModuleDirectories,
         copySchemasIntoModules,
-        extractSubSchemas = true,
+        extractSubSchemas,
         aggregateFile,
         operators,
         hidePrivate = true,
