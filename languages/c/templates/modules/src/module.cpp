@@ -18,10 +18,10 @@
 
 #include "FireboltSDK.h"
 /* ${IMPORTS} */
-#include "${info.title}.h"
+#include "${module.title}.h"
 
 namespace FireboltSDK {
-    namespace ${info.title} {
+    namespace ${info.Title} {
     // Types
        /* ${TYPES} */
     }

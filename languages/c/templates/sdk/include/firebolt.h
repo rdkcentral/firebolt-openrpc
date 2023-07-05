@@ -16,22 +16,50 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef _FIREBOLT_TYPES_H
-#define _FIREBOLT_TYPES_H
+#ifndef FIREBOLT_H
+#define FIREBOLT_H
 
-#include <stdint.h>
-#include <stdbool.h>
+#include "error.h"
+#include "types.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-typedef void* FireboltTypes_StringHandle;
-const char* FireboltTypes_String(FireboltTypes_StringHandle handle);
-void FireboltTypes_StringHandle_Release(FireboltTypes_StringHandle handle);
+/**
+ * @brief Intitialize the Firebolt SDK
+ *
+ * @param configLine JSON String with configuration options
+ *
+ * CONFIG Format:
+ *  {
+ *     "waitTime": 1000,
+ *     "logLevel": "Info",
+ *     "workerPool":{
+ *       "queueSize": 8,
+ *       "threadCount": 3
+ *      },
+ *     "wsUrl": "ws://127.0.0.1:9998"
+ *  }
+ *
+ *
+ * @return FireboltSDKErrorNone if success, appropriate error otherwise.
+ *
+ */
+uint32_t FireboltSDK_Initialize(char* configLine);
+
+
+/**
+ * @brief Deintitialize the Firebolt SDK
+ *
+ * @return FireboltSDKErrorNone if success, appropriate error otherwise.
+ *
+ */
+uint32_t FireboltSDK_Deinitialize(void);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif // _FIREBOLT_TYPES_H
+
+#endif // FIREBOLT_H
