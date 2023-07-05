@@ -2,6 +2,7 @@
     "name": "C",
     "langcode": "c",
     "createModuleDirectories": false,
+    "extractSubSchemas": true,
     "templatesPerModule": [
         "/include/Module.h",
         "/src/Module.cpp"
