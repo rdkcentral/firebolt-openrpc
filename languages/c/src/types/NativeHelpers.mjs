@@ -27,7 +27,7 @@ import deepmerge from 'deepmerge'
 
 const { isObject, isArray, propEq, pathSatisfies, hasProp, propSatisfies } = predicates
 
-const getModuleName = json => getPathOr(null, ['info', 'title'], json) || json.title || 'missing'
+const getModuleName = json => 'F' + getPathOr(null, ['info', 'title'], json) || json.title || 'missing'
 
 const getFireboltStringType = () => 'FireboltTypes_StringHandle'
 const getHeaderText = () => {

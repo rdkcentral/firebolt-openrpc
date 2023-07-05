@@ -277,7 +277,7 @@ const macrofy = async (
 
         await writeFiles(outputFiles)
         if (persistPermission) {
-            await writeFilesPermissions(templatesPermission)
+//            await writeFilesPermissions(templatesPermission)
         }
         logSuccess(`Wrote ${Object.keys(outputFiles).length} files.`)
 

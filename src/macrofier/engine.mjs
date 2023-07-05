@@ -31,7 +31,7 @@ const { isObject, isArray, propEq, pathSatisfies, propSatisfies } = predicates
 
 import { isRPCOnlyMethod, isProviderInterfaceMethod, getProviderInterface, getPayloadFromEvent, providerHasNoParameters, isTemporalSetMethod, hasMethodAttributes, getMethodAttributes, isEventMethodWithContext, getSemanticVersion, getSetterFor, getProvidedCapabilities, isPolymorphicPullMethod, hasPublicAPIs } from '../shared/modules.mjs'
 import isEmpty from 'crocks/core/isEmpty.js'
-import { getLinkedSchemaPaths, getSchemaConstraints, isSchema, localizeDependencies, isDefinitionReferencedBySchema } from '../shared/json-schema.mjs'
+import { getPath as getJsonPath, getLinkedSchemaPaths, getSchemaConstraints, isSchema, localizeDependencies, isDefinitionReferencedBySchema } from '../shared/json-schema.mjs'
 
 // util for visually debugging crocks ADTs
 const _inspector = obj => {
@@ -548,12 +548,12 @@ const getEnumProperties = schema => compose(
       let enm = v
       if (isEnumType(v) == true) {
         enm = Object.assign({}, v)
-        enm.title = k
+        enm.title = schema.title + k[0].toUpperCase() + k.substring(1)
       } else if (v.type === 'object') {
         enm = getEnumProperties(v)
       } else if (v.type === 'array') {
         enm = Object.assign({}, (v.items[0] ? v.items[0] : v.items))
-        enm.title = k
+        enm.title = schema.title + k[0].toUpperCase() + k.substring(1)
       }
       return enm
     })),
@@ -562,6 +562,7 @@ const getEnumProperties = schema => compose(
 )(schema)
 
 const convertEnumTemplate = (sch, templateName, templates) => {
+  console.log(sch.title)
   const template = getTemplate(templateName, templates).split('\n')
   let schema = isEnumType(sch) ? sch : getEnumProperties(sch)
   for (var i = 0; i < template.length; i++) {
@@ -1071,6 +1072,7 @@ function insertMethodMacros(template, methodObj, json, templates, examples={}) {
   const callbackResponseInst = event ? types.getSchemaInstantiation(event, json, event.name, {instantiationType: 'callback.response'}) : ''
   const resultType = result.schema ? types.getSchemaType(result.schema, json, { name: result.name }) : ''
   const resultJsonType = result.schema ? types.getJsonType(result.schema, json, { name: result.name }) : ''
+  const resultParams = generateResultParams(result.schema, json, templates, { name: result.name })
 
   let seeAlso = ''
   if (isPolymorphicPullMethod(methodObj) && pullsForType) {
@@ -1102,6 +1104,7 @@ function insertMethodMacros(template, methodObj, json, templates, examples={}) {
     .replace(/\$\{method\.params\.array\}/g, JSON.stringify(methodObj.params.map(p => p.name)))
     .replace(/\$\{method\.params\.count}/g, methodObj.params ? methodObj.params.length : 0)
     .replace(/\$\{if\.params\}(.*?)\$\{end\.if\.params\}/gms, method.params.length ? '$1' : '')
+    .replace(/\$\{if\.result\.params\}(.*?)\$\{end\.if\.result\.params\}/gms, resultParams ? '$1' : '')
     .replace(/\$\{if\.params.empty\}(.*?)\$\{end\.if\.params.empty\}/gms, method.params.length === 0 ? '$1' : '')
     .replace(/\$\{if\.context\}(.*?)\$\{end\.if\.context\}/gms, event && event.params.length ? '$1' : '')
     .replace(/\$\{method\.params\.serialization\}/g, serializedParams)
@@ -1143,6 +1146,7 @@ function insertMethodMacros(template, methodObj, json, templates, examples={}) {
     .replace(/\$\{event\.result\.json\.type\}/g, resultJsonType)
     .replace(/\$\{method\.result\}/g,  generateResult(result.schema, json, templates, { name : result.name }))
     .replace(/\$\{method\.result\.instantiation\}/g, resultInst)
+    .replace(/\$\{method\.result\.params\}/g, resultParams)
     .replace(/\$\{method\.example\.value\}/g,  JSON.stringify(methodObj.examples[0].result.value))
     .replace(/\$\{method\.alternative\}/g, method.alternative)
     .replace(/\$\{method\.alternative.link\}/g, '#'+(method.alternative || "").toLowerCase())
@@ -1305,6 +1309,23 @@ function generateResult(result, json, templates, { name = '' } = {}) {
   }
   else {
     return insertSchemaMacros(getTemplate('/types/default', templates), name, result, json)
+  }
+}
+
+// TODO: this is hard coded to C
+function generateResultParams(result, json, templates, {name = ''}={}) {
+  while (result.$ref) {
+    result = getJsonPath(result.$ref, json)
+  }
+
+  if (result.hasOwnProperty('const')) {
+    return ''
+  }
+  else if (result.type && result.type === 'object' && result.properties) {
+    return Object.entries(result.properties).map( ([name, type]) => `${types.getSchemaType(type, json, {name: name})} ${name}`).join(', ')
+  }
+  else {
+    return `${types.getSchemaType(result, json, { name: name})} *${name}`
   }
 }
 

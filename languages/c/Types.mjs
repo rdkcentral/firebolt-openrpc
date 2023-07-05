@@ -21,6 +21,7 @@ import { getPath } from '../../src/shared/json-schema.mjs'
 import { getTypeName, getModuleName, description, getObjectHandleManagement, getNativeType, getPropertyAccessors, capitalize, isOptional, generateEnum, getMapAccessors, getArrayAccessors, getArrayElementSchema, getPropertyGetterSignature, getPropertyEventCallbackSignature, getPropertyEventRegisterSignature, getPropertyEventUnregisterSignature, getPropertySetterSignature, getFireboltStringType } from './src/types/NativeHelpers.mjs'
 import { getArrayAccessorsImpl, getMapAccessorsImpl, getObjectHandleManagementImpl, getParameterInstantiation, getPropertyAccessorsImpl, getResultInstantiation, getCallbackParametersInstantiation, getCallbackResultInstantiation, getCallbackResponseInstantiation } from './src/types/ImplHelpers.mjs'
 import { getJsonContainerDefinition, getJsonDataStructName } from './src/types/JSONHelpers.mjs'
+import { localizeDependencies } from '../../src/shared/json-schema.mjs'
 
 const getSdkNameSpace = () => 'FireboltSDK'
 const getJsonNativeTypeForOpaqueString = () => getSdkNameSpace() + '::JSON::String'
@@ -270,7 +271,7 @@ function getSchemaTypeInfo(module = {}, json = {}, name = '', schemas = {}, pref
     //Enum
     structure.name = name || json.title
     let typeName = getTypeName(getModuleName(module), name || json.title, prefix, false, false)
-    let res = description(capitalize(name || json.title), json.description) + '\n' + generateEnum(json, typeName)
+//    let res = description(capitalize(name || json.title), json.description) + '\n' + generateEnum(json, typeName)
     structure.json = json
     structure.type = typeName
     structure.namespace = getModuleName(module)
@@ -297,10 +298,10 @@ function getSchemaTypeInfo(module = {}, json = {}, name = '', schemas = {}, pref
       res = getSchemaTypeInfo(module, json.items, json.items.name || name, schemas, prefix)
     }
 
-    let arrayName = capitalize(res.name) + capitalize(res.json.type)
+    let arrayName = capitalize(res.name)// + capitalize(res.json.type)
     let n = getTypeName(getModuleName(module), arrayName, prefix)
     structure.name = res.name || name && (capitalize(name))
-    structure.type = n + 'ArrayHandle'
+    structure.type = n
     structure.json = json
     structure.namespace = getModuleName(module)
     return structure
@@ -326,7 +327,7 @@ function getSchemaTypeInfo(module = {}, json = {}, name = '', schemas = {}, pref
   else if (json.type === 'object') {
     structure.json = json
     if (hasProperties(json)) {
-      structure.type = getTypeName(getModuleName(module), json.title || name, prefix) + 'Handle'
+      structure.type = getTypeName(getModuleName(module), json.title || name, prefix)
       structure.name = (json.name ? json.name : (json.title ? json.title : name))
       structure.namespace = (json.namespace ? json.namespace : getModuleName(module))
     }
@@ -352,11 +353,178 @@ function getSchemaTypeInfo(module = {}, json = {}, name = '', schemas = {}, pref
   return structure
 }
 
-function getSchemaShape(json, module, { name = '', prefix = '', level = 0, title, summary, descriptions = true, destination = '', section = '', enums = true } = {}) {
+// function getSchemaShape(json, module, { name = '', prefix = '', level = 0, title, summary, descriptions = true, destination = '', section = '', enums = true } = {}) {
+//   let shape = getSchemaShapeInfo(json, module, module['x-schemas'], { name, prefix, merged: false, level, title, summary, descriptions, destination, section, enums })
+//     return shape
+// }
 
-  let shape = getSchemaShapeInfo(json, module, module['x-schemas'], { name, prefix, merged: false, level, title, summary, descriptions, destination, section, enums })
-    return shape
+function getSchemaShape(schema = {}, module = {}, { name = '', level = 0, title, summary, descriptions = true, destination, enums = true } = {}) {
+  schema = JSON.parse(JSON.stringify(schema))
+  let structure = []
+
+  let prefix = (level === 0 ? 'typedef ' : '')
+  let operator = ''
+  let theTitle = schema.title || name
+
+  theTitle = `F${module.info.title}_${theTitle}`
+
+  if (enums && level === 0 && schema.type === "string" && Array.isArray(schema.enum)) {
+    return `typedef enum {\n\t` + schema.enum.map(value => value.split(':').pop().replace(/[\.\-]/g, '_').replace(/\+/g, '_plus').replace(/([a-z])([A-Z0-9])/g, '$1_$2').toUpperCase()).join(',\n\t') + `\n} ${schema.title || name};\n`
+  }
+
+  if (!theTitle) {
+    prefix = operator = theTitle = ''
+  }
+
+  if (schema['$ref']) {
+    if (level === 0) {
+      return `${prefix}${theTitle};`
+    }
+    else {
+      const someJson = getPath(schema['$ref'], module)
+      if (someJson) {
+        return getSchemaShape(someJson, module, { name, level, title, summary, descriptions, destination, enums: false })
+      }
+      else {
+        '  '.repeat(level) + `${prefix}${theTitle}${operator}`
+      }
+    }
+  }
+  else if (schema.hasOwnProperty('const')) {
+    // TODO...
+    return '  '.repeat(level) + `${prefix}${theTitle}${operator} ` + JSON.stringify(schema.const)
+  }
+  else if (title && schema.title) {
+    let summary = ''
+    if (level > 0 && (summary || schema.description)) {
+      summary = `\t// ${(summary || schema.description).split('\n')[0]}`
+    }
+    return '  '.repeat(level) + `${prefix}${theTitle}${operator} ${name}; ` + summary
+  }
+  else if (schema.type === 'object') {
+    let suffix = '{'
+
+    structure.push('  '.repeat(level) + `${prefix}struct${operator} ${suffix}`)
+
+    if (schema.properties) {
+      Object.entries(schema.properties).forEach(([name, prop]) => {
+        if (!schema.required || !schema.required.includes(name)) {
+//          name = name + '?'
+        }
+        const schemaShape = getSchemaShape(prop, module, {name: name, summary: prop.description, descriptions: descriptions, level: level+1, title: true})
+        structure.push(schemaShape)
+      })
+    }
+    else if (schema.propertyNames) {
+      const { propertyNames } = localizeDependencies(schema, module)
+      if (propertyNames.enum) {
+        propertyNames.enum.forEach(prop => {
+          let type = 'any'
+
+          if (schema.additionalProperties && (typeof schema.additionalProperties === 'object')) {
+            type = getSchemaType(schema.additionalProperties, module)
+          }          
+
+          if (schema.patternProperties) {
+            Object.entries(schema.patternProperties).forEach(([pattern, schema]) => {
+              let regex = new RegExp(pattern)
+              if (prop.match(regex)) {
+                type = getSchemaType(schema, module)
+              }
+            })
+          }
+
+          return getSchemaShape(schema.propertyNames, module, { name: schema.title })
+  
+//          structure.push(getSchemaShape({type: type}, module, {name: safeName(prop), descriptions: descriptions, level: level+1}))
+        })
+      }
+    }
+    else if (schema.additionalProperties && (typeof schema.additionalProperties === 'object')) {
+      let type = getSchemaType(schema.additionalProperties, module, { destination })
+      structure.push(getSchemaShape({type: type}, module, {name: '[property: string]', descriptions: descriptions, level: level+1}))
+    }
+
+    structure.push('  '.repeat(level) + `} ${theTitle};`)
+  }
+  else if (schema.anyOf) {
+    return '  '.repeat(level) + `${prefix}${theTitle}${operator} ` + schema.anyOf.map(s => getSchemaType(s, module, { name, level, title, summary, descriptions, destination })).join(' | ')
+  }
+  else if (schema.oneOf) {
+    return '  '.repeat(level) + `${prefix}${theTitle}${operator} ` + schema.oneOf.map(s => getSchemaType(s, module, { name, level, title, summary, descriptions, destination })).join(' | ')
+  }
+  else if (schema.allOf) {
+    const merger = (key) => function(a, b) {
+      if (a.const) {
+        return JSON.parse(JSON.stringify(a))
+      }
+      else if (b.const) {
+        return JSON.parse(JSON.stringify(b))
+      }
+      else {
+        return deepmerge(a, b, {customMerge: merger})
+      }
+    }
+
+    let union = deepmerge.all([...schema.allOf.map(x => x['$ref'] ? getPath(x['$ref'], module) || x : x).reverse()], {
+      customMerge: merger
+    })
+
+    if (schema.title) {
+      union.title = schema.title
+    }
+    delete union['$ref']
+
+    return getSchemaShape(union, module, { name, level, title, summary, descriptions, destination })
+  }
+  else if (schema.type || schema.const) {
+    const isArrayWithSchemaForItems = schema.type === 'array' && schema.items && !Array.isArray(schema.items)
+    const isArrayWithSpecificItems = schema.type === 'array' && schema.items && Array.isArray(schema.items)
+    
+    // TODO: deal with fixed sized arrays vs arbitrary arrays
+    let suffix
+    let summary = ''
+
+    if (schema.const) {
+      suffix = JSON.stringify(schema.const)
+    }
+    else if (isArrayWithSchemaForItems) {
+      suffix = getSchemaType(schema.items, module, { title: level ? true : false }) + '[]' // prefer schema title over robust descriptor
+    }
+    else if (isArrayWithSpecificItems) {
+      suffix = '[' + schema.items.map(i => getSchemaType(i, module, {title: level ? true : false })).join(', ') + ']'
+    }
+    else {
+      suffix = getSchemaType(schema, module, { title: level ? true : false }) // prefer schema title over robust descriptor
+    }
+    
+    // if there's a summary or description, append it as a comment (description only gets first line)
+    if (level > 0 && (summary || schema.description)) {
+      summary = `\t// ${summary || schema.description.split('\n')[0]}`
+    }
+
+    if (suffix === 'array') {
+      suffix = '[]'
+    }
+
+    if (theTitle === suffix) {
+      return '  '.repeat(level) + `${prefix}${name}`
+    }
+    else {
+      return '  '.repeat(level) + `${prefix}${suffix} ${name}${operator}; ${summary}`
+    }
+  }
+
+  structure = structure.join('\n').split('\n')
+
+  if (level === 0) {
+    const length = str => str.length
+    let max = Math.max(...structure.map(l => l.split('\t//')[0]).map(length)) + 2
+    structure = structure.map( l => l.split('\t//').join(' '.repeat(max - l.split('\t//')[0].length) + '//'))
+  }
+  return structure.join('\n')
 }
+
 function getSchemaShapeInfo(json, module, schemas = {}, { name = '', prefix = '', merged = false, level = 0, title, summary, descriptions = true, destination = '', section = '', enums = true } = {}) {
   let shape = ''
 
@@ -430,7 +598,7 @@ function getSchemaShapeInfo(json, module, schemas = {}, { name = '', prefix = ''
               let subModuleProperty = getJsonTypeInfo(module, info.json, info.name, schemas, prefix)
 
               let t = description(capitalize(info.name), json.description) + '\n'
-              t += '\n' + (isHeader ? getArrayAccessors(objName, tName, info.type) : getArrayAccessorsImpl(tName, moduleProperty.type, (tName + 'Handle'), subModuleProperty.type, capitalize(pname || prop.title), info.type, info.json))
+              t += '\n' + (isHeader ? getArrayAccessors(objName, tName, info.type) : getArrayAccessorsImpl(tName, moduleProperty.type, (tName), subModuleProperty.type, capitalize(pname || prop.title), info.type, info.json))
               c_shape += '\n' + t
               props.push({name: `${pname}`, type: `WPEFramework::Core::JSON::ArrayType<${subModuleProperty.type}>`})
             }
@@ -545,7 +713,7 @@ function getSchemaShapeInfo(json, module, schemas = {}, { name = '', prefix = ''
             t += description(capitalize(info.name), json.description) + '\n'
             t += '\n' + (isHeader ? getObjectHandleManagement(tName) : getObjectHandleManagementImpl(tName, moduleProperty.type))
           }
-          t += '\n' + (isHeader ? getArrayAccessors(objName, tName, info.type) : getArrayAccessorsImpl(objName, moduleProperty.type, (tName + 'Handle'), subModuleProperty.type, '', info.type, info.json))
+          t += '\n' + (isHeader ? getArrayAccessors(objName, tName, info.type) : getArrayAccessorsImpl(objName, moduleProperty.type, (tName), subModuleProperty.type, '', info.type, info.json))
           shape += '\n' + t
         }
       }
