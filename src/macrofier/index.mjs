@@ -46,6 +46,7 @@ const macrofy = async (
         persistPermission,
         createModuleDirectories,
         copySchemasIntoModules,
+        extractSubSchemas,
         aggregateFile,
         operators,
         hidePrivate = true,
@@ -63,8 +64,6 @@ const macrofy = async (
     return new Promise( async (resolve, reject) => {
         const openrpc = await readJson(input)
 
-
-
         logHeader(`Generating ${headline} for version ${openrpc.info.title} ${openrpc.info.version}`)
 
         let typer
@@ -81,6 +80,7 @@ const macrofy = async (
         engine.setConfig({
             copySchemasIntoModules,
             createModuleDirectories,
+            extractSubSchemas,
             operators
         })
 
