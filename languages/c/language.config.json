@@ -2,16 +2,16 @@
     "name": "C",
     "langcode": "c",
     "createModuleDirectories": false,
+    "extractSubSchemas": true,
     "templatesPerModule": [
-        "/include/Module.h",
-        "/src/Module.cpp"
+        "/include/module.h",
+        "/src/module.cpp"
     ],
     "templatesPerSchema": [
-        "/include/Common/Module.h",
-        "/src/Module_Common.cpp",
-        "/src/JsonData_Module.h"
+        "/include/common/module.h",
+        "/src/module_common.cpp",
+        "/src/jsondata_module.h"
     ],
     "persistPermission": true,
-    "includeAnonymousSchema": true,
-    "createPolymophicMethods": true
+    "createPolymorphicMethods": true
 }

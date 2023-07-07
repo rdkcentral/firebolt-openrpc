@@ -854,58 +854,136 @@ const generateEventListenResponse = json => {
     return json
 }
 
-const getRefPath = (uri = '', moduleJson = {}) => {
-  const [mainPath, subPath] = (uri || '').split('#')
-  let result
-
+const getRefDefinition = (uri = '', moduleJson = {}) => {
   if (!uri) {
     throw "getPath requires a non-null uri parameter"
   }
-
+  const [mainPath, subPath] = (uri || '').split('#')
   if (mainPath) {
     throw `Cannot call getPath with a fully qualified URI: ${uri}`
   }
 
+  let definition
   if (subPath) {
-    result = getPathOr(null, subPath.slice(1).split('/'), moduleJson)
+     definition= getPathOr(null, subPath.slice(1).split('/'), moduleJson)
   }
-  if (!result) {
+  if (!definition) {
     //throw `getPath: Path '${uri}' not found in ${moduleJson ? (moduleJson.title || moduleJson.info.title) : moduleJson}.`
     return null
   }
   else {
-    return result
+    return definition
   }
 }
 
-const createPolymorphicMethods = (method, json) => {
-    let anyOfParams = []
-    let methodParams = []
-    method.params.forEach(p => {
-        if (p.schema) {
-            if (p.schema['$ref'] && (p.schema['$ref'][0] === '#')) {
-            let definition = getRefPath(p.schema['$ref'], json, json['x-schemas'])
-//            let tName = definition.title || p.schema['$ref'].split('/').pop()
-            console.log("definition = ", definition)
-	    }
-            let param = localizeDependencies(p, json)
-            if (param.schema.anyOf) {
-                if (anyOfParams.length > 0) {
-                }
-                else {
-                    param.schema.anyOf.forEach(anyOf => {
-                        anyOfParams.push(anyOf)
-                    })
-                    methodParams.push(anyOfParams)
-                }
+const getAnyOfSchema = (inType, json, anyOfTypes) => {
+    let outType = localizeDependencies(inType, json)
+    if (outType.schema.anyOf) {
+        if (anyOfTypes.length > 0) {
+        }
+        else {
+            let definition = ''
+            if (inType.schema['$ref'] && (inType.schema['$ref'][0] === '#')) {
+                definition = getRefDefinition(inType.schema['$ref'], json, json['x-schemas'])
             }
             else {
-                methodParams.push(param)
+                definition = outType.schema
+            }
+            definition.anyOf.forEach(anyOf => {
+                anyOfTypes.push(anyOf)
+            })
+            outType.schema = anyOfTypes
+        }
+    }
+    return outType
+}
+
+const generateAnyOfSchema = (anyOf, name, summary) => {
+    let anyOfType = []
+    if (!anyOf['$ref']) {
+        anyOf.name = anyOf.title || anyOf.name || ''
+        delete anyOf.title
+        if (anyOf.schema === undefined) {
+            anyOf.schema = {}
+            if (anyOf.oneOf) {
+                anyOf.schema.oneOf = anyOf.oneOf
+                delete anyOf.oneOf
+            }
+            else if (anyOf.anyOf) {
+                anyOf.schema.anyOf = anyOf.anyOf
+                delete anyOf.anyOf
+            }
+            else if (anyOf.allOf) {
+                anyOf.schema.allOf = anyOf.allOf
+                delete anyOf.allOf
             }
         }
+    }
+    anyOfType.name = name[0].toLowerCase() + name.substr(1) 
+    anyOfType.summary = summary
+    anyOfType.schema = anyOf
+    return anyOfType
+}
+
+const generateParamsAnyOfSchema = (methodParams, anyOf, anyOfTypes, title, summary) => {
+    let params = []
+    methodParams.forEach(p => {
+        if (p.schema === anyOfTypes) {
+            let anyOfType = generateAnyOfSchema(anyOf, title, summary)
+            anyOfType.required = true
+            params.push(anyOfType)
+        }
+        else {
+            params.push(p)
+        }
     })
+    return params
+}
+
+const generateResultAnyOfSchema = (method, methodResult, anyOf, anyOfTypes, title, summary) => {
+    let methodResultSchema = Object.assign({}, method.result.schema)
+   
+    if (methodResult.schema === anyOfTypes) {
+        let anyOfType = generateAnyOfSchema(anyOf, title, summary)
+        let index = 0
+        if (isEventMethod(method)) {
+            index = (method.result.schema.anyOf || method.result.schema.oneOf).indexOf(getPayloadFromEvent(method))
+        }
+        else {
+            index = (method.result.schema.anyOf || method.result.schema.oneOf).indexOf(anyOfType)
+        }
+        if (method.result.schema.anyOf) {
+            methodResultSchema.anyOf = Object.assign([], method.result.schema.anyOf)
+            methodResultSchema.anyOf[index] = anyOfType.schema
+        }
+        else if (method.result.schema.oneOf) {
+            methodResultSchema.oneyOf = Object.assign([], method.result.schema.oneOf)
+            methodResultSchema.oneOf[index] = anyOfType.schema
+        }
+        else {
+            methodResultSchema = anyOfType.schema
+        }
+    }
+    return methodResultSchema
+}
+
+const createPolymorphicMethods = (method, json) => {
+    let anyOfTypes = []
+    let methodParams = []
+    let methodResult = Object.assign({}, method.result)
+
+    method.params.forEach(p => {
+        if (p.schema) {
+            methodParams.push(getAnyOfSchema(p, json, anyOfTypes))
+        }
+    })
+    if (isEventMethod(method)) {
+        methodResult.schema = getPayloadFromEvent(method)
+    }
+    methodResult = getAnyOfSchema(methodResult, json, anyOfTypes)
+
     let polymorphicMethodSchemas = []
-    if (anyOfParams.length > 0) {
+    if (anyOfTypes.length > 0) {
         let polymorphicMethodSchema = {
             name: {},
             tags: {},
@@ -914,38 +992,15 @@ const createPolymorphicMethods = (method, json) => {
             result: {},
             examples: {}
         }
-        anyOfParams.forEach(anyOf => {
-            polymorphicMethodSchema.name = `${method.name}With${anyOf.title}`
-            let params = []
-            methodParams.forEach(param => {
-                if (param === anyOfParams) {
-                    anyOf.name = anyOf.title
-                    delete anyOf.title
-                    if (anyOf.schema === undefined) {
-                        anyOf.schema = {}
-                        if (anyOf.oneOf) {
-                          anyOf.schema.oneOf = anyOf.oneOf
-                          delete anyOf.oneOf
-			}
-                        else if (anyOf.anyOf) {
-                          anyOf.schema.anyOf = anyOf.anyOf
-                          delete anyOf.anyOf
-			}
-                        else if (anyOf.allOf) {
-                          anyOf.schema.allOf = anyOf.allOf
-                          delete anyOf.allOf
-			}
-		    }
-
-                    params.push(anyOf)
-                }
-                else {
-                    params.push(param)
-                }
-            })
-            polymorphicMethodSchema.params = params
+        anyOfTypes.forEach(anyOf => {
+            let localized = localizeDependencies(anyOf, json)
+            let title = localized.title || localized.name || ''
+            let summary = localized.summary || localized.description || ''
+            polymorphicMethodSchema.name = `${method.name}With${title}`
             polymorphicMethodSchema.tags = method.tags
-            polymorphicMethodSchema.result = method.result
+            polymorphicMethodSchema.params = generateParamsAnyOfSchema(methodParams, anyOf, anyOfTypes, title, summary)
+            polymorphicMethodSchema.result = Object.assign({}, method.result)
+            polymorphicMethodSchema.result.schema = generateResultAnyOfSchema(method, methodResult, anyOf, anyOfTypes, title, summary)
             polymorphicMethodSchema.examples = method.examples
             polymorphicMethodSchemas.push(Object.assign({}, polymorphicMethodSchema))
         })
@@ -953,6 +1008,7 @@ const createPolymorphicMethods = (method, json) => {
     else {
       polymorphicMethodSchemas = method
     }
+
     return polymorphicMethodSchemas
 }
 

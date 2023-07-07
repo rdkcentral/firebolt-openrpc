@@ -16,20 +16,26 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include "FireboltSDK.h"
-/* ${IMPORTS} */
-#include "JsonData_${info.title}.h"
+#ifndef ${info.TITLE}_H
+#define ${info.TITLE}_H
 
-/* ${ENUMS} */
+#include <firebolt.h>
+/* ${IMPORTS} */
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-    /* ${ACCESSORS} */
-    /* ${METHODS} */
-    /* ${EVENTS} */
+// Enums
+
+/* ${ENUMS} */
+
+/* ${ACCESSORS} */
+
+/* ${DECLARATIONS} */
 
 #ifdef __cplusplus
 }
 #endif
+
+#endif // Header Include Guard

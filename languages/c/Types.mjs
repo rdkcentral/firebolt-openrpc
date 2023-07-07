@@ -20,7 +20,7 @@ import deepmerge from 'deepmerge'
 import { getPath } from '../../src/shared/json-schema.mjs'
 import { getTypeName, getModuleName, description, getObjectHandleManagement, getNativeType, getPropertyAccessors, capitalize, isOptional, generateEnum, getMapAccessors, getArrayAccessors, getArrayElementSchema, getPropertyGetterSignature, getPropertyEventCallbackSignature, getPropertyEventRegisterSignature, getPropertyEventUnregisterSignature, getPropertySetterSignature, getFireboltStringType } from './src/types/NativeHelpers.mjs'
 import { getArrayAccessorsImpl, getMapAccessorsImpl, getObjectHandleManagementImpl, getParameterInstantiation, getPropertyAccessorsImpl, getResultInstantiation, getCallbackParametersInstantiation, getCallbackResultInstantiation, getCallbackResponseInstantiation } from './src/types/ImplHelpers.mjs'
-import { getJsonContainerDefinition, getJsonDataStructName } from './src/types/JSONHelpers.mjs'
+import { getJsonContainerDefinition, getJsonDataStructName, getJsonDataPrefix } from './src/types/JSONHelpers.mjs'
 
 const getSdkNameSpace = () => 'FireboltSDK'
 const getJsonNativeTypeForOpaqueString = () => getSdkNameSpace() + '::JSON::String'
@@ -170,6 +170,8 @@ const hasTag = (method, tag) => {
   return method.tags && method.tags.filter(t => t.name === tag).length > 0
 }
 
+const IsResultBooleanSuccess = (schema, name) => (name === 'success' && (schema.type === 'boolean' || schema.const))
+
 function getParamList(schema, module) {
   let paramList = []
   if (schema.params.length > 0) {
@@ -217,7 +219,8 @@ function getMethodSignatureParams(method, module, { destination, callback = fals
     if ((callback === true) && (type === 'char*')) {
       type = getFireboltStringType()
     }
-    signatureParams += type + (!param.required ? '* ' : ' ') + param.name
+
+    signatureParams += type + ((!param.required && !type.includes('_t') && (type !== 'char*')) ? '* ' : ' ') + param.name
   })
   return signatureParams
 }
@@ -235,7 +238,7 @@ function getSchemaTypeInfo(module = {}, json = {}, name = '', schemas = {}, pref
     json = json.schema
   }
 
-  let stringAsHandle = options.resultSchema || options.event
+  let fireboltString = options.resultSchema || options.event
 
   let structure = {}
   structure["type"] = ''
@@ -259,17 +262,14 @@ function getSchemaTypeInfo(module = {}, json = {}, name = '', schemas = {}, pref
       structure.json = res.json
       structure.name = res.name
       structure.namespace = res.namespace
-      return structure
     }
   }
   else if (json.const) {
-    structure.type = getNativeType(json, stringAsHandle)
+    structure.type = getNativeType(json, fireboltString)
     structure.json = json
-    return structure
   }
   else if (json['x-method']) {
     console.log(`WARNING UNHANDLED: x-method in ${name}`)
-    return structure
     //throw "x-methods not supported yet"
   }
   else if (json.type === 'string' && json.enum) {
@@ -280,13 +280,12 @@ function getSchemaTypeInfo(module = {}, json = {}, name = '', schemas = {}, pref
     structure.json = json
     structure.type = typeName
     structure.namespace = getModuleName(module)
-    return structure
   }
   else if (Array.isArray(json.type)) {
     let type = json.type.find(t => t !== 'null')
     let sch = JSON.parse(JSON.stringify(json))
     sch.type = type
-    return getSchemaTypeInfo(module, sch, name, schemas, prefix, options)
+    structure = getSchemaTypeInfo(module, sch, name, schemas, prefix, options)
   }
   else if (json.type === 'array' && json.items && (validJsonObjectProperties(json) === true)) {
     let res = ''
@@ -303,59 +302,56 @@ function getSchemaTypeInfo(module = {}, json = {}, name = '', schemas = {}, pref
       res = getSchemaTypeInfo(module, json.items, json.items.name || name, schemas, prefix)
     }
 
-    let arrayName = capitalize(res.name) + capitalize(res.json.type)
-    let n = getTypeName(getModuleName(module), arrayName, prefix)
-    structure.name = res.name || name && (capitalize(name))
-    structure.type = n + 'ArrayHandle'
+
+    prefix = prefix ? prefix + name : name
+    let n = getTypeName(getModuleName(module), capitalize(res.name), prefix)
+    structure.name = name ? name + capitalize(res.name) : res.name
+    structure.type = n + 'Array_t'
     structure.json = json
     structure.namespace = getModuleName(module)
-    return structure
   }
   else if (json.allOf) {
-//    console.log("name = ", name, " json = ", json) 
     let title = json.title ? json.title : name
     let union = deepMergeAll(module, title, json, schemas, options)
     union['title'] = title
 
     delete union['$ref']
-    return getSchemaTypeInfo(module, union, '', schemas, '', options)
+    structure = getSchemaTypeInfo(module, union, '', schemas, '', options)
   }
   else if (json.oneOf) {
-    structure.type = stringAsHandle ? getFireboltStringType() : 'char*'
+    structure.type = fireboltString ? getFireboltStringType() : 'char*'
     structure.json.type = 'string'
-    return structure
   }
   else if (json.anyOf) {
     let mergedSchema = getMergedSchema(module, json, name, schemas)
     let prefixName = ((prefix.length > 0) && (!name.startsWith(prefix))) ? prefix : capitalize(name)
-    return getSchemaTypeInfo(module, mergedSchema, '', schemas, prefixName, options)
+    structure = getSchemaTypeInfo(module, mergedSchema, '', schemas, prefixName, options)
   }
   else if (json.type === 'object') {
     structure.json = json
     if (hasProperties(json)) {
-      structure.type = getTypeName(getModuleName(module), json.title || name, prefix) + 'Handle'
+      structure.type = getTypeName(getModuleName(module), json.title || name, prefix) + '_t'
       structure.name = (json.name ? json.name : (json.title ? json.title : name))
       structure.namespace = (json.namespace ? json.namespace : getModuleName(module))
     }
     else {
-      structure.type = stringAsHandle ? getFireboltStringType() : 'char*'
+      structure.type = fireboltString ? getFireboltStringType() : 'char*'
     }
     if (name) {
       structure.name = capitalize(name)
     }
-
-    return structure
   }
   else if (json.type) {
-    structure.type = getNativeType(json, stringAsHandle)
-    structure.json = json
-    if (name || json.title) {
-      structure.name = capitalize(name || json.title)
+    if (!IsResultBooleanSuccess(json, name)) { 
+      structure.type = getNativeType(json, fireboltString)
+      structure.json = json
+      if (name || json.title) {
+        structure.name = capitalize(name || json.title)
+      }
+      structure.namespace = getModuleName(module)
     }
-    structure.namespace = getModuleName(module)
-
-    return structure
   }
+
   return structure
 }
 
@@ -368,8 +364,9 @@ function getSchemaShapeInfo(json, module, schemas = {}, { name = '', prefix = ''
   let shape = ''
 
   if (destination && section) {
-    const isHeader = (destination.includes("JsonData_") !== true) && destination.endsWith(".h")
-    const isCPP = ((destination.endsWith(".cpp") || destination.includes("JsonData_")) && (section.includes('accessors') !== true))
+    const isHeader = (destination.includes(getJsonDataPrefix().toLowerCase()) !== true) && destination.endsWith(".h")
+    const isCPP = ((destination.endsWith(".cpp") || destination.includes(getJsonDataPrefix().toLowerCase())) && (section.includes('accessors') !== true))
+
     json = JSON.parse(JSON.stringify(json))
 
     name = json.title || name
@@ -435,7 +432,7 @@ function getSchemaShapeInfo(json, module, schemas = {}, { name = '', prefix = ''
               let subModuleProperty = getJsonTypeInfo(module, info.json, info.name, schemas, prefix)
 
               let t = description(capitalize(info.name), json.description) + '\n'
-              t += '\n' + (isHeader ? getArrayAccessors(objName, tName, info.type) : getArrayAccessorsImpl(tName, moduleProperty.type, (tName + 'Handle'), subModuleProperty.type, capitalize(pname || prop.title), info.type, info.json))
+              t += '\n' + (isHeader ? getArrayAccessors(objName, tName, info.type) : getArrayAccessorsImpl(tName, moduleProperty.type, (tName + '_t'), subModuleProperty.type, capitalize(pname || prop.title), info.type, info.json))
               c_shape += '\n' + t
               props.push({name: `${pname}`, type: `WPEFramework::Core::JSON::ArrayType<${subModuleProperty.type}>`})
             }
@@ -531,30 +528,29 @@ function getSchemaShapeInfo(json, module, schemas = {}, { name = '', prefix = ''
       else {
         j = json.items
       }
-      shape += getSchemaShapeInfo(j, module, schemas, { name: j.title || name, prefix, merged, level, title, summary, descriptions, destination, section, enums })
+      
+      //shape += getSchemaShapeInfo(j, module, schemas, { name: j.title || name, prefix, merged, level, title, summary, descriptions, destination, section, enums })
 
       if (!isCPP) {
-        let info = getSchemaTypeInfo(module, j, j.title || name, schemas, prefix, {level : level, descriptions: descriptions, title: true})
+        let subPrefix = prefix ? prefix + name : name
+        let info = getSchemaTypeInfo(module, j, j.title || name, schemas, subPrefix, {level : level, descriptions: descriptions, title: true})
 
         if (info.type && info.type.length > 0) {
           let type = getArrayElementSchema(json, module, schemas, info.name)
-          let arrayName = capitalize(info.name) + capitalize(type.type)
-          let namespace = info.namespace
-          if (type && type.type === 'object') {
-            namespace = getModuleName(module)
-	  }
-          let objName = getTypeName(namespace, arrayName, prefix)
+          let arrayName = capitalize(info.name);
+          let namespace = namespace = getModuleName(module)
+          let objName = getTypeName(namespace, arrayName, subPrefix)
           let tName = objName + 'Array'
 
           info.json.namespace = info.namespace
           let moduleProperty = getJsonTypeInfo(module, json, json.title || name, schemas, prefix)
-          let subModuleProperty = getJsonTypeInfo(module, j, j.title, schemas, prefix)
+          let subModuleProperty = getJsonTypeInfo(module, j, j.title || name, schemas, prefix)
           let t = ''
           if (level === 0) {
             t += description(capitalize(info.name), json.description) + '\n'
             t += '\n' + (isHeader ? getObjectHandleManagement(tName) : getObjectHandleManagementImpl(tName, moduleProperty.type))
           }
-          t += '\n' + (isHeader ? getArrayAccessors(objName, tName, info.type) : getArrayAccessorsImpl(objName, moduleProperty.type, (tName + 'Handle'), subModuleProperty.type, '', info.type, info.json))
+          t += '\n' + (isHeader ? getArrayAccessors(objName, tName, info.type) : getArrayAccessorsImpl(objName, moduleProperty.type, (tName + '_t'), subModuleProperty.type, '', info.type, info.json))
           shape += '\n' + t
         }
       }
@@ -672,6 +668,7 @@ function getJsonTypeInfo(module = {}, json = {}, name = '', schemas, prefix = ''
       items = json.items
       // grab the type for the non-array schema
     }
+
     res = getJsonTypeInfo(module, items, items.name || name, schemas, prefix)
     structure.deps = res.deps
     structure.type.push(`WPEFramework::Core::JSON::ArrayType<${res.type}>`)
@@ -739,28 +736,32 @@ const enumReducer = (acc, val, i, arr) => {
   return acc
 }
 
-function getSchemaInstantiation(schema, module, name, { instantiationType = '' } = {}) {
+function getSchemaInstantiation(schema, module, name, { instantiationType = '', prefix = '' } = {}) {
 
   if (instantiationType === 'params') {
     return getParameterInstantiation(getParamList(schema, module))
   }
   else if (instantiationType === 'result') {
-    let resultType = getSchemaType(schema, module, { title: true, name: name, resultSchema: true}) || ''
-    let resultJsonType = getJsonType(schema, module, {name: name}) || ''
-    return getResultInstantiation(name, resultType, resultJsonType)
+    let result = ''	  
+    if (IsResultBooleanSuccess(schema, name) !== true) {
+      let resultType = getSchemaType(schema, module, { title: true, name: name, resultSchema: true}) || ''
+      let resultJsonType = getJsonType(schema, module, {name: name}) || ''
+      result = getResultInstantiation(name, resultType, resultJsonType)
+    }
+    return result
   }
   else if (instantiationType === 'callback.params') {
-    let resultJsonType = getJsonType(schema.result.schema, module, { name: schema.result.name }) || ''
+    let resultJsonType = getJsonType(schema.result.schema, module, { name: schema.result.name, prefix }) || ''
     return getCallbackParametersInstantiation(getParamList(schema, module), resultJsonType)
   }
   else if (instantiationType === 'callback.result') {
-    let resultType = getSchemaType(schema.result.schema, module, { title: true, name: schema.result.name, resultSchema: true}) || ''
+    let resultType = getSchemaType(schema.result.schema, module, { title: true, name: schema.result.name, prefix, resultSchema: true}) || ''
     let resultJsonType = getJsonType(schema.result.schema, module, { name: schema.result.name }) || ''
     return getCallbackResultInstantiation(resultType, resultJsonType)
   }
   else if (instantiationType === 'callback.response') {
-    let resultType = getSchemaType(schema.result.schema, module, { title: true, name: schema.result.name, resultSchema: true}) || ''
-    let resultJsonType = getJsonType(schema.result.schema, module, { name: schema.result.name }) || ''
+    let resultType = getSchemaType(schema.result.schema, module, { title: true, name: schema.result.name, prefix, resultSchema: true}) || ''
+    let resultJsonType = getJsonType(schema.result.schema, module, { name: schema.result.name, prefix }) || ''
     return getCallbackResponseInstantiation(getParamList(schema, module), resultType, resultJsonType)
   }
   else if (instantiationType === 'pull.param.name') {

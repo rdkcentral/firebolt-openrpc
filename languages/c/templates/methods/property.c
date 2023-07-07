@@ -1,5 +1,5 @@
 /* ${method.name} - ${method.description} */
-uint32_t ${info.title}_Get${method.Name}( ${method.signature.params}${if.params}, ${end.if.params}${method.result.type}* ${method.result.name} )
+uint32_t ${info.Title}_Get${method.Name}( ${method.signature.params}${if.params}, ${end.if.params}${method.result.type}* ${method.result.name} )
 {
     const string method = _T("${info.title}.${method.name}");
 ${if.params}${method.params.serialization}${end.if.params}

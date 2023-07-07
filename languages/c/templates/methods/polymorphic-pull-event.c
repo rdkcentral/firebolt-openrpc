@@ -4,20 +4,20 @@ static void ${info.Title}${method.Name}InnerCallback( void* userCB, const void* 
 ${event.callback.params.serialization}
     ASSERT(jsonResponse->IsValid() == true);
     if (jsonResponse->IsValid() == true) {
-        
+
         ${info.Title}${method.Name}Callback callback = reinterpret_cast<${info.Title}${method.Name}Callback>(userCB);
 
         WPEFramework::Core::ProxyType<${method.pulls.param.json.type}>* requestParam = new WPEFramework::Core::ProxyType<${method.pulls.param.json.type}>();
         *requestParam = WPEFramework::Core::ProxyType<${method.pulls.param.json.type}>::Create();
 	*(*requestParam) = (*jsonResponse)->${event.pulls.param.name}Parameters;
 
-        ${method.pulls.type} result = static_cast<${method.pulls.type}>(callback(userData, static_cast<${method.pulls.param.type}>(requestParam)));
+        ${method.pulls.type} result = reinterpret_cast<${method.pulls.type}>(callback(userData, reinterpret_cast<${method.pulls.param.type}>(requestParam)));
 
         JsonObject jsonParameters;
         WPEFramework::Core::JSON::Variant CorrelationId = (*jsonResponse)->CorrelationId.Value();
         jsonParameters.Set(_T("correlationId"), CorrelationId);
- 
-        ${method.pulls.json.type}& resultObj = *(*(static_cast<WPEFramework::Core::ProxyType<${method.pulls.json.type}>*>(result)));
+
+        ${method.pulls.json.type}& resultObj = *(*(reinterpret_cast<WPEFramework::Core::ProxyType<${method.pulls.json.type}>*>(result)));
         string resultStr;
         resultObj.ToString(resultStr);
         WPEFramework::Core::JSON::VariantContainer resultContainer(resultStr);
@@ -29,7 +29,7 @@ ${event.callback.params.serialization}
             WPEFramework::Core::JSON::Boolean jsonResult;
             uint32_t status = transport->Invoke(_T("${info.title}.${method.pulls.for}"), jsonParameters, jsonResult);
             if (status == FireboltSDKErrorNone) {
-                FIREBOLT_LOG_INFO(FireboltSDK::Logger::Category::OpenRPC, FireboltSDK::Logger::Module<FireboltSDK::Accessor>(), "${info.title}.${method.name} is successfully pushed with status as %d", jsonResult.Value());
+                FIREBOLT_LOG_INFO(FireboltSDK::Logger::Category::OpenRPC, FireboltSDK::Logger::Module<FireboltSDK::Accessor>(), "${info.Title}.${method.name} is successfully pushed with status as %d", jsonResult.Value());
                 status = (jsonResult.Value() == true) ? FireboltSDKErrorNone : FireboltSDKErrorNotSupported;
             }
         } else {
