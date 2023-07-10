@@ -170,6 +170,9 @@ const hasTag = (method, tag) => {
   return method.tags && method.tags.filter(t => t.name === tag).length > 0
 }
 
+const IsResultConstNullSuccess = (schema, name) => (name === 'success' && !schema.const && !schema.type)
+const IsResultBooleanSuccess = (schema, name) => (name === 'success' && schema.type === 'boolean')
+
 function getParamList(schema, module) {
   let paramList = []
   if (schema.params.length > 0) {
@@ -346,14 +349,14 @@ function getSchemaTypeInfo(module = {}, json = {}, name = '', schemas = {}, pref
     return structure
   }
   else if (json.type) {
-    structure.type = getNativeType(json, fireboltString)
-    structure.json = json
-    if (name || json.title) {
-      structure.name = capitalize(name || json.title)
+    if (!IsResultBooleanSuccess(json, name) && !IsResultConstNullSuccess(json, name)) {
+      structure.type = getNativeType(json, fireboltString)
+      structure.json = json
+      if (name || json.title) {
+        structure.name = capitalize(name || json.title)
+      }
+      structure.namespace = getModuleName(module)
     }
-    structure.namespace = getModuleName(module)
-
-    return structure
   }
   return structure
 }
@@ -744,9 +747,17 @@ function getSchemaInstantiation(schema, module, name, { instantiationType = '' }
     return getParameterInstantiation(getParamList(schema, module))
   }
   else if (instantiationType === 'result') {
-    let resultType = getSchemaType(schema, module, { title: true, name: name, resultSchema: true}) || ''
-    let resultJsonType = getJsonType(schema, module, {name: name}) || ''
-    return getResultInstantiation(name, resultType, resultJsonType)
+    let result = ''
+
+    if (!IsResultConstNullSuccess(schema, name)) {
+      let resultJsonType = getJsonType(schema, module, {name: name}) || ''
+      let resultType = ''
+      if (!IsResultBooleanSuccess(schema, name)) {
+        resultType = getSchemaType(schema, module, { title: true, name: name, resultSchema: true}) || ''
+      }
+      result = getResultInstantiation(name, resultType, resultJsonType)
+    }
+    return result
   }
   else if (instantiationType === 'callback.params') {
     let resultJsonType = getJsonType(schema.result.schema, module, { name: schema.result.name }) || ''
