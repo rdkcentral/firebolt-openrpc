@@ -673,6 +673,24 @@ function generateDefaults(json = {}, templates) {
   return reducer(json)
 }
 
+function sortSchemasByReference(schemas = []) {
+  let indexA = 0;
+  while (indexA < schemas.length) {
+
+    let swapped = false
+    for (let indexB = indexA + 1; indexB < schemas.length; ++indexB) {
+      const bInA = isDefinitionReferencedBySchema('#/components/schemas/' + schemas[indexB][0], schemas[indexA][1])
+      if ((isEnum(schemas[indexB][1]) && !isEnum(schemas[indexA][1])) || (bInA === true))  {
+        [schemas[indexA], schemas[indexB]] = [schemas[indexB], schemas[indexA]]
+        swapped = true
+        break
+      }
+    }
+    indexA = swapped ? indexA : ++indexA
+  }
+  return schemas
+}
+
 const isEnum = x => x.type && x.type === 'string' && Array.isArray(x.enum) && x.title
 
 function generateSchemas(json, templates, options) {
@@ -736,7 +754,7 @@ function generateSchemas(json, templates, options) {
     results.push(result)
   }
 
-  const list = []
+  let list = []
 
   // schemas may be 1 or 2 levels deeps
   Object.entries(schemas).forEach(([name, schema]) => {
@@ -745,17 +763,7 @@ function generateSchemas(json, templates, options) {
     }
   })
 
-  list.sort((a, b) => {
-    const aInB = isDefinitionReferencedBySchema('#/components/schemas/' + a[0], b[1])
-    const bInA = isDefinitionReferencedBySchema('#/components/schemas/' + b[0], a[1])
-    if (isEnum(a[1]) || (aInB && !bInA)) {
-      return -1
-    } else if (isEnum(b[1]) || (!aInB && bInA)) {
-      return 1
-    }
-    return 0;
-  })
-
+  list = sortSchemasByReference(list)
   list.forEach(item => generate(...item))
 
   return results
