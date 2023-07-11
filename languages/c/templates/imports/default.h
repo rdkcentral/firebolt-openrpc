@@ -1,1 +1,1 @@
-#include "common/${module.title}.h"
+#include "common/${info.title.lowercase}.h"

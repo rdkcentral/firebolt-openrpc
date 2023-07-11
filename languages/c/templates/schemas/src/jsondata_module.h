@@ -19,7 +19,7 @@
 #pragma once
 
 /* ${IMPORTS} */
-#include "common/${module.title}.h"
+#include "common/${info.title.lowercase}.h"
 
 namespace FireboltSDK {
     namespace ${info.Title} {

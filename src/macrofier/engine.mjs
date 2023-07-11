@@ -506,7 +506,7 @@ const insertMacros = (fContents = '', macros = {}) => {
   fContents = fContents.replace(/\$\{minor\}/g, macros.version.minor)
   fContents = fContents.replace(/\$\{patch\}/g, macros.version.patch)
   fContents = fContents.replace(/\$\{info\.title\}/g, macros.title)
-  fContents = fContents.replace(/\$\{module\.title\}/g, macros.title.toLowerCase())
+  fContents = fContents.replace(/\$\{info\.title\.lowercase\}/g, macros.title.toLowerCase())
   fContents = fContents.replace(/\$\{info\.Title\}/g, capitalize(macros.title))
   fContents = fContents.replace(/\$\{info\.TITLE\}/g, macros.title.toUpperCase())
   fContents = fContents.replace(/\$\{info\.description\}/g, macros.description)
@@ -830,12 +830,12 @@ const generateImports = (json, templates, options = { destination: '' }) => {
   }
 
   if (json['x-schemas'] && Object.keys(json['x-schemas']).length > 0 && !json.info['x-uri-titles']) {
-    imports += Object.keys(json['x-schemas']).map(shared => template.replace(/\$\{module.title\}/g, shared.toLowerCase())).join('')
+    imports += Object.keys(json['x-schemas']).map(shared => template.replace(/\$\{info.title.lowercase\}/g, shared.toLowerCase())).join('')
   }
 
   let componentExternalSchema = getComponentExternalSchema(json)
   if (componentExternalSchema.length && json.info['x-uri-titles']) {
-    imports += componentExternalSchema.map(shared => template.replace(/\$\{module.title\}/g, shared.toLowerCase())).join('')
+    imports += componentExternalSchema.map(shared => template.replace(/\$\{info.title.lowercase\}/g, shared.toLowerCase())).join('')
   }
   return imports
 }
@@ -1148,7 +1148,7 @@ function insertMethodMacros(template, methodObj, json, templates, examples = {})
     .replace(/\$\{event\.callback\.params\.serialization\}/g, callbackSerializedParams)
     .replace(/\$\{event\.callback\.result\.instantiation\}/g, callbackResultInst)
     .replace(/\$\{event\.callback\.response\.instantiation\}/g, callbackResponseInst)
-    .replace(/\$\{module\.title\}/g, info.title.toLowerCase())
+    .replace(/\$\{info\.title\.lowercase\}/g, info.title.toLowerCase())
     .replace(/\$\{info\.title\}/g, info.title)
     .replace(/\$\{info\.Title\}/g, capitalize(info.title))
     .replace(/\$\{info\.TITLE\}/g, info.title.toUpperCase())
