@@ -13,5 +13,11 @@
     "operators": {
         "or": " | ",
         "stringQuotation": "'"
+    },
+    "primitives": {
+        "boolean": "boolean",
+        "integer": "number",
+        "number": "number",
+        "string": "string"
     }
 }

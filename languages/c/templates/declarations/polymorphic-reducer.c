@@ -2,6 +2,4 @@
  * ${method.summary}
  * ${method.params}
  */
-${method.signature}
-
-// TODO: generate reducer signature
+int F${info.title}_${method.Name}(${method.signature.params}${if.result.properties}${if.params}, ${end.if.params}${end.if.result.properties}${method.result.properties});

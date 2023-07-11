@@ -16,8 +16,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef _${info.TITLE}_H
-#define _${info.TITLE}_H
+#ifndef _COMMON_${info.TITLE}_H
+#define _COMMON_${info.TITLE}_H
 
 #include "Firebolt.h"
 /* ${IMPORTS} */
@@ -30,9 +30,7 @@ extern "C" {
 
 /* ${ENUMS} */
 
-/* ${TYPES} */
-
-/* ${DECLARATIONS} */
+/* ${TYPES:accessors} */
 
 #ifdef __cplusplus
 }

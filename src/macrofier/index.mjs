@@ -47,8 +47,10 @@ const macrofy = async (
         createModuleDirectories,
         copySchemasIntoModules,
         extractSubSchemas,
+        additionalSchemaTemplates,
         aggregateFile,
         operators,
+        primitives,
         hidePrivate = true,
         hideExcluded = false,
         staticModuleNames = [],
@@ -69,19 +71,23 @@ const macrofy = async (
         let typer
 
         try {
-            const typerModule = await import(path.join(sharedTemplates, '..', 'Types.mjs'))
-            typer = typerModule.default
+//            const typerModule = await import(path.join(sharedTemplates, '..', 'Types.mjs'))
+//            typer = typerModule.default
         }
         catch (_) {
-            typer = (await import('../shared/typescript.mjs')).default
+//            typer = (await import('../shared/typescript.mjs')).default
         }
+
+        typer = (await import('./types.mjs')).default
 
         engine.setTyper(typer)
         engine.setConfig({
             copySchemasIntoModules,
             createModuleDirectories,
             extractSubSchemas,
-            operators
+            operators,
+            primitives,
+            additionalSchemaTemplates
         })
 
         const moduleList = [...(new Set(openrpc.methods.map(method => method.name.split('.').shift())))]
@@ -89,6 +95,10 @@ const macrofy = async (
         const sharedTemplateList = await readDir(sharedTemplates, { recursive: true })
         const templates = Object.assign(await readFiles(sharedTemplateList, sharedTemplates),
                                         await readFiles(sdkTemplateList, template)) // sdkTemplates are second so they win ties
+
+        typer.setTemplates && typer.setTemplates(templates)
+        typer.setPrimitives(primitives)
+
         let templatesPermission = {}
         if (persistPermission) {
             templatesPermission = Object.assign(await readFilesPermissions(sharedTemplateList, sharedTemplates),

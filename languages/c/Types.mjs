@@ -208,23 +208,26 @@ function getMethodSignature(method, module, { destination, isInterface = false }
 
 function getMethodSignatureParams(method, module, { destination, callback= false } = {}) {
 
-  return method.params.map(param => {
+  const result = method.params.map(param => {
     let type = getSchemaType(param.schema, module, { name: param.name, title: true, destination })
     if ((callback === true) && (type === 'char*')) {
       type = getFireboltStringType()
     }
     return type + (!param.required ? '* ' : ' ') + param.name
   }).join(', ')
+
+  return result
 }
 
-const safeName = prop => prop.match(/[.+]/) ? '"' + prop + '"' : prop
+const safeName = val => val.split(':').pop().replace(/[\.\-]/g, '_').replace(/\+/g, '_plus').replace(/([a-z])([A-Z0-9])/g, '$1_$2').toUpperCase()
 
-function getSchemaType(schema, module, { name, prefix = '', destination, resultSchema = false, link = false, title = false, code = false, asPath = false, event = false, expandEnums = true, baseUrl = '' } = {}) {
-  let info = getSchemaTypeInfo(module, schema, name, module['x-schemas'], prefix, { title: title, resultSchema: resultSchema, event: event })
+function getSchemaType(schema, module, { name, moduleTitle, prefix = '', destination, resultSchema = false, link = false, title = false, code = false, asPath = false, event = false, expandEnums = true, baseUrl = '' } = {}) {
+  let info = getSchemaTypeInfo(module, schema, name, module['x-schemas'], prefix, { title: title, moduleTitle: moduleTitle, resultSchema: resultSchema, event: event })
+
   return info.type
 }
 
-function getSchemaTypeInfo(module = {}, json = {}, name = '', schemas = {}, prefix = '', options = {level: 0, descriptions: true, title: false, resultSchema: false, event: false}) {
+function getSchemaTypeInfo(module = {}, json = {}, name = '', schemas = {}, prefix = '', options = {moduleTitle: '', level: 0, descriptions: true, title: false, resultSchema: false, event: false}) {
 
   if (json.schema) {
     json = json.schema
@@ -246,7 +249,8 @@ function getSchemaTypeInfo(module = {}, json = {}, name = '', schemas = {}, pref
       let tName = definition.title || json['$ref'].split('/').pop()
       let schema = module
       if (json['$ref'].includes('x-schemas')) {
-        schema = (getRefModule(json['$ref'].split('/')[2]))
+        options.moduleTitle = json['$ref'].split('/')[2]
+        schema = getRefModule(options.moduleTitle)
       }
 
       const res = getSchemaTypeInfo(schema, definition, tName, schemas, '', options)
@@ -270,7 +274,7 @@ function getSchemaTypeInfo(module = {}, json = {}, name = '', schemas = {}, pref
   else if (json.type === 'string' && json.enum) {
     //Enum
     structure.name = name || json.title
-    let typeName = getTypeName(getModuleName(module), name || json.title, prefix, false, false)
+    let typeName = getTypeName(getModuleName(module), json.title || name, prefix, false, false)
 //    let res = description(capitalize(name || json.title), json.description) + '\n' + generateEnum(json, typeName)
     structure.json = json
     structure.type = typeName
@@ -299,9 +303,14 @@ function getSchemaTypeInfo(module = {}, json = {}, name = '', schemas = {}, pref
     }
 
     let arrayName = capitalize(res.name)// + capitalize(res.json.type)
-    let n = getTypeName(getModuleName(module), arrayName, prefix)
-    structure.name = res.name || name && (capitalize(name))
-    structure.type = n
+    try {
+      let n = getTypeName(getModuleName(module),  json.title || name, prefix)
+      structure.name = res.name || name && (capitalize(name))
+      structure.type = n  
+    }
+    catch (e) {
+      console.dir(json)
+    }
     structure.json = json
     structure.namespace = getModuleName(module)
     return structure
@@ -327,9 +336,12 @@ function getSchemaTypeInfo(module = {}, json = {}, name = '', schemas = {}, pref
   else if (json.type === 'object') {
     structure.json = json
     if (hasProperties(json)) {
-      structure.type = getTypeName(getModuleName(module), json.title || name, prefix)
+      if (!json.title) {
+        console.dir(json)
+      }
+      structure.type = getTypeName(options.moduleTitle || getModuleName(module), json.title || name, prefix)
       structure.name = (json.name ? json.name : (json.title ? json.title : name))
-      structure.namespace = (json.namespace ? json.namespace : getModuleName(module))
+      structure.namespace = (json.namespace ? json.namespace : options.moduleTitle || getModuleName(module))
     }
     else {
       structure.type = 'char*'
@@ -344,7 +356,7 @@ function getSchemaTypeInfo(module = {}, json = {}, name = '', schemas = {}, pref
     structure.type = getNativeType(json, stringAsHandle)
     structure.json = json
     if (name || json.title) {
-      structure.name = capitalize(name || json.title)
+      structure.name = capitalize(json.title || name)
     }
     structure.namespace = getModuleName(module)
 
@@ -358,7 +370,7 @@ function getSchemaTypeInfo(module = {}, json = {}, name = '', schemas = {}, pref
 //     return shape
 // }
 
-function getSchemaShape(schema = {}, module = {}, { name = '', level = 0, title, summary, descriptions = true, destination, enums = true } = {}) {
+function getSchemaShape(schema = {}, module = {}, { name = '',  property = '', moduleTitle = '', level = 0, title, summary, descriptions = true, destination, enums = true } = {}) {
   schema = JSON.parse(JSON.stringify(schema))
   let structure = []
 
@@ -366,10 +378,10 @@ function getSchemaShape(schema = {}, module = {}, { name = '', level = 0, title,
   let operator = ''
   let theTitle = schema.title || name
 
-  theTitle = `F${module.info.title}_${theTitle}`
+  theTitle = theTitle ? getTypeName(moduleTitle || module.info.title, theTitle) : 'Unknown' //`${moduleTitle || module.info.title}_${theTitle}` 
 
   if (enums && level === 0 && schema.type === "string" && Array.isArray(schema.enum)) {
-    return `typedef enum {\n\t` + schema.enum.map(value => value.split(':').pop().replace(/[\.\-]/g, '_').replace(/\+/g, '_plus').replace(/([a-z])([A-Z0-9])/g, '$1_$2').toUpperCase()).join(',\n\t') + `\n} ${schema.title || name};\n`
+    return `typedef enum {\n\t` + schema.enum.map(value => theTitle.toUpperCase() + '_' + value.split(':').pop().replace(/[\.\-]/g, '_').replace(/\+/g, '_plus').replace(/([a-z])([A-Z0-9])/g, '$1_$2').toUpperCase()).join(',\n\t') + `\n} ${theTitle};\n`
   }
 
   if (!theTitle) {
@@ -382,8 +394,12 @@ function getSchemaShape(schema = {}, module = {}, { name = '', level = 0, title,
     }
     else {
       const someJson = getPath(schema['$ref'], module)
+      let moduleTitle = module.info.title
+      if (schema['$ref'].indexOf("/x-schemas/") >= 0) {
+        moduleTitle = schema['$ref'].split('/')[2]
+      }
       if (someJson) {
-        return getSchemaShape(someJson, module, { name, level, title, summary, descriptions, destination, enums: false })
+        return getSchemaShape(someJson, module, { name, property, moduleTitle, level, title, summary, descriptions, destination, enums: false })
       }
       else {
         '  '.repeat(level) + `${prefix}${theTitle}${operator}`
@@ -399,7 +415,19 @@ function getSchemaShape(schema = {}, module = {}, { name = '', level = 0, title,
     if (level > 0 && (summary || schema.description)) {
       summary = `\t// ${(summary || schema.description).split('\n')[0]}`
     }
-    return '  '.repeat(level) + `${prefix}${theTitle}${operator} ${name}; ` + summary
+    return '  '.repeat(level) + `${prefix}${theTitle}${operator} ${property}; ` + summary
+  }
+  else if (schema.type === 'array' && schema.items && Array.isArray(schema.items)) {
+    if (schema.items.length === schema.items.filter(item => item['x-property']).length) {
+      const object = JSON.parse(JSON.stringify(schema))
+      object.type = 'object'
+      object.properties = {}
+      object.items.forEach(item => {
+        object.properties[item['x-property']] = item
+        delete item['x-property']
+      })
+      return getSchemaShape(object, module, { name, moduleTitle, level, title, summary, descriptions, destination, enums})  
+    }
   }
   else if (schema.type === 'object') {
     let suffix = '{'
@@ -411,46 +439,49 @@ function getSchemaShape(schema = {}, module = {}, { name = '', level = 0, title,
         if (!schema.required || !schema.required.includes(name)) {
 //          name = name + '?'
         }
-        const schemaShape = getSchemaShape(prop, module, {name: name, summary: prop.description, descriptions: descriptions, level: level+1, title: true})
+        const schemaShape = getSchemaShape(prop, module, {property: name, summary: prop.description, descriptions: descriptions, level: level+1, title: true})
         structure.push(schemaShape)
       })
     }
     else if (schema.propertyNames) {
-      const { propertyNames } = localizeDependencies(schema, module)
-      if (propertyNames.enum) {
-        propertyNames.enum.forEach(prop => {
+      const localizedSchema = localizeDependencies(schema, module)
+      if (localizedSchema.propertyNames.enum) {
+        localizedSchema.propertyNames.enum.forEach(prop => {
           let type = 'any'
 
-          if (schema.additionalProperties && (typeof schema.additionalProperties === 'object')) {
-            type = getSchemaType(schema.additionalProperties, module)
+          if (localizedSchema.additionalProperties && (typeof localizedSchema.additionalProperties === 'object')) {
+            type = localizedSchema.additionalProperties
           }          
 
-          if (schema.patternProperties) {
-            Object.entries(schema.patternProperties).forEach(([pattern, schema]) => {
+          if (localizedSchema.patternProperties) {
+            Object.entries(localizedSchema.patternProperties).forEach(([pattern, schema]) => {
               let regex = new RegExp(pattern)
               if (prop.match(regex)) {
-                type = getSchemaType(schema, module)
+                type = schema
               }
             })
           }
 
-          return getSchemaShape(schema.propertyNames, module, { name: schema.title })
+//          return getSchemaShape(schema.propertyNames, module, { name: schema.title })
   
-//          structure.push(getSchemaShape({type: type}, module, {name: safeName(prop), descriptions: descriptions, level: level+1}))
+          structure.push(getSchemaShape(type, module, {property: safeName(prop), descriptions: descriptions, level: level+1}))
         })
       }
     }
     else if (schema.additionalProperties && (typeof schema.additionalProperties === 'object')) {
       let type = getSchemaType(schema.additionalProperties, module, { destination })
-      structure.push(getSchemaShape({type: type}, module, {name: '[property: string]', descriptions: descriptions, level: level+1}))
+    // TODO: C doesn't support this...
+    //      structure.push(getSchemaShape({type: type}, module, {name: '[property: string]', descriptions: descriptions, level: level+1}))
     }
 
     structure.push('  '.repeat(level) + `} ${theTitle};`)
   }
   else if (schema.anyOf) {
+    return ''
     return '  '.repeat(level) + `${prefix}${theTitle}${operator} ` + schema.anyOf.map(s => getSchemaType(s, module, { name, level, title, summary, descriptions, destination })).join(' | ')
   }
   else if (schema.oneOf) {
+    return ''
     return '  '.repeat(level) + `${prefix}${theTitle}${operator} ` + schema.oneOf.map(s => getSchemaType(s, module, { name, level, title, summary, descriptions, destination })).join(' | ')
   }
   else if (schema.allOf) {
@@ -489,15 +520,19 @@ function getSchemaShape(schema = {}, module = {}, { name = '', level = 0, title,
       suffix = JSON.stringify(schema.const)
     }
     else if (isArrayWithSchemaForItems) {
-      suffix = getSchemaType(schema.items, module, { title: level ? true : false }) + '[]' // prefer schema title over robust descriptor
+      suffix = getSchemaType(schema.items, module, { title: level ? true : false, name: name }) + '[]' // prefer schema title over robust descriptor
     }
     else if (isArrayWithSpecificItems) {
-      suffix = '[' + schema.items.map(i => getSchemaType(i, module, {title: level ? true : false })).join(', ') + ']'
+      suffix = '[' + schema.items.map(i => getSchemaType(i, module, {title: level ? true : false, name: name })).join(', ') + ']'
     }
     else {
-      suffix = getSchemaType(schema, module, { title: level ? true : false }) // prefer schema title over robust descriptor
+      suffix = getSchemaType(schema, module, { title: level ? true : false, name: name }) // prefer schema title over robust descriptor
     }
     
+    if (level === 0) {
+      property = theTitle
+    }
+
     // if there's a summary or description, append it as a comment (description only gets first line)
     if (level > 0 && (summary || schema.description)) {
       summary = `\t// ${summary || schema.description.split('\n')[0]}`
@@ -507,11 +542,11 @@ function getSchemaShape(schema = {}, module = {}, { name = '', level = 0, title,
       suffix = '[]'
     }
 
-    if (theTitle === suffix) {
-      return '  '.repeat(level) + `${prefix}${name}`
+    if (summary) {
+      return '  '.repeat(level) + `${prefix}${suffix} ${property}; ${summary}`
     }
     else {
-      return '  '.repeat(level) + `${prefix}${suffix} ${name}${operator}; ${summary}`
+      return '  '.repeat(level) + `${prefix}${suffix} ${property};`
     }
   }
 
@@ -567,7 +602,7 @@ function getSchemaShapeInfo(json, module, schemas = {}, { name = '', prefix = ''
       else if (json.properties && (validJsonObjectProperties(json) === true)) {
         let c_shape = description(capitalize(name), json.description)
         let cpp_shape = ''
-        let tName = getTypeName(getModuleName(module), name, prefix)
+        let tName = getTypeName(getModuleName(module), json.title || name, prefix)
         c_shape += '\n' + (isHeader ? getObjectHandleManagement(tName) : getObjectHandleManagementImpl(tName, getJsonType(json, module, { name })))
         let props = []
         let containerName = ((prefix.length > 0) && (!name.startsWith(prefix))) ? (prefix + '_' + capitalize(name)) : capitalize(name)
@@ -645,7 +680,7 @@ function getSchemaShapeInfo(json, module, schemas = {}, { name = '', prefix = ''
           info.json.type = 'string'
         }
 
-        let tName = getTypeName(getModuleName(module), name, prefix)
+        let tName = getTypeName(getModuleName(module), json.title || name, prefix)
         let t = description(capitalize(name), json.description) + '\n'
         let containerType = 'WPEFramework::Core::JSON::VariantContainer'
 
@@ -769,7 +804,7 @@ function getJsonTypeInfo(module = {}, json = {}, name = '', schemas, prefix = ''
   if (json['$ref']) {
     if (json['$ref'][0] === '#') {
       //Ref points to local schema
-      //Get Path to ref in this module and getSchemaType
+      //Get Path to ref in this module and getSchemaTypef
       let definition = getPath(json['$ref'], module, schemas)
       let tName = definition.title || json['$ref'].split('/').pop()
 

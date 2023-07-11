@@ -27,7 +27,7 @@ import deepmerge from 'deepmerge'
 
 const { isObject, isArray, propEq, pathSatisfies, hasProp, propSatisfies } = predicates
 
-const getModuleName = json => 'F' + getPathOr(null, ['info', 'title'], json) || json.title || 'missing'
+const getModuleName = json => getPathOr(null, ['info', 'title'], json) || json.title || 'missing'
 
 const getFireboltStringType = () => 'FireboltTypes_StringHandle'
 const getHeaderText = () => {
@@ -128,7 +128,7 @@ const getNativeType = (json, stringAsHandle = false) => {
       type = 'float'
   }
   else if (jsonType === 'integer') {
-      type = 'int32_t'
+      type = 'int'
 
   }
   else if (jsonType === 'boolean') {
@@ -188,7 +188,7 @@ const getTypeName = (moduleName, varName, prefix = '', upperCase = false, capita
   }
   prefix = (prefix.length > 0) ?(upperCase ? prefix.toUpperCase() : capitalize(prefix)) : prefix
   let name = (prefix.length > 0) ? `${mName}_${prefix}_${vName}` : `${mName}_${vName}`
-  return name
+  return 'F' + name
 }
 
 const getArrayAccessors = (arrayName, propertyType, valueType) => {
