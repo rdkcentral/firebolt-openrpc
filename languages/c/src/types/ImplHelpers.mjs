@@ -455,16 +455,22 @@ function getResultInstantiation (name, nativeType, container, indentLevel = 3) {
 
   let impl = ''
 
-  if (nativeType === 'char*' || nativeType === 'FireboltTypes_StringHandle') {
-    impl += `${'    '.repeat(indentLevel)}${container}* strResult = new ${container}(jsonResult);` + '\n'
-    impl += `${'    '.repeat(indentLevel)}*${name} = static_cast<${getFireboltStringType()}>(strResult);`
-  } else if (nativeType.includes('Handle')) {
-    impl += `${'    '.repeat(indentLevel)}WPEFramework::Core::ProxyType<${container}>* resultPtr = new WPEFramework::Core::ProxyType<${container}>();\n`
-    impl += `${'    '.repeat(indentLevel)}*resultPtr = WPEFramework::Core::ProxyType<${container}>::Create();\n`
-    impl += `${'    '.repeat(indentLevel)}*(*resultPtr) = jsonResult;\n`
-    impl += `${'    '.repeat(indentLevel)}*${name} = static_cast<${nativeType}>(resultPtr);`
-  } else {
-    impl += `${'    '.repeat(indentLevel)}*${name} = jsonResult.Value();`
+  if (nativeType) {
+    impl += `${'    '.repeat(indentLevel)}if (${name} != nullptr) {` + '\n'
+    if (nativeType === 'char*' || nativeType === 'FireboltTypes_StringHandle') {
+      impl += `${'    '.repeat(indentLevel + 1)}${container}* strResult = new ${container}(jsonResult);` + '\n'
+      impl += `${'    '.repeat(indentLevel + 1)}*${name} = static_cast<${getFireboltStringType()}>(strResult);`
+    } else if (nativeType.includes('Handle')) {
+      impl += `${'    '.repeat(indentLevel + 1)}WPEFramework::Core::ProxyType<${container}>* resultPtr = new WPEFramework::Core::ProxyType<${container}>();\n`
+      impl += `${'    '.repeat(indentLevel + 1)}*resultPtr = WPEFramework::Core::ProxyType<${container}>::Create();\n`
+      impl += `${'    '.repeat(indentLevel + 1)}*(*resultPtr) = jsonResult;\n`
+      impl += `${'    '.repeat(indentLevel + 1)}*${name} = static_cast<${nativeType}>(resultPtr);`
+      } else {
+      impl += `${'    '.repeat(indentLevel + 1)}*${name} = jsonResult.Value();`
+    }
+    impl += `${'    '.repeat(indentLevel)}}` + '\n'
+  } else if (name === 'success') {
+    impl += `${'    '.repeat(indentLevel)}status = (jsonResult.Value() == true) ? FireboltSDKErrorNone : FireboltSDKErrorNotSupported;`
   }
 
   return impl

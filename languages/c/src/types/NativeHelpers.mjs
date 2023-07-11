@@ -115,12 +115,12 @@ const getArrayElementSchema = (json, module, schemas = {}, name) => {
   return result
 }
 
-const getNativeType = (json, stringAsHandle = false) => {
+const getNativeType = (json, fireboltString = false) => {
   let type
   let jsonType = json.const ? typeof json.const : json.type
   if (jsonType === 'string') {
       type = 'char*'
-      if (stringAsHandle) {
+      if (fireboltString) {
         type = getFireboltStringType()
       }
   }

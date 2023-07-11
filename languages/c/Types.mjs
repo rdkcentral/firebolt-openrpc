@@ -170,6 +170,9 @@ const hasTag = (method, tag) => {
   return method.tags && method.tags.filter(t => t.name === tag).length > 0
 }
 
+const IsResultConstNullSuccess = (schema, name) => (name === 'success' && !schema.const && !schema.type)
+const IsResultBooleanSuccess = (schema, name) => (name === 'success' && schema.type === 'boolean')
+
 function getParamList(schema, module) {
   let paramList = []
   if (schema.params.length > 0) {
@@ -229,13 +232,13 @@ function getSchemaType(schema, module, { name, prefix = '', destination, resultS
   return info.type
 }
 
-function getSchemaTypeInfo(module = {}, json = {}, name = '', schemas = {}, prefix = '', options = {level: 0, descriptions: true, title: false, resultSchema: false, event: false}) {
+function getSchemaTypeInfo(module = {}, json = {}, name = '', schemas = {}, prefix = '', options = { level: 0, descriptions: true, title: false, resultSchema: false, event: false}) {
 
   if (json.schema) {
     json = json.schema
   }
 
-  let stringAsHandle = options.resultSchema || options.event
+  let fireboltString = options.resultSchema || options.event
 
   let structure = {}
   structure["type"] = ''
@@ -263,7 +266,7 @@ function getSchemaTypeInfo(module = {}, json = {}, name = '', schemas = {}, pref
     }
   }
   else if (json.const) {
-    structure.type = getNativeType(json, stringAsHandle)
+    structure.type = getNativeType(json, fireboltString)
     structure.json = json
     return structure
   }
@@ -320,7 +323,7 @@ function getSchemaTypeInfo(module = {}, json = {}, name = '', schemas = {}, pref
     return getSchemaTypeInfo(module, union, '', schemas, '', options)
   }
   else if (json.oneOf) {
-    structure.type = 'char*'
+    structure.type = fireboltString ? getFireboltStringType() : 'char*'
     structure.json.type = 'string'
     return structure
   }
@@ -337,7 +340,7 @@ function getSchemaTypeInfo(module = {}, json = {}, name = '', schemas = {}, pref
       structure.namespace = (json.namespace ? json.namespace : getModuleName(module))
     }
     else {
-      structure.type = 'char*'
+      structure.type = fireboltString ? getFireboltStringType() : 'char*'
     }
     if (name) {
       structure.name = capitalize(name)
@@ -346,14 +349,14 @@ function getSchemaTypeInfo(module = {}, json = {}, name = '', schemas = {}, pref
     return structure
   }
   else if (json.type) {
-    structure.type = getNativeType(json, stringAsHandle)
-    structure.json = json
-    if (name || json.title) {
-      structure.name = capitalize(name || json.title)
+    if (!IsResultBooleanSuccess(json, name) && !IsResultConstNullSuccess(json, name)) {
+      structure.type = getNativeType(json, fireboltString)
+      structure.json = json
+      if (name || json.title) {
+        structure.name = capitalize(name || json.title)
+      }
+      structure.namespace = getModuleName(module)
     }
-    structure.namespace = getModuleName(module)
-
-    return structure
   }
   return structure
 }
@@ -377,13 +380,12 @@ function getSchemaShapeInfo(json, module, schemas = {}, { name = '', prefix = ''
       if (json['$ref'][0] === '#') {
         //Ref points to local schema
         //Get Path to ref in this module and getSchemaType
-        const schema = getPath(json['$ref'], module, schemas)
-        const tname = schema.title || json['$ref'].split('/').pop()
+        let schema = getPath(json['$ref'], module, schemas)
+        const tName = schema.title || json['$ref'].split('/').pop()
         if (json['$ref'].includes('x-schemas')) {
           schema = (getRefModule(json['$ref'].split('/')[2]))
         }
-
-        shape = getSchemaShapeInfo(schema, module, schemas, { name, prefix, merged, level, title, summary, descriptions, destination, section, enums })
+        shape = getSchemaShapeInfo(schema, module, schemas, { name: tName, prefix, merged, level, title, summary, descriptions, destination, section, enums })
       }
     }
     //If the schema is a const,
@@ -429,7 +431,6 @@ function getSchemaShapeInfo(json, module, schemas = {}, { name = '', prefix = ''
             let info = getSchemaTypeInfo(module, items, items.name || pname, schemas, prefix, {level : level, descriptions: descriptions, title: true})
             if (info.type && info.type.length > 0) {
               let objName = tName + '_' + capitalize(prop.title || pname)
-              let moduleName = info.namespace
               info.json.namespace = info.namespace
               let moduleProperty = getJsonTypeInfo(module, json, json.title || name, schemas, prefix)
               let prefixName = ((prefix.length > 0) && items['$ref']) ? '' : prefix
@@ -539,10 +540,14 @@ function getSchemaShapeInfo(json, module, schemas = {}, { name = '', prefix = ''
 
         if (info.type && info.type.length > 0) {
           let type = getArrayElementSchema(json, module, schemas, info.name)
-          let arrayName = capitalize(name) + capitalize(type.type)
-          let objName = getTypeName(info.namespace, arrayName, prefix)
+          let arrayName = capitalize(info.name) + capitalize(type.type)
+          let namespace = info.namespace
+          if (type && type.type === 'object') {
+            namespace = getModuleName(module)
+	  }
+          let objName = getTypeName(namespace, arrayName, prefix)
           let tName = objName + 'Array'
-          let moduleName = info.namespace
+
           info.json.namespace = info.namespace
           let moduleProperty = getJsonTypeInfo(module, json, json.title || name, schemas, prefix)
           let subModuleProperty = getJsonTypeInfo(module, j, j.title, schemas, prefix)
@@ -712,6 +717,9 @@ function getJsonTypeInfo(module = {}, json = {}, name = '', schemas, prefix = ''
     structure.type = getJsonNativeType(json)
     return structure
   }
+  else {
+    structure.type = 'JsonObject'
+  }
   return structure
 }
 
@@ -739,9 +747,17 @@ function getSchemaInstantiation(schema, module, name, { instantiationType = '' }
     return getParameterInstantiation(getParamList(schema, module))
   }
   else if (instantiationType === 'result') {
-    let resultType = getSchemaType(schema, module, { title: true, name: name, resultSchema: true}) || ''
-    let resultJsonType = getJsonType(schema, module, {name: name}) || ''
-    return getResultInstantiation(name, resultType, resultJsonType)
+    let result = ''
+
+    if (!IsResultConstNullSuccess(schema, name)) {
+      let resultJsonType = getJsonType(schema, module, {name: name}) || ''
+      let resultType = ''
+      if (!IsResultBooleanSuccess(schema, name)) {
+        resultType = getSchemaType(schema, module, { title: true, name: name, resultSchema: true}) || ''
+      }
+      result = getResultInstantiation(name, resultType, resultJsonType)
+    }
+    return result
   }
   else if (instantiationType === 'callback.params') {
     let resultJsonType = getJsonType(schema.result.schema, module, { name: schema.result.name }) || ''
