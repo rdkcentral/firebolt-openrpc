@@ -158,7 +158,7 @@ const getComponentExternalSchema = (json) => {
         let title = ''
         if (ref.includes('x-schemas')) {
           if (ref.split('/')[2] !== json.info.title) {
-            title = ref.split('/')[2].toLowerCase()
+            title = ref.split('/')[2]
           }
         }
         title && !refSchemas.includes(title) ? refSchemas.push(title) : null
@@ -361,7 +361,7 @@ const addContentDescriptorSubSchema = (descriptor, prefix, obj) => {
 }
 
 // only consider sub-objects and sub enums to be sub-schemas
-const isSubSchema = (schema) => schema.type === 'object' || (schema.type === 'string' && schema.enum)
+const isSubSchema = (schema) => schema.type === 'object' || (schema.type === 'string' && schema.enum) || (schema.type === 'array' && schema.items)
 
 const promoteAndNameSubSchemas = (obj) => {
   // make a copy so we don't polute our inputs
@@ -384,7 +384,7 @@ const promoteAndNameSubSchemas = (obj) => {
     while (more) {
       more = false
       Object.entries(obj.components.schemas).forEach(([key, schema]) => {
-        if ((schema.type === "object" || schema.type === "array") && schema.properties) {
+        if ((schema.type === "object") && schema.properties) {
           Object.entries(schema.properties).forEach(([name, propSchema]) => {
             if (isSubSchema(propSchema)) {
               more = true
@@ -584,11 +584,11 @@ function insertTableofContents(content) {
 }
 
 const convertEnumTemplate = (schema, templateName, templates) => {
-  let enm = getEnum(schema)
+  let enumSchema = isArraySchema(schema) ? schema.items : schema
   const template = getTemplate(templateName, templates).split('\n')
   for (var i = 0; i < template.length; i++) {
     if (template[i].indexOf('${key}') >= 0) {
-      template[i] = enm.enum.map(value => {
+      template[i] = enumSchema.enum.map(value => {
         const safeName = value.split(':').pop().replace(/[\.\-]/g, '_').replace(/\+/g, '_plus').replace(/([a-z])([A-Z0-9])/g, '$1_$2').toUpperCase()
         return template[i].replace(/\$\{key\}/g, safeName)
           .replace(/\$\{value\}/g, value)
@@ -694,11 +694,11 @@ function sortSchemasByReference(schemas = []) {
   return schemas
 }
 
-const getEnum = x => x.type && x.type === 'array' ? x.items : x
+const isArraySchema = x => x.type && x.type === 'array' && x.items
 
 const isEnum = x => {
-   let enm = getEnum(x)
-   return enm.type && enm.type === 'string' && Array.isArray(enm.enum) && x.title
+   let schema = isArraySchema(x) ? x.items : x
+   return schema.type && schema.type === 'string' && Array.isArray(schema.enum) && x.title
 }
 
 function generateSchemas(json, templates, options) {

@@ -30,18 +30,7 @@ const { isObject, isArray, propEq, pathSatisfies, hasProp, propSatisfies } = pre
 const getModuleName = json => getPathOr(null, ['info', 'title'], json) || json.title || 'missing'
 
 const getFireboltStringType = () => 'FireboltTypes_String_t'
-const getHeaderText = () => {
 
-    return `/*
-*  Copyright 2022 Comcast
-*
-*  Auto Generated using firebolt-openrpc tools. DO NOT EDIT.
-*
-*/
-
-`
-}
-    
 const capitalize = str => str[0].toUpperCase() + str.substr(1)
 const description = (title, str='') => '/* ' + title + (str.length > 0 ? ' - ' + str : '') + ' */'
 const isOptional = (prop, json) => (!json.required || !json.required.includes(prop))
@@ -204,7 +193,6 @@ function getPropertyEventUnregisterSignature(property, module) {
 
 
 export {
-    getHeaderText,
     getNativeType,
     getModuleName,
     getPropertyGetterSignature,
