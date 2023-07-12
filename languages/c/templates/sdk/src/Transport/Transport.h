@@ -19,7 +19,7 @@
 #pragma once
 
 #include "Module.h"
-#include "Error.h"
+#include "error.h"
 
 namespace FireboltSDK {
 

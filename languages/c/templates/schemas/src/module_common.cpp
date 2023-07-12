@@ -18,14 +18,7 @@
 
 #include "FireboltSDK.h"
 /* ${IMPORTS} */
-#include "${info.title}.h"
-
-namespace FireboltSDK {
-    namespace ${info.title} {
-    // Types
-       /* ${TYPES} */
-    }
-}
+#include "jsondata_${info.title.lowercase}.h"
 
 /* ${ENUMS} */
 
@@ -33,9 +26,9 @@ namespace FireboltSDK {
 extern "C" {
 #endif
 
-/* ${ACCESSORS} */
-/* ${METHODS} */
-/* ${EVENTS} */
+    /* ${ACCESSORS} */
+    /* ${METHODS} */
+    /* ${EVENTS} */
 
 #ifdef __cplusplus
 }
