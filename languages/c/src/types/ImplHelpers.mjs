@@ -104,9 +104,7 @@ const getPropertyAccessorsImpl = (objName, modulePropertyType, subPropertyType, 
 const getArrayAccessorsImpl = (objName, modulePropertyType, objHandleType, subPropertyType, subPropertyName, accessorPropertyType, json = {}) => {
 
   let propertyName
-   console.log("objName =", objName, "subPropertyType = ", subPropertyType)
   if (subPropertyName) {
-     console.log("subPropertyName ---", subPropertyName) 
      propertyName = '(*var)->' + `${subPropertyName}`
      objName = objName + '_' + subPropertyName
   }
@@ -153,13 +151,15 @@ const getArrayAccessorsImpl = (objName, modulePropertyType, objHandleType, subPr
     ASSERT(var->IsValid());` + '\n'
 
   if ((json.type === 'object') || (json.type === 'array')) {
-   result += `    ${subPropertyType}& element = *(*(reinterpret_cast<WPEFramework::Core::ProxyType<${subPropertyType}>*>(value)));` + '\n'
+    result += `    ${subPropertyType} element;
+    element = *(*(reinterpret_cast<WPEFramework::Core::ProxyType<${subPropertyType}>*>(value)));` + '\n'
   }
   else {
-    result += `    ${subPropertyType} element(value);` + '\n'
+    result += `    ${subPropertyType} element;` + '\n'
+    result += `    element = value;` + '\n'
   }
   result += `
-    ${propertyName}.Add(element);
+    ${propertyName}.Add() = element;
 }` + '\n'
 
   result += `void ${objName}Array_Clear(${objHandleType} handle)
@@ -474,16 +474,22 @@ function getResultInstantiation (name, nativeType, container, indentLevel = 3) {
 
   let impl = ''
 
-  if (nativeType === 'char*' || nativeType === 'FireboltTypes_String_t') {
-    impl += `${'    '.repeat(indentLevel)}${container}* strResult = new ${container}(jsonResult);` + '\n'
-    impl += `${'    '.repeat(indentLevel)}*${name} = reinterpret_cast<${getFireboltStringType()}>(strResult);`
-  } else if (nativeType.includes('_t')) {
-    impl += `${'    '.repeat(indentLevel)}WPEFramework::Core::ProxyType<${container}>* resultPtr = new WPEFramework::Core::ProxyType<${container}>();\n`
-    impl += `${'    '.repeat(indentLevel)}*resultPtr = WPEFramework::Core::ProxyType<${container}>::Create();\n`
-    impl += `${'    '.repeat(indentLevel)}*(*resultPtr) = jsonResult;\n`
-    impl += `${'    '.repeat(indentLevel)}*${name} = reinterpret_cast<${nativeType}>(resultPtr);`
-  } else if (nativeType) {
-    impl += `${'    '.repeat(indentLevel)}*${name} = jsonResult.Value();`
+  if (nativeType) {
+    impl += `${'    '.repeat(indentLevel)}if (${name} != nullptr) {` + '\n'
+    if (nativeType === 'char*' || nativeType === 'FireboltTypes_String_t') {
+      impl += `${'    '.repeat(indentLevel + 1)}${container}* strResult = new ${container}(jsonResult);` + '\n'
+      impl += `${'    '.repeat(indentLevel + 1)}*${name} = reinterpret_cast<${getFireboltStringType()}>(strResult);` + '\n'
+    } else if (nativeType.includes('_t')) {
+      impl += `${'    '.repeat(indentLevel + 1)}WPEFramework::Core::ProxyType<${container}>* resultPtr = new WPEFramework::Core::ProxyType<${container}>();\n`
+      impl += `${'    '.repeat(indentLevel + 1)}*resultPtr = WPEFramework::Core::ProxyType<${container}>::Create();\n`
+      impl += `${'    '.repeat(indentLevel + 1)}*(*resultPtr) = jsonResult;\n`
+      impl += `${'    '.repeat(indentLevel + 1)}*${name} = reinterpret_cast<${nativeType}>(resultPtr);` + '\n'
+    } else {
+      impl += `${'    '.repeat(indentLevel + 1)}*${name} = jsonResult.Value();` + '\n'
+    }
+    impl += `${'    '.repeat(indentLevel)}}` + '\n'
+  } else if (name === 'success') {
+    impl += `${'    '.repeat(indentLevel)}status = (jsonResult.Value() == true) ? FireboltSDKErrorNone : FireboltSDKErrorNotSupported;`
   }
 
   return impl

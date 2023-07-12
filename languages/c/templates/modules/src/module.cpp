@@ -18,7 +18,7 @@
 
 #include "FireboltSDK.h"
 /* ${IMPORTS} */
-#include "${info.title}.h"
+#include "${info.title.lowercase}.h"
 
 namespace FireboltSDK {
     namespace ${info.Title} {

@@ -120,7 +120,6 @@ const macrofy = async (
             modules = moduleList.map(name => getModule(name, openrpc, copySchemasIntoModules))
         }
 
-         
         const aggregateMacros = engine.generateAggregateMacros(openrpc, modules.concat(staticModules), templates, libraryName)
 
         const outputFiles = Object.fromEntries(Object.entries(await readFiles( staticCodeList, staticContent))
@@ -273,7 +272,7 @@ const macrofy = async (
                     logSuccess(`Generated macros for schema ${path.relative(output, location)}`)
                 })
             }
-	    }
+            }
         })
 
         if (clearTargetDirectory) {

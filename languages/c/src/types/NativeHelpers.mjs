@@ -50,37 +50,6 @@ const SdkTypesPrefix = 'Firebolt'
 
 const Indent = '    '
 
-const getArrayElementSchema = (json, module, schemas = {}, name) => {
-  let result = ''
-  if (json.type === 'array' && json.items) {
-    if (Array.isArray(json.items)) {
-      result = json.items[0]
-    }
-    else {
-      // grab the type for the non-array schema
-      result = json.items
-    }
-    if (result['$ref']) {
-      result = getPath(result['$ref'], module, schemas)
-    }
-  }
-  else if (json.type == 'object') {
-    if (json.properties) {
-      Object.entries(json.properties).every(([pname, prop]) => {
-        if (prop.type === 'array') {
-          result = getArrayElementSchema(prop, module, schemas)
-          if (name === capitalize(pname)) {
-             return false
-          }
-        }
-        return true
-      })
-    }
-  }
-
-  return result
-}
-
 const getNativeType = (json, fireboltString = false) => {
   let type
   let jsonType = json.const ? typeof json.const : json.type
@@ -147,7 +116,6 @@ const getMapAccessors = (typeName, accessorPropertyType, level = 0) => {
 
 const getTypeName = (moduleName, varName, prefix = '', upperCase = false, capitalCase = true) => {
 
-  console.log("varName === ", varName, " prefix = ", prefix)
   let mName = upperCase ? moduleName.toUpperCase() : capitalize(moduleName)
   let vName = upperCase ? varName.toUpperCase() : capitalCase ? capitalize(varName) : varName
   if (prefix.length > 0) {
@@ -253,6 +221,5 @@ export {
     getPropertyAccessors,
     isOptional,
     generateEnum,
-    getArrayElementSchema,
     getFireboltStringType
 }

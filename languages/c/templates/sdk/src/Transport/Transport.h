@@ -668,15 +668,15 @@ namespace FireboltSDK {
                     }
 
                      result = WPEFramework::Core::ERROR_NONE;
+                    _adminLock.Unlock();
                 } else {
-
+                    _adminLock.Unlock();
                     string eventName;
                     if (IsEvent(inbound->Id.Value(), eventName)) {
                         _eventHandler->Dispatch(eventName, inbound);
                     }
 
                 }
-                _adminLock.Unlock();
             }
 
             return (result);

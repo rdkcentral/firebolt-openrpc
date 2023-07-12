@@ -18,7 +18,7 @@
 
 #include "FireboltSDK.h"
 /* ${IMPORTS} */
-#include "jsondata_${info.title}.h"
+#include "jsondata_${info.title.lowercase}.h"
 
 /* ${ENUMS} */
 

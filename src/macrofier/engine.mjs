@@ -43,10 +43,10 @@ const _inspector = obj => {
 }
 
 const filterBlackListedSchemas = (module) => {
-  const blackList = ["Parameters", "Discovery", "SecondScreen", "Intents", "1Entertainment", "Lifecycle", "Advertising", "Account", "Authentication", "Accessibility", "Capabilities", "Keyboard", "Localization", "SecureStorage", "Metrics", "Profile", "Types", "Device"]
+//  const blackList = ["Parameters", "Discovery", "SecondScreen", "Intents", "1Entertainment", "Lifecycle", "Advertising", "Account", "Authentication", "Accessibility", "Capabilities", "Keyboard", "Localization", "SecureStorage", "Metrics", "Profile", "Types", "Device"]
   //const blackList = ["Parameters", "Discovery", "1Entertainment", "Intents"]
   //const blackList = ["Capabilities", "Discovery1"]
-//  const blackList = ["Discovery1"]
+  const blackList = ["Discovery1"]
   return blackList.includes(getModuleName(module))
 }
 
@@ -387,7 +387,6 @@ const promoteAndNameSubSchemas = (obj) => {
       addContentDescriptorSubSchema(method.result, method.name, obj)
     }
   })
- 
 
   // find non-primative sub-schemas of components.schemas and name/promote them
   if (obj.components && obj.components.schemas) {
@@ -516,7 +515,8 @@ const insertMacros = (fContents = '', macros = {}) => {
   fContents = fContents.replace(/\$\{major\}/g, macros.version.major)
   fContents = fContents.replace(/\$\{minor\}/g, macros.version.minor)
   fContents = fContents.replace(/\$\{patch\}/g, macros.version.patch)
-  fContents = fContents.replace(/\$\{info\.title\}/g, macros.title.toLowerCase())
+  fContents = fContents.replace(/\$\{info\.title\}/g, macros.title)
+  fContents = fContents.replace(/\$\{info\.title\.lowercase\}/g, macros.title.toLowerCase())
   fContents = fContents.replace(/\$\{info\.Title\}/g, capitalize(macros.title))
   fContents = fContents.replace(/\$\{info\.TITLE\}/g, macros.title.toUpperCase())
   fContents = fContents.replace(/\$\{info\.description\}/g, macros.description)
@@ -714,7 +714,7 @@ const isEnum = x => {
 function generateSchemas(json, templates, options) {
   let results = []
 
-  const schemas = (options.section.includes('methods') ? (hasMethodsSchema(json) ? json.methods : '') : (json.definitions || (json.components && json.components.schemas) || {}))
+  const schemas = JSON.parse(JSON.stringify(json.definitions || (json.components && json.components.schemas) || {}))
 
   const generate = (name, schema, uri, { prefix = '' } = {}) => {
     // these are internal schemas used by the firebolt-openrpc tooling, and not meant to be used in code/doc generation
@@ -847,12 +847,12 @@ const generateImports = (json, templates, options = { destination: '' }) => {
   }
 
   if (json['x-schemas'] && Object.keys(json['x-schemas']).length > 0 && !json.info['x-uri-titles']) {
-    imports += Object.keys(json['x-schemas']).map(shared => template.replace(/\$\{info.title\}/g, shared.toLowerCase())).join('')
+    imports += Object.keys(json['x-schemas']).map(shared => template.replace(/\$\{info.title.lowercase\}/g, shared.toLowerCase())).join('')
   }
 
   let componentExternalSchema = getComponentExternalSchema(json)
   if (componentExternalSchema.length && json.info['x-uri-titles']) {
-    imports += componentExternalSchema.map(shared => template.replace(/\$\{info.title\}/g, shared.toLowerCase())).join('')
+    imports += componentExternalSchema.map(shared => template.replace(/\$\{info.title.lowercase\}/g, shared.toLowerCase())).join('')
   }
   return imports
 }
@@ -988,14 +988,14 @@ function generateMethods(json = {}, examples = {}, templates = {}, options = { p
     let template = getTemplateForMethod(methodObj, templates);
 
     if (template && template.length) {
-      let javascript = insertMethodMacros(template, methodObj, json, templates, examples)
+      let javascript = insertMethodMacros(template, methodObj, json, templates, options, examples)
       result.body = javascript
     }
 
     template = getTemplateForDeclaration(methodObj, templates)
 
     if (template && template.length) {
-      let javascript = insertMethodMacros(template, methodObj, json, templates, examples)
+      let javascript = insertMethodMacros(template, methodObj, json, templates, options, examples)
       result.declaration = javascript
     }
 
@@ -1040,7 +1040,7 @@ function generateMethods(json = {}, examples = {}, templates = {}, options = { p
 }
 
 // TODO: this is called too many places... let's reduce that to just generateMethods
-function insertMethodMacros(template, methodObj, json, templates, examples = {}) {
+function insertMethodMacros(template, methodObj, json, templates, options = { polymorphic: false }, examples={}) {
   const moduleName = getModuleName(json)
 
   const info = {
@@ -1104,25 +1104,25 @@ function insertMethodMacros(template, methodObj, json, templates, examples = {})
   // grab some related methdos in case they are output together in a single template file
   const puller = json.methods.find(method => method.tags.find(tag => tag['x-pulls-for'] === methodObj.name))
   const pullsFor = methodObj.tags.find(t => t['x-pulls-for']) && json.methods.find(method => method.name === methodObj.tags.find(t => t['x-pulls-for'])['x-pulls-for'])
-  const pullerTemplate = (puller ? insertMethodMacros(getTemplate('/codeblocks/puller', templates), puller, json, templates, examples) : '')
+  const pullerTemplate = (puller ? insertMethodMacros(getTemplate('/codeblocks/puller', templates), puller, json, templates, options, examples) : '')
   const setter = getSetterFor(methodObj.name, json)
-  const setterTemplate = (setter ? insertMethodMacros(getTemplate('/codeblocks/setter', templates), setter, json, templates, examples) : '')
+  const setterTemplate = (setter ? insertMethodMacros(getTemplate('/codeblocks/setter', templates), setter, json, templates, options, examples) : '')
   const subscriber = json.methods.find(method => method.tags.find(tag => tag['x-alternative'] === methodObj.name))
-  const subscriberTemplate = (subscriber ? insertMethodMacros(getTemplate('/codeblocks/subscriber', templates), subscriber, json, templates, examples) : '')
+  const subscriberTemplate = (subscriber ? insertMethodMacros(getTemplate('/codeblocks/subscriber', templates), subscriber, json, templates, options, examples) : '')
   const setterFor = methodObj.tags.find(t => t.name === 'setter') && methodObj.tags.find(t => t.name === 'setter')['x-setter-for'] || ''
   const pullsResult = (puller || pullsFor) ? localizeDependencies(pullsFor || methodObj, json).params[1].schema : null
   const pullsParams = (puller || pullsFor) ? localizeDependencies(getPayloadFromEvent(puller || methodObj), json, null, { mergeAllOfs: true }).properties.parameters : null
   const pullsResultType = pullsResult && types.getSchemaShape(pullsResult, json, { destination: state.destination, section: state.section })
-  const pullsForType = pullsResult && types.getSchemaType(pullsResult, json, { destination: state.destination, section: state.section })
-   
+  const pullsForType = pullsResult && types.getSchemaType(pullsResult, json, { destination: state.destination, section: state.section  })
+
   const pullsForJsonType = pullsResult ? types.getJsonType(pullsResult, json, { name: pullsResult.name }) : ''
-  const pullsParamsType = pullsParams ? types.getSchemaShape(pullsParams, json, { destination: state.destination, section: state.section }) : ''
+  const pullsParamsType = pullsParams ? types.getSchemaShape(pullsParams, json, { destination: state.destination, section: state.section  }) : ''
   const pullsForParamType = pullsParams ? types.getSchemaType(pullsParams, json, { destination: state.destination, section: state.section  }) : ''
   const pullsForParamJsonType = pullsParams ? types.getJsonType(pullsParams, json, { name: pullsParams.title }) : ''
   const pullsEventParamName = event ? types.getSchemaInstantiation(event.result, json, event.name, { instantiationType: 'pull.param.name' }) : ''
- 
+
   const serializedParams = types.getSchemaInstantiation(methodObj, json, methodObj.name, { instantiationType: 'params' })
-  const resultInst = types.getSchemaInstantiation(result.schema, json, result.name, { instantiationType: 'result' })
+  const resultInst = types.getSchemaInstantiation(result.schema, json, result.name, { instantiationType: 'result' } )
   const serializedEventParams = event ? indent(types.getSchemaInstantiation(event, json, event.name, { instantiationType: 'params' }), '    ') : ''
   const callbackSerializedParams = event ? types.getSchemaInstantiation(event, json, event.name, { instantiationType: 'callback.params', prefix: method.alternative }) : ''
   const callbackResultInst = event ? types.getSchemaInstantiation(event, json, event.name, { instantiationType: 'callback.result', prefix: method.alternative }) : ''
@@ -1149,6 +1149,7 @@ function insertMethodMacros(template, methodObj, json, templates, examples = {})
   template = insertExampleMacros(template, examples[methodObj.name] || [], methodObj, json, templates)
 
   template = template.replace(/\$\{method\.name\}/g, method.name)
+    .replace(/\$\{method\.json\.name\}/g, options.polymorphic ? methodObj.actualName || method.name : method.name)
     .replace(/\$\{method\.summary\}/g, methodObj.summary)
     .replace(/\$\{method\.description\}/g, methodObj.description
       || methodObj.summary)
@@ -1184,7 +1185,8 @@ function insertMethodMacros(template, methodObj, json, templates, examples = {})
     .replace(/\$\{event\.callback\.params\.serialization\}/g, callbackSerializedParams)
     .replace(/\$\{event\.callback\.result\.instantiation\}/g, callbackResultInst)
     .replace(/\$\{event\.callback\.response\.instantiation\}/g, callbackResponseInst)
-    .replace(/\$\{info\.title\}/g, info.title.toLowerCase())
+    .replace(/\$\{info\.title\.lowercase\}/g, info.title.toLowerCase())
+    .replace(/\$\{info\.title\}/g, info.title)
     .replace(/\$\{info\.Title\}/g, capitalize(info.title))
     .replace(/\$\{info\.TITLE\}/g, info.title.toUpperCase())
     .replace(/\$\{method\.property\.immutable\}/g, hasTag(methodObj, 'property:immutable'))

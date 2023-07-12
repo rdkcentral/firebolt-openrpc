@@ -18,7 +18,7 @@
 
 import deepmerge from 'deepmerge'
 import { getPath } from '../../src/shared/json-schema.mjs'
-import { getTypeName, getModuleName, description, getObjectHandleManagement, getNativeType, getPropertyAccessors, capitalize, isOptional, generateEnum, getMapAccessors, getArrayAccessors, getArrayElementSchema, getPropertyGetterSignature, getPropertyEventCallbackSignature, getPropertyEventRegisterSignature, getPropertyEventUnregisterSignature, getPropertySetterSignature, getFireboltStringType } from './src/types/NativeHelpers.mjs'
+import { getTypeName, getModuleName, description, getObjectHandleManagement, getNativeType, getPropertyAccessors, capitalize, isOptional, generateEnum, getMapAccessors, getArrayAccessors, getPropertyGetterSignature, getPropertyEventCallbackSignature, getPropertyEventRegisterSignature, getPropertyEventUnregisterSignature, getPropertySetterSignature, getFireboltStringType } from './src/types/NativeHelpers.mjs'
 import { getArrayAccessorsImpl, getMapAccessorsImpl, getObjectHandleManagementImpl, getParameterInstantiation, getPropertyAccessorsImpl, getResultInstantiation, getCallbackParametersInstantiation, getCallbackResultInstantiation, getCallbackResponseInstantiation } from './src/types/ImplHelpers.mjs'
 import { getJsonContainerDefinition, getJsonDataStructName, getJsonDataPrefix } from './src/types/JSONHelpers.mjs'
 
@@ -170,7 +170,8 @@ const hasTag = (method, tag) => {
   return method.tags && method.tags.filter(t => t.name === tag).length > 0
 }
 
-const IsResultBooleanSuccess = (schema, name) => (name === 'success' && (schema.type === 'boolean' || schema.const))
+const IsResultConstNullSuccess = (schema, name) => (name === 'success' && !schema.const && !schema.type)
+const IsResultBooleanSuccess = (schema, name) => (name === 'success' && schema.type === 'boolean')
 
 function getParamList(schema, module) {
   let paramList = []
@@ -342,7 +343,7 @@ function getSchemaTypeInfo(module = {}, json = {}, name = '', schemas = {}, pref
     }
   }
   else if (json.type) {
-    if (!IsResultBooleanSuccess(json, name)) { 
+    if (!IsResultBooleanSuccess(json, name) && !IsResultConstNullSuccess(json, name)) {
       structure.type = getNativeType(json, fireboltString)
       structure.json = json
       if (name || json.title) {
@@ -351,7 +352,6 @@ function getSchemaTypeInfo(module = {}, json = {}, name = '', schemas = {}, pref
       structure.namespace = getModuleName(module)
     }
   }
-
   return structure
 }
 
@@ -528,18 +528,14 @@ function getSchemaShapeInfo(json, module, schemas = {}, { name = '', prefix = ''
       else {
         j = json.items
       }
-      
-      //shape += getSchemaShapeInfo(j, module, schemas, { name: j.title || name, prefix, merged, level, title, summary, descriptions, destination, section, enums })
 
       if (!isCPP) {
         let subPrefix = prefix ? prefix + name : name
         let info = getSchemaTypeInfo(module, j, j.title || name, schemas, subPrefix, {level : level, descriptions: descriptions, title: true})
 
         if (info.type && info.type.length > 0) {
-          let type = getArrayElementSchema(json, module, schemas, info.name)
           let arrayName = capitalize(info.name);
-          let namespace = namespace = getModuleName(module)
-          let objName = getTypeName(namespace, arrayName, subPrefix)
+          let objName = getTypeName(getModuleName(module), arrayName, subPrefix)
           let tName = objName + 'Array'
 
           info.json.namespace = info.namespace
@@ -742,10 +738,14 @@ function getSchemaInstantiation(schema, module, name, { instantiationType = '', 
     return getParameterInstantiation(getParamList(schema, module))
   }
   else if (instantiationType === 'result') {
-    let result = ''	  
-    if (IsResultBooleanSuccess(schema, name) !== true) {
-      let resultType = getSchemaType(schema, module, { title: true, name: name, resultSchema: true}) || ''
+    let result = ''
+
+    if (!IsResultConstNullSuccess(schema, name)) {
       let resultJsonType = getJsonType(schema, module, {name: name}) || ''
+      let resultType = ''
+      if (!IsResultBooleanSuccess(schema, name)) {
+        resultType = getSchemaType(schema, module, { title: true, name: name, resultSchema: true}) || ''
+      }
       result = getResultInstantiation(name, resultType, resultJsonType)
     }
     return result
@@ -766,7 +766,7 @@ function getSchemaInstantiation(schema, module, name, { instantiationType = '', 
   }
   else if (instantiationType === 'pull.param.name') {
     let resultJsonType = getJsonType(schema, module, { name: name }) || ''
-    return resultJsonType && resultJsonType[0].split('_')[1] || ''
+    return resultJsonType.length && resultJsonType[0].split('_')[1] || ''
   }
 
   return ''

@@ -1,4 +1,4 @@
-/* ${method.name} - ${method.description} */
+/* ${method.json.name} - ${method.description} */
 uint32_t ${info.Title}_${method.Name}( ${method.signature.params}${if.result}${if.params}, ${end.if.params}${method.result.type}* ${method.result.name}${end.if.result}${if.signature.empty}void${end.if.signature.empty} ) {
 
     uint32_t status = FireboltSDKErrorUnavailable;
@@ -7,9 +7,9 @@ uint32_t ${info.Title}_${method.Name}( ${method.signature.params}${if.result}${i
   
     ${method.params.serialization.with.indent}
         ${method.result.json.type} jsonResult;
-        status = transport->Invoke("${info.title}.${method.name}", jsonParameters, jsonResult);
+        status = transport->Invoke("${info.title.lowercase}.${method.json.name}", jsonParameters, jsonResult);
         if (status == FireboltSDKErrorNone) {
-            FIREBOLT_LOG_INFO(FireboltSDK::Logger::Category::OpenRPC, FireboltSDK::Logger::Module<FireboltSDK::Accessor>(), "${info.Title}.${method.name} is successfully invoked");
+            FIREBOLT_LOG_INFO(FireboltSDK::Logger::Category::OpenRPC, FireboltSDK::Logger::Module<FireboltSDK::Accessor>(), "${info.Title}.${method.json.name} is successfully invoked");
 ${method.result.instantiation}
         }
   

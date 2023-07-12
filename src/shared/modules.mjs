@@ -28,7 +28,7 @@ import isEmpty from 'crocks/core/isEmpty.js'
 const { and, not } = logic
 import isString from 'crocks/core/isString.js'
 import predicates from 'crocks/predicates/index.js'
-import { getExternalSchemaPaths, isDefinitionReferencedBySchema, isNull, localizeDependencies, isSchema, getLocalSchemaPaths, replaceRef, getLinkedSchemaPaths } from './json-schema.mjs'
+import { getExternalSchemaPaths, isDefinitionReferencedBySchema, isNull, localizeDependencies, isSchema, getLocalSchemaPaths, replaceRef } from './json-schema.mjs'
 const { isObject, isArray, propEq, pathSatisfies, hasProp, propSatisfies } = predicates
 
 // util for visually debugging crocks ADTs
@@ -856,23 +856,25 @@ const generateEventListenResponse = json => {
 
 const getRefDefinition = (uri = '', moduleJson = {}) => {
   if (!uri) {
-    throw "getPath requires a non-null uri parameter"
+    throw "getRefDefinition requires a non-null uri parameter"
   }
-  const [mainPath, subPath] = (uri || '').split('#')
-  if (mainPath) {
-    throw `Cannot call getPath with a fully qualified URI: ${uri}`
-  }
+  if (uri.startsWith('#')) {
+    const path = (uri).split('#').pop()
 
-  let definition
-  if (subPath) {
-     definition= getPathOr(null, subPath.slice(1).split('/'), moduleJson)
-  }
-  if (!definition) {
-    //throw `getPath: Path '${uri}' not found in ${moduleJson ? (moduleJson.title || moduleJson.info.title) : moduleJson}.`
-    return null
+    let definition
+    if (path) {
+     definition = getPathOr(null, path.slice(1).split('/'), moduleJson)
+    }
+    if (!definition) {
+      throw `getRefDefinition: Path '${uri}' not found in ${moduleJson ? (moduleJson.title || moduleJson.info.title) : moduleJson}.`
+      return null
+    }
+    else {
+      return definition
+    }
   }
   else {
-    return definition
+    throw `Cannot call getRefDefinition with ${uri}`
   }
 }
 
@@ -919,7 +921,7 @@ const generateAnyOfSchema = (anyOf, name, summary) => {
             }
         }
     }
-    anyOfType.name = name[0].toLowerCase() + name.substr(1) 
+    anyOfType.name = name[0].toLowerCase() + name.substr(1)
     anyOfType.summary = summary
     anyOfType.schema = anyOf
     return anyOfType
@@ -930,7 +932,7 @@ const generateParamsAnyOfSchema = (methodParams, anyOf, anyOfTypes, title, summa
     methodParams.forEach(p => {
         if (p.schema === anyOfTypes) {
             let anyOfType = generateAnyOfSchema(anyOf, title, summary)
-            anyOfType.required = true
+            anyOfType.required = p.required
             params.push(anyOfType)
         }
         else {
@@ -942,7 +944,7 @@ const generateParamsAnyOfSchema = (methodParams, anyOf, anyOfTypes, title, summa
 
 const generateResultAnyOfSchema = (method, methodResult, anyOf, anyOfTypes, title, summary) => {
     let methodResultSchema = Object.assign({}, method.result.schema)
-   
+
     if (methodResult.schema === anyOfTypes) {
         let anyOfType = generateAnyOfSchema(anyOf, title, summary)
         let index = 0
@@ -996,6 +998,7 @@ const createPolymorphicMethods = (method, json) => {
             let localized = localizeDependencies(anyOf, json)
             let title = localized.title || localized.name || ''
             let summary = localized.summary || localized.description || ''
+            polymorphicMethodSchema.actualName = method.name
             polymorphicMethodSchema.name = `${method.name}With${title}`
             polymorphicMethodSchema.tags = method.tags
             polymorphicMethodSchema.params = generateParamsAnyOfSchema(methodParams, anyOf, anyOfTypes, title, summary)
