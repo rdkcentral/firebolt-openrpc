@@ -16,26 +16,22 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef _FIREBOLT_ERROR_H
-#define _FIREBOLT_ERROR_H
+#ifndef FIREBOLT_TYPES_H
+#define FIREBOLT_TYPES_H
+
+#include <stdint.h>
+#include <stdbool.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-typedef enum FireboltSDKError {
-    FireboltSDKErrorNone = 0,
-    FireboltSDKErrorGeneral = 1,
-    FireboltSDKErrorUnavailable = 2,
-    FireboltSDKErrorTimedout = 3,
-    FireboltSDKErrorNotSubscribed = 4,
-    FireboltSDKErrorUnknown = 5,
-    FireboltSDKErrorInUse = 6,
-    FireboltSDKErrorNotSupported = 7
-} FireboltSDKError_t;
+typedef struct FireboltTypes_String_s* FireboltTypes_String_t;
+const char* FireboltTypes_String(FireboltTypes_String_t handle);
+void FireboltTypes_StringHandle_Release(FireboltTypes_String_t handle);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif // _FIREBOLT_ERROR_H
+#endif // FIREBOLT_TYPES_H

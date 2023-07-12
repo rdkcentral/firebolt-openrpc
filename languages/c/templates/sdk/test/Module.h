@@ -23,7 +23,6 @@
 #endif
 
 #include <core/core.h>
-#include <com/com.h>
 
 #undef EXTERNAL
 #define EXTERNAL

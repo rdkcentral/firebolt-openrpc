@@ -52,5 +52,6 @@ function getJsonContainerDefinition (schema, name, props) {
 
 export {
     getJsonContainerDefinition,
-    getJsonDataStructName
+    getJsonDataStructName,
+    getJsonDataPrefix
 }
