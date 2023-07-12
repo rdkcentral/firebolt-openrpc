@@ -17,7 +17,7 @@
  */
 
 #include "Module.h"
-#include "Types.h"
+#include "types.h"
 #include "TypesPriv.h"
 
 #ifdef __cplusplus
@@ -25,14 +25,14 @@ extern "C" {
 #endif
 
 // String Type Handler Interfaces
-const char* FireboltTypes_String(FireboltTypes_StringHandle handle)
+const char* FireboltTypes_String(FireboltTypes_String_t handle)
 {
-    return ((static_cast<FireboltSDK::JSON::String*>(handle))->Value().c_str());
+    return ((reinterpret_cast<FireboltSDK::JSON::String*>(handle))->Value().c_str());
 }
 
-void FireboltTypes_StringHandle_Release(FireboltTypes_StringHandle handle)
+void FireboltTypes_StringHandle_Release(FireboltTypes_String_t handle)
 {
-    delete static_cast<FireboltSDK::JSON::String*>(handle);
+    delete reinterpret_cast<FireboltSDK::JSON::String*>(handle);
 }
 
 #ifdef __cplusplus

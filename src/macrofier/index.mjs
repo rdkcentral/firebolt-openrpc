@@ -167,7 +167,7 @@ const macrofy = async (
                 content = engine.insertMacros(content, macros)
                 content = engine.insertAggregateMacros(content, aggregateMacros)
 
-                const location = createModuleDirectories ? path.join(output, module.info.title, t) : path.join(output, t.replace(/Module/, module.info.title).replace(/index/, module.info.title))
+                const location = createModuleDirectories ? path.join(output, module.info.title, t) : path.join(output, t.replace(/module/, module.info.title.toLowerCase()).replace(/index/, module.info.title))
 
                 outputFiles[location] = content
                 logSuccess(`Generated macros for module ${path.relative(output, location)}`)
@@ -262,7 +262,7 @@ const macrofy = async (
                     // NOTE: whichever insert is called first also needs to be called again last, so each phase can insert recursive macros from the other
                     content = engine.insertMacros(content, macros)
         
-                    const location = createModuleDirectories ? path.join(output, document.info.title, t) : path.join(output, t.replace(/Module/, document.info.title).replace(/index/, document.info.title))
+                    const location = createModuleDirectories ? path.join(output, document.info.title, t) : path.join(output, t.replace(/module/, document.info.title.toLowerCase()).replace(/index/, document.info.title))
         
                     outputFiles[location] = content
                     logSuccess(`Generated macros for schema ${path.relative(output, location)}`)

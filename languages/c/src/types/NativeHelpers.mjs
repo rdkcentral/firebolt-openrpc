@@ -29,7 +29,7 @@ const { isObject, isArray, propEq, pathSatisfies, hasProp, propSatisfies } = pre
 
 const getModuleName = json => getPathOr(null, ['info', 'title'], json) || json.title || 'missing'
 
-const getFireboltStringType = () => 'FireboltTypes_StringHandle'
+const getFireboltStringType = () => 'FireboltTypes_String_t'
 const getHeaderText = () => {
 
     return `/*
@@ -42,40 +42,6 @@ const getHeaderText = () => {
 `
 }
     
-const getIncludeGuardOpen = (json, prefix=null) => {
-  prefix = prefix ? `${prefix.toUpperCase()}_` : ''
-    return `
-#ifndef _${prefix}${getModuleName(json).toUpperCase()}_H
-#define _${prefix}${getModuleName(json).toUpperCase()}_H
-
-`
-}
-    
-const getStyleGuardOpen = () => {
-    return `
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-`
-}
-    
-const getStyleGuardClose = () => {
-    return `
-
-#ifdef __cplusplus
-}
-#endif
-
-`
-}
-    
-const getIncludeGuardClose = () => {
-    return `
-#endif // Header Include Guard
-`
-}
-
 const capitalize = str => str[0].toUpperCase() + str.substr(1)
 const description = (title, str='') => '/* ' + title + (str.length > 0 ? ' - ' + str : '') + ' */'
 const isOptional = (prop, json) => (!json.required || !json.required.includes(prop))
@@ -142,26 +108,26 @@ const getNativeType = (json, fireboltString = false) => {
 
 const getObjectHandleManagement = varName => {
 
-    let result = `typedef void* ${varName}Handle;
-${varName}Handle ${varName}Handle_Create(void);
-void ${varName}Handle_Addref(${varName}Handle handle);
-void ${varName}Handle_Release(${varName}Handle handle);
-bool ${varName}Handle_IsValid(${varName}Handle handle);
+    let result = `typedef struct ${varName}_s* ${varName}_t;
+${varName}_t ${varName}Handle_Acquire(void);
+void ${varName}Handle_Addref(${varName}_t handle);
+void ${varName}Handle_Release(${varName}_t handle);
+bool ${varName}Handle_IsValid(${varName}_t handle);
 `
     return result
 }
 
 const getPropertyAccessors = (objName, propertyName, propertyType,  options = {level:0, readonly:false, optional:false}) => {
-  let result = `${Indent.repeat(options.level)}${propertyType} ${objName}_Get_${propertyName}(${objName}Handle handle);` + '\n'
+  let result = `${Indent.repeat(options.level)}${propertyType} ${objName}_Get_${propertyName}(${objName}_t handle);` + '\n'
 
   if (!options.readonly) {
     let type = (propertyType === getFireboltStringType()) ? 'char*' : propertyType
-    result += `${Indent.repeat(options.level)}void ${objName}_Set_${propertyName}(${objName}Handle handle, ${type} ${propertyName.toLowerCase()});` + '\n'
+    result += `${Indent.repeat(options.level)}void ${objName}_Set_${propertyName}(${objName}_t handle, ${type} ${propertyName.toLowerCase()});` + '\n'
   }
 
   if (options.optional === true) {
-    result += `${Indent.repeat(options.level)}bool ${objName}_Has_${propertyName}(${objName}Handle handle);` + '\n'
-    result += `${Indent.repeat(options.level)}void ${objName}_Clear_${propertyName}(${objName}Handle handle);` + '\n'
+    result += `${Indent.repeat(options.level)}bool ${objName}_Has_${propertyName}(${objName}_t handle);` + '\n'
+    result += `${Indent.repeat(options.level)}void ${objName}_Clear_${propertyName}(${objName}_t handle);` + '\n'
   }
 
   return result
@@ -171,10 +137,10 @@ const getMapAccessors = (typeName, accessorPropertyType, level = 0) => {
 
   let res
 
-  res = `${Indent.repeat(level)}uint32_t ${typeName}_KeysCount(${typeName}Handle handle);` + '\n'
-  res += `${Indent.repeat(level)}void ${typeName}_AddKey(${typeName}Handle handle, char* key, ${accessorPropertyType} value);` + '\n'
-  res += `${Indent.repeat(level)}void ${typeName}_RemoveKey(${typeName}Handle handle, char* key);` + '\n'
-  res += `${Indent.repeat(level)}${accessorPropertyType} ${typeName}_FindKey(${typeName}Handle handle, char* key);` + '\n'
+  res = `${Indent.repeat(level)}uint32_t ${typeName}_KeysCount(${typeName}_t handle);` + '\n'
+  res += `${Indent.repeat(level)}void ${typeName}_AddKey(${typeName}_t handle, char* key, ${accessorPropertyType} value);` + '\n'
+  res += `${Indent.repeat(level)}void ${typeName}_RemoveKey(${typeName}_t handle, char* key);` + '\n'
+  res += `${Indent.repeat(level)}${accessorPropertyType} ${typeName}_FindKey(${typeName}_t handle, char* key);` + '\n'
 
   return res
 }
@@ -193,10 +159,10 @@ const getTypeName = (moduleName, varName, prefix = '', upperCase = false, capita
 
 const getArrayAccessors = (arrayName, propertyType, valueType) => {
 
-  let res = `uint32_t ${arrayName}Array_Size(${propertyType}Handle handle);` + '\n'
-  res += `${valueType} ${arrayName}Array_Get(${propertyType}Handle handle, uint32_t index);` + '\n'
-  res += `void ${arrayName}Array_Add(${propertyType}Handle handle, ${valueType} value);` + '\n'
-  res += `void ${arrayName}Array_Clear(${propertyType}Handle handle);` + '\n'
+  let res = `uint32_t ${arrayName}Array_Size(${propertyType}_t handle);` + '\n'
+  res += `${valueType} ${arrayName}Array_Get(${propertyType}_t handle, uint32_t index);` + '\n'
+  res += `void ${arrayName}Array_Add(${propertyType}_t handle, ${valueType} value);` + '\n'
+  res += `void ${arrayName}Array_Clear(${propertyType}_t handle);` + '\n'
 
   return res
 }
@@ -270,10 +236,6 @@ function getPropertyEventUnregisterSignature(property, module) {
 
 export {
     getHeaderText,
-    getIncludeGuardOpen,
-    getStyleGuardOpen,
-    getStyleGuardClose,
-    getIncludeGuardClose,
     getNativeType,
     getModuleName,
     getPropertyGetterSignature,
