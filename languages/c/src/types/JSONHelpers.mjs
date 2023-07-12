@@ -4,7 +4,7 @@ const getJsonDataPrefix = () => 'JsonData_'
 const wpeJsonNameSpace = () => 'WPEFramework::Core::JSON'
 
 const getJsonDataStructName = (modName, name, prefix = '') => {
-  let result =((prefix.length > 0) && (!name.startsWith(prefix)))  ? `${capitalize(modName)}::${getJsonDataPrefix()}${capitalize(prefix)}_${capitalize(name)}` : `${capitalize(modName)}::${getJsonDataPrefix()}${capitalize(name)}`
+  let result =((prefix.length > 0) && (prefix !== name))  ? `${capitalize(modName)}::${getJsonDataPrefix()}${capitalize(prefix)}${capitalize(name)}` : `${capitalize(modName)}::${getJsonDataPrefix()}${capitalize(name)}`
 
   return ((result.includes(wpeJsonNameSpace()) === true) ? result : `${getSdkNameSpace()}::${result}`)
 }
