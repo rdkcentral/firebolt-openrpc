@@ -1,4 +1,4 @@
-/* ${method.json.name} - ${method.description} */
+/* ${method.rpc.name} - ${method.description} */
 uint32_t ${info.Title}_Push${method.Name}( ${method.signature.params} )
 {
     uint32_t status = FireboltSDKErrorUnavailable;
@@ -9,9 +9,9 @@ uint32_t ${info.Title}_Push${method.Name}( ${method.signature.params} )
     ${method.params.serialization.with.indent}
 
         WPEFramework::Core::JSON::Boolean jsonResult;
-        status = transport->Invoke(_T("${info.title}.${method.json.name}"), jsonParameters, jsonResult);
+        status = transport->Invoke(_T("${info.title.lowercase}.${method.rpc.name}"), jsonParameters, jsonResult);
         if (status == FireboltSDKErrorNone) {
-            FIREBOLT_LOG_INFO(FireboltSDK::Logger::Category::OpenRPC, FireboltSDK::Logger::Module<FireboltSDK::Accessor>(), "${info.Title}.${method.json.name} is successfully pushed with status as %d", jsonResult.Value());
+            FIREBOLT_LOG_INFO(FireboltSDK::Logger::Category::OpenRPC, FireboltSDK::Logger::Module<FireboltSDK::Accessor>(), "${info.Title}.${method.rpc.name} is successfully pushed with status as %d", jsonResult.Value());
             status = (jsonResult.Value() == true) ? FireboltSDKErrorNone : FireboltSDKErrorNotSupported;
         }
     } else {

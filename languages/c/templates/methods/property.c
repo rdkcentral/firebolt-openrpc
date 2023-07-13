@@ -1,7 +1,7 @@
-/* ${method.json.name} - ${method.description} */
+/* ${method.rpc.name} - ${method.description} */
 uint32_t ${info.Title}_Get${method.Name}( ${method.signature.params}${if.params}, ${end.if.params}${method.result.type}* ${method.result.name} )
 {
-    const string method = _T("${info.title}.${method.json.name}");
+    const string method = _T("${info.title.lowercase}.${method.rpc.name}");
 ${if.params}${method.params.serialization}${end.if.params}
     ${method.result.json} jsonResult;
     ${if.params}uint32_t status = FireboltSDK::Properties::Get(method, jsonParameters, jsonResult);${end.if.params}
