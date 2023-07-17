@@ -227,6 +227,13 @@ const isTemporalSetMethod = compose(
     getPath(['tags'])
 )
 
+const isCallsMetricsMethod = compose(
+    option(false),
+    map(_ => true),
+    chain(find(propEq('name', 'calls-metrics'))),
+    getPath(['tags'])
+)
+
 const getMethodAttributes = compose(
     option(null),
     map(props => props.reduce( (val, item) => {
@@ -1148,6 +1155,7 @@ export {
     isPolymorphicReducer,
     isPolymorphicPullMethod,
     isTemporalSetMethod,
+    isCallsMetricsMethod,
     isExcludedMethod,
     isRPCOnlyMethod,
     isProviderInterfaceMethod,
