@@ -4,24 +4,21 @@ usage()
    echo "options:"
    echo "    -i install path"
    echo "    -s sdk path"
-   echo "    -t include test"
    echo "    -m module name. i.e, core/manage"
    echo
    echo "usage: "
-   echo "    ./install.sh -p path"
+   echo "    ./install.sh -i path -s sdk path-m core"
 }
 
 SdkPath=".."
 InstallPath=".."
-IncludeTest="OFF"
 ModuleName="core"
-while getopts i:s:m:th flag
+while getopts i:s:m:h flag
 do
     case "${flag}" in
         i) InstallPath="${OPTARG}";;
         s) SdkPath="${OPTARG}";;
 	m) ModuleName="${OPTARG}";;
-        t) IncludeTest="ON";;
         h) usage && exit 1;;
     esac
 done
@@ -48,11 +45,7 @@ cp -ar ${SdkPath}/include ${ReleasePath}
 cp -ar ${SdkPath}/cmake ${ReleasePath}
 cp -ar ${SdkPath}/scripts/build.sh ${ReleasePath}
 cp -ar ${SdkPath}/CMakeLists.txt ${ReleasePath}
-
-if [ "${IncludeTest}" == "ON" ];
-then
-    cp -ar ${SdkPath}/ctest ${ReleasePath}/test
-fi
+cp -ar ${SdkPath}/ctest ${ReleasePath}/test
 
 sed -i '/EnableTest="ON";;/d' ${ReleasePath}/build.sh
 sed -i 's/getopts p:s:tch/getopts p:s:ch/g' ${ReleasePath}/build.sh
