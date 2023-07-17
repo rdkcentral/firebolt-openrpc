@@ -29,7 +29,7 @@ import isString from 'crocks/core/isString.js'
 import predicates from 'crocks/predicates/index.js'
 const { isObject, isArray, propEq, pathSatisfies, propSatisfies } = predicates
 
-import { isRPCOnlyMethod, isProviderInterfaceMethod, getProviderInterface, getPayloadFromEvent, providerHasNoParameters, isTemporalSetMethod, hasMethodAttributes, getMethodAttributes, isEventMethodWithContext, getSemanticVersion, getSetterFor, getProvidedCapabilities, isPolymorphicPullMethod, hasPublicAPIs } from '../shared/modules.mjs'
+import { isRPCOnlyMethod, isProviderInterfaceMethod, getProviderInterface, getPayloadFromEvent, providerHasNoParameters, isTemporalSetMethod, isCallsMetricsMethod, isExcludedMethod, hasMethodAttributes, getMethodAttributes, isEventMethodWithContext, getSemanticVersion, getSetterFor, getProvidedCapabilities, isPolymorphicPullMethod, hasPublicAPIs } from '../shared/modules.mjs'
 import isEmpty from 'crocks/core/isEmpty.js'
 import { getLinkedSchemaPaths, getSchemaConstraints, isSchema, localizeDependencies, isDefinitionReferencedBySchema } from '../shared/json-schema.mjs'
 
@@ -279,6 +279,13 @@ const eventsOrEmptyArray = compose(
 const temporalSets = compose(
   option([]),
   map(filter(isTemporalSetMethod)),
+  getMethods
+)
+
+const callsMetrics = compose(
+  option([]),
+  map(filter(not(isExcludedMethod))),
+  map(filter(isCallsMetricsMethod)),
   getMethods
 )
 
@@ -829,6 +836,10 @@ const generateImports = (json, templates, options = { destination: '' }) => {
   }
   const suffix = options.destination.split('.').pop()
   const prefix = options.destination.split('/').pop().split('_')[0].toLowerCase()
+
+  if (callsMetrics(json).length) {
+    imports += getTemplate(suffix ? `/imports/calls-metrics.${suffix}` : '/imports/calls-metrics', templates)
+  }
 
   let template = prefix ? getTemplate(`/imports/default.${prefix}`, templates) : ''
   if (!template) {
