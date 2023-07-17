@@ -361,7 +361,7 @@ const addContentDescriptorSubSchema = (descriptor, prefix, obj) => {
 }
 
 // only consider sub-objects and sub enums to be sub-schemas
-const isSubSchema = (schema) => schema.type === 'object' || (schema.type === 'string' && schema.enum)
+const isSubSchema = (schema) => schema.type === 'object' || (schema.type === 'string' && schema.enum) || (schema.type === 'array' && schema.items)
 
 const promoteAndNameSubSchemas = (obj) => {
   // make a copy so we don't polute our inputs
@@ -384,7 +384,7 @@ const promoteAndNameSubSchemas = (obj) => {
     while (more) {
       more = false
       Object.entries(obj.components.schemas).forEach(([key, schema]) => {
-        if (schema.type === "object" && schema.properties) {
+        if ((schema.type === "object") && schema.properties) {
           Object.entries(schema.properties).forEach(([name, propSchema]) => {
             if (isSubSchema(propSchema)) {
               more = true
@@ -584,10 +584,11 @@ function insertTableofContents(content) {
 }
 
 const convertEnumTemplate = (schema, templateName, templates) => {
+  let enumSchema = isArraySchema(schema) ? schema.items : schema
   const template = getTemplate(templateName, templates).split('\n')
   for (var i = 0; i < template.length; i++) {
     if (template[i].indexOf('${key}') >= 0) {
-      template[i] = schema.enum.map(value => {
+      template[i] = enumSchema.enum.map(value => {
         const safeName = value.split(':').pop().replace(/[\.\-]/g, '_').replace(/\+/g, '_plus').replace(/([a-z])([A-Z0-9])/g, '$1_$2').toUpperCase()
         return template[i].replace(/\$\{key\}/g, safeName)
           .replace(/\$\{value\}/g, value)
@@ -693,7 +694,12 @@ function sortSchemasByReference(schemas = []) {
   return schemas
 }
 
-const isEnum = x => x.type && x.type === 'string' && Array.isArray(x.enum) && x.title
+const isArraySchema = x => x.type && x.type === 'array' && x.items
+
+const isEnum = x => {
+   let schema = isArraySchema(x) ? x.items : x
+   return schema.type && schema.type === 'string' && Array.isArray(schema.enum) && x.title
+}
 
 function generateSchemas(json, templates, options) {
   let results = []
@@ -1089,9 +1095,10 @@ function insertMethodMacros(template, methodObj, json, templates, examples = {})
   const serializedParams = types.getSchemaInstantiation(methodObj, json, methodObj.name, { instantiationType: 'params' })
   const resultInst = types.getSchemaInstantiation(result.schema, json, result.name, { instantiationType: 'result' } )
   const serializedEventParams = event ? indent(types.getSchemaInstantiation(event, json, event.name, { instantiationType: 'params' }), '    ') : ''
-  const callbackSerializedParams = event ? types.getSchemaInstantiation(event, json, event.name, { instantiationType: 'callback.params' }) : ''
-  const callbackResultInst = event ? types.getSchemaInstantiation(event, json, event.name, { instantiationType: 'callback.result' }) : ''
-  const callbackResponseInst = event ? types.getSchemaInstantiation(event, json, event.name, { instantiationType: 'callback.response' }) : ''
+  const callbackSerializedParams = event ? types.getSchemaInstantiation(event, json, event.name, { instantiationType: 'callback.params', prefix: method.alternative }) : ''
+  const callbackResultInst = event ? types.getSchemaInstantiation(event, json, event.name, { instantiationType: 'callback.result', prefix: method.alternative }) : ''
+  const callbackResponseInst = event ? types.getSchemaInstantiation(event, json, event.name, { instantiationType: 'callback.response', prefix: method.alternative }) : ''
+  const callbackResultJsonType = event && result.schema ? types.getJsonType(result.schema, json, { name: result.name, prefix: method.alternative }) : ''
   const resultType = result.schema ? types.getSchemaType(result.schema, json, { name: result.name }) : ''
   const resultJsonType = result.schema ? types.getJsonType(result.schema, json, { name: result.name }) : ''
 
@@ -1166,8 +1173,8 @@ function insertMethodMacros(template, methodObj, json, templates, examples = {})
     .replace(/\$\{method\.result\.link\}/g, getLinkForSchema(result.schema, json, { name: result.name })) //, baseUrl: options.baseUrl
     .replace(/\$\{method\.result\.type\}/g, types.getSchemaType(result.schema, json, { name: result.name, title: true, asPath: false, destination: state.destination, resultSchema: true })) //, baseUrl: options.baseUrl
     .replace(/\$\{method\.result\.json\}/, types.getJsonType(result.schema, json, { name: result.name, destination: state.destination, section: state.section, code: false, link: false, title: true, asPath: false, expandEnums: false }))
-    .replace(/\$\{event\.result\.type\}/, isEventMethod(methodObj) ? types.getSchemaType(result.schema, json, { name: result.name, destination: state.destination, event: true, description: methodObj.result.summary, asPath: false }) : '')
-    .replace(/\$\{event\.result\.json\.type\}/g, resultJsonType)
+    .replace(/\$\{event\.result\.type\}/, isEventMethod(methodObj) ? types.getSchemaType(result.schema, json, { name: result.name, prefix: method.alternative, destination: state.destination, event: true, description: methodObj.result.summary, asPath: false }) : '')
+    .replace(/\$\{event\.result\.json\.type\}/g, callbackResultJsonType)
     .replace(/\$\{event\.pulls\.param\.name\}/g, pullsEventParamName)
     .replace(/\$\{method\.result\}/g, generateResult(result.schema, json, templates, { name: result.name }))
     .replace(/\$\{method\.result\.json\.type\}/g, resultJsonType)
