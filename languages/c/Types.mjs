@@ -358,6 +358,7 @@ function getSchemaTypeInfo(module = {}, json = {}, name = '', schemas = {}, pref
       structure.namespace = getModuleName(module)
     }
   }
+
   return structure
 }
 
