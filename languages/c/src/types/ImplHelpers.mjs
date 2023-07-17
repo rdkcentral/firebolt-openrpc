@@ -49,7 +49,7 @@ const getPropertyAccessorsImpl = (objName, modulePropertyType, subPropertyType, 
     WPEFramework::Core::ProxyType<${modulePropertyType}>* var = reinterpret_cast<WPEFramework::Core::ProxyType<${modulePropertyType}>*>(handle);
     ASSERT(var->IsValid());
 ` + '\n'
-  if ((json.type === 'object') && (accessorPropertyType !== 'char*')) {
+  if (((json.type === 'object') || (json.type === 'array')) && (accessorPropertyType !== 'char*')) {
     result += `    WPEFramework::Core::ProxyType<${subPropertyType}>* element = new WPEFramework::Core::ProxyType<${subPropertyType}>();
     *element = WPEFramework::Core::ProxyType<${subPropertyType}>::Create();
     *(*element) = (*var)->${subPropertyName};
@@ -73,7 +73,7 @@ const getPropertyAccessorsImpl = (objName, modulePropertyType, subPropertyType, 
     ASSERT(var->IsValid());
 ` + '\n'
 
-    if (json.type === 'object' && (accessorPropertyType !== 'char*')) {
+    if (((json.type === 'object') || (json.type === 'array')) && (accessorPropertyType !== 'char*')) {
       result += `    WPEFramework::Core::ProxyType<${subPropertyType}>* object = reinterpret_cast<WPEFramework::Core::ProxyType<${subPropertyType}>*>(value);
     (*var)->${subPropertyName} = *(*object);` + '\n'
     }
