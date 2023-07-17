@@ -107,11 +107,11 @@ const getTypeName = (moduleName, varName, prefix = '', upperCase = false, capita
 
   let mName = upperCase ? moduleName.toUpperCase() : capitalize(moduleName)
   let vName = upperCase ? varName.toUpperCase() : capitalCase ? capitalize(varName) : varName
-  if (prefix.length > 0) {
+  if (prefix && prefix.length > 0) {
     prefix = (prefix !== varName) ? (upperCase ? prefix.toUpperCase() : capitalize(prefix)) : ''
   }
-  prefix = (prefix.length > 0) ?(upperCase ? prefix.toUpperCase() : capitalize(prefix)) : prefix
-  let name = (prefix.length > 0) ? `${mName}_${prefix}${vName}` : `${mName}_${vName}`
+  prefix = (prefix && prefix.length > 0) ?(upperCase ? prefix.toUpperCase() : capitalize(prefix)) : prefix
+  let name = (prefix && prefix.length > 0) ? `${mName}_${prefix}${vName}` : `${mName}_${vName}`
   return name
 }
 
