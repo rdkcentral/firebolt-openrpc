@@ -82,7 +82,7 @@ function union(schemas, module, commonSchemas) {
           //console.warn(`Ignoring "${key}" that is already present and same`)
         } else {
           console.warn(`ERROR "${key}" is not same -${JSON.stringify(result, null, 4)} ${key} ${result[key]} - ${value}`);
-          throw "ERROR: type is not same"
+          return {}
         }
       } else {
         //If the Key is a const then merge them into an enum
@@ -325,8 +325,14 @@ function getSchemaTypeInfo(module = {}, json = {}, name = '', schemas = {}, pref
   }
   else if (json.anyOf) {
     let mergedSchema = getMergedSchema(module, json, name, schemas)
-    let prefixName = ((prefix.length > 0) && (!name.startsWith(prefix))) ? prefix : capitalize(name)
-    structure = getSchemaTypeInfo(module, mergedSchema, '', schemas, prefixName, options)
+    if (mergedSchema.type) {
+      let prefixName = ((prefix.length > 0) && (!name.startsWith(prefix))) ? prefix : capitalize(name)
+      structure = getSchemaTypeInfo(module, mergedSchema, '', schemas, prefixName, options)
+    }
+    else {
+      structure.type = fireboltString ? getFireboltStringType() : 'char*'
+      structure.json.type = 'string'
+    }
   }
   else if (json.type === 'object') {
     structure.json = json
@@ -499,8 +505,10 @@ function getSchemaShapeInfo(json, module, schemas = {}, { name = '', prefix = ''
     else if (json.anyOf) {
       if (level > 0) {
         let mergedSchema = getMergedSchema(module, json, name, schemas)
-        let prefixName = ((prefix.length > 0) && (!name.startsWith(prefix))) ? prefix : capitalize(name)
-        shape += getSchemaShapeInfo(mergedSchema, module, schemas, { name, prefix: prefixName, merged, level, title, summary, descriptions, destination, section, enums })
+        if (mergedSchema.type) {
+          let prefixName = ((prefix.length > 0) && (!name.startsWith(prefix))) ? prefix : capitalize(name)
+          shape += getSchemaShapeInfo(mergedSchema, module, schemas, { name, prefix: prefixName, merged, level, title, summary, descriptions, destination, section, enums })
+	}
       }
     }
     else if (json.oneOf) {
@@ -689,8 +697,13 @@ function getJsonTypeInfo(module = {}, json = {}, name = '', schemas, prefix = ''
   }
   else if (json.anyOf) {
     let mergedSchema = getMergedSchema(module, json, name, schemas)
-    let prefixName = ((prefix.length > 0) && (!name.startsWith(prefix))) ? prefix : capitalize(name)
-    structure = getJsonTypeInfo(module, mergedSchema, name, schemas, prefixName, {descriptions, level})
+    if (mergedSchema.type) {
+      let prefixName = ((prefix.length > 0) && (!name.startsWith(prefix))) ? prefix : capitalize(name)
+      structure = getJsonTypeInfo(module, mergedSchema, name, schemas, prefixName, {descriptions, level})
+    }
+    else {
+      structure.type = getJsonNativeTypeForOpaqueString()
+    }
   }
   else if (json.type === 'object') {
     if (hasProperties(json) !== true) {
