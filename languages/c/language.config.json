@@ -3,14 +3,13 @@
     "langcode": "c",
     "createModuleDirectories": false,
     "extractSubSchemas": true,
+    "unwrapResultObjects": false,
     "templatesPerModule": [
         "/include/Module.h",
-        "/include/Module_Accessors.h",
         "/src/Module.cpp"
     ],
     "templatesPerSchema": [
         "/include/Common/Module.h",
-        "/include/Common/Module_Accessors.h",
         "/src/Module_Common.cpp",
         "/src/JsonData_Module.h"
     ],
@@ -21,7 +20,8 @@
         "number": "float",
         "string": "char*"
     },
-    "additionalSchemaTemplates": [
-        "accessors"
-    ]
+    "allocatedPrimitiveProxies": {
+        "string": "FireboltTypes_StringHandle"
+    },
+    "additionalSchemaTemplates": [ "json-types" ]
 }

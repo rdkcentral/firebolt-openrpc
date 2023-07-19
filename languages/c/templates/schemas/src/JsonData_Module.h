@@ -25,6 +25,6 @@ namespace FireboltSDK {
     namespace ${info.title} {
     // Types
 
-       /* ${SCHEMAS} */
+       /* ${SCHEMAS:json-types} */
     }
 }

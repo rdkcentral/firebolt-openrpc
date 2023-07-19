@@ -1,4 +1,4 @@
 /*
  * ${title} - ${description}
  */
-typedef ${shape} ${title};
+${shape}

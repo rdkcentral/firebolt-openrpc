@@ -18,6 +18,7 @@
         "boolean": "boolean",
         "integer": "number",
         "number": "number",
-        "string": "string"
+        "string": "string",
+        "object": "object"
     }
 }

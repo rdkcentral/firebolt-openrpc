@@ -1,1 +1,1 @@
-${type} ${delimiter} | ${end.delimiter}
+${type}${delimiter} | ${end.delimiter}

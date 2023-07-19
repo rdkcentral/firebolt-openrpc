@@ -1,1 +1,0 @@
-int F${info.Title}_GetProperty${type}();

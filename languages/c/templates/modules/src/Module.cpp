@@ -23,18 +23,18 @@
 namespace FireboltSDK {
     namespace ${info.title} {
     // Types
-       /* ${TYPES} */
+       /* ${TYPES:json-types} */
     }
 }
 
-/* ${ENUMS} */
+/* ${ENUMS:json-types} */
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-/* ${ACCESSORS} */
 /* ${METHODS} */
+
 /* ${EVENTS} */
 
 #ifdef __cplusplus

@@ -15,12 +15,13 @@ int ${info.title}_Register_${method.Name}( ${event.signature.params}${if.event.p
     int status = FireboltSDKErrorNone;
 
     if (userCB != nullptr) {
-    ${event.params.serialization}
+        ${event.params.serialization}
         status = FireboltSDK::Event::Instance().Subscribe<${event.result.json.type}>(eventName, jsonParameters, ${info.Title}${method.Name}InnerCallback, reinterpret_cast<void*>(userCB), userData);
     }
     return status;
 }
 int ${info.title}_Unregister_${method.Name}( ${info.Title}${method.Name}Callback userCB)
 {
+
     return FireboltSDK::Event::Instance().Unsubscribe(_T("${info.title}.${method.name}"), reinterpret_cast<void*>(userCB));
 }

@@ -7,7 +7,8 @@ int F${info.title}_${method.Name}(${method.signature.params}${if.result.properti
       JsonObject jsonParameters;
 
       ${if.params}
-${method.params.json}
+      //default
+${method.params.serialization}
       ${end.if.params}
   
       WPEFramework::Core::JSON::Boolean jsonResult;

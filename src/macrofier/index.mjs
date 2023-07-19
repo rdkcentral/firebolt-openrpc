@@ -47,6 +47,9 @@ const macrofy = async (
         createModuleDirectories,
         copySchemasIntoModules,
         extractSubSchemas,
+        unwrapResultObjects,
+        allocatedPrimitiveProxies,
+        convertTuplesToArraysOrObjects,
         additionalSchemaTemplates,
         aggregateFile,
         operators,
@@ -85,8 +88,10 @@ const macrofy = async (
             copySchemasIntoModules,
             createModuleDirectories,
             extractSubSchemas,
+            unwrapResultObjects,
             operators,
             primitives,
+            allocatedPrimitiveProxies,
             additionalSchemaTemplates
         })
 
@@ -98,6 +103,8 @@ const macrofy = async (
 
         typer.setTemplates && typer.setTemplates(templates)
         typer.setPrimitives(primitives)
+        typer.setAllocatedPrimitiveProxies(allocatedPrimitiveProxies)
+        typer.setConvertTuples(convertTuplesToArraysOrObjects)
 
         let templatesPermission = {}
         if (persistPermission) {
