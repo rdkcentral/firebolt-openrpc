@@ -16,26 +16,27 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef _FIREBOLT_ERROR_H
-#define _FIREBOLT_ERROR_H
+#include "FireboltSDK.h"
+/* ${IMPORTS} */
+#include "${info.title.lowercase}.h"
+
+namespace FireboltSDK {
+    namespace ${info.Title} {
+    // Types
+       /* ${TYPES:json-types} */
+    }
+}
+
+/* ${ENUMS:json-types} */
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-typedef enum FireboltSDKError {
-    FireboltSDKErrorNone = 0,
-    FireboltSDKErrorGeneral = 1,
-    FireboltSDKErrorUnavailable = 2,
-    FireboltSDKErrorTimedout = 3,
-    FireboltSDKErrorNotSubscribed = 4,
-    FireboltSDKErrorUnknown = 5,
-    FireboltSDKErrorInUse = 6,
-    FireboltSDKErrorNotSupported = 7
-} FireboltSDKError_t;
+/* ${METHODS} */
+
+/* ${EVENTS} */
 
 #ifdef __cplusplus
 }
 #endif
-
-#endif // _FIREBOLT_ERROR_H

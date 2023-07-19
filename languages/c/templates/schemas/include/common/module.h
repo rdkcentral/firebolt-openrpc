@@ -16,27 +16,24 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef _OPENRPC_C_TESTS_H
-#define _OPENRPC_C_TESTS_H
+#ifndef COMMON_${info.TITLE}_H
+#define COMMON_${info.TITLE}_H
 
-#include "TestUtils.h"
+#include <firebolt.h>
+/* ${IMPORTS} */
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-uint32_t test_firebolt_create_instance();
-uint32_t test_firebolt_dispose_instance();
+// Enums
 
-uint32_t test_firebolt_main();
-uint32_t test_properties_get_device_id();
-uint32_t test_properties_set();
-uint32_t test_eventregister();
-uint32_t test_eventregister_by_providing_callback();
-uint32_t test_string_set_get_value();
+/* ${ENUMS} */
+
+/* ${TYPES} */
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif // _OPENRPC_C_TESTS_H
+#endif // Header Include Guard

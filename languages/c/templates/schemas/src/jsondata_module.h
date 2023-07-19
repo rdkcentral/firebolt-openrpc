@@ -16,22 +16,15 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef _FIREBOLT_TYPES_H
-#define _FIREBOLT_TYPES_H
+#pragma once
 
-#include <stdint.h>
-#include <stdbool.h>
+/* ${IMPORTS} */
+#include "common/${info.title.lowercase}.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+namespace FireboltSDK {
+    namespace ${info.Title} {
+    // Types
 
-typedef void* FireboltTypes_StringHandle;
-const char* FireboltTypes_String(FireboltTypes_StringHandle handle);
-void FireboltTypes_StringHandle_Release(FireboltTypes_StringHandle handle);
-
-#ifdef __cplusplus
+       /* ${SCHEMAS:json-types} */
+    }
 }
-#endif
-
-#endif // _FIREBOLT_TYPES_H

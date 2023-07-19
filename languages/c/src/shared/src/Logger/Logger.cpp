@@ -17,7 +17,7 @@
  */
 
 #include "Module.h"
-#include "Error.h"
+#include "error.h"
 #include "Logger.h"
 
 namespace WPEFramework {

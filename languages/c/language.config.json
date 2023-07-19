@@ -4,14 +4,15 @@
     "createModuleDirectories": false,
     "extractSubSchemas": true,
     "unwrapResultObjects": false,
+    "createPolymorphicMethods": true,
     "templatesPerModule": [
-        "/include/Module.h",
-        "/src/Module.cpp"
+        "/include/module.h",
+        "/src/module.cpp"
     ],
     "templatesPerSchema": [
-        "/include/Common/Module.h",
-        "/src/Module_Common.cpp",
-        "/src/JsonData_Module.h"
+        "/include/common/module.h",
+        "/src/module_common.cpp",
+        "/src/jsondata_module.h"
     ],
     "persistPermission": true,
     "primitives": {

@@ -16,24 +16,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef _COMMON_${info.TITLE}_H
-#define _COMMON_${info.TITLE}_H
+#pragma once
 
-#include "Firebolt.h"
-/* ${IMPORTS} */
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-// Enums
-
-/* ${ENUMS} */
-
-/* ${TYPES} */
-
-#ifdef __cplusplus
-}
-#endif
-
-#endif // Header Include Guard
+#include "Transport/Transport.h"
+#include "Properties/Properties.h"
+#include "Accessor/Accessor.h"
+#include "Logger/Logger.h"
+#include "TypesPriv.h"
+#include "types.h"

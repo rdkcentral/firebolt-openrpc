@@ -58,6 +58,7 @@ const run = async ({
     templatesPerModule: config.templatesPerModule,
     templatesPerSchema: config.templatesPerSchema,
     persistPermission: config.persistPermission,
+    createPolymorphicMethods: config.createPolymorphicMethods,
     operators: config.operators,
     primitives: config.primitives,
     createModuleDirectories: config.createModuleDirectories,

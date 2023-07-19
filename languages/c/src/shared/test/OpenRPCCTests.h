@@ -16,15 +16,28 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#pragma once
+#ifndef OPENRPC_C_TESTS_H
+#define OPENRPC_C_TESTS_H
 
-/* ${IMPORTS} */
-#include "Common/${info.title}.h"
+#include "TestUtils.h"
 
-namespace FireboltSDK {
-    namespace ${info.title} {
-    // Types
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-       /* ${SCHEMAS:json-types} */
-    }
+void test_firebolt_create_instance();
+void test_firebolt_dispose_instance();
+
+uint32_t test_firebolt_main();
+uint32_t test_properties_get_device_id();
+uint32_t test_properties_set();
+uint32_t test_eventregister();
+uint32_t test_eventregister_with_same_callback();
+uint32_t test_eventregister_by_providing_callback();
+uint32_t test_string_set_get_value();
+
+#ifdef __cplusplus
 }
+#endif
+
+#endif // OPENRPC_C_TESTS_H

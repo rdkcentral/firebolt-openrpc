@@ -1,7 +1,7 @@
-/* ${method.name} - ${method.description} */
-int F${info.title}_Get${method.Name}(${method.signature.params}${if.result.properties}${if.params}, ${end.if.params}${end.if.result.properties}${method.result.properties}) {
-    const string method = _T("${info.title}.${method.name}");
-// property
+/* ${method.rpc.name} - ${method.description} */
+uint32_t ${info.Title}_Get${method.Name}( ${method.signature.params}${if.params}, ${end.if.params}${method.result.type}* ${method.result.name} )
+{
+    const string method = _T("${info.title.lowercase}.${method.rpc.name}");
 ${if.params}${method.params.serialization}${end.if.params}
     ${method.result.json} jsonResult;
     ${if.params}int status = FireboltSDK::Properties::Get(method, jsonParameters, jsonResult);${end.if.params}

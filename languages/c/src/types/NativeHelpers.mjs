@@ -29,52 +29,7 @@ const { isObject, isArray, propEq, pathSatisfies, hasProp, propSatisfies } = pre
 
 const getModuleName = json => getPathOr(null, ['info', 'title'], json) || json.title || 'missing'
 
-const getFireboltStringType = () => 'FireboltTypes_StringHandle'
-const getHeaderText = () => {
-
-    return `/*
-*  Copyright 2022 Comcast
-*
-*  Auto Generated using firebolt-openrpc tools. DO NOT EDIT.
-*
-*/
-
-`
-}
-    
-const getIncludeGuardOpen = (json, prefix=null) => {
-  prefix = prefix ? `${prefix.toUpperCase()}_` : ''
-    return `
-#ifndef _${prefix}${getModuleName(json).toUpperCase()}_H
-#define _${prefix}${getModuleName(json).toUpperCase()}_H
-
-`
-}
-    
-const getStyleGuardOpen = () => {
-    return `
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-`
-}
-    
-const getStyleGuardClose = () => {
-    return `
-
-#ifdef __cplusplus
-}
-#endif
-
-`
-}
-    
-const getIncludeGuardClose = () => {
-    return `
-#endif // Header Include Guard
-`
-}
+const getFireboltStringType = () => 'FireboltTypes_String_t'
 
 const capitalize = str => str[0].toUpperCase() + str.substr(1)
 const description = (title, str='') => '/* ' + title + (str.length > 0 ? ' - ' + str : '') + ' */'
@@ -84,43 +39,12 @@ const SdkTypesPrefix = 'Firebolt'
 
 const Indent = '    '
 
-const getArrayElementSchema = (json, module, schemas = {}, name) => {
-  let result = ''
-  if (json.type === 'array' && json.items) {
-    if (Array.isArray(json.items)) {
-      result = json.items[0]
-    }
-    else {
-      // grab the type for the non-array schema
-      result = json.items
-    }
-    if (result['$ref']) {
-      result = getPath(result['$ref'], module, schemas)
-    }
-  }
-  else if (json.type == 'object') {
-    if (json.properties) {
-      Object.entries(json.properties).every(([pname, prop]) => {
-        if (prop.type === 'array') {
-          result = getArrayElementSchema(prop, module, schemas)
-          if (name === capitalize(pname)) {
-             return false
-          }
-        }
-        return true
-      })
-    }
-  }
-
-  return result
-}
-
-const getNativeType = (json, stringAsHandle = false) => {
+const getNativeType = (json, fireboltString = false) => {
   let type
   let jsonType = json.const ? typeof json.const : json.type
   if (jsonType === 'string') {
       type = 'char*'
-      if (stringAsHandle) {
+      if (fireboltString) {
         type = getFireboltStringType()
       }
   }
@@ -128,7 +52,7 @@ const getNativeType = (json, stringAsHandle = false) => {
       type = 'float'
   }
   else if (jsonType === 'integer') {
-      type = 'int'
+      type = 'int32_t'
 
   }
   else if (jsonType === 'boolean') {
@@ -142,26 +66,26 @@ const getNativeType = (json, stringAsHandle = false) => {
 
 const getObjectHandleManagement = varName => {
 
-    let result = `typedef void* ${varName}Handle;
-${varName}Handle ${varName}Handle_Create(void);
-void ${varName}Handle_Addref(${varName}Handle handle);
-void ${varName}Handle_Release(${varName}Handle handle);
-bool ${varName}Handle_IsValid(${varName}Handle handle);
+    let result = `typedef struct ${varName}_s* ${varName}_t;
+${varName}_t ${varName}Handle_Acquire(void);
+void ${varName}Handle_Addref(${varName}_t handle);
+void ${varName}Handle_Release(${varName}_t handle);
+bool ${varName}Handle_IsValid(${varName}_t handle);
 `
     return result
 }
 
 const getPropertyAccessors = (objName, propertyName, propertyType,  options = {level:0, readonly:false, optional:false}) => {
-  let result = `${Indent.repeat(options.level)}${propertyType} ${objName}_Get_${propertyName}(${objName}Handle handle);` + '\n'
+  let result = `${Indent.repeat(options.level)}${propertyType} ${objName}_Get_${propertyName}(${objName}_t handle);` + '\n'
 
   if (!options.readonly) {
     let type = (propertyType === getFireboltStringType()) ? 'char*' : propertyType
-    result += `${Indent.repeat(options.level)}void ${objName}_Set_${propertyName}(${objName}Handle handle, ${type} ${propertyName.toLowerCase()});` + '\n'
+    result += `${Indent.repeat(options.level)}void ${objName}_Set_${propertyName}(${objName}_t handle, ${type} ${propertyName.toLowerCase()});` + '\n'
   }
 
   if (options.optional === true) {
-    result += `${Indent.repeat(options.level)}bool ${objName}_Has_${propertyName}(${objName}Handle handle);` + '\n'
-    result += `${Indent.repeat(options.level)}void ${objName}_Clear_${propertyName}(${objName}Handle handle);` + '\n'
+    result += `${Indent.repeat(options.level)}bool ${objName}_Has_${propertyName}(${objName}_t handle);` + '\n'
+    result += `${Indent.repeat(options.level)}void ${objName}_Clear_${propertyName}(${objName}_t handle);` + '\n'
   }
 
   return result
@@ -171,10 +95,10 @@ const getMapAccessors = (typeName, accessorPropertyType, level = 0) => {
 
   let res
 
-  res = `${Indent.repeat(level)}uint32_t ${typeName}_KeysCount(${typeName}Handle handle);` + '\n'
-  res += `${Indent.repeat(level)}void ${typeName}_AddKey(${typeName}Handle handle, char* key, ${accessorPropertyType} value);` + '\n'
-  res += `${Indent.repeat(level)}void ${typeName}_RemoveKey(${typeName}Handle handle, char* key);` + '\n'
-  res += `${Indent.repeat(level)}${accessorPropertyType} ${typeName}_FindKey(${typeName}Handle handle, char* key);` + '\n'
+  res = `${Indent.repeat(level)}uint32_t ${typeName}_KeysCount(${typeName}_t handle);` + '\n'
+  res += `${Indent.repeat(level)}void ${typeName}_AddKey(${typeName}_t handle, char* key, ${accessorPropertyType} value);` + '\n'
+  res += `${Indent.repeat(level)}void ${typeName}_RemoveKey(${typeName}_t handle, char* key);` + '\n'
+  res += `${Indent.repeat(level)}${accessorPropertyType} ${typeName}_FindKey(${typeName}_t handle, char* key);` + '\n'
 
   return res
 }
@@ -183,20 +107,20 @@ const getTypeName = (moduleName, varName, prefix = '', upperCase = false, capita
 
   let mName = upperCase ? moduleName.toUpperCase() : capitalize(moduleName)
   let vName = upperCase ? varName.toUpperCase() : capitalCase ? capitalize(varName) : varName
-  if (prefix.length > 0) {
-    prefix = (!varName.startsWith(prefix)) ? (upperCase ? prefix.toUpperCase() : capitalize(prefix)) : ''
+  if (prefix && prefix.length > 0) {
+    prefix = (prefix !== varName) ? (upperCase ? prefix.toUpperCase() : capitalize(prefix)) : ''
   }
-  prefix = (prefix.length > 0) ?(upperCase ? prefix.toUpperCase() : capitalize(prefix)) : prefix
-  let name = (prefix.length > 0) ? `${mName}_${prefix}_${vName}` : `${mName}_${vName}`
-  return 'F' + name
+  prefix = (prefix && prefix.length > 0) ?(upperCase ? prefix.toUpperCase() : capitalize(prefix)) : prefix
+  let name = (prefix && prefix.length > 0) ? `${mName}_${prefix}${vName}` : `${mName}_${vName}`
+  return name
 }
 
 const getArrayAccessors = (arrayName, propertyType, valueType) => {
 
-  let res = `uint32_t ${arrayName}Array_Size(${propertyType}Handle handle);` + '\n'
-  res += `${valueType} ${arrayName}Array_Get(${propertyType}Handle handle, uint32_t index);` + '\n'
-  res += `void ${arrayName}Array_Add(${propertyType}Handle handle, ${valueType} value);` + '\n'
-  res += `void ${arrayName}Array_Clear(${propertyType}Handle handle);` + '\n'
+  let res = `uint32_t ${arrayName}Array_Size(${propertyType}_t handle);` + '\n'
+  res += `${valueType} ${arrayName}Array_Get(${propertyType}_t handle, uint32_t index);` + '\n'
+  res += `void ${arrayName}Array_Add(${propertyType}_t handle, ${valueType} value);` + '\n'
+  res += `void ${arrayName}Array_Clear(${propertyType}_t handle);` + '\n'
 
   return res
 }
@@ -269,11 +193,6 @@ function getPropertyEventUnregisterSignature(property, module) {
 
 
 export {
-    getHeaderText,
-    getIncludeGuardOpen,
-    getStyleGuardOpen,
-    getStyleGuardClose,
-    getIncludeGuardClose,
     getNativeType,
     getModuleName,
     getPropertyGetterSignature,
@@ -290,6 +209,5 @@ export {
     getPropertyAccessors,
     isOptional,
     generateEnum,
-    getArrayElementSchema,
     getFireboltStringType
 }

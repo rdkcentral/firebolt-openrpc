@@ -1,4 +1,4 @@
-/* ${method.name} - ${method.description} */
+/* ${method.rpc.name} - ${method.description} */
 static void ${info.Title}${method.Name}InnerCallback( void* userCB, const void* userData, void* response )
 {
 ${event.callback.params.serialization}
@@ -11,8 +11,8 @@ ${event.callback.result.instantiation}
 }
 int ${info.title}_Register_${method.Name}( ${event.signature.params}${if.event.params}, ${end.if.event.params}${info.Title}${method.Name}Callback userCB, const void* userData )
 {
-    const string eventName = _T("${info.title}.${method.name}");
-    int status = FireboltSDKErrorNone;
+    const string eventName = _T("${info.title}.${method.rpc.name}");
+    uint32_t status = FireboltSDKErrorNone;
 
     if (userCB != nullptr) {
         ${event.params.serialization}
@@ -22,6 +22,5 @@ int ${info.title}_Register_${method.Name}( ${event.signature.params}${if.event.p
 }
 int ${info.title}_Unregister_${method.Name}( ${info.Title}${method.Name}Callback userCB)
 {
-
-    return FireboltSDK::Event::Instance().Unsubscribe(_T("${info.title}.${method.name}"), reinterpret_cast<void*>(userCB));
+    return FireboltSDK::Event::Instance().Unsubscribe(_T("${info.title}.${method.rpc.name}"), reinterpret_cast<void*>(userCB));
 }

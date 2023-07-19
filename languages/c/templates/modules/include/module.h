@@ -16,10 +16,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef _${info.TITLE}_H
-#define _${info.TITLE}_H
+#ifndef ${info.TITLE}_H
+#define ${info.TITLE}_H
 
-#include "Firebolt.h"
+#include <firebolt.h>
 /* ${IMPORTS} */
 
 #ifdef __cplusplus
