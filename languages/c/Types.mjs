@@ -18,8 +18,8 @@
 
 import deepmerge from 'deepmerge'
 import { getPath } from '../../src/shared/json-schema.mjs'
-import { getTypeName, getModuleName, description, getObjectHandleManagement, getNativeType, getPropertyAccessors, capitalize, isOptional, generateEnum, getMapAccessors, getArrayAccessors, getPropertyGetterSignature, getPropertyEventCallbackSignature, getPropertyEventRegisterSignature, getPropertyEventUnregisterSignature, getPropertySetterSignature, getFireboltStringType } from './src/types/NativeHelpers.mjs'
-import { getArrayAccessorsImpl, getMapAccessorsImpl, getObjectHandleManagementImpl, getParameterInstantiation, getPropertyAccessorsImpl, getResultInstantiation, getCallbackParametersInstantiation, getCallbackResultInstantiation, getCallbackResponseInstantiation } from './src/types/ImplHelpers.mjs'
+import { getTypeName, getModuleName, description, getObjectManagement, getNativeType, getPropertyAccessors, capitalize, isOptional, generateEnum, getMapAccessors, getArrayAccessors, getPropertyGetterSignature, getPropertyEventCallbackSignature, getPropertyEventRegisterSignature, getPropertyEventUnregisterSignature, getPropertySetterSignature, getFireboltStringType } from './src/types/NativeHelpers.mjs'
+import { getArrayAccessorsImpl, getMapAccessorsImpl, getObjectManagementImpl, getParameterInstantiation, getPropertyAccessorsImpl, getResultInstantiation, getCallbackParametersInstantiation, getCallbackResultInstantiation, getCallbackResponseInstantiation } from './src/types/ImplHelpers.mjs'
 import { getJsonContainerDefinition, getJsonDataStructName, getJsonDataPrefix } from './src/types/JSONHelpers.mjs'
 
 const getSdkNameSpace = () => 'FireboltSDK'
@@ -407,7 +407,7 @@ function getSchemaShapeInfo(json, module, schemas = {}, { name = '', prefix = ''
         let c_shape = description(capitalize(name), json.description)
         let cpp_shape = ''
         let tName = getTypeName(getModuleName(module), name, prefix)
-        c_shape += '\n' + (isHeader ? getObjectHandleManagement(tName) : getObjectHandleManagementImpl(tName, getJsonType(json, module, { name })))
+        c_shape += '\n' + (isHeader ? getObjectManagement(tName) : getObjectManagementImpl(tName, getJsonType(json, module, { name })))
         let props = []
         let containerName = ((prefix.length > 0) && (!name.startsWith(prefix))) ? (prefix + '_' + capitalize(name)) : capitalize(name)
         Object.entries(json.properties).forEach(([pname, prop]) => {
@@ -489,7 +489,7 @@ function getSchemaShapeInfo(json, module, schemas = {}, { name = '', prefix = ''
           // Handle Container generation here
         }
 
-        t += '\n' + (isHeader ? getObjectHandleManagement(tName) : getObjectHandleManagementImpl(tName, containerType))
+        t += '\n' + (isHeader ? getObjectManagement(tName) : getObjectManagementImpl(tName, containerType))
         t += (isHeader ? getMapAccessors(tName, info.type, { descriptions: descriptions, level: level }) : getMapAccessorsImpl(tName, containerType, subModuleProperty.type, info.type, info.json, { readonly: true, optional: false }))
         shape += '\n' + t
       }
@@ -545,7 +545,7 @@ function getSchemaShapeInfo(json, module, schemas = {}, { name = '', prefix = ''
           let t = ''
           if (level === 0) {
             t += description(capitalize(info.name), json.description) + '\n'
-            t += '\n' + (isHeader ? getObjectHandleManagement(tName) : getObjectHandleManagementImpl(tName, moduleProperty.type))
+            t += '\n' + (isHeader ? getObjectManagement(tName) : getObjectManagementImpl(tName, moduleProperty.type))
           }
           t += '\n' + (isHeader ? getArrayAccessors(objName, tName, info.type) : getArrayAccessorsImpl(objName, moduleProperty.type, (tName + '_t'), subModuleProperty.type, '', info.type, info.json))
           shape += '\n' + t

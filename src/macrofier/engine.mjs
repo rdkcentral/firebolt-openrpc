@@ -370,7 +370,7 @@ const addContentDescriptorSubSchema = (descriptor, prefix, obj) => {
   else {
     let descriptorName = capitalize(descriptor.name)
     let prefixName = capitalize(prefix)
-    title = (prefixName !== descriptorName) ? prefixName + descriptorName : descriptorName
+    title = (prefixName !== descriptorName) ? prefixName + '_' +descriptorName : descriptorName
     if (obj.components.schemas[title]) {
       throw 'Generated name `' + title + '` already exists...'
     }

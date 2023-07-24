@@ -29,7 +29,7 @@ const { isObject, isArray, propEq, pathSatisfies, hasProp, propSatisfies } = pre
 
 const getModuleName = json => getPathOr(null, ['info', 'title'], json) || json.title || 'missing'
 
-const getFireboltStringType = () => 'FireboltTypes_String_t'
+const getFireboltStringType = () => 'Firebolt_String_t'
 
 const capitalize = str => str[0].toUpperCase() + str.substr(1)
 const description = (title, str='') => '/* ' + title + (str.length > 0 ? ' - ' + str : '') + ' */'
@@ -64,13 +64,13 @@ const getNativeType = (json, fireboltString = false) => {
   return type
 }
 
-const getObjectHandleManagement = varName => {
+const getObjectManagement = varName => {
 
     let result = `typedef struct ${varName}_s* ${varName}_t;
-${varName}_t ${varName}Handle_Acquire(void);
-void ${varName}Handle_Addref(${varName}_t handle);
-void ${varName}Handle_Release(${varName}_t handle);
-bool ${varName}Handle_IsValid(${varName}_t handle);
+${varName}_t ${varName}_Acquire(void);
+void ${varName}_Addref(${varName}_t handle);
+void ${varName}_Release(${varName}_t handle);
+bool ${varName}_IsValid(${varName}_t handle);
 `
     return result
 }
@@ -111,7 +111,7 @@ const getTypeName = (moduleName, varName, prefix = '', upperCase = false, capita
     prefix = (prefix !== varName) ? (upperCase ? prefix.toUpperCase() : capitalize(prefix)) : ''
   }
   prefix = (prefix && prefix.length > 0) ?(upperCase ? prefix.toUpperCase() : capitalize(prefix)) : prefix
-  let name = (prefix && prefix.length > 0) ? `${mName}_${prefix}${vName}` : `${mName}_${vName}`
+  let name = (prefix && prefix.length > 0) ? `${mName}_${prefix}_${vName}` : `${mName}_${vName}`
   return name
 }
 
@@ -205,7 +205,7 @@ export {
     capitalize,
     description,
     getTypeName,
-    getObjectHandleManagement,
+    getObjectManagement,
     getPropertyAccessors,
     isOptional,
     generateEnum,
