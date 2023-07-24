@@ -356,9 +356,24 @@ const generateAggregateMacros = (openrpc, modules, templates, library) => Object
   })
 
 const addContentDescriptorSubSchema = (descriptor, prefix, obj) => {
-  const title = prefix.charAt(0).toUpperCase() + prefix.substring(1) + descriptor.name.charAt(0).toUpperCase() + descriptor.name.substring(1)
-  if (obj.components.schemas[title]) {
-    throw 'Generated name `' + title + '` already exists...'
+  let title = ''
+  if (descriptor.schema.type === 'array' && descriptor.schema.items && descriptor.schema.items['$ref']) {
+    let refName = descriptor.schema.items['$ref'].split('/').pop()
+    title = refName.charAt(0).toUpperCase() + refName.substring(1) + '_ArrayType'
+    if (obj.components.schemas[title]) {
+      descriptor.schema = {
+        $ref: "#/components/schemas/" + title
+      }
+      return
+    }
+  }
+  else {
+    let descriptorName = capitalize(descriptor.name)
+    let prefixName = capitalize(prefix)
+    title = (prefixName !== descriptorName) ? prefixName + descriptorName : descriptorName
+    if (obj.components.schemas[title]) {
+      throw 'Generated name `' + title + '` already exists...'
+    }
   }
   obj.components.schemas[title] = descriptor.schema
   obj.components.schemas[title].title = title
@@ -367,7 +382,7 @@ const addContentDescriptorSubSchema = (descriptor, prefix, obj) => {
   }
 }
 
-// only consider sub-objects and sub enums to be sub-schemas
+// only consider sub-objects, sub-array and sub-enums to be sub-schemas
 const isSubSchema = (schema) => schema.type === 'object' || (schema.type === 'string' && schema.enum) || (schema.type === 'array' && schema.items)
 
 const promoteAndNameSubSchemas = (obj) => {
