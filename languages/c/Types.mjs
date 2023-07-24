@@ -200,10 +200,6 @@ function getMethodSignature(method, module, { destination, isInterface = false }
     let resultType = method.result && getSchemaType(method.result.schema, module, { title: true, name: method.result.name, resultSchema: true}) || ''
 
     signature = getPropertyGetterSignature(method, module, resultType, paramList) + ';\n\n'
-
-    if (hasTag(method, 'property')) {
-      signature += getPropertySetterSignature(method, module, resultType, paramList) + ';\n\n'
-    }
   }
   return signature
 }
@@ -461,9 +457,6 @@ function getSchemaShapeInfo(json, module, schemas = {}, { name = '', prefix = ''
               let property = getJsonType(prop, module, { name : pname, prefix })
               props.push({name: `${pname}`, type: `${property}`})
             }
-            else {
-              console.log(`b. WARNING: Type undetermined for ${name}:${pname}`)
-            }
           }
         })
 
@@ -499,9 +492,6 @@ function getSchemaShapeInfo(json, module, schemas = {}, { name = '', prefix = ''
         t += '\n' + (isHeader ? getObjectHandleManagement(tName) : getObjectHandleManagementImpl(tName, containerType))
         t += (isHeader ? getMapAccessors(tName, info.type, { descriptions: descriptions, level: level }) : getMapAccessorsImpl(tName, containerType, subModuleProperty.type, info.type, info.json, { readonly: true, optional: false }))
         shape += '\n' + t
-      }
-      else if (json.patternProperties) {
-        console.log(`WARNING: patternProperties are not supported by Firebolt(inside getModuleName(module):${name})`)
       }
     }
     else if (json.anyOf) {
