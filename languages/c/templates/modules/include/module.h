@@ -22,20 +22,21 @@
 #include <firebolt.h>
 /* ${IMPORTS} */
 
-#ifdef __cplusplus
+${if.declarations}#ifdef __cplusplus
 extern "C" {
 #endif
 
 // Enums
-
 /* ${ENUMS} */
 
+// Accessors
 /* ${ACCESSORS} */
 
+// Methods & Events
 /* ${DECLARATIONS} */
 
 #ifdef __cplusplus
 }
-#endif
+#endif${end.if.declarations}
 
 #endif // Header Include Guard
