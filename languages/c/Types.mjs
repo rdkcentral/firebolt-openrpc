@@ -304,6 +304,7 @@ function getSchemaTypeInfo(module = {}, json = {}, name = '', schemas = {}, pref
     }
 
 
+    name = name.endsWith("_ArrayType") ? name.split('_ArrayType')[0] : name
     prefix = prefix ? prefix + name : name
     let n = getTypeName(getModuleName(module), capitalize(res.name), prefix)
     structure.name = name ? name + capitalize(res.name) : res.name
@@ -539,6 +540,7 @@ function getSchemaShapeInfo(json, module, schemas = {}, { name = '', prefix = ''
       }
 
       if (!isCPP) {
+        name = name.endsWith("_ArrayType") ? name.split('_ArrayType')[0] : name
         let subPrefix = prefix ? prefix + name : name
         let info = getSchemaTypeInfo(module, j, j.title || name, schemas, subPrefix, {level : level, descriptions: descriptions, title: true})
 
