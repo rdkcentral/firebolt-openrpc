@@ -21,10 +21,10 @@
 /* ${IMPORTS} */
 #include "common/${info.title.lowercase}.h"
 
-namespace FireboltSDK {
+${if.schemas}namespace FireboltSDK {
     namespace ${info.Title} {
     // Types
 
        /* ${SCHEMAS} */
     }
-}
+}${end.if.schemas}
