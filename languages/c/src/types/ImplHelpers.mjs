@@ -470,7 +470,7 @@ function getCallbackResponseInstantiation(paramList, nativeType, container = '')
   return impl
 }
 
-function getResultInstantiation (name, nativeType, container, indentLevel = 3) {
+function getResultInstantiation (name, nativeType, container, indentLevel = 2) {
 
   let impl = ''
 

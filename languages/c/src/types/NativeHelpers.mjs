@@ -155,51 +155,10 @@ function getPropertyGetterSignature(property, module, propType, paramList = []) 
   return `uint32_t ${capitalize(getModuleName(module))}_Get${capitalize(property.name)}( ${contextParams}${contextParams.length > 0 ? ', ':''}${propType}* ${property.result.name || property.name} )`
 }
 
-function getPropertySetterSignature(property, module, propType, paramList = []) {
-  let contextParams = ''
-  contextParams = getContextParams(paramList)
-  if (propType === getFireboltStringType()) {
-    propType = 'char*'
-  }
-  return `uint32_t ${capitalize(getModuleName(module))}_Set${capitalize(property.name)}( ${contextParams}${contextParams.length > 0 ? ', ':''}${propType} ${property.result.name || property.name} )`
-}
-
-function getPropertyEventCallbackSignature(property, module, propType, paramList = []) {
-
-  let contextParams = ''
-  contextParams = getContextParams(paramList)
-  return `/*Callback to listen to updates on ${property.Name} property*/\n` +
-  `typedef void (*On${capitalize(getModuleName(module))}${capitalize(property.name)}Changed)( ${contextParams}${contextParams.length > 0 ? ', ':''}const void* userData, ${propType} ${property.result.name || property.name})`
-}
-
-function getPropertyEventInnerCallbackSignature(method, module, schemas) {
-  let signature = `static void ${capitalize(getModuleName(module)) + capitalize(method.name)}`
-}
-
-function getPropertyEventRegisterSignature(property, module, paramList = []) {
-  let contextParams = ''
-  contextParams = getContextParams(paramList)
-
-  return `/*Register to listen to updates on ${capitalize(property.name)} property*/\n` +
-  `uint32_t ${capitalize(getModuleName(module))}_Register_${capitalize(property.name)}Update( ${contextParams}${contextParams.length > 0 ? ', ':''}On${capitalize(getModuleName(module))}${capitalize(property.name)}Changed userCB, const void* userData )`
-
-}
-
-function getPropertyEventUnregisterSignature(property, module) {
-  return `/*Unregister to listen to updates on ${capitalize(property.name)} property*/\n` +
-  `uint32_t ${capitalize(getModuleName(module))}_Unregister_${capitalize(property.name)}Update( On${capitalize(getModuleName(module))}${capitalize(property.name)}Changed userCB )`
-
-}
-
-
 export {
     getNativeType,
     getModuleName,
     getPropertyGetterSignature,
-    getPropertySetterSignature,
-    getPropertyEventCallbackSignature,
-    getPropertyEventRegisterSignature,
-    getPropertyEventUnregisterSignature,
     getMapAccessors,
     getArrayAccessors,
     capitalize,
