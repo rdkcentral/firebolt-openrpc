@@ -60,7 +60,8 @@ let types = {
 
 let config = {
   copySchemasIntoModules: false,
-  extractSubSchemas: false
+  extractSubSchemas: false,
+  excludeDeclarations: false
 }
 
 const state = {
@@ -390,13 +391,15 @@ const promoteAndNameSubSchemas = (obj) => {
   obj = JSON.parse(JSON.stringify(obj))
   // find anonymous method param or result schemas and name/promote them
   obj.methods && obj.methods.forEach(method => {
-    method.params && method.params.forEach(param => {
-      if (isSubSchema(param.schema)) {
-        addContentDescriptorSubSchema(param, method.name, obj)
+    if (!isExcludedMethod(method)) {
+      method.params && method.params.forEach(param => {
+        if (isSubSchema(param.schema)) {
+          addContentDescriptorSubSchema(param, method.name, obj)
+        }
+      })
+      if (isSubSchema(method.result.schema)) {
+        addContentDescriptorSubSchema(method.result, method.name, obj)
       }
-    })
-    if (isSubSchema(method.result.schema)) {
-      addContentDescriptorSubSchema(method.result, method.name, obj)
     }
   })
 
@@ -459,7 +462,7 @@ const generateMacros = (obj, templates, languages, options = {}) => {
   const allMethodsArray = generateMethods(obj, examples, templates)
   const methodsArray = allMethodsArray.filter(m => !m.event && (!options.hideExcluded || !m.excluded))
   const eventsArray = allMethodsArray.filter(m => m.event && (!options.hideExcluded || !m.excluded))
-  const declarationsArray = allMethodsArray.filter(m => m.declaration && (!options.hideExcluded || !m.excluded))
+  const declarationsArray = allMethodsArray.filter(m => m.declaration && (!config.excludeDeclarations || (!options.hideExcluded || !m.excluded)))
 
   const declarations = declarationsArray.length ? getTemplate('/sections/declarations', templates).replace(/\$\{declaration\.list\}/g, declarationsArray.map(m => m.declaration).join('\n')) : ''
   const methods = methodsArray.length ? getTemplate('/sections/methods', templates).replace(/\$\{method.list\}/g, methodsArray.map(m => m.body).join('\n')) : ''
