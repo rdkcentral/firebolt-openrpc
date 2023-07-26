@@ -7,7 +7,7 @@ usage()
    echo "    -m module name. i.e, core/manage"
    echo
    echo "usage: "
-   echo "    ./install.sh -i path -s sdk path-m core"
+   echo "    ./install.sh -i path -s sdk path -m core"
 }
 
 SdkPath=".."

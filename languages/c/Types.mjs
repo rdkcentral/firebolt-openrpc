@@ -18,8 +18,8 @@
 
 import deepmerge from 'deepmerge'
 import { getPath } from '../../src/shared/json-schema.mjs'
-import { getTypeName, getModuleName, description, getObjectHandleManagement, getNativeType, getPropertyAccessors, capitalize, isOptional, generateEnum, getMapAccessors, getArrayAccessors, getPropertyGetterSignature, getPropertyEventCallbackSignature, getPropertyEventRegisterSignature, getPropertyEventUnregisterSignature, getPropertySetterSignature, getFireboltStringType } from './src/types/NativeHelpers.mjs'
-import { getArrayAccessorsImpl, getMapAccessorsImpl, getObjectHandleManagementImpl, getParameterInstantiation, getPropertyAccessorsImpl, getResultInstantiation, getCallbackParametersInstantiation, getCallbackResultInstantiation, getCallbackResponseInstantiation } from './src/types/ImplHelpers.mjs'
+import { getTypeName, getModuleName, description, getObjectManagement, getNativeType, getPropertyAccessors, capitalize, isOptional, generateEnum, getMapAccessors, getArrayAccessors, getPropertyGetterSignature, getFireboltStringType } from './src/types/NativeHelpers.mjs'
+import { getArrayAccessorsImpl, getMapAccessorsImpl, getObjectManagementImpl, getParameterInstantiation, getPropertyAccessorsImpl, getResultInstantiation, getCallbackParametersInstantiation, getCallbackResultInstantiation, getCallbackResponseInstantiation } from './src/types/ImplHelpers.mjs'
 import { getJsonContainerDefinition, getJsonDataStructName, getJsonDataPrefix } from './src/types/JSONHelpers.mjs'
 
 const getSdkNameSpace = () => 'FireboltSDK'
@@ -199,11 +199,7 @@ function getMethodSignature(method, module, { destination, isInterface = false }
     let paramList = getParamList(method, module)
     let resultType = method.result && getSchemaType(method.result.schema, module, { title: true, name: method.result.name, resultSchema: true}) || ''
 
-    signature = getPropertyGetterSignature(method, module, resultType, paramList) + ';\n\n'
-
-    if (hasTag(method, 'property')) {
-      signature += getPropertySetterSignature(method, module, resultType, paramList) + ';\n\n'
-    }
+    signature = getPropertyGetterSignature(method, module, resultType, paramList) + ';\n'
   }
   return signature
 }
@@ -408,10 +404,10 @@ function getSchemaShapeInfo(json, module, schemas = {}, { name = '', prefix = ''
         shape = ''
       }
       else if (json.properties && (validJsonObjectProperties(json) === true)) {
-        let c_shape = description(capitalize(name), json.description)
+        let c_shape = '\n' + description(capitalize(name), json.description)
         let cpp_shape = ''
         let tName = getTypeName(getModuleName(module), name, prefix)
-        c_shape += '\n' + (isHeader ? getObjectHandleManagement(tName) : getObjectHandleManagementImpl(tName, getJsonType(json, module, { name })))
+        c_shape += '\n' + (isHeader ? getObjectManagement(tName) : getObjectManagementImpl(tName, getJsonType(json, module, { name })))
         let props = []
         let containerName = ((prefix.length > 0) && (!name.startsWith(prefix))) ? (prefix + '_' + capitalize(name)) : capitalize(name)
         Object.entries(json.properties).forEach(([pname, prop]) => {
@@ -461,9 +457,6 @@ function getSchemaShapeInfo(json, module, schemas = {}, { name = '', prefix = ''
               let property = getJsonType(prop, module, { name : pname, prefix })
               props.push({name: `${pname}`, type: `${property}`})
             }
-            else {
-              console.log(`b. WARNING: Type undetermined for ${name}:${pname}`)
-            }
           }
         })
 
@@ -488,7 +481,7 @@ function getSchemaShapeInfo(json, module, schemas = {}, { name = '', prefix = ''
         }
 
         let tName = getTypeName(getModuleName(module), name, prefix)
-        let t = description(capitalize(name), json.description) + '\n'
+        let t = '\n' + description(capitalize(name), json.description)
         let containerType = 'WPEFramework::Core::JSON::VariantContainer'
 
         let subModuleProperty = getJsonTypeInfo(module, info.json, info.name, module['x-schemas'])
@@ -496,12 +489,9 @@ function getSchemaShapeInfo(json, module, schemas = {}, { name = '', prefix = ''
           // Handle Container generation here
         }
 
-        t += '\n' + (isHeader ? getObjectHandleManagement(tName) : getObjectHandleManagementImpl(tName, containerType))
+        t += '\n' + (isHeader ? getObjectManagement(tName) : getObjectManagementImpl(tName, containerType))
         t += (isHeader ? getMapAccessors(tName, info.type, { descriptions: descriptions, level: level }) : getMapAccessorsImpl(tName, containerType, subModuleProperty.type, info.type, info.json, { readonly: true, optional: false }))
         shape += '\n' + t
-      }
-      else if (json.patternProperties) {
-        console.log(`WARNING: patternProperties are not supported by Firebolt(inside getModuleName(module):${name})`)
       }
     }
     else if (json.anyOf) {
@@ -554,8 +544,8 @@ function getSchemaShapeInfo(json, module, schemas = {}, { name = '', prefix = ''
           let subModuleProperty = getJsonTypeInfo(module, j, j.title || name, schemas, prefix)
           let t = ''
           if (level === 0) {
-            t += description(capitalize(info.name), json.description) + '\n'
-            t += '\n' + (isHeader ? getObjectHandleManagement(tName) : getObjectHandleManagementImpl(tName, moduleProperty.type))
+            t += '\n' + description(capitalize(info.name), json.description)
+            t += '\n' + (isHeader ? getObjectManagement(tName) : getObjectManagementImpl(tName, moduleProperty.type))
           }
           t += '\n' + (isHeader ? getArrayAccessors(objName, tName, info.type) : getArrayAccessorsImpl(objName, moduleProperty.type, (tName + '_t'), subModuleProperty.type, '', info.type, info.json))
           shape += '\n' + t

@@ -52,3 +52,4 @@ uint32_t ${info.Title}_Unregister_${method.Name}( ${info.Title}${method.Name}Cal
 {
     return FireboltSDK::Event::Instance().Unsubscribe(_T("${info.title.lowercase}.${method.rpc.name}"), reinterpret_cast<void*>(userCB));
 }
+
