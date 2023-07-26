@@ -26,14 +26,16 @@ ${if.definitions}#ifdef __cplusplus
 extern "C" {
 #endif
 
-    // Accessors
-    /* ${ACCESSORS} */
+// Accessors
+/* ${ACCESSORS} */
 
-    // Methods
-    /* ${METHODS} */
 
-    // Events
-    /* ${EVENTS} */
+
+// Methods
+/* ${METHODS} */
+
+// Events
+/* ${EVENTS} */
 
 #ifdef __cplusplus
 }

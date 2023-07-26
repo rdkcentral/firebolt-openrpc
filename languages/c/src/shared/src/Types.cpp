@@ -25,12 +25,12 @@ extern "C" {
 #endif
 
 // String Type Handler Interfaces
-const char* FireboltTypes_String(FireboltTypes_String_t handle)
+const char* Firebolt_String(Firebolt_String_t handle)
 {
     return ((reinterpret_cast<FireboltSDK::JSON::String*>(handle))->Value().c_str());
 }
 
-void FireboltTypes_StringHandle_Release(FireboltTypes_String_t handle)
+void Firebolt_String_Release(Firebolt_String_t handle)
 {
     delete reinterpret_cast<FireboltSDK::JSON::String*>(handle);
 }

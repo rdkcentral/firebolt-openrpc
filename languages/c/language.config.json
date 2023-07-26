@@ -13,5 +13,6 @@
         "/src/jsondata_module.h"
     ],
     "persistPermission": true,
-    "createPolymorphicMethods": true
+    "createPolymorphicMethods": true,
+    "excludeDeclarations":true
 }
