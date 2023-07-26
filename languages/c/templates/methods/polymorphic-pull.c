@@ -5,7 +5,7 @@ uint32_t ${info.Title}_Push${method.Name}( ${method.signature.params} )
 
     FireboltSDK::Transport<WPEFramework::Core::JSON::IElement>* transport = FireboltSDK::Accessor::Instance().GetTransport();
     if (transport != nullptr) {
-       string correlationId = "";
+        string correlationId = "";
     ${method.params.serialization.with.indent}
 
         WPEFramework::Core::JSON::Boolean jsonResult;
@@ -20,3 +20,4 @@ uint32_t ${info.Title}_Push${method.Name}( ${method.signature.params} )
 
     return status;
 }
+

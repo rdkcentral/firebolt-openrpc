@@ -48,6 +48,7 @@ const macrofy = async (
         createModuleDirectories,
         copySchemasIntoModules,
         extractSubSchemas,
+        excludeDeclarations,
         aggregateFile,
         operators,
         hidePrivate = true,
@@ -82,6 +83,7 @@ const macrofy = async (
             copySchemasIntoModules,
             createModuleDirectories,
             extractSubSchemas,
+            excludeDeclarations,
             operators
         })
 

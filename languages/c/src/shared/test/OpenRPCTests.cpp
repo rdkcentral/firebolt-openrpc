@@ -485,9 +485,9 @@ uint32_t test_string_set_get_value()
     uint32_t status = FireboltSDKErrorNone;
     FireboltSDK::JSON::String* str = new FireboltSDK::JSON::String();
     WPEFramework::Core::JSON::String wpeJsonStr("TestString");
-    FireboltTypes_String_t handle = reinterpret_cast<FireboltTypes_String_t>(str);
+    Firebolt_String_t handle = reinterpret_cast<Firebolt_String_t>(str);
 
-    const char* value = FireboltTypes_String(handle);
+    const char* value = Firebolt_String(handle);
     EXPECT_EQ(strncmp(value, str->Value().c_str(), str->Value().length()), 0);
     FIREBOLT_LOG_INFO(FireboltSDK::Logger::Category::OpenRPC, "ctest",
     " ---> type name = %s %s", str->Value().c_str(), value);
@@ -495,7 +495,7 @@ uint32_t test_string_set_get_value()
     WPEFramework::Core::JSON::EnumType<::TestEnum> testEnum = Test4;
     FIREBOLT_LOG_INFO(FireboltSDK::Logger::Category::OpenRPC, "ctest",
     " EnumTest = %d %s", testEnum.Value(), testEnum.Data());
-    FireboltTypes_StringHandle_Release(handle);
+    Firebolt_String_Release(handle);
     return status;
 }
 

@@ -60,7 +60,8 @@ let types = {
 
 let config = {
   copySchemasIntoModules: false,
-  extractSubSchemas: false
+  extractSubSchemas: false,
+  excludeDeclarations: false
 }
 
 const state = {
@@ -370,7 +371,7 @@ const addContentDescriptorSubSchema = (descriptor, prefix, obj) => {
   else {
     let descriptorName = capitalize(descriptor.name)
     let prefixName = capitalize(prefix)
-    title = (prefixName !== descriptorName) ? prefixName + descriptorName : descriptorName
+    title = (prefixName !== descriptorName) ? prefixName + '_' +descriptorName : descriptorName
     if (obj.components.schemas[title]) {
       throw 'Generated name `' + title + '` already exists...'
     }
@@ -390,13 +391,15 @@ const promoteAndNameSubSchemas = (obj) => {
   obj = JSON.parse(JSON.stringify(obj))
   // find anonymous method param or result schemas and name/promote them
   obj.methods && obj.methods.forEach(method => {
-    method.params && method.params.forEach(param => {
-      if (isSubSchema(param.schema)) {
-        addContentDescriptorSubSchema(param, method.name, obj)
+    if (!isExcludedMethod(method)) {
+      method.params && method.params.forEach(param => {
+        if (isSubSchema(param.schema)) {
+          addContentDescriptorSubSchema(param, method.name, obj)
+        }
+      })
+      if (isSubSchema(method.result.schema)) {
+        addContentDescriptorSubSchema(method.result, method.name, obj)
       }
-    })
-    if (isSubSchema(method.result.schema)) {
-      addContentDescriptorSubSchema(method.result, method.name, obj)
     }
   })
 
@@ -457,9 +460,9 @@ const generateMacros = (obj, templates, languages, options = {}) => {
   const examples = generateExamples(obj, templates, languages)
 
   const allMethodsArray = generateMethods(obj, examples, templates)
-  const methodsArray = allMethodsArray.filter(m => !m.event && (!options.hideExcluded || !m.excluded))
-  const eventsArray = allMethodsArray.filter(m => m.event && (!options.hideExcluded || !m.excluded))
-  const declarationsArray = allMethodsArray.filter(m => m.declaration)
+  const methodsArray = allMethodsArray.filter(m => m.body && !m.event && (!options.hideExcluded || !m.excluded))
+  const eventsArray = allMethodsArray.filter(m => m.body && m.event && (!options.hideExcluded || !m.excluded))
+  const declarationsArray = allMethodsArray.filter(m => m.declaration && (!config.excludeDeclarations || (!options.hideExcluded || !m.excluded)))
 
   const declarations = declarationsArray.length ? getTemplate('/sections/declarations', templates).replace(/\$\{declaration\.list\}/g, declarationsArray.map(m => m.declaration).join('\n')) : ''
   const methods = methodsArray.length ? getTemplate('/sections/methods', templates).replace(/\$\{method.list\}/g, methodsArray.map(m => m.body).join('\n')) : ''
@@ -529,7 +532,7 @@ const insertMacros = (fContents = '', macros = {}) => {
 
   fContents = fContents.replace(/\$\{module.list\}/g, macros.module)
   fContents = fContents.replace(/[ \t]*\/\* \$\{METHODS\} \*\/[ \t]*\n/, macros.methods)
-  fContents = fContents.replace(/[ \t]*\/\* \$\{ACCESSORS\} \*\/[ \t]*\n/, macros.accessors)
+  fContents = fContents.replace(/[ \t]*\/\* \$\{ACCESSORS\} \*\/[ \t]*\n/, macros.accessors.trimStart('\n'))
   fContents = fContents.replace(/[ \t]*\/\* \$\{DECLARATIONS\} \*\/[ \t]*\n/, macros.declarations)
   fContents = fContents.replace(/[ \t]*\/\* \$\{METHOD_LIST\} \*\/[ \t]*\n/, macros.methodList.join(',\n'))
   fContents = fContents.replace(/[ \t]*\/\* \$\{EVENTS\} \*\/[ \t]*\n/, macros.events)
@@ -1226,6 +1229,7 @@ function insertMethodMacros(template, methodObj, json, templates, examples = {})
     .replace(/\$\{method\.result\}/g, generateResult(result.schema, json, templates, { name: result.name }))
     .replace(/\$\{method\.result\.json\.type\}/g, resultJsonType)
     .replace(/\$\{method\.result\.instantiation\}/g, resultInst)
+    .replace(/\$\{method\.result\.instantiation\.with\.indent\}/g, indent(resultInst, '    '))
     .replace(/\$\{method\.example\.value\}/g, JSON.stringify(methodObj.examples[0].result.value))
     .replace(/\$\{method\.alternative\}/g, method.alternative)
     .replace(/\$\{method\.alternative.link\}/g, '#' + (method.alternative || "").toLowerCase())

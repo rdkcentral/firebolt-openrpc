@@ -26,9 +26,9 @@
 extern "C" {
 #endif
 
-typedef struct FireboltTypes_String_s* FireboltTypes_String_t;
-const char* FireboltTypes_String(FireboltTypes_String_t handle);
-void FireboltTypes_StringHandle_Release(FireboltTypes_String_t handle);
+typedef struct Firebolt_String_s* Firebolt_String_t;
+const char* Firebolt_String(Firebolt_String_t handle);
+void Firebolt_String_Release(Firebolt_String_t handle);
 
 #ifdef __cplusplus
 }

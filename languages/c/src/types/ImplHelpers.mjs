@@ -6,22 +6,22 @@ const getSdkNameSpace = () => 'FireboltSDK'
 const wpeJsonNameSpace = () => 'WPEFramework::Core::JSON'
 const camelcase = str => str[0].toLowerCase() + str.substr(1)
 
-const getObjectHandleManagementImpl = (varName, jsonDataName) => {
+const getObjectManagementImpl = (varName, jsonDataName) => {
 
-  let result = `${varName}_t ${varName}Handle_Acquire(void)
+  let result = `${varName}_t ${varName}_Acquire(void)
 {
     WPEFramework::Core::ProxyType<${jsonDataName}>* type = new WPEFramework::Core::ProxyType<${jsonDataName}>();
     *type = WPEFramework::Core::ProxyType<${jsonDataName}>::Create();
     return (reinterpret_cast<${varName}_t>(type));
 }
-void ${varName}Handle_Addref(${varName}_t handle)
+void ${varName}_Addref(${varName}_t handle)
 {
     ASSERT(handle != NULL);
     WPEFramework::Core::ProxyType<${jsonDataName}>* var = reinterpret_cast<WPEFramework::Core::ProxyType<${jsonDataName}>*>(handle);
     ASSERT(var->IsValid());
     var->AddRef();
 }
-void ${varName}Handle_Release(${varName}_t handle)
+void ${varName}_Release(${varName}_t handle)
 {
     ASSERT(handle != NULL);
     WPEFramework::Core::ProxyType<${jsonDataName}>* var = reinterpret_cast<WPEFramework::Core::ProxyType<${jsonDataName}>*>(handle);
@@ -30,7 +30,7 @@ void ${varName}Handle_Release(${varName}_t handle)
         delete var;
     }
 }
-bool ${varName}Handle_IsValid(${varName}_t handle)
+bool ${varName}_IsValid(${varName}_t handle)
 {
     ASSERT(handle != NULL);
     WPEFramework::Core::ProxyType<${jsonDataName}>* var = reinterpret_cast<WPEFramework::Core::ProxyType<${jsonDataName}>*>(handle);
@@ -101,7 +101,7 @@ const getPropertyAccessorsImpl = (objName, modulePropertyType, subPropertyType, 
 
   return result
 }
-const getArrayAccessorsImpl = (objName, modulePropertyType, objHandleType, subPropertyType, subPropertyName, accessorPropertyType, json = {}) => {
+const getArrayAccessorsImpl = (objName, modulePropertyType, objType, subPropertyType, subPropertyName, accessorPropertyType, json = {}) => {
 
   let propertyName
   if (subPropertyName) {
@@ -112,7 +112,7 @@ const getArrayAccessorsImpl = (objName, modulePropertyType, objHandleType, subPr
      propertyName = '(*(*var))'
   }
 
-  let result = `uint32_t ${objName}Array_Size(${objHandleType} handle) {
+  let result = `uint32_t ${objName}Array_Size(${objType} handle) {
     ASSERT(handle != NULL);
     WPEFramework::Core::ProxyType<${modulePropertyType}>* var = reinterpret_cast<WPEFramework::Core::ProxyType<${modulePropertyType}>*>(handle);
     ASSERT(var->IsValid());
@@ -120,7 +120,7 @@ const getArrayAccessorsImpl = (objName, modulePropertyType, objHandleType, subPr
     return (${propertyName}.Length());
 }` + '\n'
 
-  result += `${accessorPropertyType} ${objName}Array_Get(${objHandleType} handle, uint32_t index)
+  result += `${accessorPropertyType} ${objName}Array_Get(${objType} handle, uint32_t index)
 {
     ASSERT(handle != NULL);
     WPEFramework::Core::ProxyType<${modulePropertyType}>* var = reinterpret_cast<WPEFramework::Core::ProxyType<${modulePropertyType}>*>(handle);
@@ -144,7 +144,7 @@ const getArrayAccessorsImpl = (objName, modulePropertyType, objHandleType, subPr
   result += `}` + '\n'
 
   let type = (accessorPropertyType === getFireboltStringType()) ? 'char*' : accessorPropertyType
-  result += `void ${objName}Array_Add(${objHandleType} handle, ${type} value)
+  result += `void ${objName}Array_Add(${objType} handle, ${type} value)
 {
     ASSERT(handle != NULL);
     WPEFramework::Core::ProxyType<${modulePropertyType}>* var = reinterpret_cast<WPEFramework::Core::ProxyType<${modulePropertyType}>*>(handle);
@@ -162,7 +162,7 @@ const getArrayAccessorsImpl = (objName, modulePropertyType, objHandleType, subPr
     ${propertyName}.Add() = element;
 }` + '\n'
 
-  result += `void ${objName}Array_Clear(${objHandleType} handle)
+  result += `void ${objName}Array_Clear(${objType} handle)
 {
     ASSERT(handle != NULL);
     WPEFramework::Core::ProxyType<${modulePropertyType}>* var = reinterpret_cast<WPEFramework::Core::ProxyType<${modulePropertyType}>*>(handle);
@@ -304,7 +304,7 @@ function getParameterInstantiation(paramList, container = '') {
     const name = param.name
     if (jsonType.length) {
       if (param.required) {
-        if (param.nativeType.includes('FireboltTypes_String_t')) {
+        if (param.nativeType.includes('Firebolt_String_t')) {
           impl += `    WPEFramework::Core::JSON::Variant ${capitalize(name)} = *(reinterpret_cast<${jsonType}*>(${name}));\n`
         }
         else if (param.nativeType.includes('_t')) {
@@ -429,7 +429,7 @@ function getCallbackParametersInstantiation(paramList, container = '') {
 
 function getCallbackResultInstantiation(nativeType, container = '') {
   let impl = ''
-  if (nativeType === 'char*' || nativeType === 'FireboltTypes_String_t') {
+  if (nativeType === 'char*' || nativeType === 'Firebolt_String_t') {
     impl +=`
         ${container}* jsonStrResponse = new ${container}();
         *jsonStrResponse = *(*jsonResponse);
@@ -457,7 +457,7 @@ function getCallbackResponseInstantiation(paramList, nativeType, container = '')
     })
   }
 
-  if (nativeType === 'char*' || nativeType === 'FireboltTypes_String_t') {
+  if (nativeType === 'char*' || nativeType === 'Firebolt_String_t') {
     impl += `reinterpret_cast<${nativeType}>(jsonStrResponse)`
   }
   else if (nativeType.includes('_t')) {
@@ -470,13 +470,13 @@ function getCallbackResponseInstantiation(paramList, nativeType, container = '')
   return impl
 }
 
-function getResultInstantiation (name, nativeType, container, indentLevel = 3) {
+function getResultInstantiation (name, nativeType, container, indentLevel = 2) {
 
   let impl = ''
 
   if (nativeType) {
     impl += `${'    '.repeat(indentLevel)}if (${name} != nullptr) {` + '\n'
-    if (nativeType === 'char*' || nativeType === 'FireboltTypes_String_t') {
+    if (nativeType === 'char*' || nativeType === 'Firebolt_String_t') {
       impl += `${'    '.repeat(indentLevel + 1)}${container}* strResult = new ${container}(jsonResult);` + '\n'
       impl += `${'    '.repeat(indentLevel + 1)}*${name} = reinterpret_cast<${getFireboltStringType()}>(strResult);` + '\n'
     } else if (nativeType.includes('_t')) {
@@ -500,7 +500,7 @@ function getResultInstantiation (name, nativeType, container, indentLevel = 3) {
 export {
     getArrayAccessorsImpl,
     getMapAccessorsImpl,
-    getObjectHandleManagementImpl,
+    getObjectManagementImpl,
     getPropertyAccessorsImpl,
     getParameterInstantiation,
     getCallbackParametersInstantiation,
