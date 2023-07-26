@@ -23,11 +23,6 @@ set(FIREBOLT_LOGLEVEL "Info" CACHE STRING  "Log level to be enabled")
 option(FIREBOLT_ENABLE_STATIC_LIB "Create Firebolt library as Static library" OFF)
 option(ENABLE_TESTS "Build openrpc native test" OFF)
 
-if (NOT SYSROOT_PATH)
-    # Set sysroot to support PC builds, sysroot_path not configured case
-    set(SYSROOT_PATH "${CMAKE_SOURCE_DIR}/../../firebolt")
-endif()
-
 if (FIREBOLT_ENABLE_STATIC_LIB)
     set(FIREBOLT_LIBRARY_TYPE STATIC)
 else ()

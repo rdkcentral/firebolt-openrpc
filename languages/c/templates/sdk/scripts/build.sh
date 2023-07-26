@@ -4,8 +4,9 @@ usage()
    echo "options:"
    echo "    -p sdk path"
    echo "    -s sysroot path"
-   echo "    -t enable test"
    echo "    -c clear build"
+   echo "    -l enable static build"
+   echo "    -t enable test"
    echo "    -h : help"
    echo
    echo "usage: "
@@ -16,13 +17,15 @@ SdkPath="."
 EnableTest="OFF"
 SysrootPath=${SYSROOT_PATH}
 ClearBuild="N"
-while getopts p:s:tch flag
+EnableStaticLib="OFF"
+while getopts p:s:clth flag
 do
     case "${flag}" in
         p) SdkPath="${OPTARG}";;
         s) SysrootPath="${OPTARG}";;
-        t) EnableTest="ON";;
         c) ClearBuild="Y";;
+        l) EnableStaticLib="ON";;
+        t) EnableTest="ON";;
         h) usage && exit 1;;
     esac
 done
@@ -32,6 +35,6 @@ then
     rm -rf ${SdkPath}/build
 fi
 
-cmake -B${SdkPath}/build -S${SdkPath} -DSYSROOT_PATH=${SysrootPath} -DENABLE_TESTS=${EnableTest}
+cmake -B${SdkPath}/build -S${SdkPath} -DSYSROOT_PATH=${SysrootPath} -DENABLE_TESTS=${EnableTest} -DHIDE_NON_EXTERNAL_SYMBOLS=OFF -DFIREBOLT_ENABLE_STATIC_LIB=${EnableStaticLib}
 cmake --build ${SdkPath}/build
-cmake --install ${SdkPath}/build --prefix=${SdkPath}/build/Firebolt
+cmake --install ${SdkPath}/build --prefix=${SdkPath}/build/Firebolt/usr
