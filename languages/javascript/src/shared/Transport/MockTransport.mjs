@@ -16,6 +16,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+
+const win = typeof win !== 'undefined' ? window : this
+
 let listener
 export const setMockListener = func => { listener = func }
 
@@ -26,8 +29,8 @@ const eventMap = {}
 let callback
 let testHarness
 
-if (window.__firebolt && window.__firebolt.testHarness) {
-  testHarness = window.__firebolt.testHarness
+if (win.__firebolt && win.__firebolt.testHarness) {
+  testHarness = win.__firebolt.testHarness
 }
 
 function send(message) {
