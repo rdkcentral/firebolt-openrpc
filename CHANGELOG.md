@@ -1,3 +1,11 @@
+## [2.0.2-next.3](https://github.com/rdkcentral/firebolt-openrpc/compare/v2.0.2-next.2...v2.0.2-next.3) (2023-07-27)
+
+
+### Bug Fixes
+
+* Actually fixing window issue ([91fa4d0](https://github.com/rdkcentral/firebolt-openrpc/commit/91fa4d0f43aa49ec6db6e27e76e33dff0dcba6b4))
+* Fix Server-side rendering reference error on `window` ([0812ae0](https://github.com/rdkcentral/firebolt-openrpc/commit/0812ae075698ec1180d03a3693a322fb8cf1efa6))
+
 ## [2.0.2-next.2](https://github.com/rdkcentral/firebolt-openrpc/compare/v2.0.2-next.1...v2.0.2-next.2) (2023-06-06)
 
 
