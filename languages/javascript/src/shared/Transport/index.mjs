@@ -28,7 +28,7 @@ let moduleInstance = null
 
 const isEventSuccess = x => x && (typeof x.event === 'string') && (typeof x.listening === 'boolean')
 
-const win = typeof win !== 'undefined' ? window : this
+const win = typeof window !== 'undefined' ? window : this
 
 export default class Transport {
   constructor () {

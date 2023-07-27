@@ -16,7 +16,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-const win = typeof win !== 'undefined' ? window : this
+const win = typeof window !== 'undefined' ? window : this
 
 export default class LegacyTransport {
   constructor (bridge) {
