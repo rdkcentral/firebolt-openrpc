@@ -29,7 +29,7 @@ import isString from 'crocks/core/isString.js'
 import predicates from 'crocks/predicates/index.js'
 const { isObject, isArray, propEq, pathSatisfies, propSatisfies } = predicates
 
-import { isRPCOnlyMethod, isProviderInterfaceMethod, getProviderInterface, getPayloadFromEvent, providerHasNoParameters, isTemporalSetMethod, hasMethodAttributes, getMethodAttributes, isEventMethodWithContext, getSemanticVersion, getSetterFor, getProvidedCapabilities, isPolymorphicPullMethod, hasPublicAPIs, createPolymorphicMethods } from '../shared/modules.mjs'
+import { isRPCOnlyMethod, isProviderInterfaceMethod, getProviderInterface, getPayloadFromEvent, providerHasNoParameters, isTemporalSetMethod, hasMethodAttributes, getMethodAttributes, isEventMethodWithContext, getSemanticVersion, getSetterFor, getProvidedCapabilities, isPolymorphicPullMethod, hasPublicAPIs, createPolymorphicMethods, isExcludedMethod, isCallsMetricsMethod } from '../shared/modules.mjs'
 import isEmpty from 'crocks/core/isEmpty.js'
 import { getPath as getJsonPath, getLinkedSchemaPaths, getSchemaConstraints, isSchema, localizeDependencies, isDefinitionReferencedBySchema, mergeAnyOf, mergeOneOf } from '../shared/json-schema.mjs'
 
@@ -485,8 +485,6 @@ const generateMacros = (obj, templates, languages, options = {}) => {
   // if (config.mergeAnyOfs) {
   //   obj = mergeAnyOfs(obj)
   // }
-
-  console.log('DONE')
 
   // grab the options so we don't have to pass them from method to method
   Object.assign(state, options)
@@ -1187,11 +1185,11 @@ function insertMethodMacros(template, methodObj, json, templates, examples={}) {
   const resultInst = types.getSchemaShape(flattenedMethod.result.schema, json, { templateDir: 'result-instantiation', property: flattenedMethod.result.name, destination: state.destination, section: state.section, level: 1, skipTitleOnce: true }) // w/out level: 1, getSchemaShape skips anonymous types, like primitives
   const serializedEventParams = event ? flattenedMethod.params.filter(p => p.name !== 'listen').map(param => types.getSchemaShape(param.schema, json, {templateDir: 'parameter-serialization', property: param.name, destination: state.destination, section: state.section, level: 1, skipTitleOnce: true })).join('\n') : ''
   // this was wrong... check when we merge if it was fixed
-  const callbackSerializedParams = event ? types.getSchemaShape(event.result.schema, json, { templateDir: 'parameter-serialization', property: param.name, destination: state.destination, section: state.section, level: 1, skipTitleOnce: true }) : ''
+  const callbackSerializedParams = event ? types.getSchemaShape(event.result.schema, json, { templateDir: 'parameter-serialization', property: result.name, destination: state.destination, section: state.section, level: 1, skipTitleOnce: true }) : ''
   const callbackResultInst = event ? types.getSchemaShape(event, json, { name: event.name, templateDir: 'result-instantiation' }) : ''
 //  const callbackResponseInst = event ? types.getSchemaInstantiation(event, json, event.name, { instantiationType: 'callback.response' }) : ''
   // hmm... how is this different from callbackSerializedParams? i guess they get merged?
-  const callbackResponseInst = event ? types.getSchemaShape(event.result.schema, json, { templateDir: 'parameter-serialization', property: param.name, destination: state.destination, section: state.section, level: 1, skipTitleOnce: true }) : ''
+  const callbackResponseInst = event ? types.getSchemaShape(event.result.schema, json, { templateDir: 'parameter-serialization', property: result.name, destination: state.destination, section: state.section, level: 1, skipTitleOnce: true }) : ''
   const resultType = result.schema ? types.getSchemaType(result.schema, json, { name: result.name, templateDir: state.typeTemplateDir }) : ''
   const resultJsonType = result.schema ? types.getSchemaType(result.schema, json, { name: result.name, templateDir: 'json-types' }) : ''
   const resultParams = generateResultParams(result.schema, json, templates, { name: result.name})
@@ -1201,7 +1199,7 @@ function insertMethodMacros(template, methodObj, json, templates, examples={}) {
 
   const pullsForParamType = pullsParams ? types.getSchemaType(pullsParams, json, { destination: state.destination, section: state.section  }) : ''
   const pullsForJsonType = pullsResult ? types.getSchemaType(pullsResult, json, { name: result.name, templateDir: 'json-types' }) : ''
-  const pullsForParamJsonType = pullsParams ? types.getSchemeType(pullsParams, json, { name: pullsParams.title , templateDir: 'json-types' }) : ''
+  const pullsForParamJsonType = pullsParams ? types.getSchemaType(pullsParams, json, { name: pullsParams.title , templateDir: 'json-types' }) : ''
   
   const pullsEventParamName = event ? types.getSchemaInstantiation(event.result, json, event.name, { instantiationType: 'pull.param.name' }) : ''
 
@@ -1473,7 +1471,7 @@ function generateResultParams(result, json, templates, {name = ''}={}) {
     const template = getTemplate('/parameters/result', templates)
     return Object.entries(result.properties).map( ([name, type]) => template
                                                                       .replace(/\$\{method\.param\.name\}/g, name)
-                                                                      .replace(/\$\{method\.param\.type\}/g, types.getSchemaType(type, json, {name: name, templateDir: state.typeTemplateDir, moduleTitle: moduleTitle, result: true}))
+                                                                      .replace(/\$\{method\.param\.type\}/g, types.getSchemaType(type, json, {name: name, moduleTitle: moduleTitle, result: true}))
     ).join(', ') // most languages separate params w/ a comma, so leaving this here for now  
   }
   // tuples get unwrapped
@@ -1482,13 +1480,13 @@ function generateResultParams(result, json, templates, {name = ''}={}) {
     const template = getTemplate('/parameters/result', templates)
     return result.items.map( (type) => template
                                         .replace(/\$\{method\.param\.name\}/g, type['x-property'])
-                                        .replace(/\$\{method\.param\.type\}/g, types.getSchemaType(type, json, {name: name, templateDir: state.typeTemplateDir, moduleTitle: moduleTitle, result: true}))
+                                        .replace(/\$\{method\.param\.type\}/g, types.getSchemaType(type, json, {name: name, moduleTitle: moduleTitle, result: true}))
     ).join(', ')
   }
   // everything else is just output as-is
   else {
     const template = getTemplate('/parameters/result', templates)
-    const type = types.getSchemaType(result, json, {name: name, templateDir: state.typeTemplateDir, moduleTitle: moduleTitle, result: true})
+    const type = types.getSchemaType(result, json, {name: name, moduleTitle: moduleTitle, result: true})
 
     if (type === 'undefined') {
       console.log(`Warning: undefined type for ${name}`)

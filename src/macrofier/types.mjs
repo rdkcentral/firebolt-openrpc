@@ -146,7 +146,7 @@ const insertObjectMacros = (content, schema, module, title, property, options) =
   ;(['properties', 'properties.register', 'properties.assign']).forEach(macro => {
     const indent = (content.split('\n').find(line => line.includes("${" + macro + "}")) || '').match(/^\s+/) || [''][0]
     const templateType = macro.split('.').slice(1).join('')
-    const template = getTemplate(path.join(options.templateDir, 'property' + (templateType ? `-${templateType}` : '')))
+    const template = getTemplate(path.join(options.templateDir, 'property' + (templateType ? `-${templateType}` : ''))).replace(/\n/gms, indent + '\n')
   
     const properties = []
   
@@ -168,18 +168,22 @@ const insertObjectMacros = (content, schema, module, title, property, options) =
       Object.entries(schema.properties).forEach(([name, prop], i) => {
         options2.property = name
         const schemaShape = getSchemaShape(prop, module, options2)
-  
-        properties.push((i !== 0 ? indent : '') + template
+        const type = getSchemaType(prop, module, options2)
+
+        // don't push properties w/ unsupported types
+        if (type) {
+          properties.push((i !== 0 ? indent : '') + template
           .replace(/(^\s+)/g, '$1'.repeat(options2.level))
           .replace(/\$\{property\}/g, name)
           .replace(/\$\{Property\}/g, capitalize(name))
           .replace(/\$\{parent\.title\}/g, title)
-          .replace(/\$\{title\}/g, getSchemaType(prop, module, options2))
+          .replace(/\$\{title\}/g, type)
           .replace(/\$\{shape\}/g, schemaShape)
           .replace(/\$\{description\}/g, prop.description || '')
           .replace(/\$\{summary\}/g, prop.description ? prop.description.split('\n')[0] : '')
           .replace(/\$\{delimiter\}(.*?)\$\{end.delimiter\}/gms, i === schema.properties.length - 1 ? '' : '$1')
           .replace(/\$\{if\.optional\}(.*?)\$\{end\.if\.optional\}/gms, schema.required && schema.required.includes(name) ? '' : '$1'))
+        }
       })
     }
   
@@ -210,7 +214,7 @@ const insertObjectMacros = (content, schema, module, title, property, options) =
           if (type) {
             options2.property = prop
             const schemaShape = getSchemaShape(type, module, options2)
-            properties.push(template
+            properties.push((i !== 0 ? indent : '') + template
               .replace(/\$\{property\}/g, safeName(prop))
               .replace(/\$\{Property\}/g, capitalize(safeName(prop)))
               .replace(/\$\{parent\.title\}/g, title)
@@ -243,24 +247,26 @@ const insertTupleMacros = (content, schema, module, title, options) => {
 
   const propTemplate = getTemplate(path.join(options.templateDir, 'property'))
   const itemsTemplate = getTemplate(path.join(options.templateDir, 'items'))
+  const propIndent = (content.split('\n').find(line => line.includes("${properties}")) || '').match(/^\s+/) || [''][0]
+  const itemsIndent = (content.split('\n').find(line => line.includes("${items}")) || '').match(/^\s+/) || [''][0]
 
-  const doMacroWork = (str, prop, i) => {
+  const doMacroWork = (str, prop, i, indent) => {
     const schemaShape = getSchemaShape(prop, module, options)
 
-    return str
+    return (i !== 0 ? indent : '') + str
       .replace(/\$\{property\}/g, prop['x-property'])
       .replace(/\$\{Property\}/g, capitalize(prop['x-property']))
       .replace(/\$\{parent\.title\}/g, title)
       .replace(/\$\{shape\}/g, schemaShape)
-      .replace(/\$\{type\}/g, getSchemaType(prop, module, options))
+      .replace(/\$\{title\}/g, getSchemaType(prop, module, options))
       .replace(/\$\{description\}/g, prop.description || '')
       .replace(/\$\{summary\}/g, prop.description ? prop.description.split('\n')[0] : '')
       .replace(/\$\{delimiter\}(.*?)\$\{end.delimiter\}/g, i === schema.items.length - 1 ? '' : '$1')
       .replace(/\$\{if\.optional\}(.*?)\$\{end\.if\.optional\}/gms, '')
   }
 
-  content = content.replace(/\$\{properties\}/g, schema.items.map((prop, i) => doMacroWork(propTemplate, prop, i)).join('\n'))
-  content = content.replace(/\$\{items\}/g, schema.items.map((prop, i) => doMacroWork(itemsTemplate, prop, i)).join('\n'))  
+  content = content.replace(/\$\{properties\}/g, schema.items.map((prop, i) => doMacroWork(propTemplate, prop, i, propIndent)).join('\n'))
+  content = content.replace(/\$\{items\}/g, schema.items.map((prop, i) => doMacroWork(itemsTemplate, prop, i, itemsIndent)).join('\n'))  
 
   return content
 }
@@ -286,8 +292,24 @@ const insertAnyOfMacros = (content, schema, module, name) => {
   return content
 }
 
+const sanitize = (schema) => {
+  const result = JSON.parse(JSON.stringify(schema))
+
+  if (result.oneOf && result.oneOf.length === 2 && result.oneOf.find(s => s.const === null)) {
+    Object.assign(result, result.oneOf.find(s => s.const !== null))
+    delete result.oneOf
+  }
+
+  if (result.anyOf && result.anyOf.length === 2 && result.anyOf.find(s => s.const === null)) {
+    Object.assign(result, result.anyOf.find(s => s.const !== null))
+    delete result.anyOf
+  }
+
+  return result
+}
+
 function getSchemaShape(schema = {}, module = {}, { templateDir = 'types', name = '', parent = '', property = '', level = 0, summary, descriptions = true, destination, section, enums = true, skipTitleOnce = false } = {}) {
-  schema = JSON.parse(JSON.stringify(schema))
+  schema = sanitize(schema)
 
   state.destination = destination
   state.section = section
@@ -340,6 +362,7 @@ function getSchemaShape(schema = {}, module = {}, { templateDir = 'types', name 
       schema.anyOf = schema.oneOf
     }
     const shape = insertAnyOfMacros(getTemplate(path.join(templateDir, 'anyOf' + suffix)), schema, module, theTitle)
+
     result = result.replace(/\$\{shape\}/g, shape)
     return insertSchemaMacros(result, schema, module, theTitle, parent, property)
   }
@@ -439,13 +462,17 @@ const isSupportedTuple = schema => {
   }
 }
 
-function getSchemaType(schema, module, { destination, templateDir = 'types', link = false, title = false, code = false, asPath = false, event = false, result = false, expandEnums = true, baseUrl = '', namespace = false } = {}) {
+function getSchemaType(schema, module, { destination, templateDir = 'types', link = false, code = false, asPath = false, event = false, result = false, expandEnums = true, baseUrl = '', namespace = false } = {}) {
   const wrap = (str, wrapper) => wrapper + str + wrapper
+
+  schema = sanitize(schema)
 
   const suffix = destination && ('.' + destination.split('.').pop()) || ''
   const namespaceStr = namespace ? getTemplate(path.join(templateDir, 'namespace' + suffix)) : ''
   const theTitle = insertSchemaMacros(namespaceStr + getTemplate(path.join(templateDir, 'title' + suffix)), schema, module, schema.title || '', '', '', false)
   const allocatedProxy = event || result
+
+  const title = schema.type === "object" || schema.enum ? true : false
 
   if (schema['$ref']) {
     if (schema['$ref'][0] === '#') {
@@ -566,6 +593,7 @@ function getSchemaType(schema, module, { destination, templateDir = 'types', lin
     if (!schema.anyOf) {
       schema.anyOf = schema.oneOf
     }
+    // todo... we probably shouldn't allow untitled anyOfs, at least not w/out a feature flag
     const shape = insertAnyOfMacros(getTemplate(path.join(templateDir, 'anyOf' + suffix)), schema, module, theTitle)
     return insertSchemaMacros(shape, schema, module, theTitle, '', '', false)
 

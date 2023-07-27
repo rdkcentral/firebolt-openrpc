@@ -1,1 +1,1 @@
-#include "JsonData_${info.title}.h"
+#include "jsondata_${info.title.lowercase}.h"

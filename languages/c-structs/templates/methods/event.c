@@ -1,5 +1,5 @@
 /* ${method.name} - ${method.description} */
-static void ${info.Title}${method.Name}InnerCallback( void* userCB, const void* userData, void* response )
+static void F${info.Title}${method.Name}InnerCallback( void* userCB, const void* userData, void* response )
 {
 ${event.callback.params.serialization}
     ASSERT(jsonResponse->IsValid() == true);
@@ -9,7 +9,7 @@ ${event.callback.result.instantiation}
         callback(userData, ${event.callback.response.instantiation});
     }
 }
-int ${info.title}_Register_${method.Name}( ${event.signature.params}${if.event.params}, ${end.if.event.params}${info.Title}${method.Name}Callback userCB, const void* userData )
+int F${info.title}_Register_${method.Name}( ${event.signature.params}${if.event.params}, ${end.if.event.params}${info.Title}${method.Name}Callback userCB, const void* userData )
 {
     const string eventName = _T("${info.title}.${method.name}");
     int status = FireboltSDKErrorNone;
@@ -20,7 +20,7 @@ int ${info.title}_Register_${method.Name}( ${event.signature.params}${if.event.p
     }
     return status;
 }
-int ${info.title}_Unregister_${method.Name}( ${info.Title}${method.Name}Callback userCB)
+int F${info.title}_Unregister_${method.Name}( ${info.Title}${method.Name}Callback userCB)
 {
     return FireboltSDK::Event::Instance().Unsubscribe(_T("${info.title}.${method.name}"), reinterpret_cast<void*>(userCB));
 }

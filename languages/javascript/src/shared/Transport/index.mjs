@@ -28,6 +28,8 @@ let moduleInstance = null
 
 const isEventSuccess = x => x && (typeof x.event === 'string') && (typeof x.listening === 'boolean')
 
+const win = typeof win !== 'undefined' ? window : this
+
 export default class Transport {
   constructor () {
     this._promises = []
@@ -51,8 +53,8 @@ export default class Transport {
   }
 
   _endpoint () {
-    if (window.__firebolt && window.__firebolt.endpoint) {
-      return window.__firebolt.endpoint
+    if (win.__firebolt && win.__firebolt.endpoint) {
+      return win.__firebolt.endpoint
     }
     return null
   }
@@ -64,14 +66,14 @@ export default class Transport {
       transport = new WebsocketTransport(endpoint)
       transport.receive(this.receiveHandler.bind(this))
     } else if (
-      typeof window.ServiceManager !== 'undefined' &&
-      window.ServiceManager &&
-      window.ServiceManager.version
+      typeof win.ServiceManager !== 'undefined' &&
+      win.ServiceManager &&
+      win.ServiceManager.version
     ) {
       // Wire up the queue
       transport = this._queue
       // get the default bridge service, and flush the queue
-      window.ServiceManager.getServiceForJavaScript(LEGACY_TRANSPORT_SERVICE_NAME, service => {
+      win.ServiceManager.getServiceForJavaScript(LEGACY_TRANSPORT_SERVICE_NAME, service => {
         if (LegacyTransport.isLegacy(service)) {
           transport = new LegacyTransport(service)
         } else {
@@ -194,20 +196,20 @@ export default class Transport {
    */
   static get () {
     /** Set up singleton and initialize it */
-    window.__firebolt = window.__firebolt || {}
-    if ((window.__firebolt.transport == null) && (moduleInstance == null)) {
+    win.__firebolt = win.__firebolt || {}
+    if ((win.__firebolt.transport == null) && (moduleInstance == null)) {
       const transport = new Transport()
       transport.init()
       if (transport.isMock) {
         /** We should use the mock transport built with the SDK, not a global */
         moduleInstance = transport
       } else {
-        window.__firebolt = window.__firebolt || {}
-        window.__firebolt.transport = transport
+        win.__firebolt = win.__firebolt || {}
+        win.__firebolt.transport = transport
       }
-      window.__firebolt.setTransportLayer = transport.setTransportLayer.bind(transport)
+      win.__firebolt.setTransportLayer = transport.setTransportLayer.bind(transport)
     }
-    return window.__firebolt.transport ? window.__firebolt.transport : moduleInstance
+    return win.__firebolt.transport ? win.__firebolt.transport : moduleInstance
   }
 
   receiveHandler (message) {
@@ -248,12 +250,12 @@ export default class Transport {
   init () {
     initSettings({}, { log: true })
     this._queue.receive(this.receiveHandler.bind(this))
-    if (window.__firebolt) {
-      if (window.__firebolt.mockTransportLayer === true) {
+    if (win.__firebolt) {
+      if (win.__firebolt.mockTransportLayer === true) {
         this.isMock = true
         this.setTransportLayer(mock)
-      } else if (window.__firebolt.getTransportLayer) {
-        this.setTransportLayer(window.__firebolt.getTransportLayer())
+      } else if (win.__firebolt.getTransportLayer) {
+        this.setTransportLayer(win.__firebolt.getTransportLayer())
       }
     }
     if (this._transport == null) {
@@ -261,7 +263,7 @@ export default class Transport {
     }
   }
 }
-window.__firebolt = window.__firebolt || {}
-window.__firebolt.setTransportLayer = transport => {
+win.__firebolt = win.__firebolt || {}
+win.__firebolt.setTransportLayer = transport => {
   Transport.get().setTransportLayer(transport)
 }

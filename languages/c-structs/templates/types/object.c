@@ -1,3 +1,3 @@
 struct {
-    ${shape}${property}; // ${summary}
+    ${properties}
 }
