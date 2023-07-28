@@ -1,3 +1,10 @@
+## [2.0.3-next.2](https://github.com/rdkcentral/firebolt-openrpc/compare/v2.0.3-next.1...v2.0.3-next.2) (2023-07-28)
+
+
+### Bug Fixes
+
+* Use empty object instead of this for window fallback ([c3cece1](https://github.com/rdkcentral/firebolt-openrpc/commit/c3cece17b8ec487a7043190d2932f4bdd70b3ab9))
+
 ## [2.0.3-next.1](https://github.com/rdkcentral/firebolt-openrpc/compare/v2.0.2...v2.0.3-next.1) (2023-07-27)
 
 
