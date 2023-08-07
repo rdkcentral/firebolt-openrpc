@@ -56,89 +56,17 @@ function(InstallHeaders)
             list(APPEND subdirs ${directory})
 
             foreach(subdir ${subdirs})
-                set(dest ${destination}/${subdir})
-                file(GLOB headers "${source}/${directory}/${subdir}/*.h")
-                if (headers)
-                    add_custom_command(
-                        TARGET ${Argument_TARGET}
-                        POST_BUILD
-                        COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/${Argument_NAMESPACE}/usr/include/${dest}
-                        COMMAND ${CMAKE_COMMAND} -E copy ${source}/${directory}/${subdir}/*.h ${CMAKE_BINARY_DIR}/${Argument_NAMESPACE}/usr/include/${dest}
-                    )
+                if (NOT subdir STREQUAL ".")
+                    set(dest ${destination}/${subdir})
+                    file(GLOB headers "${source}/${directory}/${subdir}/*.h")
+                    if (headers)
+                        install(
+                            DIRECTORY "${source}/${directory}/${subdir}"
+			    DESTINATION include/${dest}
+                            FILES_MATCHING PATTERN "*.h")
+                    endif()
                 endif()
             endforeach(subdir)
         endforeach(directory)
     endif()
 endfunction(InstallHeaders)
-
-function(InstallLibraries)
-    set(optionsArgs SHARED STATIC)
-    set(oneValueArgs TARGET DESTINATION LIBDIR)
-    set(multiValueArgs LIBRARIES)
-
-    cmake_parse_arguments(Argument "${optionsArgs}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN} )
-    if (Argument_UNPARSED_ARGUMENTS)
-        message(FATAL_ERROR "Unknown keywords given to InstallLibraries(): \"${Argument_UNPARSED_ARGUMENTS}\"")
-    endif()
-    if (Argument_LIBRARIES)
-        add_custom_command(
-            TARGET ${Argument_TARGET}
-            POST_BUILD
-            COMMENT "=================== Installing Libraries ======================"
-        )
-        foreach(LIBRARY ${Argument_LIBRARIES})
-            if (Argument_SHARED)
-                add_custom_command(
-                    TARGET ${Argument_TARGET}
-                    POST_BUILD
-                    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/${Argument_DESTINATION}/usr/lib
-                    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_BINARY_DIR}/${Argument_LIBDIR}/lib${LIBRARY}.so.${PROJECT_VERSION} ${CMAKE_BINARY_DIR}/${Argument_DESTINATION}/usr/lib
-                    COMMAND ${CMAKE_COMMAND} -E create_symlink lib${LIBRARY}.so.${PROJECT_VERSION} ${CMAKE_BINARY_DIR}/${Argument_DESTINATION}/usr/lib/lib${LIBRARY}.so.${PROJECT_VERSION_MAJOR}
-                    COMMAND ${CMAKE_COMMAND} -E create_symlink lib${LIBRARY}.so.${PROJECT_VERSION_MAJOR} ${CMAKE_BINARY_DIR}/${Argument_DESTINATION}/usr/lib/lib${LIBRARY}.so
-                )
-            elseif (Argument_STATIC)
-                add_custom_command(
-                    TARGET ${Argument_TARGET}
-                    POST_BUILD
-                    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/${Argument_DESTINATION}/usr/lib
-                    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_BINARY_DIR}/lib${LIBRARY}.a ${CMAKE_BINARY_DIR}/${Argument_DESTINATION}/usr/lib
-                )
-
-             endif()
-        endforeach(LIBRARY)
-    endif()
-endfunction(InstallLibraries)
-
-function(InstallCMakeConfigs)
-    set(optionsArgs)
-    set(oneValueArgs TARGET DESTINATION)
-    set(multiValueArgs)
-
-    cmake_parse_arguments(Argument "${optionsArgs}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN} )
-    if (Argument_UNPARSED_ARGUMENTS)
-        message(FATAL_ERROR "Unknown keywords given to InstallCMakeConfigs(): \"${Argument_UNPARSED_ARGUMENTS}\"")
-    endif()
-    if (Argument_TARGET)
-        if (${CMAKE_VERSION} VERSION_LESS "3.25.0")
-            set(EXPORT_CONFIG_PATH "lib/cmake/${Argument_TARGET}")
-        else ()
-            set(EXPORT_CONFIG_PATH "*")
-        endif ()
-        add_custom_command(
-            TARGET ${Argument_TARGET}
-            POST_BUILD
-            COMMENT "=================== Installing CMakeConfigs ======================"
-            COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/${Argument_DESTINATION}/usr/lib/cmake/${Argument_TARGET}
-            COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_BINARY_DIR}/${Argument_TARGET}Config*.cmake ${CMAKE_BINARY_DIR}/${Argument_DESTINATION}/usr/lib/cmake/${Argument_TARGET}
-            COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/Export/${EXPORT_CONFIG_PATH}/${Argument_TARGET}Targets*.cmake ${CMAKE_BINARY_DIR}/${Argument_DESTINATION}/usr/lib/cmake/${Argument_TARGET}
-        )
-        if (EXISTS ${CMAKE_CURRENT_BINARY_DIR}/${Argument_TARGET}.pc)
-            add_custom_command(
-                TARGET ${Argument_TARGET}
-                POST_BUILD
-                COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/${Argument_DESTINATION}/usr/lib/pkgconfig
-                COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_BINARY_DIR}/${Argument_TARGET}.pc ${CMAKE_BINARY_DIR}/${Argument_DESTINATION}/usr/lib/pkgconfig
-            )
-        endif()
-    endif()
-endfunction(InstallCMakeConfigs)
