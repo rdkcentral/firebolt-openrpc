@@ -299,11 +299,12 @@ function getSchemaTypeInfo(module = {}, json = {}, name = '', schemas = {}, pref
       res = getSchemaTypeInfo(module, json.items, json.items.name || name, schemas, prefix)
     }
 
-
     name = name.endsWith("_ArrayType") ? name.split('_ArrayType')[0] : name
-    prefix = prefix ? prefix + name : name
-    let n = getTypeName(getModuleName(module), capitalize(res.name), prefix)
-    structure.name = name ? name + capitalize(res.name) : res.name
+    name = capitalize(name)
+    res.name = capitalize(res.name)
+    prefix = prefix ? prefix + ((name !== res.name) ? name : '') : name
+    let n = getTypeName(getModuleName(module), res.name, prefix)
+    structure.name = (name && (name !== res.name)) ? name + capitalize(res.name) : res.name
     structure.type = n + 'Array_t'
     structure.json = json
     structure.namespace = getModuleName(module)
