@@ -92,7 +92,7 @@
                     ],
                     "properties": {
                         "foo": {
-                            "type": "string",
+                            "type": ["string", "null"],
                             "description": "A required field in the result."
                         },
                         "bar": {
@@ -131,6 +131,21 @@
                         "name": "Another Result",
                         "value": {
                             "foo": "here's bar"
+                        }
+                    }
+                },
+                {
+                    "name": "Example to set null value",
+                    "params": [
+                        {
+                            "name": "parameter",
+                            "value": null
+                        }
+                    ],
+                    "result": {
+                        "name": "Another Result",
+                        "value": {
+                            "foo": null
                         }
                     }
                 }                
