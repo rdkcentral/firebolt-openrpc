@@ -48,14 +48,10 @@ beforeAll( () => {
         }
         else if (json.method === 'simple.setProperty') {
             propertySetterWasTriggered = true
-            if (json.params.value.foo === 'a new foo!') {
+            if (json.params.value.foo === 'a new foo!' || json.params.value.foo === null) {
                 propertySetterWasTriggeredWithValue = true
             }
         }
-    })
-
-    Simple.property({
-        foo: 'a new foo!'
     })
 
     return new Promise( (resolve, reject) => {
@@ -76,6 +72,18 @@ test('Basic Property subscribe', () => {
 });
 
 test('Basic Property set', () => {
+    Simple.property({
+        foo: 'a new foo!'
+    })
+
+    expect(propertySetterWasTriggered).toBe(true)
+    expect(propertySetterWasTriggeredWithValue).toBe(true)
+});
+
+test('Basic Property set with null', () => {
+    Simple.property({
+        foo: null
+    })
     expect(propertySetterWasTriggered).toBe(true)
     expect(propertySetterWasTriggeredWithValue).toBe(true)
 });
