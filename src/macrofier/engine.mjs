@@ -532,6 +532,8 @@ function generateDefaults(json = {}, templates) {
     reduce((acc, val, i, arr) => {
       if (isPropertyMethod(val)) {
         acc += insertMethodMacros(getTemplate('/defaults/property', templates), val, json, templates)
+      } else if (val.tags.find(t => t.name === "setter")) {
+        acc += insertMethodMacros(getTemplate('/defaults/setter', templates), val, json, templates)
       } else {
         acc += insertMethodMacros(getTemplate('/defaults/default', templates), val, json, templates)
       }
@@ -955,6 +957,7 @@ function insertMethodMacros(template, methodObj, json, templates, examples={}) {
     .replace(/\$\{method\.signature\.params\}/g, types.getMethodSignatureParams(methodObj, json, { destination: state.destination }))
     .replace(/\$\{method\.context\}/g, method.context.join(', '))
     .replace(/\$\{method\.context\.array\}/g, JSON.stringify(method.context))
+    .replace(/\$\{method\.context\.count}/g, method.context ? method.context.length : 0)
     .replace(/\$\{method\.deprecation\}/g, deprecation)
     .replace(/\$\{method\.Name\}/g, method.name[0].toUpperCase() + method.name.substr(1))
     .replace(/\$\{event\.name\}/g, method.name.toLowerCase()[2] + method.name.substr(3))
