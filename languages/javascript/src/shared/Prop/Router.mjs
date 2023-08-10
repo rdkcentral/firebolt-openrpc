@@ -1,5 +1,5 @@
 export default function (params, callbackOrValue, contextParameterCount) {
-    const numArgs = Object.values(params).length
+    const numArgs = params ? Object.values(params).length : 0
   
     if (numArgs === contextParameterCount && callbackOrValue === undefined) {
       // getter
