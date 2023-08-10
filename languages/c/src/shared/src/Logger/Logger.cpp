@@ -45,10 +45,10 @@ ENUM_CONVERSION_END(FireboltSDK::Logger::Category)
 namespace FireboltSDK {
     /* static */  Logger::LogLevel Logger::_logLevel = Logger::LogLevel::Error;
 
-    uint32_t Logger::SetLogLevel(Logger::LogLevel logLevel)
+    int32_t Logger::SetLogLevel(Logger::LogLevel logLevel)
     {
         ASSERT(logLevel < Logger::LogLevel::MaxLevel);
-        uint32_t status = FireboltSDKErrorNotSupported;
+        int32_t status = FireboltSDKErrorNotSupported;
         if (logLevel < Logger::LogLevel::MaxLevel) {
             _logLevel = logLevel;
             status = FireboltSDKErrorNone;

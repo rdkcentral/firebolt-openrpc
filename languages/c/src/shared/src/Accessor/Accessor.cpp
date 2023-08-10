@@ -50,13 +50,13 @@ namespace FireboltSDK {
         _singleton = nullptr;
     }
 
-    uint32_t Accessor::CreateEventHandler()
+    int32_t Accessor::CreateEventHandler()
     {
          Event::Instance().Configure(_transport);
          return FireboltSDKErrorNone;
     }
 
-    uint32_t Accessor::DestroyEventHandler()
+    int32_t Accessor::DestroyEventHandler()
     {
          Event::Dispose();
          return FireboltSDKErrorNone;
@@ -67,7 +67,7 @@ namespace FireboltSDK {
         return Event::Instance();
     }
 
-    uint32_t Accessor::CreateTransport(const string& url, const uint32_t waitTime = DefaultWaitTime)
+    int32_t Accessor::CreateTransport(const string& url, const uint32_t waitTime = DefaultWaitTime)
     {
         if (_transport != nullptr) {
             delete _transport;
@@ -83,7 +83,7 @@ namespace FireboltSDK {
         return ((_transport != nullptr) ? FireboltSDKErrorNone : FireboltSDKErrorUnavailable);
     }
 
-    uint32_t Accessor::DestroyTransport()
+    int32_t Accessor::DestroyTransport()
     {
         if (_transport != nullptr) {
             delete _transport;
@@ -98,7 +98,7 @@ namespace FireboltSDK {
         return _transport;
     }
 
-    uint32_t Accessor::WaitForLinkReady(Transport<WPEFramework::Core::JSON::IElement>* transport, const uint32_t waitTime = DefaultWaitTime) {
+    int32_t Accessor::WaitForLinkReady(Transport<WPEFramework::Core::JSON::IElement>* transport, const uint32_t waitTime = DefaultWaitTime) {
         uint32_t waiting = (waitTime == WPEFramework::Core::infinite ? WPEFramework::Core::infinite : waitTime);
         static constexpr uint32_t SLEEPSLOT_TIME = 100;
 

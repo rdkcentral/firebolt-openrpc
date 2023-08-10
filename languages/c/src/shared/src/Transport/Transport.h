@@ -418,9 +418,9 @@ namespace FireboltSDK {
         }
 
     private:
-        uint32_t Inbound(const WPEFramework::Core::ProxyType<MESSAGETYPE>& inbound)
+        int32_t Inbound(const WPEFramework::Core::ProxyType<MESSAGETYPE>& inbound)
         {
-            uint32_t result = WPEFramework::Core::ERROR_UNAVAILABLE;
+            int32_t result = WPEFramework::Core::ERROR_UNAVAILABLE;
             _adminLock.Lock();
             typename std::list<CLIENT*>::iterator index(_observers.begin());
             while ((result != WPEFramework::Core::ERROR_NONE) && (index != _observers.end())) {
@@ -441,8 +441,8 @@ namespace FireboltSDK {
 
     class IEventHandler {
     public:
-        virtual uint32_t ValidateResponse(const WPEFramework::Core::ProxyType<WPEFramework::Core::JSONRPC::Message>& jsonResponse, bool& enabled) = 0;
-        virtual uint32_t Dispatch(const string& eventName, const WPEFramework::Core::ProxyType<WPEFramework::Core::JSONRPC::Message>& jsonResponse) = 0;
+        virtual int32_t ValidateResponse(const WPEFramework::Core::ProxyType<WPEFramework::Core::JSONRPC::Message>& jsonResponse, bool& enabled) = 0;
+        virtual int32_t Dispatch(const string& eventName, const WPEFramework::Core::ProxyType<WPEFramework::Core::JSONRPC::Message>& jsonResponse) = 0;
         virtual ~IEventHandler() = default;
     };
 
@@ -536,11 +536,11 @@ namespace FireboltSDK {
         }
 
         template <typename PARAMETERS, typename RESPONSE>
-        uint32_t Invoke(const string& method, const PARAMETERS& parameters, RESPONSE& response)
+        int32_t Invoke(const string& method, const PARAMETERS& parameters, RESPONSE& response)
         {
             Entry slot;
             uint32_t id = _channel->Sequence();
-            uint32_t result = Send(method, parameters, id);
+            int32_t result = Send(method, parameters, id);
             if (result == WPEFramework::Core::ERROR_NONE) {
                 result = WaitForResponse<RESPONSE>(id, response, _waitTime);
             }
@@ -549,11 +549,11 @@ namespace FireboltSDK {
         }
 
         template <typename RESPONSE>
-        uint32_t Subscribe(const string& eventName, const string& parameters, RESPONSE& response)
+        int32_t Subscribe(const string& eventName, const string& parameters, RESPONSE& response)
         {
             Entry slot;
             uint32_t id = _channel->Sequence();
-            uint32_t result = Send(eventName, parameters, id);
+            int32_t result = Send(eventName, parameters, id);
             if (result == WPEFramework::Core::ERROR_NONE) {
                 _adminLock.Lock();
                 _eventMap.emplace(std::piecewise_construct,
@@ -567,12 +567,12 @@ namespace FireboltSDK {
             return (FireboltErrorValue(result));
         }
 
-        uint32_t Unsubscribe(const string& eventName, const string& parameters)
+        int32_t Unsubscribe(const string& eventName, const string& parameters)
         {
             Revoke(eventName);
             Entry slot;
             uint32_t id = _channel->Sequence();
-            uint32_t result = Send(eventName, parameters, id);
+            int32_t result = Send(eventName, parameters, id);
 
             return (FireboltErrorValue(result));
         }
@@ -637,17 +637,17 @@ namespace FireboltSDK {
             _adminLock.Unlock();
         }
 
-        uint32_t Submit(const WPEFramework::Core::ProxyType<WPEFramework::Core::JSONRPC::Message>& inbound)
+        int32_t Submit(const WPEFramework::Core::ProxyType<WPEFramework::Core::JSONRPC::Message>& inbound)
         {
-            uint32_t result = WPEFramework::Core::ERROR_UNAVAILABLE;
+            int32_t result = WPEFramework::Core::ERROR_UNAVAILABLE;
             WPEFramework::Core::ProxyType<WPEFramework::Core::IDispatch> job = WPEFramework::Core::ProxyType<WPEFramework::Core::IDispatch>(WPEFramework::Core::ProxyType<Transport::Job>::Create(inbound, this));
             WPEFramework::Core::IWorkerPool::Instance().Submit(job);
             return result;
         }
 
-        uint32_t Inbound(const WPEFramework::Core::ProxyType<WPEFramework::Core::JSONRPC::Message>& inbound)
+        int32_t Inbound(const WPEFramework::Core::ProxyType<WPEFramework::Core::JSONRPC::Message>& inbound)
         {
-            uint32_t result = WPEFramework::Core::ERROR_INVALID_SIGNATURE;
+            int32_t result = WPEFramework::Core::ERROR_INVALID_SIGNATURE;
 
             ASSERT(inbound.IsValid() == true);
 
@@ -684,9 +684,9 @@ namespace FireboltSDK {
 
 
         template <typename PARAMETERS>
-        uint32_t Send(const string& method, const PARAMETERS& parameters, const uint32_t& id)
+        int32_t Send(const string& method, const PARAMETERS& parameters, const uint32_t& id)
         {
-            uint32_t result = WPEFramework::Core::ERROR_UNAVAILABLE;
+            int32_t result = WPEFramework::Core::ERROR_UNAVAILABLE;
 
             if ((_channel.IsValid() == true) && (_channel->IsSuspended() == true)) {
                 result = WPEFramework::Core::ERROR_ASYNC_FAILED;
@@ -722,9 +722,9 @@ namespace FireboltSDK {
         }
 
         template <typename RESPONSE>
-        uint32_t WaitForResponse(const uint32_t& id, RESPONSE& response, const uint32_t waitTime)
+        int32_t WaitForResponse(const uint32_t& id, RESPONSE& response, const uint32_t waitTime)
         {
-            uint32_t result = WPEFramework::Core::ERROR_TIMEDOUT;
+            int32_t result = WPEFramework::Core::ERROR_TIMEDOUT;
             _adminLock.Lock();
             typename PendingMap::iterator index = _pendingQueue.find(id);
             Entry& slot(index->second);
@@ -758,9 +758,9 @@ namespace FireboltSDK {
 
         static constexpr uint32_t WAITSLOT_TIME = 100;
         template <typename RESPONSE>
-        uint32_t WaitForEventResponse(const uint32_t& id, const string& eventName, RESPONSE& response, const uint32_t waitTime)
+        int32_t WaitForEventResponse(const uint32_t& id, const string& eventName, RESPONSE& response, const uint32_t waitTime)
         {
-            uint32_t result = WPEFramework::Core::ERROR_TIMEDOUT;
+            int32_t result = WPEFramework::Core::ERROR_TIMEDOUT;
             _adminLock.Lock();
             typename PendingMap::iterator index = _pendingQueue.find(id);
             Entry& slot(index->second);
@@ -860,10 +860,10 @@ namespace FireboltSDK {
             return;
         }
 
-        uint32_t FireboltErrorValue(const uint32_t error)
+        int32_t FireboltErrorValue(const uint32_t error)
         {
 
-            uint32_t fireboltError = FireboltSDKErrorUnknown;
+            int32_t fireboltError = error;
             switch (error) {
             case WPEFramework::Core::ERROR_NONE:
                 fireboltError = FireboltSDKErrorNone;
