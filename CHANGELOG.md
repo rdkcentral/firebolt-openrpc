@@ -1,3 +1,31 @@
+## [2.0.4-next.3](https://github.com/rdkcentral/firebolt-openrpc/compare/v2.0.4-next.2...v2.0.4-next.3) (2023-08-10)
+
+
+### Bug Fixes
+
+* Setters w/ no params fail mock ([#124](https://github.com/rdkcentral/firebolt-openrpc/issues/124)) ([0538eff](https://github.com/rdkcentral/firebolt-openrpc/commit/0538effd64ac84f7468f3dc6a5050167f5e5b152))
+
+## [2.0.4-next.2](https://github.com/rdkcentral/firebolt-openrpc/compare/v2.0.4-next.1...v2.0.4-next.2) (2023-08-09)
+
+
+### Bug Fixes
+
+* Update package.json ([c7bf0e3](https://github.com/rdkcentral/firebolt-openrpc/commit/c7bf0e3cf8a90b2a3afce23cecaf10c027a7319d))
+
+## [2.0.4-next.1](https://github.com/rdkcentral/firebolt-openrpc/compare/v2.0.3...v2.0.4-next.1) (2023-08-08)
+
+
+### Bug Fixes
+
+* Enabled setter to have null as param value ([#122](https://github.com/rdkcentral/firebolt-openrpc/issues/122)) ([2bfee25](https://github.com/rdkcentral/firebolt-openrpc/commit/2bfee2514bdc9e11ba7390ae40b6c6c820de6784))
+
+## [2.0.3-next.3](https://github.com/rdkcentral/firebolt-openrpc/compare/v2.0.3-next.2...v2.0.3-next.3) (2023-08-08)
+
+
+### Bug Fixes
+
+* Enabled setter to have null as param value ([#122](https://github.com/rdkcentral/firebolt-openrpc/issues/122)) ([2bfee25](https://github.com/rdkcentral/firebolt-openrpc/commit/2bfee2514bdc9e11ba7390ae40b6c6c820de6784))
+
 ## [2.0.3-next.2](https://github.com/rdkcentral/firebolt-openrpc/compare/v2.0.3-next.1...v2.0.3-next.2) (2023-07-28)
 
 
