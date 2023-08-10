@@ -1,3 +1,10 @@
+## [2.0.4-next.2](https://github.com/rdkcentral/firebolt-openrpc/compare/v2.0.4-next.1...v2.0.4-next.2) (2023-08-09)
+
+
+### Bug Fixes
+
+* Update package.json ([c7bf0e3](https://github.com/rdkcentral/firebolt-openrpc/commit/c7bf0e3cf8a90b2a3afce23cecaf10c027a7319d))
+
 ## [2.0.4-next.1](https://github.com/rdkcentral/firebolt-openrpc/compare/v2.0.3...v2.0.4-next.1) (2023-08-08)
 
 
