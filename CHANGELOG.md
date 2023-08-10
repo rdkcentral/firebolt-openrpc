@@ -1,3 +1,10 @@
+## [2.0.4-next.3](https://github.com/rdkcentral/firebolt-openrpc/compare/v2.0.4-next.2...v2.0.4-next.3) (2023-08-10)
+
+
+### Bug Fixes
+
+* Setters w/ no params fail mock ([#124](https://github.com/rdkcentral/firebolt-openrpc/issues/124)) ([0538eff](https://github.com/rdkcentral/firebolt-openrpc/commit/0538effd64ac84f7468f3dc6a5050167f5e5b152))
+
 ## [2.0.4-next.2](https://github.com/rdkcentral/firebolt-openrpc/compare/v2.0.4-next.1...v2.0.4-next.2) (2023-08-09)
 
 
