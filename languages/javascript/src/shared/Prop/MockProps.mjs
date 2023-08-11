@@ -1,28 +1,24 @@
 import Mock from "../Transport/MockTransport.mjs"
+import router from "./Router.mjs"
 
 const mocks = {}
 
-function mock(module, method, args, def) {
-  const fullMethod = `${module}.${method}`
-  if ((args == null) || args.length === 0 || (Object.values(args[0]).length === 0)) {
-    // get
-    const rv = mocks[fullMethod] && (mocks[fullMethod].value != null) ? mocks[fullMethod].value : def
-    return rv
-  } else {
-    // set
-    let mockMethod = mocks[fullMethod]
-    if (mockMethod == null) {
-      mockMethod = {
-        subscribers: []
-      }
-    }
-    mocks[fullMethod] = mockMethod
-    mockMethod.value = args[0].value
-    Mock.event(module, method + 'Changed', {
-      value: args[0].value
-    })
-    return {}
+function mock(module, method, params, value, contextParameterCount, def) {
+  const type = router(params, value, contextParameterCount)
+  const hash = contextParameterCount ? '.' + Object.keys(params).filter(key => key !== 'value').map(key => params[key]).join('.') : ''
+  const key = `${module}.${method}${hash}`
+
+  if (type === "getter") {
+    const value = mocks.hasOwnProperty(key) ? mocks[key] : def
+    return value
   }
+  else if (type === "subscriber") {
+  }
+  else if (type === "setter") {
+    mocks[key] = value
+    Mock.event(module, `${method}Changed`, { value })
+    return null
+  }  
 }
 
 export default {
