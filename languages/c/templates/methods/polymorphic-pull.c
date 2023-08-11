@@ -1,7 +1,7 @@
 /* ${method.rpc.name} - ${method.description} */
-uint32_t ${info.Title}_Push${method.Name}( ${method.signature.params} )
+int32_t ${info.Title}_Push${method.Name}( ${method.signature.params} )
 {
-    uint32_t status = FireboltSDKErrorUnavailable;
+    int32_t status = FireboltSDKErrorUnavailable;
 
     FireboltSDK::Transport<WPEFramework::Core::JSON::IElement>* transport = FireboltSDK::Accessor::Instance().GetTransport();
     if (transport != nullptr) {

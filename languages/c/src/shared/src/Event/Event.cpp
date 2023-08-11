@@ -60,9 +60,9 @@ namespace FireboltSDK {
         _transport->SetEventHandler(this);
     }
 
-    uint32_t Event::Unsubscribe(const string& eventName, void* usercb)
+    int32_t Event::Unsubscribe(const string& eventName, void* usercb)
     {
-        uint32_t status = Revoke(eventName, usercb);
+        int32_t status = Revoke(eventName, usercb);
 
         if (status == FireboltSDKErrorNone) {
             if (_transport != nullptr) {
@@ -74,9 +74,9 @@ namespace FireboltSDK {
         return ((status == FireboltSDKErrorInUse) ? FireboltSDKErrorNone: status);
     }
 
-    uint32_t Event::ValidateResponse(const WPEFramework::Core::ProxyType<WPEFramework::Core::JSONRPC::Message>& jsonResponse, bool& enabled) /* override */
+    int32_t Event::ValidateResponse(const WPEFramework::Core::ProxyType<WPEFramework::Core::JSONRPC::Message>& jsonResponse, bool& enabled) /* override */
     {
-        uint32_t result = FireboltSDKErrorGeneral;
+        int32_t result = FireboltSDKErrorGeneral;
         Response response;
         _transport->FromMessage((WPEFramework::Core::JSON::IElement*)&response, *jsonResponse);
         if (response.Listening.IsSet() == true) {
@@ -86,7 +86,7 @@ namespace FireboltSDK {
         return result;
     }
 
-    uint32_t Event::Dispatch(const string& eventName, const WPEFramework::Core::ProxyType<WPEFramework::Core::JSONRPC::Message>& jsonResponse) /* override */
+    int32_t Event::Dispatch(const string& eventName, const WPEFramework::Core::ProxyType<WPEFramework::Core::JSONRPC::Message>& jsonResponse) /* override */
     {
         string response = jsonResponse->Result.Value();
         _adminLock.Lock();
@@ -120,9 +120,9 @@ namespace FireboltSDK {
         return FireboltSDKErrorNone;;
     }
 
-    uint32_t Event::Revoke(const string& eventName, void* usercb)
+    int32_t Event::Revoke(const string& eventName, void* usercb)
     {
-        uint32_t status = FireboltSDKErrorNone;
+        int32_t status = FireboltSDKErrorNone;
         _adminLock.Lock();
         EventMap::iterator eventIndex = _eventMap.find(eventName);
         if (eventIndex != _eventMap.end()) {

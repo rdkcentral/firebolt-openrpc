@@ -33,9 +33,9 @@ namespace FireboltSDK {
 
     public:
         template <typename RESPONSETYPE>
-        static uint32_t Get(const string& propertyName, WPEFramework::Core::ProxyType<RESPONSETYPE>& response)
+        static int32_t Get(const string& propertyName, WPEFramework::Core::ProxyType<RESPONSETYPE>& response)
         {
-            uint32_t status = FireboltSDKErrorUnavailable;
+            int32_t status = FireboltSDKErrorUnavailable;
             Transport<WPEFramework::Core::JSON::IElement>* transport = Accessor::Instance().GetTransport();
             if (transport != nullptr) {
                 JsonObject parameters;
@@ -57,9 +57,9 @@ namespace FireboltSDK {
         }
 
         template <typename PARAMETERS, typename RESPONSETYPE>
-        static uint32_t Get(const string& propertyName, const PARAMETERS& parameters, WPEFramework::Core::ProxyType<RESPONSETYPE>& response)
+        static int32_t Get(const string& propertyName, const PARAMETERS& parameters, WPEFramework::Core::ProxyType<RESPONSETYPE>& response)
         {
-            uint32_t status = FireboltSDKErrorUnavailable;
+            int32_t status = FireboltSDKErrorUnavailable;
             Transport<WPEFramework::Core::JSON::IElement>* transport = Accessor::Instance().GetTransport();
             if (transport != nullptr) {
                 RESPONSETYPE responseType;
@@ -81,9 +81,9 @@ namespace FireboltSDK {
 
 
 	template <typename RESPONSETYPE>
-        static uint32_t Get(const string& propertyName, RESPONSETYPE& response)
+        static int32_t Get(const string& propertyName, RESPONSETYPE& response)
         {
-            uint32_t status = FireboltSDKErrorUnavailable;
+            int32_t status = FireboltSDKErrorUnavailable;
             Transport<WPEFramework::Core::JSON::IElement>* transport = Accessor::Instance().GetTransport();
             if (transport != nullptr) {
                 JsonObject parameters;
@@ -96,9 +96,9 @@ namespace FireboltSDK {
         }
 
         template <typename PARAMETERS, typename RESPONSETYPE>
-        static uint32_t Get(const string& propertyName, const PARAMETERS& parameters, RESPONSETYPE& response)
+        static int32_t Get(const string& propertyName, const PARAMETERS& parameters, RESPONSETYPE& response)
         {
-            uint32_t status = FireboltSDKErrorUnavailable;
+            int32_t status = FireboltSDKErrorUnavailable;
             Transport<WPEFramework::Core::JSON::IElement>* transport = Accessor::Instance().GetTransport();
             if (transport != nullptr) {
                 status = transport->Invoke(propertyName, parameters, response);
@@ -110,9 +110,9 @@ namespace FireboltSDK {
         }
 
         template <typename PARAMETERS>
-        static uint32_t Set(const string& propertyName, const PARAMETERS& parameters)
+        static int32_t Set(const string& propertyName, const PARAMETERS& parameters)
         {
-            uint32_t status = FireboltSDKErrorUnavailable;
+            int32_t status = FireboltSDKErrorUnavailable;
             Transport<WPEFramework::Core::JSON::IElement>* transport = Accessor::Instance().GetTransport();
             if (transport != nullptr) {
                 JsonObject responseType;
@@ -125,12 +125,12 @@ namespace FireboltSDK {
         }
 
         template <typename RESULT, typename CALLBACK>
-        static uint32_t Subscribe(const string& propertyName, JsonObject& paramsters, const CALLBACK& callback, void* usercb, const void* userdata)
+        static int32_t Subscribe(const string& propertyName, JsonObject& paramsters, const CALLBACK& callback, void* usercb, const void* userdata)
         {
             return Event::Instance().Subscribe<RESULT, CALLBACK>(EventName(propertyName), paramsters, callback, usercb, userdata);
         }
 
-        static uint32_t Unsubscribe(const string& propertyName, void* usercb)
+        static int32_t Unsubscribe(const string& propertyName, void* usercb)
         {
             return Event::Instance().Unsubscribe(EventName(propertyName), usercb);
         }
