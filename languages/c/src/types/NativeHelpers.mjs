@@ -152,7 +152,7 @@ function getPropertyGetterSignature(property, module, propType, paramList = []) 
 
   let contextParams = ''
   contextParams = getContextParams(paramList)
-  return `uint32_t ${capitalize(getModuleName(module))}_Get${capitalize(property.name)}( ${contextParams}${contextParams.length > 0 ? ', ':''}${propType}* ${property.result.name || property.name} )`
+  return `int32_t ${capitalize(getModuleName(module))}_Get${capitalize(property.name)}( ${contextParams}${contextParams.length > 0 ? ', ':''}${propType}* ${property.result.name || property.name} )`
 }
 
 export {

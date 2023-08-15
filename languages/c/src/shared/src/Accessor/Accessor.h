@@ -107,11 +107,11 @@ namespace FireboltSDK {
         Transport<WPEFramework::Core::JSON::IElement>* GetTransport();
 
     private:
-        uint32_t CreateEventHandler();
-        uint32_t DestroyEventHandler();
-        uint32_t CreateTransport(const string& url, const uint32_t waitTime);
-        uint32_t DestroyTransport();
-        uint32_t WaitForLinkReady(Transport<WPEFramework::Core::JSON::IElement>* transport, const uint32_t waitTime);
+        int32_t CreateEventHandler();
+        int32_t DestroyEventHandler();
+        int32_t CreateTransport(const string& url, const uint32_t waitTime);
+        int32_t DestroyTransport();
+        int32_t WaitForLinkReady(Transport<WPEFramework::Core::JSON::IElement>* transport, const uint32_t waitTime);
 
     private:
         WPEFramework::Core::ProxyType<WorkerPoolImplementation> _workerPool;

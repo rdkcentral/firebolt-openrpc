@@ -27,20 +27,19 @@ ${event.callback.params.serialization}
         FireboltSDK::Transport<WPEFramework::Core::JSON::IElement>* transport = FireboltSDK::Accessor::Instance().GetTransport();
         if (transport != nullptr) {
             WPEFramework::Core::JSON::Boolean jsonResult;
-            uint32_t status = transport->Invoke(_T("${info.title.lowercase}.${method.pulls.for}"), jsonParameters, jsonResult);
+            int32_t status = transport->Invoke(_T("${info.title.lowercase}.${method.pulls.for}"), jsonParameters, jsonResult);
             if (status == FireboltSDKErrorNone) {
                 FIREBOLT_LOG_INFO(FireboltSDK::Logger::Category::OpenRPC, FireboltSDK::Logger::Module<FireboltSDK::Accessor>(), "${info.Title}.${method.rpc.name} is successfully pushed with status as %d", jsonResult.Value());
-                status = (jsonResult.Value() == true) ? FireboltSDKErrorNone : FireboltSDKErrorNotSupported;
             }
         } else {
             FIREBOLT_LOG_ERROR(FireboltSDK::Logger::Category::OpenRPC, FireboltSDK::Logger::Module<FireboltSDK::Accessor>(), "Error in getting Transport");
         }
     }
 }
-uint32_t ${info.Title}_Register_${method.Name}( ${info.Title}${method.Name}Callback userCB, const void* userData )
+int32_t ${info.Title}_Register_${method.Name}( ${info.Title}${method.Name}Callback userCB, const void* userData )
 {
     const string eventName = _T("${info.title.lowercase}.${method.rpc.name}");
-    uint32_t status = FireboltSDKErrorNone;
+    int32_t status = FireboltSDKErrorNone;
 
     if (userCB != nullptr) {
     ${event.params.serialization}
@@ -48,7 +47,7 @@ uint32_t ${info.Title}_Register_${method.Name}( ${info.Title}${method.Name}Callb
     }
     return status;
 }
-uint32_t ${info.Title}_Unregister_${method.Name}( ${info.Title}${method.Name}Callback userCB)
+int32_t ${info.Title}_Unregister_${method.Name}( ${info.Title}${method.Name}Callback userCB)
 {
     return FireboltSDK::Event::Instance().Unsubscribe(_T("${info.title.lowercase}.${method.rpc.name}"), reinterpret_cast<void*>(userCB));
 }
