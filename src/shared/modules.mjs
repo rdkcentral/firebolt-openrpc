@@ -99,13 +99,8 @@ function getProviderInterface(capability, module) {
       method.params = [
         {
           "name": "parameters",
+          "required": true,
           "schema": payload.properties.parameters
-        },
-        {
-          "name": "session",
-          "schema": {
-            "type": focusable ? "FocusableProviderSession" : "ProviderSession"
-          }
         }
       ]
   
@@ -140,10 +135,8 @@ function getProviderInterface(capability, module) {
               value: example.result.value.parameters
             },
             {
-              name: "session",
-              value: {
-                correlationId: example.result.value.correlationId
-              }
+                name: "correlationId",
+                value: example.result.value.correlationId
             }
           ],
           result: {

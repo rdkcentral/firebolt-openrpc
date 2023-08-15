@@ -1584,12 +1584,15 @@ function insertProviderInterfaceMacros(template, capability, moduleJson = {}, te
   }
 
   let interfaceShape = getTemplate('/codeblocks/interface', templates)
-  let interfaceDeclaration = getTemplate('/declarations/interface', templates)
 
   interfaceShape = interfaceShape.replace(/\$\{name\}/g, name)
     .replace(/\$\{capability\}/g, capability)
-    .replace(/[ \t]*\$\{methods\}[ \t]*\n/g, iface.map(method => insertMethodMacros(interfaceDeclaration, method, moduleJson, { destination: state.destination, section: state.section, isInterface: true })).join('\n') + '\n')
-
+    .replace(/[ \t]*\$\{methods\}[ \t]*\n/g, iface.map(method => {
+      const focusable = method.tags.find(t => t['x-allow-focus'])
+      const interfaceDeclaration = getTemplate('/interfaces/' + (focusable ? 'focusable' : 'default'), templates)
+      return insertMethodMacros(interfaceDeclaration, method, moduleJson, { destination: state.destination, section: state.section, isInterface: true })
+    }).join('') + '\n')
+      
   if (iface.length === 0) {
     template = template.replace(/\$\{provider\.methods\}/gms, '')
   }

@@ -569,11 +569,11 @@ function getSchemaType(schema, module, { destination, templateDir = 'types', lin
     // Normal Array
     else if (!isTuple(schema)) {
       template = insertArrayMacros(getTemplate(path.join(templateDir, 'array')), schema, module)
-      template = insertSchemaMacros(template, schema, module, '', '', '', false)
+      template = insertSchemaMacros(template, schema.items, module, getSchemaType(schema.items, module, {destination, templateDir, link, title, code, asPath, event, result, expandEnums, baseUrl, namespace }), '', '', true)
     }
     else {
       template = insertTupleMacros(getTemplate(path.join(templateDir, 'tuple')), schema, module, '', { templateDir })
-      template = insertSchemaMacros(template, schema, module, '', '', '', false)
+      template = insertSchemaMacros(template, firstItem, module, '', '', '', false)
     }
 
     if (code) {

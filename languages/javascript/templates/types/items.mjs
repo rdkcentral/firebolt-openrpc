@@ -1,1 +1,1 @@
-${type}${delimiter},${end.delimiter} // ${property} ${summary} item
+${title}${delimiter},${end.delimiter} // ${property} ${summary} item
