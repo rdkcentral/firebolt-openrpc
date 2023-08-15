@@ -29,7 +29,7 @@ typedef enum {
 } TestEnum;
 
 namespace FireboltSDK {
-    typedef uint32_t (*Func)();
+    typedef int32_t (*Func)();
 
     class Tests {
     public:
@@ -82,7 +82,7 @@ namespace FireboltSDK {
         }
 
         template<typename TESTS>
-        static uint32_t Main()
+        static int32_t Main()
         {
             TESTS fireboltTest;
             for (auto i = fireboltTest.TestList().begin(); i != fireboltTest.TestList().end(); i++) {
@@ -94,19 +94,19 @@ namespace FireboltSDK {
             return 0;
         }
 
-        static uint32_t GetDeviceId();
-        static uint32_t GetDeviceVersion();
-        static uint32_t GetUnKnownMethod();
+        static int32_t GetDeviceId();
+        static int32_t GetDeviceVersion();
+        static int32_t GetUnKnownMethod();
 
-        static uint32_t SetLifeCycleClose();
-        static uint32_t SetUnKnownMethod();
+        static int32_t SetLifeCycleClose();
+        static int32_t SetUnKnownMethod();
 
-        static uint32_t SubscribeEvent();
-        static uint32_t SubscribeEventwithSameCallback();
-        static uint32_t SubscribeEventWithMultipleCallback();
+        static int32_t SubscribeEvent();
+        static int32_t SubscribeEventwithSameCallback();
+        static int32_t SubscribeEventWithMultipleCallback();
 
         template <typename CALLBACK>
-        static uint32_t SubscribeEventForC(const string& eventName, JsonObject& jsonParameters, CALLBACK& callbackFunc, void* usercb, const void* userdata);
+        static int32_t SubscribeEventForC(const string& eventName, JsonObject& jsonParameters, CALLBACK& callbackFunc, void* usercb, const void* userdata);
 
     protected:
         static void PrintJsonObject(const JsonObject::Iterator& iterator);

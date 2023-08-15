@@ -52,6 +52,7 @@ const macrofy = async (
         allocatedPrimitiveProxies,
         convertTuplesToArraysOrObjects,
         additionalSchemaTemplates,
+        excludeDeclarations,
         aggregateFile,
         operators,
         primitives,
@@ -90,10 +91,11 @@ const macrofy = async (
             createModuleDirectories,
             extractSubSchemas,
             unwrapResultObjects,
-            operators,
             primitives,
             allocatedPrimitiveProxies,
-            additionalSchemaTemplates
+            additionalSchemaTemplates,
+            excludeDeclarations,
+            operators
         })
 
         const moduleList = [...(new Set(openrpc.methods.map(method => method.name.split('.').shift())))]
@@ -295,7 +297,7 @@ const macrofy = async (
 
         await writeFiles(outputFiles)
         if (persistPermission) {
-//            await writeFilesPermissions(templatesPermission)
+            await writeFilesPermissions(templatesPermission)
         }
         logSuccess(`Wrote ${Object.keys(outputFiles).length} files.`)
 

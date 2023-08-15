@@ -55,25 +55,19 @@ set_target_properties(${TARGET} PROPERTIES
 
 install(
     TARGETS ${TARGET} EXPORT ${TARGET}Targets
-    LIBRARY DESTINATION lib COMPONENT libs
-     PUBLIC_HEADER DESTINATION include/${TARGET} COMPONENT devel   # headers for mac (note the different component -> different package)
-        INCLUDES DESTINATION include/${TARGET} # headers
+    ARCHIVE DESTINATION lib COMPONENT libs  # static lib
+    LIBRARY DESTINATION lib COMPONENT libs  # shared lib
 )
+
+install(
+    DIRECTORY ${CMAKE_SOURCE_DIR}/include/
+    DESTINATION include/${FIREBOLT_NAMESPACE}SDK
+    FILES_MATCHING PATTERN "*.h")
+
+install(
+    FILES ${CMAKE_BINARY_DIR}/FireboltConfig.cmake
+    DESTINATION lib/cmake/${FIREBOLT_NAMESPACE})
 
 InstallHeaders(TARGET ${TARGET} HEADERS . NAMESPACE ${FIREBOLT_NAMESPACE} DESTINATION ${FIREBOLT_NAMESPACE}SDK)
-InstallHeaders(TARGET ${TARGET} HEADERS . NAMESPACE ${FIREBOLT_NAMESPACE}
-    SOURCE ${CMAKE_CURRENT_SOURCE_DIR}/../include DESTINATION ${FIREBOLT_NAMESPACE})
-
-InstallLibraries(TARGET ${TARGET} ${FIREBOLT_LIBRARY_TYPE} LIBDIR ${LIBDIR} LIBRARIES ${TARGET} DESTINATION ${FIREBOLT_NAMESPACE})
 InstallCMakeConfig(TARGETS ${TARGET})
 InstallPackageConfig(TARGETS ${TARGET} DESCRIPTION "Firebolt SDK Library")
-InstallCMakeConfigs(TARGET ${TARGET} DESTINATION ${FIREBOLT_NAMESPACE})
-
-add_custom_command(
-    TARGET ${TARGET}
-    POST_BUILD
-    COMMENT "=================== Installing FireboltConfig & Helper CMakes ======================"
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/${FIREBOLT_NAMESPACE}/usr/lib/cmake/${FIREBOLT_NAMESPACE}
-    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/${FIREBOLT_NAMESPACE}Config.cmake ${CMAKE_BINARY_DIR}/${FIREBOLT_NAMESPACE}/usr/lib/cmake/${FIREBOLT_NAMESPACE}
-    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_DIR}/cmake/*.cmake ${CMAKE_BINARY_DIR}/${FIREBOLT_NAMESPACE}/usr/lib/cmake/${FIREBOLT_NAMESPACE}
-)

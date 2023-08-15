@@ -44,6 +44,8 @@ const _inspector = obj => {
 
 // getSchemaType(schema, module, options = { destination: 'file.txt', title: true })
 // getSchemaShape(schema, module, options = { name: 'Foo', destination: 'file.txt' })
+// getJsonType(schema, module, options = { name: 'Foo', prefix: '', descriptions: false, level: 0 })
+// getSchemaInstantiation(schema, module, options = {type: 'params' | 'result' | 'callback.params'| 'callback.result' | 'callback.response'})
 
 let types = {
   getSchemaShape: () => null,
@@ -53,13 +55,15 @@ let types = {
 let config = {
   copySchemasIntoModules: false,
   extractSubSchemas: false,
-  unwrapResultObjects: false
+  unwrapResultObjects: false,
+  excludeDeclarations: false
 }
 
 const state = {
   destination: undefined,
   section: undefined,
-  typeTemplateDir: 'types'
+  typeTemplateDir: 'types',
+  section: undefined
 }
 
 const capitalize = str => str[0].toUpperCase() + str.substr(1)
@@ -505,9 +509,9 @@ const generateMacros = (obj, templates, languages, options = {}) => {
   
   const examples = generateExamples(obj, templates, languages)
   const allMethodsArray = generateMethods(obj, examples, templates)
-  const methodsArray = allMethodsArray.filter(m => !m.event && (!options.hideExcluded || !m.excluded))
-  const eventsArray = allMethodsArray.filter(m => m.event && (!options.hideExcluded || !m.excluded))
-  const declarationsArray = allMethodsArray.filter(m => m.declaration)
+  const methodsArray = allMethodsArray.filter(m => m.body && !m.event && (!options.hideExcluded || !m.excluded))
+  const eventsArray = allMethodsArray.filter(m => m.body && m.event && (!options.hideExcluded || !m.excluded))
+  const declarationsArray = allMethodsArray.filter(m => m.declaration && (!config.excludeDeclarations || (!options.hideExcluded || !m.excluded)))
 
   const imports = generateImports(obj, templates, { destination: (options.destination ? options.destination : '') })
   const initialization = generateInitialization(obj, templates)
@@ -563,9 +567,13 @@ const insertMacros = (fContents = '', macros = {}) => {
   const quote = config.operators ? config.operators.stringQuotation : '"'
   const or = config.operators ? config.operators.or : ' | '
 
+  fContents = fContents.replace(/\$\{if\.types\}(.*?)\$\{end\.if\.types\}/gms, macros.types.types.trim() ? '$1' : '')
+  fContents = fContents.replace(/\$\{if\.schemas\}(.*?)\$\{end\.if\.schemas\}/gms, macros.schemas.types.trim() ? '$1' : '')
+  fContents = fContents.replace(/\$\{if\.declarations\}(.*?)\$\{end\.if\.declarations\}/gms, (macros.declarations.trim() || macros.enums.types.trim()) ? '$1' : '')
+  fContents = fContents.replace(/\$\{if\.definitions\}(.*?)\$\{end\.if\.definitions\}/gms, (macros.methods.trim() || macros.events.trim()) ? '$1' : '')
+
   fContents = fContents.replace(/\$\{module.list\}/g, macros.module)
   fContents = fContents.replace(/[ \t]*\/\* \$\{METHODS\} \*\/[ \t]*\n/, macros.methods)
-  fContents = fContents.replace(/[ \t]*\/\* \$\{ACCESSORS\} \*\/[ \t]*\n/, macros.accessors)
   fContents = fContents.replace(/[ \t]*\/\* \$\{DECLARATIONS\} \*\/[ \t]*\n/, macros.declarations)
   fContents = fContents.replace(/[ \t]*\/\* \$\{METHOD_LIST\} \*\/[ \t]*\n/, macros.methodList.join(',\n'))
   fContents = fContents.replace(/[ \t]*\/\* \$\{EVENTS\} \*\/[ \t]*\n/, macros.events)
@@ -746,6 +754,8 @@ function generateDefaults(json = {}, templates) {
     reduce((acc, val, i, arr) => {
       if (isPropertyMethod(val)) {
         acc += insertMethodMacros(getTemplate('/defaults/property', templates), val, json, templates)
+      } else if (val.tags.find(t => t.name === "setter")) {
+        acc += insertMethodMacros(getTemplate('/defaults/setter', templates), val, json, templates)
       } else {
         acc += insertMethodMacros(getTemplate('/defaults/default', templates), val, json, templates)
       }
@@ -1105,7 +1115,7 @@ function generateMethods(json = {}, examples = {}, templates = {}) {
 }
 
 // TODO: this is called too many places... let's reduce that to just generateMethods
-function insertMethodMacros(template, methodObj, json, templates, examples={}) {
+function insertMethodMacros(template, methodObj, json, templates, examples = {}) {
   const moduleName = getModuleName(json)
 
   const info = {
@@ -1245,6 +1255,7 @@ function insertMethodMacros(template, methodObj, json, templates, examples={}) {
     .replace(/\$\{method\.signature\.params\}/g, types.getMethodSignatureParams(methodObj, json, { destination: state.destination, section: state.section }))
     .replace(/\$\{method\.context\}/g, method.context.join(', '))
     .replace(/\$\{method\.context\.array\}/g, JSON.stringify(method.context))
+    .replace(/\$\{method\.context\.count}/g, method.context ? method.context.length : 0)
     .replace(/\$\{method\.deprecation\}/g, deprecation)
     .replace(/\$\{method\.Name\}/g, method.name[0].toUpperCase() + method.name.substr(1))
     .replace(/\$\{event\.name\}/g, method.name.toLowerCase()[2] + method.name.substr(3))
@@ -1284,6 +1295,7 @@ function insertMethodMacros(template, methodObj, json, templates, examples={}) {
     .replace(/\$\{method\.result\.json\.type\}/g, resultJsonType)
     .replace(/\$\{method\.result\.instantiation\}/g, resultInst)
     .replace(/\$\{method\.result\.properties\}/g, resultParams)
+    .replace(/\$\{method\.result\.instantiation\.with\.indent\}/g, indent(resultInst, '    '))
     .replace(/\$\{method\.example\.value\}/g, JSON.stringify(methodObj.examples[0].result.value))
     .replace(/\$\{method\.alternative\}/g, method.alternative)
     .replace(/\$\{method\.alternative.link\}/g, '#' + (method.alternative || "").toLowerCase())

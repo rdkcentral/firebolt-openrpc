@@ -24,13 +24,12 @@ extern "C" {
 #endif
 
 
-
-uint32_t FireboltSDK_Initialize(char* configLine) {
+int32_t FireboltSDK_Initialize(char* configLine) {
     FireboltSDK::Accessor::Instance(configLine);
     return FireboltSDKErrorNone;
 }
 
-uint32_t FireboltSDK_Deinitialize(void) {
+int32_t FireboltSDK_Deinitialize(void) {
     FireboltSDK::Accessor::Dispose();
     return FireboltSDKErrorNone;
 }

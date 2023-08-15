@@ -1,1 +1,3 @@
-    ${method.name}: function () { return MockProps.mock('${info.title}', '${method.name}', arguments, ${method.example.value}) }
+    ${method.name}: function (params) {
+        return MockProps.mock('${info.title}', '${method.name}', params, undefined, ${method.params.count}, ${method.example.value})
+    }

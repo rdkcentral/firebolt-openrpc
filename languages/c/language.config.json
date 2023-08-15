@@ -5,6 +5,7 @@
     "extractSubSchemas": true,
     "unwrapResultObjects": false,
     "createPolymorphicMethods": true,
+    "excludeDeclarations":true,
     "templatesPerModule": [
         "/include/module.h",
         "/src/module.cpp"

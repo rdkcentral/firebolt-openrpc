@@ -26,6 +26,9 @@
 extern "C" {
 #endif
 
+#define IN
+#define OUT
+
 /**
  * @brief Intitialize the Firebolt SDK
  *

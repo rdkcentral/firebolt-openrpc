@@ -17,7 +17,7 @@
  */
 
 
-const win = typeof win !== 'undefined' ? window : this
+const win = typeof window !== 'undefined' ? window : {}
 
 let listener
 export const setMockListener = func => { listener = func }

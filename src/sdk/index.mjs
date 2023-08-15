@@ -68,6 +68,7 @@ const run = async ({
     unwrapResultObjects: config.unwrapResultObjects,
     allocatedPrimitiveProxies: config.allocatedPrimitiveProxies,
     additionalSchemaTemplates: config.additionalSchemaTemplates,
+    excludeDeclarations: config.excludeDeclarations,
     staticModuleNames: staticModuleNames,
     hideExcluded: true,
     aggregateFile: config.aggregateFile,

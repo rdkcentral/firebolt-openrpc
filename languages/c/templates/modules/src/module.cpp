@@ -20,23 +20,30 @@
 /* ${IMPORTS} */
 #include "${info.title.lowercase}.h"
 
-namespace FireboltSDK {
+${if.types}namespace FireboltSDK {
     namespace ${info.Title} {
     // Types
        /* ${TYPES:json-types} */
     }
-}
+}${end.if.types}
 
 /* ${ENUMS:json-types} */
 
-#ifdef __cplusplus
+${if.definitions}#ifdef __cplusplus
 extern "C" {
 #endif
 
+// Accessors
+/* ${ACCESSORS} */
+
+
+
+// Methods
 /* ${METHODS} */
 
+// Events
 /* ${EVENTS} */
 
 #ifdef __cplusplus
 }
-#endif
+#endif${end.if.definitions}

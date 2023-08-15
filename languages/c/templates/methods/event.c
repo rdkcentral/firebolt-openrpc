@@ -9,18 +9,19 @@ ${event.callback.result.instantiation}
         callback(userData, ${event.callback.response.instantiation});
     }
 }
-int ${info.title}_Register_${method.Name}( ${event.signature.params}${if.event.params}, ${end.if.event.params}${info.Title}${method.Name}Callback userCB, const void* userData )
+int32_t ${info.Title}_Register_${method.Name}( ${event.signature.params}${if.event.params}, ${end.if.event.params}${info.Title}${method.Name}Callback userCB, const void* userData )
 {
-    const string eventName = _T("${info.title}.${method.rpc.name}");
-    uint32_t status = FireboltSDKErrorNone;
+    const string eventName = _T("${info.title.lowercase}.${method.rpc.name}");
+    int32_t status = FireboltSDKErrorNone;
 
     if (userCB != nullptr) {
-        ${event.params.serialization}
+    ${event.params.serialization}
         status = FireboltSDK::Event::Instance().Subscribe<${event.result.json.type}>(eventName, jsonParameters, ${info.Title}${method.Name}InnerCallback, reinterpret_cast<void*>(userCB), userData);
     }
     return status;
 }
-int ${info.title}_Unregister_${method.Name}( ${info.Title}${method.Name}Callback userCB)
+int32_t ${info.Title}_Unregister_${method.Name}( ${info.Title}${method.Name}Callback userCB)
 {
-    return FireboltSDK::Event::Instance().Unsubscribe(_T("${info.title}.${method.rpc.name}"), reinterpret_cast<void*>(userCB));
+    return FireboltSDK::Event::Instance().Unsubscribe(_T("${info.title.lowercase}.${method.rpc.name}"), reinterpret_cast<void*>(userCB));
 }
+

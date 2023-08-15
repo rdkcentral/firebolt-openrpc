@@ -22,14 +22,21 @@
 
 /* ${ENUMS} */
 
-#ifdef __cplusplus
+${if.definitions}#ifdef __cplusplus
 extern "C" {
 #endif
 
-    /* ${ACCESSORS} */
-    /* ${METHODS} */
-    /* ${EVENTS} */
+// Accessors
+/* ${ACCESSORS} */
+
+
+
+// Methods
+/* ${METHODS} */
+
+// Events
+/* ${EVENTS} */
 
 #ifdef __cplusplus
 }
-#endif
+#endif${end.if.definitions}
