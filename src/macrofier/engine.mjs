@@ -370,6 +370,9 @@ const insertAggregateMacros = (fContents = '', aggregateMacros = {}) => {
   fContents = fContents.replace(/[ \t]*\/\* \$\{MOCK_OBJECTS\} \*\/[ \t]*\n/, aggregateMacros.mockObjects)
   fContents = fContents.replace(/\$\{readable\}/g, aggregateMacros.version.readable)
   fContents = fContents.replace(/\$\{package.name\}/g, aggregateMacros.library)
+  fContents = fContents.replace(/\$\{major\}/g, aggregateMacros.version.major)
+  fContents = fContents.replace(/\$\{minor\}/g, aggregateMacros.version.minor)
+  fContents = fContents.replace(/\$\{patch\}/g, aggregateMacros.version.patch)
 
   return fContents
 }

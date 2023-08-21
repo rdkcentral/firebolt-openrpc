@@ -29,6 +29,11 @@ let moduleInstance = null
 const isEventSuccess = x => x && (typeof x.event === 'string') && (typeof x.listening === 'boolean')
 
 const win = typeof window !== 'undefined' ? window : {}
+let version
+
+export function initialize(v) {
+  version = v
+}
 
 export default class Transport {
   constructor () {
@@ -146,6 +151,12 @@ export default class Transport {
   }
 
   _processRequest (module, method, params, transforms) {
+
+    if (version) {
+      const v = version
+      version = null
+      Transport.send("Internal", "initialize", { version: v })
+    }
 
     const p = this._addPromiseToQueue(module, method, params, transforms)
     const json = this._createRequestJSON(module, method, params)
