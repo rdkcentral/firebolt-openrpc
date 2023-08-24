@@ -29,10 +29,10 @@ let moduleInstance = null
 const isEventSuccess = x => x && (typeof x.event === 'string') && (typeof x.listening === 'boolean')
 
 const win = typeof window !== 'undefined' ? window : {}
-let version
+let initMessage
 
-export function initialize(v) {
-  version = v
+export function initialize(module, method, params) {
+  initMessage = { module, method, params }
 }
 
 export default class Transport {
@@ -152,10 +152,10 @@ export default class Transport {
 
   _processRequest (module, method, params, transforms) {
 
-    if (version) {
-      const v = version
-      version = null
-      Transport.send("Internal", "initialize", { version: v })
+    if (initMessage) {
+      const init = initMessage
+      initMessage = null
+      Transport.send(init.module, init.method, init.params)
     }
 
     const p = this._addPromiseToQueue(module, method, params, transforms)
