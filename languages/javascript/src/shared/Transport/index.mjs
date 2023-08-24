@@ -173,7 +173,8 @@ export default class Transport {
   }
 
   _createRequestJSON (module, method, params) {
-    return { jsonrpc: '2.0', method: module.toLowerCase() + '.' + method, params: params, id: this._id }
+    const rpcMethod = module ? module.toLowerCase() + '.' + method : method
+    return { jsonrpc: '2.0', method: rpcMethod, params: params, id: this._id }
   }
 
   _addPromiseToQueue (module, method, params, transforms) {
