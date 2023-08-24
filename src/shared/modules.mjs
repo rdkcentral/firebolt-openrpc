@@ -368,6 +368,35 @@ const eventDefaults = event => {
     return event
 }
 
+const createEventResultSchemaFromProperty = property => {
+    const subscriberType = property.tags.map(t => t['x-subscriber-type']).find(t => typeof t === 'string') || 'context'
+
+    if (property.tags.find(t => (t.name == 'property' || t.name.startsWith('property:')) && (subscriberType === 'global'))) { 
+        // wrap the existing result and the params in a new result object
+        const schema = {
+            title: property.name.charAt(0).toUpperCase() + property.name.substring(1) + 'ChangedInfo',
+            type: "object",
+            properties: {
+
+            },
+            required: []
+        }
+
+        // add all of the params
+        property.params.filter(p => p.name !== 'listen').forEach(p => {
+            schema.properties[p.name] = p.schema
+            schema.required.push(p.name)
+        })
+
+        // add the result (which might override a param of the same name)
+        schema.properties[property.result.name] = property.result.schema
+        !schema.required.includes(property.result.name) && schema.required.push(property.result.name)
+
+
+        return schema
+    }
+}
+
 const createEventFromProperty = property => {
     const event = eventDefaults(JSON.parse(JSON.stringify(property)))
     event.name = 'on' + event.name.charAt(0).toUpperCase() + event.name.substr(1) + 'Changed'
@@ -379,6 +408,36 @@ const createEventFromProperty = property => {
         name: "subscriber",
         'x-subscriber-for': property.name
     })
+
+    const subscriberType = property.tags.map(t => t['x-subscriber-type']).find(t => typeof t === 'string') || 'context'
+    
+    // if the subscriber type is global, zap all of the parameters and change the result type to the schema that includes them
+    if (old_tags.find(t => (t.name == 'property' || t.name.startsWith('property:')) && (subscriberType === 'global'))) {
+        
+        // wrap the existing result and the params in a new result object
+        const result = {
+            name: "data",
+            schema: {
+                $ref: "#/components/schemas/" + event.name.substring(2) + 'Info'
+            }
+        }
+
+        event.examples.map(example => {
+            const result = {}
+            example.params.filter(p => p.name !== 'listen').forEach(p => {
+                result[p.name] = p.value
+            })
+            result[example.result.name] = example.result.value
+            example.params = example.params.filter(p => p.name === 'listen')
+            example.result.name = "data"
+            example.result.value = result
+        })
+
+        event.result = result
+        
+        // remove the params
+        event.params = event.params.filter(p => p.name === 'listen')
+    }
 
     old_tags.forEach(t => {
         if (t.name !== 'property' && !t.name.startsWith('property:'))
@@ -745,8 +804,20 @@ const generatePropertyEvents = json => {
     const properties = json.methods.filter( m => m.tags && m.tags.find( t => t.name == 'property')) || []
     const readonlies = json.methods.filter( m => m.tags && m.tags.find( t => t.name == 'property:readonly')) || []
 
-    properties.forEach(property => json.methods.push(createEventFromProperty(property)))
-    readonlies.forEach(property => json.methods.push(createEventFromProperty(property)))
+    properties.forEach(property => {
+        json.methods.push(createEventFromProperty(property))
+        const schema = createEventResultSchemaFromProperty(property)
+        if (schema) {
+            json.components.schemas[schema.title] = schema
+        }
+    })
+    readonlies.forEach(property => {
+        json.methods.push(createEventFromProperty(property))
+        const schema = createEventResultSchemaFromProperty(property)
+        if (schema) {
+            json.components.schemas[schema.title] = schema
+        }
+    })
 
     return json
 }
