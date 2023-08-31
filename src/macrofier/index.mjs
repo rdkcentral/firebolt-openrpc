@@ -18,7 +18,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { emptyDir, readDir, readFiles, readJson, writeFiles, writeText } from '../shared/filesystem.mjs'
+import { emptyDir, readDir, readFiles, readFilesPermissions, readJson,
+         writeFiles, writeFilesPermissions, writeText } from '../shared/filesystem.mjs'
 import { getTemplate, getTemplateForModule } from '../shared/template.mjs'
 import { getModule, hasPublicAPIs } from '../shared/modules.mjs'
 import { logHeader, logSuccess } from '../shared/io.mjs'
@@ -42,8 +43,12 @@ const macrofy = async (
         staticContent,
         templatesPerModule,
         templatesPerSchema,
+        persistPermission,
+        createPolymorphicMethods,
         createModuleDirectories,
         copySchemasIntoModules,
+        extractSubSchemas,
+        excludeDeclarations,
         aggregateFile,
         operators,
         hidePrivate = true,
@@ -61,8 +66,6 @@ const macrofy = async (
     return new Promise( async (resolve, reject) => {
         const openrpc = await readJson(input)
 
-
-
         logHeader(`Generating ${headline} for version ${openrpc.info.title} ${openrpc.info.version}`)
 
         let typer
@@ -79,6 +82,8 @@ const macrofy = async (
         engine.setConfig({
             copySchemasIntoModules,
             createModuleDirectories,
+            extractSubSchemas,
+            excludeDeclarations,
             operators
         })
 
@@ -87,6 +92,12 @@ const macrofy = async (
         const sharedTemplateList = await readDir(sharedTemplates, { recursive: true })
         const templates = Object.assign(await readFiles(sharedTemplateList, sharedTemplates),
                                         await readFiles(sdkTemplateList, template)) // sdkTemplates are second so they win ties
+        let templatesPermission = {}
+        if (persistPermission) {
+            templatesPermission = Object.assign(await readFilesPermissions(sharedTemplateList, sharedTemplates),
+                                        await readFilesPermissions(sdkTemplateList, template))
+        }
+
         const exampleTemplates = {}
         for (var i=0; i<examples.length; i++) {
             const example = examples[i]
@@ -135,8 +146,13 @@ const macrofy = async (
 
                 const content = engine.insertAggregateMacros(templates[file], aggregateMacros)
                 outputFiles[path.join(output, outputFile)] = content
-
+                if (persistPermission) {
+                    templatesPermission[path.join(output, outputFile)] = templatesPermission[file]
+                }
                 logSuccess(`Generated macros for file ${path.relative(output, path.join(output, outputFile))}`)
+            }
+            if (persistPermission) {
+                delete templatesPermission[file]
             }
         })
 
@@ -146,7 +162,7 @@ const macrofy = async (
 
             // Pick the index and defaults templates for each module.
             templatesPerModule.forEach(t => {
-                const macros = engine.generateMacros(module, templates, exampleTemplates, {hideExcluded: hideExcluded, copySchemasIntoModules: copySchemasIntoModules, destination: t})
+                const macros = engine.generateMacros(module, templates, exampleTemplates, {hideExcluded: hideExcluded, copySchemasIntoModules: copySchemasIntoModules, createPolymorphicMethods: createPolymorphicMethods, destination: t})
                 let content = getTemplateForModule(module.info.title, t, templates)
 
                 // NOTE: whichever insert is called first also needs to be called again last, so each phase can insert recursive macros from the other
@@ -154,14 +170,14 @@ const macrofy = async (
                 content = engine.insertMacros(content, macros)
                 content = engine.insertAggregateMacros(content, aggregateMacros)
 
-                const location = createModuleDirectories ? path.join(output, module.info.title, t) : path.join(output, t.replace(/Module/, module.info.title).replace(/index/, module.info.title))
+                const location = createModuleDirectories ? path.join(output, module.info.title, t) : path.join(output, t.replace(/module/, module.info.title.toLowerCase()).replace(/index/, module.info.title))
 
                 outputFiles[location] = content
                 logSuccess(`Generated macros for module ${path.relative(output, location)}`)
             })
 
             if (primaryOutput) {
-                const macros = engine.generateMacros(module, templates, exampleTemplates, {hideExcluded: hideExcluded, copySchemasIntoModules: copySchemasIntoModules, destination: primaryOutput})
+                const macros = engine.generateMacros(module, templates, exampleTemplates, {hideExcluded: hideExcluded, copySchemasIntoModules: copySchemasIntoModules, createPolymorphicMethods: createPolymorphicMethods, destination: primaryOutput})
                 macros.append = append
                 outputFiles[primaryOutput] = engine.insertMacros(outputFiles[primaryOutput], macros)
             }
@@ -199,8 +215,6 @@ const macrofy = async (
                     delete outputFiles[file]
                 }
             })
-
-            console.log()
         }
 
         // Grab all schema groups w/ a URI string. These came from some external json-schema that was bundled into the OpenRPC
@@ -245,13 +259,13 @@ const macrofy = async (
         Object.values(externalSchemas).forEach( document => {
             if (templatesPerSchema) {
                 templatesPerSchema.forEach( t => {
-                    const macros = engine.generateMacros(document, templates, exampleTemplates, {hideExcluded: hideExcluded, destination: t})
+                    const macros = engine.generateMacros(document, templates, exampleTemplates, {hideExcluded: hideExcluded, createPolymorphicMethods: createPolymorphicMethods, destination: t})
                     let content = getTemplate('/schemas', t, templates)
         
                     // NOTE: whichever insert is called first also needs to be called again last, so each phase can insert recursive macros from the other
                     content = engine.insertMacros(content, macros)
         
-                    const location = createModuleDirectories ? path.join(output, document.info.title, t) : path.join(output, t.replace(/Module/, document.info.title).replace(/index/, document.info.title))
+                    const location = createModuleDirectories ? path.join(output, document.info.title, t) : path.join(output, t.replace(/module/, document.info.title.toLowerCase()).replace(/index/, document.info.title))
         
                     outputFiles[location] = content
                     logSuccess(`Generated macros for schema ${path.relative(output, location)}`)
@@ -264,7 +278,10 @@ const macrofy = async (
             await emptyDir(output)
         }
 
-        await writeFiles(outputFiles)    
+        await writeFiles(outputFiles)
+        if (persistPermission) {
+            await writeFilesPermissions(templatesPermission)
+        }
         logSuccess(`Wrote ${Object.keys(outputFiles).length} files.`)
 
         resolve()
