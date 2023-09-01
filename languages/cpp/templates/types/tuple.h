@@ -1,0 +1,6 @@
+/* ${title} */
+struct ${title} {
+
+    ${properties}
+
+};

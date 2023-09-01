@@ -120,6 +120,8 @@ const insertConstMacros = (content, schema, module, name) => {
   return content
 }
 
+
+
 const insertEnumMacros = (content, schema, module, name) => {
   const template = content.split('\n')
 
@@ -469,14 +471,16 @@ function getSchemaType(schema, module, { destination, templateDir = 'types', lin
 
   const suffix = destination && ('.' + destination.split('.').pop()) || ''
   const namespaceStr = namespace ? getTemplate(path.join(templateDir, 'namespace' + suffix)) : ''
-  const theTitle = insertSchemaMacros(namespaceStr + getTemplate(path.join(templateDir, 'title' + suffix)), schema, module, schema.title || '', '', '', false)
+  const theTitle = insertSchemaMacros(namespaceStr + getTemplate(path.join(templateDir, 'title' + suffix)), schema, module, schema.title || '', getXSchemaGroup(schema, module), '', false)
   const allocatedProxy = event || result
 
   const title = schema.type === "object" || schema.enum ? true : false
 
   if (schema['$ref']) {
     if (schema['$ref'][0] === '#') {
-      return getSchemaType(getPath(schema['$ref'], module), module, {destination, templateDir, link, title, code, asPath, event, result, expandEnums, baseUrl, namespace })// { link: link, code: code, destination })
+      const refSchema = getPath(schema['$ref'], module)
+      const includeNamespace = (module.info.title !== getXSchemaGroup(refSchema, module))
+      return getSchemaType(refSchema, module, {destination, templateDir, link, title, code, asPath, event, result, expandEnums, baseUrl, namespace:includeNamespace })// { link: link, code: code, destination })
     }
     else {
       // TODO: This never happens... but might be worth keeping in case we link to an opaque external schema at some point?

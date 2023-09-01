@@ -1,0 +1,27 @@
+{
+    "name": "CPlusPlus",
+    "langcode": "cpp",
+    "createModuleDirectories": false,
+    "extractSubSchemas": true,
+    "unwrapResultObjects": false,
+    "createPolymorphicMethods": true,
+    "excludeDeclarations":true,
+    "templatesPerModule": [
+        "/include/module.h",
+        "/src/module.cpp"
+    ],
+    "templatesPerSchema": [
+        "/include/common/module.h",
+        "/src/module_common.cpp",
+        "/src/jsondata_module.h"
+    ],
+    "persistPermission": true,
+    "primitives": {
+        "boolean": "bool",
+        "integer": "int32_t",
+        "number": "float",
+        "string": "std::string"
+    },
+    "langVersion" : "c++17",
+    "additionalSchemaTemplates": [ "json-types" ]
+}
