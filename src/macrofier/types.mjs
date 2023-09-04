@@ -120,8 +120,6 @@ const insertConstMacros = (content, schema, module, name) => {
   return content
 }
 
-
-
 const insertEnumMacros = (content, schema, module, name) => {
   const template = content.split('\n')
 
@@ -135,6 +133,33 @@ const insertEnumMacros = (content, schema, module, name) => {
   }
 
   return template.join('\n')
+}
+
+const insertObjectAdditionalPropertiesMacros = (content, schema, module, title, options) => {
+  options = options ? JSON.parse(JSON.stringify(options)) : {}
+
+  const options2 = JSON.parse(JSON.stringify(options))
+  options2.parent = title
+  options2.level = options.level + 1
+  options2.name = ''
+
+  let type = getSchemaType(schema.additionalProperties, module, options2) || 'string'
+  const shape = getSchemaShape(schema.additionalProperties, module, options2)
+  const propertyNames = localizeDependencies(schema, module).propertyNames
+  let key = (propertyNames && propertyNames.title) ? propertyNames.title : 'string'
+
+  content = content
+    .replace(/\$\{property\}/g, '')
+    .replace(/\$\{Property\}/g, '')
+    .replace(/\$\{shape\}/g, shape)
+    .replace(/\$\{parent\.title\}/g, title)
+    .replace(/\$\{title\}/g, title)
+    .replace(/\$\{type\}/g, type)
+    .replace(/\$\{key\}/g, key)
+    .replace(/\$\{delimiter\}(.*?)\$\{end.delimiter\}/g, '')
+    .replace(/\$\{if\.optional\}(.*?)\$\{end\.if\.optional\}/g, '')
+
+  return content
 }
 
 const insertObjectMacros = (content, schema, module, title, property, options) => {
@@ -151,27 +176,12 @@ const insertObjectMacros = (content, schema, module, title, property, options) =
     const template = getTemplate(path.join(options.templateDir, 'property' + (templateType ? `-${templateType}` : ''))).replace(/\n/gms, indent + '\n')
   
     const properties = []
-  
-    if (schema.additionalProperties && (typeof schema.additionalProperties === 'object')) {
-      const template = getTemplate(path.join(options.templateDir, 'additionalProperties'))
-      let type = getSchemaType(schema.additionalProperties, module, options2)
-      const shape = getSchemaShape(schema.additionalProperties, module, options2)
-      properties.push(template
-        .replace(/\$\{property\}/g, '')
-        .replace(/\$\{Property\}/g, '')
-        .replace(/\$\{shape\}/g, shape)
-        .replace(/\$\{parent\.title\}/g, title)
-        .replace(/\$\{title\}/g, type)
-        .replace(/\$\{delimiter\}(.*?)\$\{end.delimiter\}/g, '')
-        .replace(/\$\{if\.optional\}(.*?)\$\{end\.if\.optional\}/g, ''))
-    }
-  
+
     if (schema.properties) {
       Object.entries(schema.properties).forEach(([name, prop], i) => {
         options2.property = name
         const schemaShape = getSchemaShape(prop, module, options2)
         const type = getSchemaType(prop, module, options2)
-
         // don't push properties w/ unsupported types
         if (type) {
           properties.push((i !== 0 ? indent : '') + template
@@ -197,13 +207,13 @@ const insertObjectMacros = (content, schema, module, title, property, options) =
             // skip properties that were already defined above
             return
           }
+
           // TODO: add language config feature for 'unknown' type
           let type; // = { type: "null" }
-  
           if (schema.additionalProperties && (typeof schema.additionalProperties === 'object')) {
             type = schema.additionalProperties
           }
-  
+
           if (schema.patternProperties) {
             Object.entries(schema.patternProperties).forEach(([pattern, schema]) => {
               let regex = new RegExp(pattern)
@@ -353,8 +363,14 @@ function getSchemaShape(schema = {}, module = {}, { templateDir = 'types', name 
     return insertSchemaMacros(result, schema, module, theTitle, parent, property)
   }
   else if (schema.type === 'object') {
-    const shape = insertObjectMacros(getTemplate(path.join(templateDir, 'object' + suffix)), schema, module, theTitle, property, { level, parent, property, templateDir, descriptions, destination, section, enums })
-
+    let shape
+    const additionalPropertiesTemplate = getTemplate(path.join(templateDir, 'additionalProperties'))
+    if (additionalPropertiesTemplate && schema.additionalProperties && (typeof schema.additionalProperties === 'object')) {
+      shape = insertObjectAdditionalPropertiesMacros(additionalPropertiesTemplate, schema, module, theTitle, { level, parent })
+    }
+    else {
+      shape = insertObjectMacros(getTemplate(path.join(templateDir, 'object' + suffix)), schema, module, theTitle, property, { level, parent, property, templateDir, descriptions, destination, section, enums })
+    }
     result = result.replace(/\$\{shape\}/g, shape)
     return insertSchemaMacros(result, schema, module, theTitle, parent, property)
   }
