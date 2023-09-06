@@ -1,1 +1,1 @@
-std::unordered_map<std::string,${type}> title;
+${title} value;

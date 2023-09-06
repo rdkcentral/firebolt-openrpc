@@ -1,6 +1,2 @@
 /* ${title} */
-struct ${title} {
-
-    ${properties}
-
-};
+std::pair<${type},${type}> ${title};

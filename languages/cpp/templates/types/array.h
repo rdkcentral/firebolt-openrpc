@@ -1,1 +1,1 @@
-std::vector<${type}> ${title};
+std::vector<${type}>

@@ -376,7 +376,7 @@ const promoteSchema = (location, property, title, document, destinationPath) => 
 }
 
 // only consider sub-objects and sub enums to be sub-schemas
-const isSubSchema = (schema) => schema.type === 'object' || (schema.type === 'string' && schema.enum) || (schema.type === 'array' && schema.items)
+const isSubSchema = (schema) => schema.type === 'object' || (schema.type === 'string' && schema.enum) // || (schema.type === 'array' && schema.items)
 
 const promoteAndNameSubSchemas = (obj) => {
   // make a copy so we don't polute our inputs
@@ -506,7 +506,7 @@ const generateMacros = (obj, templates, languages, options = {}) => {
     macros.types[dir] = getTemplate('/sections/types', templates).replace(/\$\{schema.list\}/g, schemasArray.filter(x => !x.enum).map(s => s.body).filter(body => body).join('\n'))
     macros.enums[dir] = getTemplate('/sections/enums', templates).replace(/\$\{schema.list\}/g, schemasArray.filter(x => x.enum).map(s => s.body).filter(body => body).join('\n'))
   })
-  
+  state.typeTemplateDir = 'types'
   const examples = generateExamples(obj, templates, languages)
   const allMethodsArray = generateMethods(obj, examples, templates)
   const methodsArray = allMethodsArray.filter(m => m.body && !m.event && (!options.hideExcluded || !m.excluded))
@@ -1483,7 +1483,7 @@ function generateResultParams(result, json, templates, {name = ''}={}) {
     const template = getTemplate('/parameters/result', templates)
     return Object.entries(result.properties).map( ([name, type]) => template
                                                                       .replace(/\$\{method\.param\.name\}/g, name)
-                                                                      .replace(/\$\{method\.param\.type\}/g, types.getSchemaType(type, json, {name: name, moduleTitle: moduleTitle, result: true}))
+                                                                      .replace(/\$\{method\.param\.type\}/g, types.getSchemaType(type, json, {name: name, moduleTitle: moduleTitle, result: true, namespace: true}))
     ).join(', ') // most languages separate params w/ a comma, so leaving this here for now  
   }
   // tuples get unwrapped
@@ -1492,14 +1492,14 @@ function generateResultParams(result, json, templates, {name = ''}={}) {
     const template = getTemplate('/parameters/result', templates)
     return result.items.map( (type) => template
                                         .replace(/\$\{method\.param\.name\}/g, type['x-property'])
-                                        .replace(/\$\{method\.param\.type\}/g, types.getSchemaType(type, json, {name: name, moduleTitle: moduleTitle, result: true}))
+                                        .replace(/\$\{method\.param\.type\}/g, types.getSchemaType(type, json, {name: name, moduleTitle: moduleTitle, result: true, namespace: true}))
     ).join(', ')
   }
   // everything else is just output as-is
   else {
-    const template = getTemplate('/parameters/result', templates)
-    const type = types.getSchemaType(result, json, {name: name, moduleTitle: moduleTitle, result: true})
 
+    const template = getTemplate('/parameters/result', templates)
+    const type = types.getSchemaType(result, json, {name: name, moduleTitle: moduleTitle, result: true, namespace: true})
     if (type === 'undefined') {
       console.log(`Warning: undefined type for ${name}`)
     }

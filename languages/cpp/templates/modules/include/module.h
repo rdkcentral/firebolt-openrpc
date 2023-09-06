@@ -25,19 +25,19 @@ ${if.declarations}namespace Firebolt {
 namespace ${info.Title} {
 
 // Enums
-/* ${ENUMS} */
+    /* ${ENUMS} */
 
 // Types
 /* ${TYPES} */
 
-    struct I${info.Title} {
+struct I${info.Title} {
 
-        virtual ~I${info.Title} = default;
+    virtual ~I${info.Title} = default;
 
-    // Methods & Events
-    /* ${DECLARATIONS} */
+// Methods & Events
+/* ${DECLARATIONS} */
 
-    };
+};
 
 } //namespace ${info.Title}
 }${end.if.declarations}
