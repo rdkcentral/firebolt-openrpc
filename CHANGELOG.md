@@ -1,3 +1,10 @@
+# [2.1.0-next.2](https://github.com/rdkcentral/firebolt-openrpc/compare/v2.1.0-next.1...v2.1.0-next.2) (2023-09-06)
+
+
+### Bug Fixes
+
+* Changes based on schema update ([#131](https://github.com/rdkcentral/firebolt-openrpc/issues/131)) ([9df4f15](https://github.com/rdkcentral/firebolt-openrpc/commit/9df4f1545835ed6d81d8998174f9e11b8df53550))
+
 # [2.1.0-next.1](https://github.com/rdkcentral/firebolt-openrpc/compare/v2.0.4-next.3...v2.1.0-next.1) (2023-08-31)
 
 
