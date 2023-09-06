@@ -26,7 +26,7 @@ done
 GetVersion()
 {
   PackagePath=${SdkPath}/../../../../../../package-lock.json
-  InputKey="name\": \"@firebolt-js/openrpc"
+  InputKey="name\": \"@firebolt-js/sdks"
   LineNo="$(grep -n "${InputKey}" ${PackagePath} | head -n 1 | cut -d: -f1)"
   VersionLine=$((LineNo++))
   eval "array=(`sed -n "${LineNo}p" < ${PackagePath} | sed 's/\"/\n/g'`)"
