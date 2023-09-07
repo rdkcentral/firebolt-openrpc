@@ -34,8 +34,8 @@ struct I${info.Title} {
 
     virtual ~I${info.Title} = default;
 
-// Methods & Events
-/* ${DECLARATIONS} */
+    // Methods & Events
+    /* ${DECLARATIONS} */
 
 };
 
