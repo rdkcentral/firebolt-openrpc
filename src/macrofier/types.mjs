@@ -143,10 +143,10 @@ const insertObjectAdditionalPropertiesMacros = (content, schema, module, title, 
   options2.level = options.level + 1
   options2.name = ''
 
-  let type = getSchemaType(schema.additionalProperties, module, options2) || 'string'
   const shape = getSchemaShape(schema.additionalProperties, module, options2)
+  let type = getSchemaType(schema.additionalProperties, module, options2).trimEnd()
   const propertyNames = localizeDependencies(schema, module).propertyNames
-  let key = (propertyNames && propertyNames.title) ? propertyNames.title : 'string'
+  let key = (propertyNames && propertyNames.title) ? propertyNames.title : getTemplate(path.join(options.templateDir, 'additionalPropertiesKey')).trimEnd()
 
   content = content
     .replace(/\$\{property\}/g, '')
@@ -301,6 +301,13 @@ const insertAnyOfMacros = (content, schema, module, name) => {
     .replace(/\$\{type\}/g, getSchemaType(item, module))
     .replace(/\$\{delimiter\}(.*?)\$\{end.delimiter\}/g, i === schema.anyOf.length - 1 ? '' : '$1')
   ).join('')
+
+  content = content
+    .split('\n')
+    .filter((item, i, items) => {
+     return i === items.indexOf(item);
+  }).join('\n');
+
   return content
 }
 
@@ -366,7 +373,7 @@ function getSchemaShape(schema = {}, module = {}, { templateDir = 'types', name 
     let shape
     const additionalPropertiesTemplate = getTemplate(path.join(templateDir, 'additionalProperties'))
     if (additionalPropertiesTemplate && schema.additionalProperties && (typeof schema.additionalProperties === 'object')) {
-      shape = insertObjectAdditionalPropertiesMacros(additionalPropertiesTemplate, schema, module, theTitle, { level, parent })
+      shape = insertObjectAdditionalPropertiesMacros(additionalPropertiesTemplate, schema, module, theTitle, { level, parent, templateDir })
     }
     else {
       shape = insertObjectMacros(getTemplate(path.join(templateDir, 'object' + suffix)), schema, module, theTitle, property, { level, parent, property, templateDir, descriptions, destination, section, enums })
