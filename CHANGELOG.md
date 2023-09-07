@@ -1,3 +1,10 @@
+# [2.1.0-next.3](https://github.com/rdkcentral/firebolt-openrpc/compare/v2.1.0-next.2...v2.1.0-next.3) (2023-09-07)
+
+
+### Bug Fixes
+
+* Null support for property setters ([#125](https://github.com/rdkcentral/firebolt-openrpc/issues/125)) ([1ff5f42](https://github.com/rdkcentral/firebolt-openrpc/commit/1ff5f42c36de0e70a03ede35baaedfb78351e9c2)), closes [#122](https://github.com/rdkcentral/firebolt-openrpc/issues/122) [#123](https://github.com/rdkcentral/firebolt-openrpc/issues/123) [#124](https://github.com/rdkcentral/firebolt-openrpc/issues/124)
+
 ## [2.0.4](https://github.com/rdkcentral/firebolt-openrpc/compare/v2.0.3...v2.0.4) (2023-08-11)
 
 
