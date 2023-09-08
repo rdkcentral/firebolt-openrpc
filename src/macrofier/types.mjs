@@ -274,6 +274,7 @@ const insertTupleMacros = (content, schema, module, title, options) => {
   const itemsTemplate = getTemplate(path.join(options.templateDir, 'items'))
   const propIndent = (content.split('\n').find(line => line.includes("${properties}")) || '').match(/^\s+/) || [''][0]
   const itemsIndent = (content.split('\n').find(line => line.includes("${items}")) || '').match(/^\s+/) || [''][0]
+  const delimiter = getTemplate(path.join(options.templateDir, 'delimiter'))
 
   const doMacroWork = (str, prop, i, indent) => {
     const schemaShape = getSchemaShape(prop, module, options)
@@ -290,8 +291,8 @@ const insertTupleMacros = (content, schema, module, title, options) => {
       .replace(/\$\{if\.optional\}(.*?)\$\{end\.if\.optional\}/gms, '')
   }
 
-  content = content.replace(/\$\{properties\}/g, schema.items.map((prop, i) => doMacroWork(propTemplate, prop, i, propIndent)).join('\n'))
-  content = content.replace(/\$\{items\}/g, schema.items.map((prop, i) => doMacroWork(itemsTemplate, prop, i, itemsIndent)).join('\n'))  
+  content = content.replace(/\$\{properties\}/g, schema.items.map((prop, i) => doMacroWork(propTemplate, prop, i, propIndent)).join(delimiter))
+  content = content.replace(/\$\{items\}/g, schema.items.map((prop, i) => doMacroWork(itemsTemplate, prop, i, itemsIndent)).join(delimiter))
 
   return content
 }

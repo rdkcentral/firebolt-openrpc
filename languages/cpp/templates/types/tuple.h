@@ -1,2 +1,2 @@
 /* ${title} */
-std::pair<${type},${type}> ${title};
+std::pair<${items}> ${title};
