@@ -56,7 +56,7 @@ const safeName = value => value.split(':').pop().replace(/[\.\-]/g, '_').replace
 function getMethodSignatureParams(method, module, { destination, callback }) {
   const paramOptional = getTemplate('/parameters/optional')
   return method.params.map(param => {
-    let type = getSchemaType(param.schema, module, { destination })
+    let type = getSchemaType(param.schema, module, { destination, namespace : true })
     if (callback && allocatedPrimitiveProxies[type]) {
       type = allocatedPrimitiveProxies[type]
     }
@@ -110,6 +110,7 @@ function insertSchemaMacros(content, schema, module, name, parent, property, rec
     .replace(/\$\{TITLE\}/g, title.toUpperCase())
     .replace(/\$\{property\}/g, property)
     .replace(/\$\{Property\}/g, capitalize(property))
+    .replace(/\$\{if\.namespace\.notsame}(.*?)\$\{end\.if\.namespace\.notsame\}/g, (module.info.title !== parent) ? '$1' : '')
     .replace(/\$\{parent\.title\}/g, parent)
     .replace(/\$\{parent\.Title\}/g, capitalize(parent))
     .replace(/\$\{description\}/g, schema.description ? schema.description : '')
@@ -121,7 +122,7 @@ function insertSchemaMacros(content, schema, module, name, parent, property, rec
     .replace(/\$\{info.TITLE\}/g, moduleTitle.toUpperCase())
 
   if (recursive) {
-    content = content.replace(/\$\{type\}/g, getSchemaType(schema, module, { name: title, destination: state.destination, section: state.section, code: false }))
+    content = content.replace(/\$\{type\}/g, getSchemaType(schema, module, { name: title, destination: state.destination, section: state.section, code: false, namespace: true }))
   }
   return content
 }
@@ -381,10 +382,10 @@ function getSchemaShape(schema = {}, module = {}, { templateDir = 'types', name 
     let shape
     const additionalPropertiesTemplate = getTemplate(path.join(templateDir, 'additionalProperties'))
     if (additionalPropertiesTemplate && schema.additionalProperties && (typeof schema.additionalProperties === 'object')) {
-      shape = insertObjectAdditionalPropertiesMacros(additionalPropertiesTemplate, schema, module, theTitle, { level, parent, templateDir })
+      shape = insertObjectAdditionalPropertiesMacros(additionalPropertiesTemplate, schema, module, theTitle, { level, parent, templateDir, namespace: true })
     }
     else {
-      shape = insertObjectMacros(getTemplate(path.join(templateDir, 'object' + suffix)), schema, module, theTitle, property, { level, parent, property, templateDir, descriptions, destination, section, enums })
+      shape = insertObjectMacros(getTemplate(path.join(templateDir, 'object' + suffix)), schema, module, theTitle, property, { level, parent, property, templateDir, descriptions, destination, section, enums, namespace: true })
     }
     result = result.replace(/\$\{shape\}/g, shape)
     return insertSchemaMacros(result, schema, module, theTitle, parent, property)
@@ -622,7 +623,7 @@ function getSchemaType(schema, module, { destination, templateDir = 'types', lin
     if (schema.title) {
       union.title = schema.title
     }
-    return getSchemaType(union, module, { destination, link, title, code, asPath, baseUrl })
+    return getSchemaType(union, module, { destination, link, title, code, asPath, baseUrl, namespace })
   }
   else if (schema.oneOf || schema.anyOf) {
     if (!schema.anyOf) {
