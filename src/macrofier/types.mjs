@@ -30,6 +30,7 @@ const primitives = {
   "string": "string"
 }
 
+const isPrimitiveType = type => primitives[type] ? true : false
 const allocatedPrimitiveProxies = {}
 
 function setTemplates(t) {
@@ -53,13 +54,25 @@ const safeName = value => value.split(':').pop().replace(/[\.\-]/g, '_').replace
 
 // TODO: This is what's left of getMethodSignatureParams. We need to figure out / handle C's `FireboltTypes_StringHandle`
 function getMethodSignatureParams(method, module, { destination, callback }) {
-  const paramRequired = getTemplate('/parameters/default')
   const paramOptional = getTemplate('/parameters/optional')
   return method.params.map(param => {
     let type = getSchemaType(param.schema, module, { destination })
     if (callback && allocatedPrimitiveProxies[type]) {
       type = allocatedPrimitiveProxies[type]
     }
+
+    let paramRequired = ''
+    let jsonType = getJsonType( param.schema, module, { destination })
+    if (!isPrimitiveType(jsonType) && getTemplate('/parameters/nonprimitive')) {
+      paramRequired = getTemplate('/parameters/nonprimitive')
+    }
+    else if ((jsonType === 'string') && getTemplate('/parameters/string')) {
+      paramRequired = getTemplate('/parameters/string')
+    }
+    else {
+      paramRequired = getTemplate('/parameters/default')
+    }
+
     return (param.required ? paramRequired : paramOptional).replace(/\$\{method\.param\.name\}/g, param.name).replace(/\$\{method\.param\.type\}/g, type)
   }).join(', ')
 }
@@ -650,7 +663,18 @@ function getSchemaType(schema, module, { destination, templateDir = 'types', lin
 }
 
 function getJsonType(schema, module, { destination, link = false, title = false, code = false, asPath = false, event = false, expandEnums = true, baseUrl = '' } = {}) {
-  return ''
+
+  let type = schema.type
+  if (schema['$ref']) {
+    if (schema['$ref'][0] === '#') {
+      //Ref points to local schema
+      //Get Path to ref in this module and getSchemaType
+      let definition = getPath(schema['$ref'], module)
+      type = getJsonType(definition, schema, {destination})
+    }
+  } 
+
+  return type
 }
 
 function getSchemaInstantiation(schema, module, { instantiationType }) {
