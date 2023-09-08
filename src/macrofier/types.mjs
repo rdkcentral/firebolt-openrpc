@@ -119,7 +119,6 @@ function insertSchemaMacros(content, schema, module, name, parent, property, rec
     .replace(/\$\{info.title\}/g, moduleTitle)
     .replace(/\$\{info.Title\}/g, capitalize(moduleTitle))
     .replace(/\$\{info.TITLE\}/g, moduleTitle.toUpperCase())
-  //        .replace(/\$\{type.link\}/g, getLinkForSchema(schema, module, { name: title }))
 
   if (recursive) {
     content = content.replace(/\$\{type\}/g, getSchemaType(schema, module, { name: title, destination: state.destination, section: state.section, code: false }))
@@ -310,16 +309,12 @@ const insertPrimitiveMacros = (content, schema, module, name, templateDir) => {
 
 const insertAnyOfMacros = (content, schema, module, name) => {
   const itemTemplate = content
-  content = schema.anyOf.map((item, i) => itemTemplate
-    .replace(/\$\{type\}/g, getSchemaType(item, module))
-    .replace(/\$\{delimiter\}(.*?)\$\{end.delimiter\}/g, i === schema.anyOf.length - 1 ? '' : '$1')
-  ).join('')
-
-  content = content
-    .split('\n')
-    .filter((item, i, items) => {
-     return i === items.indexOf(item);
-  }).join('\n');
+  if (content.split('\n').find(line => line.includes("${type}"))) {
+    content = schema.anyOf.map((item, i) => itemTemplate
+      .replace(/\$\{type\}/g, getSchemaType(item, module))
+      .replace(/\$\{delimiter\}(.*?)\$\{end.delimiter\}/g, i === schema.anyOf.length - 1 ? '' : '$1')
+    ).join('')
+  }
 
   return content
 }
