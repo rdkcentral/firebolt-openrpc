@@ -1,0 +1,18 @@
+{
+    "name": "C",
+    "langcode": "c",
+    "createModuleDirectories": false,
+    "extractSubSchemas": true,
+    "templatesPerModule": [
+        "/include/module.h",
+        "/src/module.cpp"
+    ],
+    "templatesPerSchema": [
+        "/include/common/module.h",
+        "/src/module_common.cpp",
+        "/src/jsondata_module.h"
+    ],
+    "persistPermission": true,
+    "createPolymorphicMethods": true,
+    "excludeDeclarations":true
+}
