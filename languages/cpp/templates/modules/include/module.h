@@ -32,7 +32,7 @@ namespace ${info.Title} {
 
 struct I${info.Title} {
 
-    virtual ~I${info.Title} = default;
+    virtual ~I${info.Title}() = default;
 
     // Methods & Events
     /* ${DECLARATIONS} */
