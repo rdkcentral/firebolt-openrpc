@@ -1254,6 +1254,7 @@ function insertMethodMacros(template, methodObj, json, templates, examples = {})
     .replace(/\$\{method\.params\.serialization\.with\.indent\}/g, indent(serializedParams, '    '))
     // Typed signature stuff
     .replace(/\$\{method\.signature\.params\}/g, types.getMethodSignatureParams(methodObj, json, { destination: state.destination, section: state.section }))
+    .replace(/\$\{method\.signature\.result\}/g, types.getMethodSignatureResult(methodObj, json, { destination: state.destination, section: state.section }))
     .replace(/\$\{method\.context\}/g, method.context.join(', '))
     .replace(/\$\{method\.context\.array\}/g, JSON.stringify(method.context))
     .replace(/\$\{method\.context\.count}/g, method.context ? method.context.length : 0)

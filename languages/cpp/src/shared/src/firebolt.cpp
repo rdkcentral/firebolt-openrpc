@@ -26,12 +26,12 @@ extern "C" {
 
 int32_t FireboltSDK_Initialize(char* configLine) {
     FireboltSDK::Accessor::Instance(configLine);
-    return FireboltSDKErrorNone;
+    return Firebolt_Error_None;
 }
 
 int32_t FireboltSDK_Deinitialize(void) {
     FireboltSDK::Accessor::Dispose();
-    return FireboltSDKErrorNone;
+    return Firebolt_Error_None;
 }
 
 #ifdef __cplusplus

@@ -3,4 +3,4 @@
      ${method.description}
      ${method.params.annotations}${if.deprecated} * @deprecated ${method.deprecation}${end.if.deprecated}
      */
-    virtual int32_t ${method.Name}( ${method.signature.params}${if.result.nonvoid}${if.params}, ${end.if.params}${method.result.type}& ${method.result.name}${end.if.result.nonvoid} ) = 0;
+    virtual ${method.signature.result} ${method.Name}( ${method.signature.params}${if.params}, ${end.if.params}Firebolt_Error *err = nullptr ) = 0;

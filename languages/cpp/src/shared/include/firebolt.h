@@ -46,7 +46,7 @@ extern "C" {
  *  }
  *
  *
- * @return FireboltSDKErrorNone if success, appropriate error otherwise.
+ * @return Firebolt_Error_None if success, appropriate error otherwise.
  *
  */
 uint32_t FireboltSDK_Initialize(char* configLine);
@@ -55,7 +55,7 @@ uint32_t FireboltSDK_Initialize(char* configLine);
 /**
  * @brief Deintitialize the Firebolt SDK
  *
- * @return FireboltSDKErrorNone if success, appropriate error otherwise.
+ * @return Firebolt_Error_None if success, appropriate error otherwise.
  *
  */
 uint32_t FireboltSDK_Deinitialize(void);

@@ -23,16 +23,21 @@
 extern "C" {
 #endif
 
-typedef enum FireboltSDKError {
-    FireboltSDKErrorNone = 0,
-    FireboltSDKErrorGeneral = 1,
-    FireboltSDKErrorUnavailable = 2,
-    FireboltSDKErrorTimedout = 3,
-    FireboltSDKErrorNotSubscribed = 4,
-    FireboltSDKErrorUnknown = 5,
-    FireboltSDKErrorInUse = 6,
-    FireboltSDKErrorNotSupported = 7
-} FireboltSDKError_t;
+enum Firebolt_Error {
+    Firebolt_Error_None = 0,
+    Firebolt_Error_General = 1,
+    Firebolt_Error_Timedout = 2,
+    Firebolt_Error_Unavailable = 3,
+    Firebolt_Error_InUse = 4,
+    Firebolt_Error_NotSupported = 5,
+    Firebolt_Error_InvalidRequest = -32600,
+    Firebolt_Error_MethodNotFound = -32601,
+    Firebolt_Error_InvalidParams = -32602,
+    Firebolt_Error_CapabilityNotAvaialbale = -50300,
+    Firebolt_Error_CapabilityNotSupported = -50100
+    Firebolt_Error_CapabilityGet = -50200
+    Firebolt_Error_CapabilityNotPermitted = - 40300
+};
 
 #ifdef __cplusplus
 }

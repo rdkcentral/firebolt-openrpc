@@ -2,4 +2,4 @@
      ${method.rpc.name}
      ${method.description}
      */
-    virtual int32_t ${method.Name}( ${method.signature.params} ) = 0;
+    virtual void ${method.Name}( ${method.signature.params}${if.params}, ${end.if.params}Firebolt_Error *err = nullptr ) = 0;

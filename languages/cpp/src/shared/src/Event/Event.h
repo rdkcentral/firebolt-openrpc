@@ -82,11 +82,11 @@ namespace FireboltSDK {
         template <typename RESULT, typename CALLBACK>
         int32_t Subscribe(const string& eventName, JsonObject& jsonParameters, const CALLBACK& callback, void* usercb, const void* userdata)
         {
-            int32_t status = FireboltSDKErrorUnavailable;
+            int32_t status = Firebolt_Error_Unavailable;
             if (_transport != nullptr) {
 
                 status = Assign<RESULT, CALLBACK>(eventName, callback, usercb, userdata);
-                if (status == FireboltSDKErrorNone) {
+                if (status == Firebolt_Error_None) {
                     Response response;
 
                     WPEFramework::Core::JSON::Variant Listen = true;
@@ -96,13 +96,11 @@ namespace FireboltSDK {
 
                     status = _transport->Subscribe<Response>(eventName, parameters, response);
 
-                    if (status != FireboltSDKErrorNone) {
+                    if (status != Firebolt_Error_None) {
                         Revoke(eventName, usercb);
                     } else if ((response.Listening.IsSet() == true) &&
                               (response.Listening.Value() == true)) {
-                        status = FireboltSDKErrorNone;
-                    } else {
-                        status = FireboltSDKErrorNotSubscribed;
+                        status = Firebolt_Error_None;
                     }
                 }
             }
@@ -116,7 +114,7 @@ namespace FireboltSDK {
         template <typename PARAMETERS, typename CALLBACK>
         int32_t Assign(const string& eventName, const CALLBACK& callback, void* usercb, const void* userdata)
         {
-            int32_t status = FireboltSDKErrorNone;
+            int32_t status = Firebolt_Error_None;
             std::function<void(void* usercb, const void* userdata, void* parameters)> actualCallback = callback;
             DispatchFunction implementation = [actualCallback](void* usercb, const void* userdata, const string& parameters) -> int32_t {
 
@@ -124,7 +122,7 @@ namespace FireboltSDK {
                 *inbound = WPEFramework::Core::ProxyType<PARAMETERS>::Create();
                 (*inbound)->FromString(parameters);
                 actualCallback(usercb, userdata, static_cast<void*>(inbound));
-                return (FireboltSDKErrorNone);
+                return (Firebolt_Error_None);
             };
             CallbackData callbackData = {implementation, userdata, State::IDLE};
 
@@ -136,7 +134,7 @@ namespace FireboltSDK {
                     eventIndex->second.emplace(std::piecewise_construct, std::forward_as_tuple(usercb), std::forward_as_tuple(callbackData));
                 } else {
                     // Already registered, no need to register again;
-                    status = FireboltSDKErrorInUse;
+                    status = Firebolt_Error_InUse;
                 }
             } else {
 

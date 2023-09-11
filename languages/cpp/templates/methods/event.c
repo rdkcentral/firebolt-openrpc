@@ -9,10 +9,10 @@ ${event.callback.result.instantiation}
         callback(userData, ${event.callback.response.instantiation});
     }
 }
-int32_t ${info.Title}_Register_${method.Name}( ${event.signature.params}${if.event.params}, ${end.if.event.params}${info.Title}${method.Name}Callback userCB, const void* userData )
+int32_t subscribe( ${event.signature.params}${if.event.params}, ${end.if.event.params}I${method.Name}Notification& notification )
 {
     const string eventName = _T("${info.title.lowercase}.${method.rpc.name}");
-    int32_t status = FireboltSDKErrorNone;
+    int32_t status = Firebolt_Error_None;
 
     if (userCB != nullptr) {
     ${event.params.serialization}
@@ -20,7 +20,7 @@ int32_t ${info.Title}_Register_${method.Name}( ${event.signature.params}${if.eve
     }
     return status;
 }
-int32_t ${info.Title}_Unregister_${method.Name}( ${info.Title}${method.Name}Callback userCB)
+int32_t unsubscribe( I${method.Name}Notification& notification )
 {
     return FireboltSDK::Event::Instance().Unsubscribe(_T("${info.title.lowercase}.${method.rpc.name}"), reinterpret_cast<void*>(userCB));
 }

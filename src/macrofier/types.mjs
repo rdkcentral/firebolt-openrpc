@@ -27,9 +27,11 @@ const primitives = {
   "integer": "number",
   "number": "number",
   "boolean": "boolean",
-  "string": "string"
+  "string": "string",
+  "float": "float"
 }
 
+const isVoid = type => (type === 'void') ? true : false
 const isPrimitiveType = type => primitives[type] ? true : false
 const allocatedPrimitiveProxies = {}
 
@@ -62,7 +64,7 @@ function getMethodSignatureParams(method, module, { destination, callback }) {
     }
 
     let paramRequired = ''
-    let jsonType = getJsonType( param.schema, module, { destination })
+    let jsonType = getJsonType(param.schema, module, { destination })
     if (!isPrimitiveType(jsonType) && getTemplate('/parameters/nonprimitive')) {
       paramRequired = getTemplate('/parameters/nonprimitive')
     }
@@ -75,6 +77,25 @@ function getMethodSignatureParams(method, module, { destination, callback }) {
 
     return (param.required ? paramRequired : paramOptional).replace(/\$\{method\.param\.name\}/g, param.name).replace(/\$\{method\.param\.type\}/g, type)
   }).join(', ')
+}
+
+function getMethodSignatureResult(method, module, { destination, callback }) {
+    let type = getSchemaType(method.result.schema, module, { destination, namespace : true })
+
+    let result = ''
+    let jsonType = getJsonType(method.result.schema, module, { destination })
+
+    if (!isVoid(type) && !isPrimitiveType(jsonType) && getTemplate('/result/nonprimitive')) {
+      result = getTemplate('/result/nonprimitive')
+    }
+    else if ((jsonType === 'string') && getTemplate('/result/string')) {
+      result = getTemplate('/result/string')
+    }
+    else {
+      result = getTemplate('/result/default')
+    }
+
+    return result.replace(/\$\{method\.result\.type\}/g, type)
 }
 
 const getTemplate = (name) => {
@@ -661,6 +682,7 @@ function getSchemaType(schema, module, { destination, templateDir = 'types', lin
 
 function getJsonType(schema, module, { destination, link = false, title = false, code = false, asPath = false, event = false, expandEnums = true, baseUrl = '' } = {}) {
 
+  schema = sanitize(schema)
   let type = schema.type
   if (schema['$ref']) {
     if (schema['$ref'][0] === '#') {
@@ -669,7 +691,7 @@ function getJsonType(schema, module, { destination, link = false, title = false,
       let definition = getPath(schema['$ref'], module)
       type = getJsonType(definition, schema, {destination})
     }
-  } 
+  }
 
   return type
 }
@@ -684,6 +706,7 @@ export default {
   setConvertTuples,
   setAllocatedPrimitiveProxies,
   getMethodSignatureParams,
+  getMethodSignatureResult,
   getSchemaShape,
   getSchemaType,
   getJsonType,

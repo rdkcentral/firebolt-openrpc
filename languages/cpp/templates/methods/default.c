@@ -1,14 +1,14 @@
 /* ${method.rpc.name} - ${method.description} */
-int32_t ${info.Title}_${method.Name}( ${method.signature.params}${if.result}${if.params}, ${end.if.params} ${method.result.type}* ${method.result.name}${end.if.result}${if.signature.empty}void${end.if.signature.empty} ) {
+${method.signature.result} ${method.Name}( ${method.signature.params}${if.params}, ${end.if.params}Firebolt_Error *err = nullptr ) {
 
-    int32_t status = FireboltSDKErrorUnavailable;
+    int32_t status = Firebolt_Error_Unavailable;
     FireboltSDK::Transport<WPEFramework::Core::JSON::IElement>* transport = FireboltSDK::Accessor::Instance().GetTransport();
     if (transport != nullptr) {
   
     ${method.params.serialization.with.indent}
         ${method.result.json.type} jsonResult;
         status = transport->Invoke("${info.title.lowercase}.${method.rpc.name}", jsonParameters, jsonResult);
-        if (status == FireboltSDKErrorNone) {
+        if (status == Firebolt_Error_None) {
             FIREBOLT_LOG_INFO(FireboltSDK::Logger::Category::OpenRPC, FireboltSDK::Logger::Module<FireboltSDK::Accessor>(), "${info.Title}.${method.rpc.name} is successfully invoked");
     ${method.result.instantiation.with.indent}
         }
