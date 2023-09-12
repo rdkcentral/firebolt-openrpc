@@ -7,6 +7,9 @@ export default function (params, callbackOrValue, contextParameterCount) {
     } else if (numArgs === contextParameterCount && typeof callbackOrValue === 'function') {
       // subscribe
       return "subscriber"
+    } else if (numArgs === 0 && typeof callbackOrValue === 'function') {
+      // for x-subscriber-type: global
+      return "subscriber"
     } else if (numArgs === (contextParameterCount) && callbackOrValue !== undefined) {
       // setter
       return "setter"
