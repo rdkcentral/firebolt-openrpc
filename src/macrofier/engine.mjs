@@ -1512,6 +1512,8 @@ function insertProviderInterfaceMacros(template, capability, moduleJson = {}, te
             }
           }
           methodBlock = lines.join('\n')
+          methodBlock = methodBlock.replace(/\$\{if\.provider\.params\}/gms, '')
+          methodBlock = methodBlock.replace(/\$\{end\.if\.provider\.params\}/gms, '')
         }
         else {
           methodBlock = methodBlock.replace(/\$\{if\.provider\.params\}.*?\$\{end\.if\.provider\.params\}/gms, '')
