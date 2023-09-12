@@ -106,10 +106,10 @@ const getTemplate = (name) => {
 }
 
 // TODO: this assumes the same title doesn't exist in multiple x-schema groups!
-const getXSchemaGroup = (schema, module) => {
+const getXSchemaGroup = (schema, module, title = '') => {
   let group = module.info.title
 
-  if (schema.title && module['x-schemas']) {
+  if ((schema.title || title) && module['x-schemas']) {
     Object.entries(module['x-schemas']).forEach(([title, module]) => {
       Object.values(module).forEach(s => {
         if (schema.title === s.title) {
@@ -518,24 +518,24 @@ const isSupportedTuple = schema => {
   }
 }
 
-function getSchemaType(schema, module, { destination, templateDir = 'types', link = false, code = false, asPath = false, event = false, result = false, expandEnums = true, baseUrl = '', namespace = false } = {}) {
+function getSchemaType(schema, module, { destination, templateDir = 'types', link = false, code = false, asPath = false, event = false, result = false, expandEnums = true, baseUrl = '', namespace = false, title = '' } = {}) {
   const wrap = (str, wrapper) => wrapper + str + wrapper
 
   schema = sanitize(schema)
 
   const suffix = destination && ('.' + destination.split('.').pop()) || ''
   const namespaceStr = namespace ? getTemplate(path.join(templateDir, 'namespace' + suffix)) : ''
-  const theTitle = insertSchemaMacros(namespaceStr + getTemplate(path.join(templateDir, 'title' + suffix)), schema, module, schema.title || '', getXSchemaGroup(schema, module), '', false)
+  const theTitle = insertSchemaMacros(namespaceStr + getTemplate(path.join(templateDir, 'title' + suffix)), schema, module, schema.title || title, getXSchemaGroup(schema, module, title), '', false)
   const allocatedProxy = event || result
 
-  const title = schema.type === "object" || schema.enum ? true : false
+  const hasTitle = schema.type === "object" || schema.enum ? true : false
 
   if (schema['$ref']) {
     if (schema['$ref'][0] === '#') {
       const refSchema = getPath(schema['$ref'], module)
-      refSchema.title = !refSchema.title ? schema['$ref'].split('/').pop() : refSchema.title
-      const includeNamespace = (module.info.title !== getXSchemaGroup(refSchema, module))
-      return getSchemaType(refSchema, module, {destination, templateDir, link, title, code, asPath, event, result, expandEnums, baseUrl, namespace:includeNamespace})// { link: link, code: code, destination })
+      title = refSchema.title || schema['$ref'].split('/').pop()
+      const includeNamespace = (module.info.title !== getXSchemaGroup(refSchema, module, title))
+      return getSchemaType(refSchema, module, {destination, templateDir, link, hasTitle, code, asPath, event, result, expandEnums, baseUrl, namespace:includeNamespace, title})// { link: link, code: code, destination })
     }
     else {
       // TODO: This never happens... but might be worth keeping in case we link to an opaque external schema at some point?
@@ -548,7 +548,7 @@ function getSchemaType(schema, module, { destination, templateDir = 'types', lin
       }
     }
   }
-  else if (title && schema.title) {
+  else if (hasTitle && schema.title) {
     if (link) {
       return '[' + wrap(theTitle, code ? '`' : '') + '](#' + schema.title.toLowerCase() + ')'
     }
@@ -623,12 +623,12 @@ function getSchemaType(schema, module, { destination, templateDir = 'types', lin
     // Tuple -> Array
     if (convertTuplesToArraysOrObjects && isTuple(schema) && isHomogenous(schema)) {
       template = insertArrayMacros(getTemplate(path.join(templateDir, 'array')), schema, module)
-      template = insertSchemaMacros(template, firstItem, module, getSchemaType(firstItem, module, {destination, templateDir, link, title, code, asPath, event, result, expandEnums, baseUrl, namespace }), '', '', false)
+      template = insertSchemaMacros(template, firstItem, module, getSchemaType(firstItem, module, {destination, templateDir, link, hasTitle, code, asPath, event, result, expandEnums, baseUrl, namespace, title }), '', '', false)
     }
     // Normal Array
     else if (!isTuple(schema)) {
       template = insertArrayMacros(getTemplate(path.join(templateDir, 'array')), schema, module)
-      template = insertSchemaMacros(template, schema.items, module, getSchemaType(schema.items, module, {destination, templateDir, link, title, code, asPath, event, result, expandEnums, baseUrl, namespace }), '', '', true)
+      template = insertSchemaMacros(template, schema.items, module, getSchemaType(schema.items, module, {destination, templateDir, link, hasTitle, code, asPath, event, result, expandEnums, baseUrl, namespace, title }), '', '', true)
     }
     else {
       template = insertTupleMacros(getTemplate(path.join(templateDir, 'tuple')), schema, module, '', { templateDir })
@@ -646,7 +646,7 @@ function getSchemaType(schema, module, { destination, templateDir = 'types', lin
     if (schema.title) {
       union.title = schema.title
     }
-    return getSchemaType(union, module, { destination, link, title, code, asPath, baseUrl, namespace })
+    return getSchemaType(union, module, { destination, link, hasTitle, code, asPath, baseUrl, namespace, title })
   }
   else if (schema.oneOf || schema.anyOf) {
     if (!schema.anyOf) {
@@ -658,7 +658,7 @@ function getSchemaType(schema, module, { destination, templateDir = 'types', lin
 
     
     // if (event) {
-    //   return getSchemaType((schema.oneOf || schema.anyOf)[0], module, { destination, link, title, code, asPath, baseUrl })
+    //   return getSchemaType((schema.oneOf || schema.anyOf)[0], module, { destination, link, hasTitle, code, asPath, baseUrl })
     // }
     // else {
     //   const newOptions = JSON.parse(JSON.stringify({ destination, link, title, code, asPath, baseUrl }))
@@ -669,11 +669,17 @@ function getSchemaType(schema, module, { destination, templateDir = 'types', lin
     // }
   }
   else if (schema.type) {
-    // TODO: this assumes that when type is an array of types, that it's one other primative & 'null', which isn't necessarily true.
-    const schemaType = !Array.isArray(schema.type) ? schema.type : schema.type.find(t => t !== 'null')
-    const primitive = getPrimitiveType(schemaType, templateDir)
-    const type = allocatedProxy ? allocatedPrimitiveProxies[schemaType] || primitive : primitive
-    return wrap(type, code ? '`' : '')
+    const template = getTemplate(path.join(templateDir, 'additionalPropertiesTitle'))
+    if (schema.additionalProperties && template ) {
+      return insertSchemaMacros(template, schema, module, theTitle, '', '', false)
+    }
+    else {
+      // TODO: this assumes that when type is an array of types, that it's one other primative & 'null', which isn't necessarily true.
+      const schemaType = !Array.isArray(schema.type) ? schema.type : schema.type.find(t => t !== 'null')
+      const primitive = getPrimitiveType(schemaType, templateDir)
+      const type = allocatedProxy ? allocatedPrimitiveProxies[schemaType] || primitive : primitive
+      return wrap(type, code ? '`' : '')
+    }
   }
   else {
     // TODO this is TypeScript specific
@@ -684,7 +690,7 @@ function getSchemaType(schema, module, { destination, templateDir = 'types', lin
 function getJsonType(schema, module, { destination, link = false, title = false, code = false, asPath = false, event = false, expandEnums = true, baseUrl = '' } = {}) {
 
   schema = sanitize(schema)
-  let type = schema.type
+  let type
   if (schema['$ref']) {
     if (schema['$ref'][0] === '#') {
       //Ref points to local schema
@@ -693,7 +699,9 @@ function getJsonType(schema, module, { destination, link = false, title = false,
       type = getJsonType(definition, schema, {destination})
     }
   }
-
+  else {
+    type = !Array.isArray(schema.type) ? schema.type : schema.type.find(t => t !== 'null')
+  }
   return type
 }
 

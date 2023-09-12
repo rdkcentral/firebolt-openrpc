@@ -3,6 +3,6 @@
         virtual void ${method.Name}( ${method.pulls.param.type}& value ) = 0;
     };
 
-    virtual int32_t subscribe( I${method.Name}Notification& notification ) = 0;
-    virtual int32_t unsubscribe( I${method.Name}Notification& notification ) = 0;
+    virtual void Subscribe( I${method.Name}Notification& notification, Firebolt_Error *err = nullptr ) = 0;
+    virtual void Unsubscribe( I${method.Name}Notification& notification, Firebolt_Error *err = nullptr ) = 0;
 
