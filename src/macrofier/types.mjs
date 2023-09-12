@@ -518,7 +518,7 @@ const isSupportedTuple = schema => {
   }
 }
 
-function getSchemaType(schema, module, { destination, templateDir = 'types', link = false, code = false, asPath = false, event = false, result = false, expandEnums = true, baseUrl = '', namespace = false, name = '' } = {}) {
+function getSchemaType(schema, module, { destination, templateDir = 'types', link = false, code = false, asPath = false, event = false, result = false, expandEnums = true, baseUrl = '', namespace = false } = {}) {
   const wrap = (str, wrapper) => wrapper + str + wrapper
 
   schema = sanitize(schema)
@@ -533,9 +533,9 @@ function getSchemaType(schema, module, { destination, templateDir = 'types', lin
   if (schema['$ref']) {
     if (schema['$ref'][0] === '#') {
       const refSchema = getPath(schema['$ref'], module)
-      const refName = refSchema.title || schema['$ref'].split('/').pop()
+      refSchema.title = !refSchema.title ? schema['$ref'].split('/').pop() : refSchema.title
       const includeNamespace = (module.info.title !== getXSchemaGroup(refSchema, module))
-      return getSchemaType(refSchema, module, {destination, templateDir, link, title, code, asPath, event, result, expandEnums, baseUrl, namespace:includeNamespace, name:refName })// { link: link, code: code, destination })
+      return getSchemaType(refSchema, module, {destination, templateDir, link, title, code, asPath, event, result, expandEnums, baseUrl, namespace:includeNamespace})// { link: link, code: code, destination })
     }
     else {
       // TODO: This never happens... but might be worth keeping in case we link to an opaque external schema at some point?
@@ -669,17 +669,11 @@ function getSchemaType(schema, module, { destination, templateDir = 'types', lin
     // }
   }
   else if (schema.type) {
-    if (schema.additionalProperties) {
-      const type = getTemplate(path.join(templateDir, 'additionalPropertiesType')).replace(/\$\{title\}/g, name)
-      return wrap(type, code ? '`' : '')
-    }
-    else {
-      // TODO: this assumes that when type is an array of types, that it's one other primative & 'null', which isn't necessarily true.
-      const schemaType = !Array.isArray(schema.type) ? schema.type : schema.type.find(t => t !== 'null')
-      const primitive = getPrimitiveType(schemaType, templateDir)
-      const type = allocatedProxy ? allocatedPrimitiveProxies[schemaType] || primitive : primitive
-      return wrap(type, code ? '`' : '')
-    }
+    // TODO: this assumes that when type is an array of types, that it's one other primative & 'null', which isn't necessarily true.
+    const schemaType = !Array.isArray(schema.type) ? schema.type : schema.type.find(t => t !== 'null')
+    const primitive = getPrimitiveType(schemaType, templateDir)
+    const type = allocatedProxy ? allocatedPrimitiveProxies[schemaType] || primitive : primitive
+    return wrap(type, code ? '`' : '')
   }
   else {
     // TODO this is TypeScript specific
