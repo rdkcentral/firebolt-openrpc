@@ -1,3 +1,10 @@
+## [2.1.1-next.1](https://github.com/rdkcentral/firebolt-openrpc/compare/v2.1.0...v2.1.1-next.1) (2023-09-14)
+
+
+### Bug Fixes
+
+* Macro not replaced for provider docs ([ef1aecd](https://github.com/rdkcentral/firebolt-openrpc/commit/ef1aecd0092a8652bc7b936604f9478b7b55df27))
+
 # [2.1.0](https://github.com/rdkcentral/firebolt-openrpc/compare/v2.0.4...v2.1.0) (2023-09-07)
 
 
