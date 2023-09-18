@@ -1,1 +1,1 @@
-${method.result.type}
+const ${method.result.type}
