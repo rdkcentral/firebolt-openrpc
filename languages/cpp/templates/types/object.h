@@ -1,5 +1,3 @@
-struct ${title} {
-
+${inner.shapes}struct ${title} {
     ${properties}
-
 };

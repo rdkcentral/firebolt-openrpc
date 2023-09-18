@@ -154,7 +154,7 @@ const insertConstMacros = (content, schema, module, name) => {
   return content
 }
 
-const insertEnumMacros = (content, schema, module, name) => {
+const insertEnumMacros = (content, schema, module, name, suffix) => {
   const template = content.split('\n')
 
   for (var i = 0; i < template.length; i++) {
@@ -163,6 +163,9 @@ const insertEnumMacros = (content, schema, module, name) => {
         return template[i].replace(/\$\{key\}/g, safeName(value))
           .replace(/\$\{value\}/g, value)
       }).join('\n')
+      if (suffix !== ".cpp") {
+        template[i] = template[i].replace(/,*$/, '');
+      }
     }
   }
 
@@ -210,11 +213,18 @@ const insertObjectMacros = (content, schema, module, title, property, options) =
     const template = getTemplate(path.join(options.templateDir, 'property' + (templateType ? `-${templateType}` : ''))).replace(/\n/gms, indent + '\n')
   
     const properties = []
+    const innerShapes = []
 
     if (schema.properties) {
       Object.entries(schema.properties).forEach(([name, prop], i) => {
         options2.property = name
+        prop.title = (prop.type === 'object') ? (capitalize(title) + capitalize(name)) : ''
+
         const schemaShape = getSchemaShape(prop, module, options2)
+        if (prop.type === 'object' && schemaShape) {
+          !innerShapes.includes(schemaShape) ? innerShapes.push(schemaShape + '\n') : null
+        }
+
         const type = getSchemaType(prop, module, options2)
         // don't push properties w/ unsupported types
         if (type) {
@@ -278,6 +288,7 @@ const insertObjectMacros = (content, schema, module, title, property, options) =
     const regex = new RegExp("\\$\\{" + macro + "\\}", "g")
 
     content = content.replace(regex, properties.join('\n'))
+    content = content.replace(/\$\{inner\.shapes\}/g, innerShapes)
   })
 
   return content
@@ -375,7 +386,7 @@ function getSchemaShape(schema = {}, module = {}, { templateDir = 'types', name 
 
   if (enums && level === 0 && schema.type === "string" && Array.isArray(schema.enum)) {
     result = getTemplate(path.join(templateDir, 'enum' + suffix))
-    return insertSchemaMacros(insertEnumMacros(result, schema, module, theTitle), schema, module, theTitle, parent, property)
+    return insertSchemaMacros(insertEnumMacros(result, schema, module, theTitle, suffix), schema, module, theTitle, parent, property)
   }
 
   if (schema['$ref']) {
@@ -413,14 +424,27 @@ function getSchemaShape(schema = {}, module = {}, { templateDir = 'types', name 
     return insertSchemaMacros(result, schema, module, theTitle, parent, property)
   }
   else if (schema.anyOf || schema.oneOf) {
-    // borrow anyOf logic, note that schema is a copy, so we're not breaking it.
-    if (!schema.anyOf) {
-      schema.anyOf = schema.oneOf
+    const template = getTemplate(path.join(templateDir, 'anyOfSchema' + suffix))
+    let shape
+    if (template) {
+      if (!template.includes('SKIP')) {
+        shape = insertAnyOfMacros(template, schema, module, theTitle)
+      }
     }
-    const shape = insertAnyOfMacros(getTemplate(path.join(templateDir, 'anyOf' + suffix)), schema, module, theTitle)
-
-    result = result.replace(/\$\{shape\}/g, shape)
-    return insertSchemaMacros(result, schema, module, theTitle, parent, property)
+    else {
+      // borrow anyOf logic, note that schema is a copy, so we're not breaking it.
+      if (!schema.anyOf) {
+        schema.anyOf = schema.oneOf
+      }
+      shape = insertAnyOfMacros(getTemplate(path.join(templateDir, 'anyOf' + suffix)), schema, module, theTitle)
+    }
+    if (shape) {
+      result = result.replace(/\$\{shape\}/g, shape)
+      return insertSchemaMacros(result, schema, module, theTitle, parent, property)
+    }
+    else {
+      return ''
+    }
   }
   else if (schema.allOf) {
     const merger = (key) => function (a, b) {
@@ -557,7 +581,7 @@ function getSchemaType(schema, module, { destination, templateDir = 'types', lin
     }
   }
   else if (schema.const) {
-    return (typeof schema.const === 'string' ? `'${schema.const}'` : schema.const)
+    return insertConstMacros(getTemplate(path.join(templateDir, 'const' + suffix)), schema, module)
   }
   else if (schema['x-method']) {
     const target = JSON.parse(JSON.stringify(module.methods.find(m => m.name === schema['x-method'].split('.').pop())))
@@ -669,9 +693,9 @@ function getSchemaType(schema, module, { destination, templateDir = 'types', lin
     // }
   }
   else if (schema.type) {
-    const template = getTemplate(path.join(templateDir, 'additionalPropertiesTitle'))
+    const template = getTemplate(path.join(templateDir, 'additionalProperties'))
     if (schema.additionalProperties && template ) {
-      return insertSchemaMacros(template, schema, module, theTitle, '', '', false)
+      return insertSchemaMacros(getTemplate(path.join(templateDir, 'Title')), schema, module, theTitle, '', '', false)
     }
     else {
       // TODO: this assumes that when type is an array of types, that it's one other primative & 'null', which isn't necessarily true.
