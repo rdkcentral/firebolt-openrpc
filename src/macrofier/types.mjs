@@ -294,8 +294,8 @@ const insertObjectMacros = (content, schema, module, title, property, options) =
   return content
 }
 
-const insertArrayMacros = (content, schema, module, name) => {
-  return content
+const insertArrayMacros = (content, schema, module) => {
+  return content.replace(/\$\{json\.type\}/g, getSchemaType(schema.items, module, { templateDir: 'json-types', destination: state.destination, section: state.section, code: false, namespace: true }))
 }
 
 const insertTupleMacros = (content, schema, module, title, options) => {
@@ -330,8 +330,8 @@ const insertTupleMacros = (content, schema, module, title, options) => {
 }
 
 const getPrimitiveType = (type, templateDir) => {
-  const template = getTemplate(path.join(templateDir, type))
-  return primitives[type] || template
+  const template = getTemplate(path.join(templateDir, type)) || getTemplate(path.join(templateDir, 'default'))
+  return template || primitives[type]
 }
 
 const pickBestType = types => Array.isArray(types) ? types.find(t => t !== 'null') : types
@@ -378,7 +378,7 @@ function getSchemaShape(schema = {}, module = {}, { templateDir = 'types', name 
   if (level === 0 && !schema.title) {
     return ''
   }
-  
+ 
   const suffix = destination && ('.' + destination.split('.').pop()) || ''
   const theTitle = insertSchemaMacros(getTemplate(path.join(templateDir, 'title' + suffix)), schema, module, schema.title || name, parent, property, false)
 

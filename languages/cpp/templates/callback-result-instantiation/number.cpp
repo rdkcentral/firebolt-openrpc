@@ -1,0 +1,1 @@
+                float response = *(*proxyResponse).Value();

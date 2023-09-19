@@ -20,22 +20,24 @@
 /* ${IMPORTS} */
 #include "${info.title.lowercase}.h"
 
-${if.types}namespace Firebolt {
+${if.implementations}
+namespace Firebolt {
+${if.types}
 
 /* ${ENUMS:json-types} */
+${end.if.types}
 
-${if.definitions}namespace ${info.Title} {
+    ${if.definitions}class ${info.Title}Impl : public ${info.Title}::I${info.Title} {
+${if.types}
 
+        // Types
+        /* ${TYPES:json-types} */
+${end.if.types}
 
-// Types
-       /* ${TYPES:json-types} */
+        // Methods
+        /* ${METHODS} */
 
-// Methods
-/* ${METHODS} */
-
-// Events
-/* ${EVENTS} */
-
-
-}${end.if.definitions}
-}${end.if.types}
+        // Events
+        /* ${EVENTS} */
+};${end.if.definitions}
+}${end.if.implementations}

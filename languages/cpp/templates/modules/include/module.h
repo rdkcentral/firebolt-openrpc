@@ -32,6 +32,7 @@ namespace ${info.Title} {
 
 struct I${info.Title} {
 
+    static I${info.Title}& Instance();
     virtual ~I${info.Title}() = default;
 
     // Methods & Events

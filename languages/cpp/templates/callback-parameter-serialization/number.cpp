@@ -1,0 +1,1 @@
+            WPEFramework::Core::ProxyType<FireboltSDK::JSON::Float>* proxyResponse = reinterpret_cast<WPEFramework::Core::ProxyType<FireboltSDK::JSON::Float>*>(jsonResponse);
