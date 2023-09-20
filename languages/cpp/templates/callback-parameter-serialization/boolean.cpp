@@ -1,1 +1,0 @@
-            WPEFramework::Core::ProxyType<FireboltSDK::JSON::Boolean>* proxyResponse = reinterpret_cast<WPEFramework::Core::ProxyType<FireboltSDK::JSON::Boolean>*>(jsonResponse);

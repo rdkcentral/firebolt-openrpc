@@ -569,7 +569,9 @@ const insertMacros = (fContents = '', macros = {}) => {
 
   fContents = fContents.replace(/\$\{if\.types\}(.*?)\$\{end\.if\.types\}/gms, macros.types.types.trim() ? '$1' : '')
   fContents = fContents.replace(/\$\{if\.schemas\}(.*?)\$\{end\.if\.schemas\}/gms, macros.schemas.types.trim() ? '$1' : '')
-  fContents = fContents.replace(/\$\{if\.declarations\}(.*?)\$\{end\.if\.declarations\}/gms, (macros.declarations.trim() || macros.enums.types.trim()) ? '$1' : '')
+  fContents = fContents.replace(/\$\{if\.enums\}(.*?)\$\{end\.if\.enums\}/gms, macros.enums.types.trim() ? '$1' : '')
+  fContents = fContents.replace(/\$\{if\.declarations\}(.*?)\$\{end\.if\.declarations\}/gms, (macros.declarations.trim() || macros.enums.types.trim()) || macros.types.types.trim()? '$1' : '')
+
   fContents = fContents.replace(/\$\{if\.definitions\}(.*?)\$\{end\.if\.definitions\}/gms, (macros.methods.trim() || macros.events.trim()) ? '$1' : '')
   fContents = fContents.replace(/\$\{if\.implementations\}(.*?)\$\{end\.if\.implementations\}/gms, (macros.methods.trim() || macros.events.trim() || macros.types.types.trim() || macros.schemas.types.trim()) ? '$1' : '')
 

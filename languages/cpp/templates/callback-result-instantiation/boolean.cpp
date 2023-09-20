@@ -1,1 +1,0 @@
-                bool response = *(*proxyResponse).Value();

@@ -121,7 +121,7 @@ const getXSchemaGroup = (schema, module, title = '') => {
   return group
 }
 
-function insertSchemaMacros(content, schema, module, name, parent, property, recursive = true) {
+function insertSchemaMacros(content, schema, module, name, parent, property, recursive = true, templateDir = 'types') {
   const title = name || schema.title || ''
   let moduleTitle = getXSchemaGroup(schema, module)
 
@@ -143,7 +143,7 @@ function insertSchemaMacros(content, schema, module, name, parent, property, rec
     .replace(/\$\{info.TITLE\}/g, moduleTitle.toUpperCase())
 
   if (recursive) {
-    content = content.replace(/\$\{type\}/g, getSchemaType(schema, module, { name: title, destination: state.destination, section: state.section, code: false, namespace: true }))
+    content = content.replace(/\$\{type\}/g, getSchemaType(schema, module, { templateDir: templateDir, name: title, destination: state.destination, section: state.section, code: false, namespace: true }))
   }
   return content
 }
@@ -206,6 +206,7 @@ const insertObjectMacros = (content, schema, module, title, property, options) =
   options2.parent = title
   options2.level = options.level + 1
   options2.name = ''
+  options2.templateDir = options.templateDir
 
   ;(['properties', 'properties.register', 'properties.assign']).forEach(macro => {
     const indent = (content.split('\n').find(line => line.includes("${" + macro + "}")) || '').match(/^\s+/) || [''][0]
@@ -383,9 +384,10 @@ function getSchemaShape(schema = {}, module = {}, { templateDir = 'types', name 
   const theTitle = insertSchemaMacros(getTemplate(path.join(templateDir, 'title' + suffix)), schema, module, schema.title || name, parent, property, false)
 
   let result = level === 0 ? getTemplate(path.join(templateDir, 'default' + suffix)) : '${shape}'
+  let genericTemplate = getTemplate(path.join(templateDir, 'generic' + suffix))
 
-  if (enums && level === 0 && schema.type === "string" && Array.isArray(schema.enum)) {
-    result = getTemplate(path.join(templateDir, 'enum' + suffix))
+  if (enums /*&& level === 0*/ && schema.type === "string" && Array.isArray(schema.enum)) {
+    result = getTemplate(path.join(templateDir, 'enum' + suffix)) || genericTemplate
     return insertSchemaMacros(insertEnumMacros(result, schema, module, theTitle, suffix), schema, module, theTitle, parent, property)
   }
 
@@ -403,7 +405,7 @@ function getSchemaShape(schema = {}, module = {}, { templateDir = 'types', name 
   }
   else if (!skipTitleOnce && (level > 0) && schema.title) {
     // TODO: allow the 'ref' template to actually insert the shape using getSchemaShape
-    const innerShape = getSchemaShape(schema, module, { skipTitleOnce: true, templateDir, name, parent, property, level, summary, descriptions, destination, enums: false })
+    const innerShape = getSchemaShape(schema, module, { skipTitleOnce: true, templateDir, name, parent, property, level, summary, descriptions, destination, enums: enumType })
 
     const shape = getTemplate(path.join(templateDir, 'ref' + suffix))
       .replace(/\$\{shape\}/g, innerShape)
@@ -421,7 +423,7 @@ function getSchemaShape(schema = {}, module = {}, { templateDir = 'types', name 
       shape = insertObjectMacros(getTemplate(path.join(templateDir, 'object' + suffix)), schema, module, theTitle, property, { level, parent, property, templateDir, descriptions, destination, section, enums, namespace: true })
     }
     result = result.replace(/\$\{shape\}/g, shape)
-    return insertSchemaMacros(result, schema, module, theTitle, parent, property)
+    return insertSchemaMacros(result, schema, module, theTitle, parent, property, true, templateDir)
   }
   else if (schema.anyOf || schema.oneOf) {
     const template = getTemplate(path.join(templateDir, 'anyOfSchema' + suffix))
@@ -472,19 +474,19 @@ function getSchemaShape(schema = {}, module = {}, { templateDir = 'types', name 
   }
   else if (schema.type === "array" && schema.items && isSupportedTuple(schema)) {
     // tuple
-    const shape = insertTupleMacros(getTemplate(path.join(templateDir, 'tuple' + suffix)), schema, module, theTitle, { level, templateDir, descriptions, destination, section, enums })
+    const shape = insertTupleMacros(getTemplate(path.join(templateDir, 'tuple' + suffix)) || genericTemplate, schema, module, theTitle, { level, templateDir, descriptions, destination, section, enums })
     result = result.replace(/\$\{shape\}/g, shape)
-    return insertSchemaMacros(result, schema, module, theTitle, parent, property)
+    return insertSchemaMacros(result, schema, module, theTitle, parent, property, true, templateDir)
   }
   else if (schema.type === "array" && schema.items && !Array.isArray(schema.items)) {
     // array
     const items = getSchemaShape(schema.items, module, { templateDir, name, parent, property, level, summary, descriptions, destination, enums: false })
-    const shape = insertArrayMacros(getTemplate(path.join(templateDir, 'array' + suffix)), schema, module, items)
+    const shape = insertArrayMacros(getTemplate(path.join(templateDir, 'array' + suffix)) || genericTemplate, schema, module, items)
     result = result.replace(/\$\{shape\}/g, shape)
-    return insertSchemaMacros(result, schema, module, items, parent, property)
+    return insertSchemaMacros(result, schema, module, items, parent, property, true, templateDir)
   }
   else if (schema.type) {
-    const shape = insertPrimitiveMacros(getTemplate(path.join(templateDir, 'primitive' + suffix)), schema, module, theTitle, templateDir)
+    const shape = insertPrimitiveMacros(getTemplate(path.join(templateDir, 'primitive' + suffix) || genericTemplate), schema, module, theTitle, templateDir)
     result = result.replace(/\$\{shape\}/g, shape)
     if (level > 0) {
       return insertSchemaMacros(result, schema, module, theTitle, parent, property)
@@ -549,7 +551,7 @@ function getSchemaType(schema, module, { destination, templateDir = 'types', lin
 
   const suffix = destination && ('.' + destination.split('.').pop()) || ''
   const namespaceStr = namespace ? getTemplate(path.join(templateDir, 'namespace' + suffix)) : ''
-  const theTitle = insertSchemaMacros(namespaceStr + getTemplate(path.join(templateDir, 'title' + suffix)), schema, module, schema.title || title, getXSchemaGroup(schema, module, title), '', false)
+  const theTitle = insertSchemaMacros(namespaceStr + getTemplate(path.join(templateDir, 'title' + suffix)), schema, module, schema.title || title, getXSchemaGroup(schema, module, title), '', false, templateDir)
   const allocatedProxy = event || result
 
   const hasTitle = schema.type === "object" || schema.enum ? true : false
@@ -670,7 +672,7 @@ function getSchemaType(schema, module, { destination, templateDir = 'types', lin
     if (schema.title) {
       union.title = schema.title
     }
-    return getSchemaType(union, module, { destination, link, hasTitle, code, asPath, baseUrl, namespace, title })
+    return getSchemaType(union, module, { templateDir, destination, link, hasTitle, code, asPath, baseUrl, namespace, title })
   }
   else if (schema.oneOf || schema.anyOf) {
     if (!schema.anyOf) {

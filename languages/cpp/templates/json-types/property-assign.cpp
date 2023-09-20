@@ -1,2 +1,2 @@
-        Add(_T("${property}"), &${Property});
-        ${Property} = other.${Property}
+                Add(_T("${property}"), &${Property});
+                ${Property} = other.${Property}

@@ -23,13 +23,16 @@
 
 ${if.declarations}namespace Firebolt {
 namespace ${info.Title} {
+${if.enums}
 
 // Enums
     /* ${ENUMS} */
+${end.if.enums}
+${if.types}
 
 // Types
 /* ${TYPES} */
-
+${end.if.types}
 struct I${info.Title} {
 
     static I${info.Title}& Instance();

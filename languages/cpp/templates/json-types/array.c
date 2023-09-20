@@ -1,1 +1,1 @@
-WPEFramework::Core::JSON::ArrayType<${type}>
+WPEFramework::Core::JSON::ArrayType<${json.type}>

@@ -7,8 +7,8 @@ ${event.callback.params.serialization}
 ${event.callback.result.instantiation}
                 proxyResponse->Release();
 
-                ${info.Title}${method.Name}Callback callback = reinterpret_cast<${info.Title}${method.Name}Callback>(notification);
-                callback(userData, ${event.callback.response.instantiation});
+                I${method.Name}Notification& notifier = *(reinterpret_cast<I${method.Name}Notification*>(notification);
+                notifier.${method.Name}(${event.callback.response.instantiation});
             }
         }
         void Subscribe( ${event.signature.params}${if.event.params}, ${end.if.event.params}I${method.Name}Notification& notification, Firebolt_Error *err = nullptr )
@@ -18,7 +18,7 @@ ${event.callback.result.instantiation}
 
             if (notification != nullptr) {
 ${event.params.serialization}
-               status = FireboltSDK::Event::Instance().Subscribe<${event.result.json.type}>(eventName, jsonParameters, ${info.Title}${method.Name}InnerCallback, reinterpret_cast<void*>(notification), userData);
+               status = FireboltSDK::Event::Instance().Subscribe<${event.result.json.type}>(eventName, jsonParameters, ${info.Title}${method.Name}InnerCallback, reinterpret_cast<void*>(notification), nullptr);
             }
         }
         void Unsubscribe( I${method.Name}Notification& notification, Firebolt_Error *err = nullptr )

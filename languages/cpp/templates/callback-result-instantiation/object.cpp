@@ -1,1 +1,2 @@
-Add for object callback result instantiation
+                ${title} response;
+${properties}
