@@ -131,7 +131,7 @@ function insertSchemaMacros(content, schema, module, name, parent, property, rec
     .replace(/\$\{TITLE\}/g, title.toUpperCase())
     .replace(/\$\{property\}/g, property)
     .replace(/\$\{Property\}/g, capitalize(property))
-    .replace(/\$\{if\.namespace\.notsame}(.*?)\$\{end\.if\.namespace\.notsame\}/g, (module.info.title !== parent) ? '$1' : '')
+    .replace(/\$\{if\.namespace\.notsame}(.*?)\$\{end\.if\.namespace\.notsame\}/g, (module.info.title !== (parent || moduleTitle)) ? '$1' : '')
     .replace(/\$\{parent\.title\}/g, parent)
     .replace(/\$\{parent\.Title\}/g, capitalize(parent))
     .replace(/\$\{description\}/g, schema.description ? schema.description : '')
@@ -183,15 +183,21 @@ const insertObjectAdditionalPropertiesMacros = (content, schema, module, title, 
   const shape = getSchemaShape(schema.additionalProperties, module, options2)
   let type = getSchemaType(schema.additionalProperties, module, options2).trimEnd()
   const propertyNames = localizeDependencies(schema, module).propertyNames
+
+  let jsonType = getJsonType(schema.additionalProperties, module)
+  if (!isPrimitiveType(jsonType)) {
+    jsonType = 'string'
+  }
+
+  const additionalType = getPrimitiveType(jsonType, 'additional-types')
   let key = (propertyNames && propertyNames.title) ? propertyNames.title : getTemplate(path.join(options.templateDir, 'additionalPropertiesKey')).trimEnd()
 
   content = content
-    .replace(/\$\{property\}/g, '')
-    .replace(/\$\{Property\}/g, '')
     .replace(/\$\{shape\}/g, shape)
     .replace(/\$\{parent\.title\}/g, title)
     .replace(/\$\{title\}/g, title)
     .replace(/\$\{type\}/g, type)
+    .replace(/\$\{additional\.type\}/g, additionalType)
     .replace(/\$\{key\}/g, key)
     .replace(/\$\{delimiter\}(.*?)\$\{end.delimiter\}/g, '')
     .replace(/\$\{if\.optional\}(.*?)\$\{end\.if\.optional\}/g, '')
@@ -228,8 +234,6 @@ const insertObjectMacros = (content, schema, module, title, property, options) =
         options2.templateDir += subProperty ? '/sub-property' : ''
         const delimiter = getTemplate(path.join(options2.templateDir, 'delimiter'))
 
-        prop.dependency = schema.dependency ? (schema.dependency + '.' + capitalize(name)) : capitalize(name)
-
         const schemaShape = getSchemaShape(prop, module, options2)
         if (schemaShape) {
           if (localizedProp.type === 'object') {
@@ -258,10 +262,13 @@ const insertObjectMacros = (content, schema, module, title, property, options) =
           if (localizedProp.type === 'object') {
             replacedTemplate = replacedTemplate
 
-            .replace(/\$\{property.dependency\}/g, ((options2.level > 2) ? '${property.dependency}' : '') + name + delimiter)
-            .replace(/\$\{Property.dependency\}/g, ((options2.level > 2) ? '${Property.dependency}' : '') + capitalize(name) + delimiter)
+            .replace(/\$\{property.dependency\}/g, ((options.level > 1) ? '${property.dependency}' : '') + name + delimiter)
+            .replace(/\$\{Property.dependency\}/g, ((options.level > 1) ? '${Property.dependency}' : '') + capitalize(name) + delimiter)
 
           }
+          let baseTitle = title || schema.title
+          replacedTemplate = replacedTemplate
+            .replace(/\$\{base.title\}/g, ((options.level <= 1) ? (baseTitle ? (baseTitle)[0].toLowerCase() + (baseTitle).substr(1) : '') : ''))
           properties.push((i !== 0 ? indent : '') + replacedTemplate)
         }
       })
@@ -350,7 +357,7 @@ const insertTupleMacros = (content, schema, module, title, options) => {
 
   content = content.replace(/\$\{properties\}/g, schema.items.map((prop, i) => doMacroWork(propTemplate, prop, i, propIndent)).join(delimiter))
   content = content.replace(/\$\{items\}/g, schema.items.map((prop, i) => doMacroWork(itemsTemplate, prop, i, itemsIndent)).join(delimiter))
-
+  content = content.replace(/\$\{json\.type\}/g, getSchemaType(schema.items[0], module, { templateDir: 'json-types', destination: state.destination, section: state.section, code: false, namespace: true }))
   return content
 }
 
