@@ -21,16 +21,15 @@
 #include <firebolt.h>
 /* ${IMPORTS} */
 
-namespace Firebolt {
+${if.declarations}namespace Firebolt {
 namespace ${info.Title} {
-
+${if.enums}
 
 // Enums
-/* ${ENUMS} */
-
+/* ${ENUMS} */${end.if.enums}
+${if.types}
 // Types
-/* ${TYPES} */
-
+/* ${TYPES} */${end.if.types}
 
 } //namespace ${info.Title}
-}
+}${end.if.declarations}

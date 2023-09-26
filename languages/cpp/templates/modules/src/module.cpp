@@ -22,22 +22,21 @@
 
 ${if.implementations}
 namespace Firebolt {
+namespace ${info.Title} {
+${if.enums}
+
+/* ${ENUMS:json-types} */${end.if.enums}
 ${if.types}
+    // Types
+/* ${TYPES:json-types} */${end.if.types}
 
-/* ${ENUMS:json-types} */
-${end.if.types}
-
-    ${if.definitions}class ${info.Title}Impl : public ${info.Title}::I${info.Title} {
-${if.types}
-
-        // Types
-        /* ${TYPES:json-types} */
-${end.if.types}
-
+    ${if.definitions}class ${info.Title}Impl : public I${info.Title} {
         // Methods
         /* ${METHODS} */
 
         // Events
         /* ${EVENTS} */
-};${end.if.definitions}
+    };${end.if.definitions}
+
+}//namespace ${info.Title}
 }${end.if.implementations}

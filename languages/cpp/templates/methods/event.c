@@ -26,4 +26,3 @@ ${event.params.serialization}
         {
             int32_t status = FireboltSDK::Event::Instance().Unsubscribe(_T("${info.title.lowercase}.${method.rpc.name}"), reinterpret_cast<void*>(notification));
         }
-

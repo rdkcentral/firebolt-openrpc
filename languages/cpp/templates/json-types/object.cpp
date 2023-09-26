@@ -1,25 +1,25 @@
-        class ${title}: public WPEFramework::Core::JSON::Container {
-        public:
-            ~${title}() override = default;
+    class ${title}: public WPEFramework::Core::JSON::Container {
+    public:
+        ~${title}() override = default;
   
-        public:
-            ${title}()
-                : WPEFramework::Core::JSON::Container()
-            {
+    public:
+        ${title}()
+            : WPEFramework::Core::JSON::Container()
+        {
 ${properties.register}
-            }
+        }
 
-            ${title}(const ${title}& other)
-            {
+        ${title}(const ${title}& other)
+        {
 ${properties.assign}
-            }
+        }
 
-            ${title}& operator=(const ${title}& other)
-            {
+        ${title}& operator=(const ${title}& other)
+        {
 ${properties.assign}
-                return (*this);
-            }
+            return (*this);
+        }
 
-        public:
+    public:
 ${properties}
-        };
+    };

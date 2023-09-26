@@ -26,10 +26,8 @@ namespace ${info.Title} {
 ${if.enums}
 
 // Enums
-    /* ${ENUMS} */
-${end.if.enums}
+/* ${ENUMS} */${end.if.enums}
 ${if.types}
-
 // Types
 /* ${TYPES} */
 ${end.if.types}

@@ -1,1 +1,1 @@
-            ${title} ${Property};
+        ${title} ${Property};

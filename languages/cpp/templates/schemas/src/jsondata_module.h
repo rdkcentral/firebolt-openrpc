@@ -23,8 +23,8 @@
 
 ${if.schemas}namespace Firebolt {
 namespace ${info.Title} {
-    // Types
 
+    // Types
        /* ${SCHEMAS:json-types} */
     }
 }${end.if.schemas}

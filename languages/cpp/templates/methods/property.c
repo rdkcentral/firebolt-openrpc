@@ -11,5 +11,4 @@ ${method.result.initialization}
 ${method.result.instantiation}
             }
             return ${method.result.name};
-        }
-${method.setter}
+        }${method.setter}
