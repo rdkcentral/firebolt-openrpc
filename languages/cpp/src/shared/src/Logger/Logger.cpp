@@ -48,10 +48,10 @@ namespace FireboltSDK {
     int32_t Logger::SetLogLevel(Logger::LogLevel logLevel)
     {
         ASSERT(logLevel < Logger::LogLevel::MaxLevel);
-        int32_t status = Firebolt_Error_NotSupported;
+        int32_t status = Firebolt::Error::General;
         if (logLevel < Logger::LogLevel::MaxLevel) {
             _logLevel = logLevel;
-            status = Firebolt_Error_None;
+            status = Firebolt::Error::None;
         }
         return status;
     }

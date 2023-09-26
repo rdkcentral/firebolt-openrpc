@@ -72,7 +72,7 @@ const run = async ({
     overrideRule: config.overrideRule,
     staticModuleNames: staticModuleNames,
     hideExcluded: true,
-    aggregateFile: config.aggregateFile,
+    aggregateFiles: config.aggregateFiles,
     rename: mainFilename ? { '/index.mjs': mainFilename, '/index.d.ts': declarationsFilename } : {},
     treeshakePattern: config.treeshakePattern ? new RegExp(config.treeshakePattern, "g") : undefined,
     treeshakeTypes: config.treeshakeTypes,

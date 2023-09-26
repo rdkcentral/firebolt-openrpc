@@ -54,7 +54,7 @@ const macrofy = async (
         additionalSchemaTemplates,
         excludeDeclarations,
         overrideRule,
-        aggregateFile,
+        aggregateFiles,
         operators,
         primitives,
         hidePrivate = true,
@@ -146,22 +146,21 @@ const macrofy = async (
         const outputFiles = Object.fromEntries(Object.entries(await readFiles( staticCodeList, staticContent))
                                 .map( ([n, v]) => [path.join(output, n), v]))
         
-        let primaryOutput
+        let primaryOutput = []
 
         Object.keys(templates).forEach(file => {
             if (file.startsWith(path.sep + outputDirectory + path.sep) || outputDirectory === '') {
                 // Note: '/foo/bar/file.js'.split('/') => ['', 'foo', 'bar', 'file.js'] so we need to drop one more that you might suspect, hence slice(2) below...
                 const dirsToDrop = outputDirectory === '' ? 1 : 2
                 let outputFile = path.sep + file.split(path.sep).slice(dirsToDrop).join(path.sep)
-                const isPrimary = outputFile === aggregateFile
-
+                const isPrimary = (aggregateFiles.includes(outputFile))
                 if (rename[outputFile]) {
                     outputFile = outputFile.split(path.sep).slice(0, -1).concat([rename[outputFile]]).join(path.sep)
                 }
 
                 if (isPrimary) {
-                    primaryOutput = path.join(output, outputFile)
-                }
+                    primaryOutput.push(path.join(output, outputFile))
+		}
 
                 const content = engine.insertAggregateMacros(templates[file], aggregateMacros)
                 outputFiles[path.join(output, outputFile)] = content
@@ -196,9 +195,11 @@ const macrofy = async (
             })
 
             if (primaryOutput) {
-                const macros = engine.generateMacros(module, templates, exampleTemplates, {hideExcluded: hideExcluded, copySchemasIntoModules: copySchemasIntoModules, createPolymorphicMethods: createPolymorphicMethods, destination: primaryOutput})
-                macros.append = append
-                outputFiles[primaryOutput] = engine.insertMacros(outputFiles[primaryOutput], macros)
+                primaryOutput.forEach(output => {
+                    const macros = engine.generateMacros(module, templates, exampleTemplates, {hideExcluded: hideExcluded, copySchemasIntoModules: copySchemasIntoModules, createPolymorphicMethods: createPolymorphicMethods, destination: output})
+                    macros.append = append
+                    outputFiles[output] = engine.insertMacros(outputFiles[output], macros)
+                })
             }
 
             append = true

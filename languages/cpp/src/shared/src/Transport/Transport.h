@@ -866,16 +866,14 @@ namespace FireboltSDK {
             int32_t fireboltError = error;
             switch (error) {
             case WPEFramework::Core::ERROR_NONE:
-                fireboltError = Firebolt_Error_None;
+                fireboltError = Firebolt::Error::None;
                 break;
             case WPEFramework::Core::ERROR_GENERAL:
-                fireboltError = Firebolt_Error_General;
-                break;
             case WPEFramework::Core::ERROR_UNAVAILABLE:
-                fireboltError = Firebolt_Error_Unavailable;
+                fireboltError = Firebolt::Error::General;
                 break;
             case WPEFramework::Core::ERROR_TIMEDOUT:
-                fireboltError = Firebolt_Error_Timedout;
+                fireboltError = Firebolt::Error::Timedout;
                 break;
             default:
                 break;

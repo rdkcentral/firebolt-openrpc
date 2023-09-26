@@ -7,6 +7,10 @@
     "createPolymorphicMethods": true,
     "excludeDeclarations": true,
     "overrideRule": true,
+    "aggregateFiles": [
+        "/include/firebolt.h",
+        "/src/firebolt.cpp"
+    ],
     "templatesPerModule": [
         "/include/module.h",
         "/src/module.cpp"

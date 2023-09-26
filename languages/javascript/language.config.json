@@ -8,6 +8,9 @@
     "createModuleDirectories": true,
     "copySchemasIntoModules": true,
     "aggregateFile": "/index.d.ts",
+    "aggregateFiles": [
+        "/index.d.ts"
+    ],
     "treeshakePattern": "(import|export).*?from\\s+['\"](.*?)['\"]",
     "treeshakeTypes": [".js", ".mjs"],
     "operators": {

@@ -16,24 +16,38 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include "FireboltSDK.h"
+#pragma once
 
+#include <firebolt.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+namespace Firebolt {
 
+    class FireboltAccessorImpl :: public IFireboltAccessor {
 
-int32_t FireboltSDK_Initialize(char* configLine) {
-    FireboltSDK::Accessor::Instance(configLine);
-    return Firebolt_Error_None;
+    static IFireboltAccessor& Instance()
+    {
+    }
+
+    Firebolt::Error Connect ( const std::string& configLine, OnConnectionChanged listener ) override
+    {
+
+    }
+
+    Firebolt::Error Disconnect ( ) override
+    {
+    }
+
+    void Dispose() override
+    {
+${module.deinit}
+    }
+
+    void ErrorListener(OnError notification) override
+    {
+    }
+
+${module.init}
+
+};
+
 }
-
-int32_t FireboltSDK_Deinitialize(void) {
-    FireboltSDK::Accessor::Dispose();
-    return Firebolt_Error_None;
-}
-
-#ifdef __cplusplus
-}
-#endif

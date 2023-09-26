@@ -538,7 +538,12 @@ const generateMacros = (obj, templates, languages, options = {}) => {
   const events = eventsArray.length ? getTemplate('/sections/events', templates).replace(/\$\{event.list\}/g, eventsArray.map(m => m.body).join('\n')) : ''
   const eventList = eventsArray.map(m => makeEventName(m))
   const defaults = generateDefaults(obj, templates)
+
+  const suffix = options.destination ? options.destination.split('.').pop().trim() : ''
   const module = getTemplate('/codeblocks/module', templates)
+  const moduleInclude = getTemplate(suffix ? `/codeblocks/module-include.${suffix}` : '/codeblocks/module-include', templates)
+  const moduleInit = getTemplate(suffix ? `/codeblocks/module-init.${suffix}` : '/codeblocks/module-init', templates)
+  const moduleDeinit = getTemplate(suffix ? `/codeblocks/module-deinit.${suffix}` : '/codeblocks/module-deinit', templates)
 
   Object.assign(macros, {
     imports,
@@ -556,6 +561,9 @@ const generateMacros = (obj, templates, languages, options = {}) => {
     title: obj.info.title,
     description: obj.info.description,
     module: module,
+    moduleInclude: moduleInclude,
+    moduleInit: moduleInit,
+    moduleDeinit: moduleDeinit,
     public: hasPublicAPIs(obj)
   })
 
@@ -589,6 +597,9 @@ const insertMacros = (fContents = '', macros = {}) => {
   fContents = fContents.replace(/\$\{if\.implementations\}(.*?)\$\{end\.if\.implementations\}/gms, (macros.methods.trim() || macros.events.trim() || macros.schemas.types.trim()) ? '$1' : '')
 
   fContents = fContents.replace(/\$\{module.list\}/g, macros.module)
+  fContents = fContents.replace(/\$\{module.includes\}/g, macros.moduleInclude)
+  fContents = fContents.replace(/\$\{module.init\}/g, macros.moduleInit)
+  fContents = fContents.replace(/\$\{module.deinit\}/g, macros.moduleDeinit)
   fContents = fContents.replace(/[ \t]*\/\* \$\{METHODS\} \*\/[ \t]*\n/, macros.methods)
   fContents = fContents.replace(/[ \t]*\/\* \$\{DECLARATIONS\} \*\/[ \t]*\n/, macros.declarations)
   fContents = fContents.replace(/[ \t]*\/\* \$\{METHOD_LIST\} \*\/[ \t]*\n/, macros.methodList.join(',\n'))

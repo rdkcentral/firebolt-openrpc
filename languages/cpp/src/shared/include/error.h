@@ -16,31 +16,24 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef FIREBOLT_ERROR_H
-#define FIREBOLT_ERROR_H
+#pragma once
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+namespace Firebolt {
 
-enum Firebolt_Error {
-    Firebolt_Error_None = 0,
-    Firebolt_Error_General = 1,
-    Firebolt_Error_Timedout = 2,
-    Firebolt_Error_Unavailable = 3,
-    Firebolt_Error_InUse = 4,
-    Firebolt_Error_NotSupported = 5,
-    Firebolt_Error_InvalidRequest = -32600,
-    Firebolt_Error_MethodNotFound = -32601,
-    Firebolt_Error_InvalidParams = -32602,
-    Firebolt_Error_CapabilityNotAvaialbale = -50300,
-    Firebolt_Error_CapabilityNotSupported = -50100
-    Firebolt_Error_CapabilityGet = -50200
-    Firebolt_Error_CapabilityNotPermitted = - 40300
-};
+    enum class Error : int32_t {
+        None = 0,
+        General = 1,
+        Timedout = 2,
+        NotConnected = 3,
+        AlreadyConnected = 4,
+        //AuthenticationError, ?
+        InvalidRequest = -32600,
+        MethodNotFound = -32601,
+        InvalidParams = -32602,
+        CapabilityNotAvaialbale = -50300,
+        CapabilityNotSupported = -50100,
+        CapabilityGet = -50200,
+        CapabilityNotPermitted = -40300,
+    };
 
-#ifdef __cplusplus
 }
-#endif
-
-#endif // FIREBOLT_ERROR_H

@@ -395,7 +395,7 @@ function getSchemaShape(schema = {}, module = {}, { templateDir = 'types', name 
   if (level === 0 && !schema.title) {
     return ''
   }
- 
+
   const suffix = destination && ('.' + destination.split('.').pop()) || ''
   const theTitle = insertSchemaMacros(getTemplate(path.join(templateDir, 'title' + suffix)), schema, module, schema.title || name, parent, property, false, overrideRule, templateDir)
 
