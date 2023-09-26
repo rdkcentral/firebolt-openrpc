@@ -56,12 +56,12 @@ let config = {
   copySchemasIntoModules: false,
   extractSubSchemas: false,
   unwrapResultObjects: false,
-  excludeDeclarations: false
+  excludeDeclarations: false,
+  overrideRule: false
 }
 
 const state = {
   destination: undefined,
-  section: undefined,
   typeTemplateDir: 'types',
   section: undefined
 }
@@ -119,8 +119,7 @@ const getTemplateForExampleResult = (method, templates) => {
 const getLinkForSchema = (schema, json, { name = '' } = {}) => {
   const dirs = config.createModuleDirectories
   const copySchemasIntoModules = config.copySchemasIntoModules
-
-  const type = types.getSchemaType(schema, json, { name: name, templateDir: state.typeTemplateDir, destination: state.destination, section: state.section })
+  const type = types.getSchemaType(schema, json, { name: name, templateDir: state.typeTemplateDir, destination: state.destination, section: state.section, overrideRule: config.overrideRule })
 
   // local - insert a bogus link, that we'll update later based on final table-of-contents
   if (json.components.schemas[type]) {
@@ -376,7 +375,10 @@ const promoteSchema = (location, property, title, document, destinationPath) => 
 }
 
 // only consider sub-objects and sub enums to be sub-schemas
-const isSubSchema = (schema) => schema.type === 'object' || (schema.type === 'string' && schema.enum) // || (schema.type === 'array' && schema.items)
+const isSubSchema = (schema) => schema.type === 'object' || (schema.type === 'string' && schema.enum)
+
+// check schema is sub enum of array
+const isSubEnumOfArraySchema = (schema) => (schema.type === 'array' && schema.items.enum)
 
 const promoteAndNameSubSchemas = (obj) => {
   // make a copy so we don't polute our inputs
@@ -403,19 +405,30 @@ const promoteAndNameSubSchemas = (obj) => {
     while (more) {
       more = false
       Object.entries(obj.components.schemas).forEach(([key, schema]) => {
-        if ((schema.type === "object") && schema.properties) {
-          Object.entries(schema.properties).forEach(([name, propSchema]) => {
-            if (isSubSchema(propSchema)) {
-              more = true
-              const descriptor = {
-                name: name,
-                schema: propSchema
+        let componentSchemaProperties = schema.allOf ? schema.allOf : [schema]
+        componentSchemaProperties.forEach((componentSchema) => {
+          if ((componentSchema.type === "object") && componentSchema.properties) {
+            Object.entries(componentSchema.properties).forEach(([name, propSchema]) => {
+              if (isSubSchema(propSchema)) {
+                more = true
+                const descriptor = {
+                  name: name,
+                  schema: propSchema
+                }
+                addContentDescriptorSubSchema(descriptor, key, obj)
+                componentSchema.properties[name] = descriptor.schema
               }
-              addContentDescriptorSubSchema(descriptor, key, obj)
-              schema.properties[name] = descriptor.schema
-            }
-          })
-        }
+              if (isSubEnumOfArraySchema(propSchema)) {
+                const descriptor = {
+                  name: name,
+                  schema: propSchema.items
+                }
+                addContentDescriptorSubSchema(descriptor, key, obj)
+                componentSchema.properties[name].items = descriptor.schema
+              }
+            })
+          }
+	})
 
         if (!schema.title) {
           schema.title = capitalize(key)
@@ -829,7 +842,7 @@ function generateSchemas(json, templates, options) {
     else {
       content = content.replace(/\$\{if\.description\}(.*?)\{end\.if\.description\}/gms, '$1')
     }
-    const schemaShape = types.getSchemaShape(schema, json, { name, prefix, templateDir: state.typeTemplateDir, destination: state.destination, section: options.section })
+    const schemaShape = types.getSchemaShape(schema, json, { name, prefix, templateDir: state.typeTemplateDir, destination: state.destination, section: options.section, overrideRule: config.overrideRule })
 
     content = content
       .replace(/\$\{schema.title\}/, (schema.title || name))
@@ -847,7 +860,7 @@ function generateSchemas(json, templates, options) {
     else {
       content = content.replace(/.*\$\{schema.seeAlso\}/, '')
     }
-//    content = content.trim().length ? content.trimEnd() : content.trim()
+    content = content.trim().length ? content : content.trim()
 
     const isEnum = x => x.type === 'string' && Array.isArray(x.enum) && x.title
 
@@ -893,7 +906,7 @@ function getRelatedSchemaLinks(schema = {}, json = {}, templates = {}, options =
     .map(path => path.substring(2).split('/'))
     .map(path => getPathOr(null, path, json))
     .filter(schema => schema.title)
-    .map(schema => '[' + types.getSchemaType(schema, json, { name: schema.title, templateDir: state.typeTemplateDir, destination: state.destination, section: state.section }) + '](' + getLinkForSchema(schema, json, { name: schema.title }) + ')') // need full module here, not just the schema
+    .map(schema => '[' + types.getSchemaType(schema, json, { name: schema.title, templateDir: state.typeTemplateDir, destination: state.destination, section: state.section, overrideRule: config.overrideRule }) + '](' + getLinkForSchema(schema, json, { name: schema.title }) + ')') // need full module here, not just the schema
     .filter(link => link)
     .join('\n')
 
@@ -1191,28 +1204,29 @@ function insertMethodMacros(template, methodObj, json, templates, examples = {})
   const pullsResult = (puller || pullsFor) ? localizeDependencies(pullsFor || methodObj, json).params[1].schema : null
   const pullsParams = (puller || pullsFor) ? localizeDependencies(getPayloadFromEvent(puller || methodObj), json, null, { mergeAllOfs: true }).properties.parameters : null
 
-  const pullsResultType = pullsResult && types.getSchemaShape(pullsResult, json, { destination: state.destination, templateDir: state.typeTemplateDir, section: state.section })
-  const pullsForType = pullsResult && types.getSchemaType(pullsResult, json, { destination: state.destination, templateDir: state.typeTemplateDir, section: state.section })
-  const pullsParamsType = pullsParams ? types.getSchemaShape(pullsParams, json, { destination: state.destination, templateDir: state.typeTemplateDir, section: state.section }) : ''
-  const serializedParams = flattenedMethod.params.map(param => types.getSchemaShape(param.schema, json, { templateDir: 'parameter-serialization', property: param.name, destination: state.destination, section: state.section, level: 1, skipTitleOnce: true })).join('\n')
-  const resultInst = types.getSchemaShape(flattenedMethod.result.schema, json, { templateDir: 'result-instantiation', property: flattenedMethod.result.name, destination: state.destination, section: state.section, level: 1, skipTitleOnce: true }) // w/out level: 1, getSchemaShape skips anonymous types, like primitives
-  const resultInit = types.getSchemaShape(flattenedMethod.result.schema, json, { templateDir: 'result-initialization', property: flattenedMethod.result.name, destination: state.destination, section: state.section, level: 1, skipTitleOnce: true }) // w/out level: 1, getSchemaShape skips anonymous types, like primitives
-  const serializedEventParams = event ? flattenedMethod.params.filter(p => p.name !== 'listen').map(param => types.getSchemaShape(param.schema, json, {templateDir: 'parameter-serialization', property: param.name, destination: state.destination, section: state.section, level: 1, skipTitleOnce: true })).join('\n') : ''
+  const pullsResultType = pullsResult && types.getSchemaShape(pullsResult, json, { destination: state.destination, templateDir: state.typeTemplateDir, section: state.section, overrideRule: config.overrideRule })
+  const pullsForType = pullsResult && types.getSchemaType(pullsResult, json, { destination: state.destination, templateDir: state.typeTemplateDir, section: state.section, overrideRule: config.overrideRule })
+  const pullsParamsType = pullsParams ? types.getSchemaShape(pullsParams, json, { destination: state.destination, templateDir: state.typeTemplateDir, section: state.section, overrideRule: config.overrideRule }) : ''
+  const serializedParams = flattenedMethod.params.map(param => types.getSchemaShape(param.schema, json, { templateDir: 'parameter-serialization', property: param.name, destination: state.destination, section: state.section, level: 1, skipTitleOnce: true, overrideRule: config.overrideRule })).join('\n')
+  const resultInst = types.getSchemaShape(flattenedMethod.result.schema, json, { templateDir: 'result-instantiation', property: flattenedMethod.result.name, destination: state.destination, section: state.section, level: 1, skipTitleOnce: true, overrideRule: config.overrideRule }) // w/out level: 1, getSchemaShape skips anonymous types, like primitives
+  const resultInit = types.getSchemaShape(flattenedMethod.result.schema, json, { templateDir: 'result-initialization', property: flattenedMethod.result.name, destination: state.destination, section: state.section, level: 1, skipTitleOnce: true, overrideRule: config.overrideRule }) // w/out level: 1, getSchemaShape skips anonymous types, like primitives
+  const serializedEventParams = event ? flattenedMethod.params.filter(p => p.name !== 'listen').map(param => types.getSchemaShape(param.schema, json, {templateDir: 'parameter-serialization', property: param.name, destination: state.destination, section: state.section, level: 1, skipTitleOnce: true, overrideRule: config.overrideRule })).join('\n') : ''
   // this was wrong... check when we merge if it was fixed
-  const callbackSerializedParams = event ? types.getSchemaShape(event.result.schema, json, { templateDir: 'callback-parameter-serialization', property: result.name, destination: state.destination, section: state.section, level: 1, skipTitleOnce: true }) : ''
-  const callbackResultInst = event ? types.getSchemaShape(event.result.schema, json, { templateDir: 'callback-result-instantiation', property: result.name, destination: state.destination, section: state.section, level: 1, skipTitleOnce: true }) : ''
+  const callbackSerializedParams = event ? types.getSchemaShape(event.result.schema, json, { templateDir: 'callback-parameter-serialization', property: result.name, destination: state.destination, section: state.section, level: 1, skipTitleOnce: true, overrideRule: config.overrideRule }) : ''
+
+  const callbackResultInst = event ? types.getSchemaShape(event.result.schema, json, { templateDir: 'callback-result-instantiation', property: result.name, destination: state.destination, section: state.section, level: 1, skipTitleOnce: true, overrideRule: config.overrideRule }) : ''
   // hmm... how is this different from callbackSerializedParams? i guess they get merged?
-  const callbackResponseInst = event ? types.getSchemaShape(event.result.schema, json, { templateDir: 'callback-response-instantiation', property: result.name, destination: state.destination, section: state.section, level: 1, skipTitleOnce: true }) : ''
-  const resultType = result.schema ? types.getSchemaType(result.schema, json, { name: result.name, templateDir: state.typeTemplateDir }) : ''
-  const resultJsonType = result.schema ? types.getSchemaType(result.schema, json, { name: result.name, templateDir: 'json-types' }) : ''
+  const callbackResponseInst = event ? types.getSchemaShape(event.result.schema, json, { templateDir: 'callback-response-instantiation', property: result.name, destination: state.destination, section: state.section, level: 1, skipTitleOnce: true, overrideRule: config.overrideRule }) : ''
+  const resultType = result.schema ? types.getSchemaType(result.schema, json, { name: result.name, templateDir: state.typeTemplateDir, overrideRule: config.overrideRule }) : ''
+  const resultJsonType = result.schema ? types.getSchemaType(result.schema, json, { name: result.name, templateDir: 'json-types', overrideRule: config.overrideRule }) : ''
   const resultParams = generateResultParams(result.schema, json, templates, { name: result.name})
 
   // todo: what does prefix do in Types.mjs? need to account for it somehow
-  const callbackResultJsonType = event && result.schema ? types.getSchemaType(result.schema, json, { name: result.name, prefix: method.alternative, templateDir: 'json-types' }) : ''
+  const callbackResultJsonType = event && result.schema ? types.getSchemaType(result.schema, json, { name: result.name, prefix: method.alternative, templateDir: 'json-types', overrideRule: config.overrideRule }) : ''
 
-  const pullsForParamType = pullsParams ? types.getSchemaType(pullsParams, json, { destination: state.destination, section: state.section  }) : ''
-  const pullsForJsonType = pullsResult ? types.getSchemaType(pullsResult, json, { name: result.name, templateDir: 'json-types' }) : ''
-  const pullsForParamJsonType = pullsParams ? types.getSchemaType(pullsParams, json, { name: pullsParams.title , templateDir: 'json-types' }) : ''
+  const pullsForParamType = pullsParams ? types.getSchemaType(pullsParams, json, { destination: state.destination, section: state.section, overrideRule: config.overrideRule }) : ''
+  const pullsForJsonType = pullsResult ? types.getSchemaType(pullsResult, json, { name: result.name, templateDir: 'json-types', overrideRule: config.overrideRule }) : ''
+  const pullsForParamJsonType = pullsParams ? types.getSchemaType(pullsParams, json, { name: pullsParams.title , templateDir: 'json-types', overrideRule: config.overrideRule }) : ''
   
   const pullsEventParamName = event ? types.getSchemaInstantiation(event.result, json, event.name, { instantiationType: 'pull.param.name' }) : ''
 
@@ -1228,11 +1242,10 @@ function insertMethodMacros(template, methodObj, json, templates, examples = {})
   if (isTemporalSetMethod(methodObj)) {
     itemName = result.schema.items.title || 'item'
     itemName = itemName.charAt(0).toLowerCase() + itemName.substring(1)
-    itemType = types.getSchemaType(result.schema.items, json, { destination: state.destination, templateDir: state.typeTemplateDir, section: state.section })
+    itemType = types.getSchemaType(result.schema.items, json, { destination: state.destination, templateDir: state.typeTemplateDir, section: state.section, overrideRule: config.overrideRule })
   }
 
   template = insertExampleMacros(template, examples[methodObj.name] || [], methodObj, json, templates)
-
   template = template.replace(/\$\{method\.name\}/g, method.name)
     .replace(/\$\{method\.rpc\.name\}/g, methodObj.title || methodObj.name)
     .replace(/\$\{method\.summary\}/g, methodObj.summary)
@@ -1289,8 +1302,8 @@ function insertMethodMacros(template, methodObj, json, templates, examples = {})
     .replace(/\$\{method\.result\.name\}/g, result.name)
     .replace(/\$\{method\.result\.summary\}/g, result.summary)
     .replace(/\$\{method\.result\.link\}/g, getLinkForSchema(result.schema, json, { name: result.name })) //, baseUrl: options.baseUrl
-    .replace(/\$\{method\.result\.type\}/g, types.getSchemaType(result.schema, json, { name: result.name, templateDir: state.typeTemplateDir, hasTitle: true, asPath: false, destination: state.destination, result: true })) //, baseUrl: options.baseUrl
-    .replace(/\$\{method\.result\.json\}/g, types.getSchemaType(result.schema, json, { name: result.name, templateDir: 'json-types', destination: state.destination, section: state.section, hasTitle: true, code: false, link: false, asPath: false, expandEnums: false, namespace: true }))
+    .replace(/\$\{method\.result\.type\}/g, types.getSchemaType(result.schema, json, { name: result.name, templateDir: state.typeTemplateDir, hasTitle: true, asPath: false, destination: state.destination, result: true, overrideRule: config.overrideRule })) //, baseUrl: options.baseUrl
+    .replace(/\$\{method\.result\.json\}/g, types.getSchemaType(result.schema, json, { name: result.name, templateDir: 'json-types', destination: state.destination, section: state.section, hasTitle: true, code: false, link: false, asPath: false, expandEnums: false, namespace: true, overrideRule: config.overrideRule }))
     // todo: what does prefix do?
     .replace(/\$\{event\.result\.type\}/g, isEventMethod(methodObj) ? types.getMethodSignatureResult(event, json, { destination: state.destination, section: state.section }) : '')
     .replace(/\$\{event\.result\.json\.type\}/g, resultJsonType)
@@ -1312,7 +1325,7 @@ function insertMethodMacros(template, methodObj, json, templates, examples = {})
     .replace(/\$\{method\.pulls\.params.type\}/g, pullsParams ? pullsParams.title : '')
     .replace(/\$\{method\.pulls\.params\}/g, pullsParamsType)
     .replace(/\$\{method\.pulls\.param\.type\}/g, pullsForParamType)
-    .replace(/\$\{method\.pulls\.param\.json.type\}/g, pullsForParamJsonType)
+    .replace(/\$\{method\.pulls\.param\.json\.type\}/g, pullsForParamJsonType)
     .replace(/\$\{method\.setter\.for\}/g, setterFor)
     .replace(/\$\{method\.puller\}/g, pullerTemplate) // must be last!!
     .replace(/\$\{method\.setter\}/g, setterTemplate) // must be last!!
@@ -1330,7 +1343,7 @@ function insertMethodMacros(template, methodObj, json, templates, examples = {})
   const matches = [...template.matchAll(/\$\{method\.params\[([0-9]+)\]\.type\}/g)]
   matches.forEach(match => {
     const index = parseInt(match[1])
-    template = template.replace(/\$\{method\.params\[([0-9]+)\]\.type\}/g, types.getSchemaType(methodObj.params[index].schema, json, { destination: state.destination, templateDir: state.typeTemplateDir }))
+    template = template.replace(/\$\{method\.params\[([0-9]+)\]\.type\}/g, types.getSchemaType(methodObj.params[index].schema, json, { destination: state.destination, templateDir: state.typeTemplateDir, overrideRule: config.overrideRule }))
     template = template.replace(/\$\{method\.params\[([0-9]+)\]\.name\}/g, methodObj.params[index].name)
   })
 
@@ -1435,7 +1448,7 @@ function insertExampleMacros(template, examples, method, json, templates) {
 
 function generateResult(result, json, templates, { name = '' } = {}) {
 
-  const type = types.getSchemaType(result, json, { name: name, templateDir: state.typeTemplateDir, destination: state.destination, section: state.section })
+  const type = types.getSchemaType(result, json, { name: name, templateDir: state.typeTemplateDir, destination: state.destination, section: state.section, overrideRule: config.overrideRule })
 
   if (result.type === 'object' && result.properties) {
     let content = getTemplate('/types/object', templates).split('\n')
@@ -1456,13 +1469,13 @@ function generateResult(result, json, templates, { name = '' } = {}) {
 
     // if we get a real link use it
     if (link !== '#') {
-      return `[${types.getSchemaType(result, json, { destination: state.destination, templateDir: state.typeTemplateDir, section: state.section })}](${link})`
+      return `[${types.getSchemaType(result, json, { destination: state.destination, templateDir: state.typeTemplateDir, section: state.section, overrideRule: config.overrideRule })}](${link})`
     }
     // otherwise this was a schema with no title, and we'll just copy it here
     else {
       const schema = localizeDependencies(result, json)
       return getTemplate('/types/default', templates)
-        .replace(/\$\{type\}/, types.getSchemaShape(schema, json, { name: result.$ref.split("/").pop(), templateDir: state.typeTemplateDir }))
+        .replace(/\$\{type\}/, types.getSchemaShape(schema, json, { name: result.$ref.split("/").pop(), templateDir: state.typeTemplateDir, overrideRule: config.overrideRule }))
     }
   }
   else {
@@ -1489,7 +1502,7 @@ function generateResultParams(result, json, templates, {name = ''}={}) {
     const template = getTemplate('/parameters/result', templates)
     return Object.entries(result.properties).map( ([name, type]) => template
                                                                       .replace(/\$\{method\.param\.name\}/g, name)
-                                                                      .replace(/\$\{method\.param\.type\}/g, types.getSchemaType(type, json, {name: name, moduleTitle: moduleTitle, result: true, namespace: true}))
+                                                                      .replace(/\$\{method\.param\.type\}/g, types.getSchemaType(type, json, {name: name, moduleTitle: moduleTitle, result: true, namespace: true, overrideRule: config.overrideRule}))
     ).join(', ') // most languages separate params w/ a comma, so leaving this here for now  
   }
   // tuples get unwrapped
@@ -1498,14 +1511,14 @@ function generateResultParams(result, json, templates, {name = ''}={}) {
     const template = getTemplate('/parameters/result', templates)
     return result.items.map( (type) => template
                                         .replace(/\$\{method\.param\.name\}/g, type['x-property'])
-                                        .replace(/\$\{method\.param\.type\}/g, types.getSchemaType(type, json, {name: name, moduleTitle: moduleTitle, result: true, namespace: true}))
+                                        .replace(/\$\{method\.param\.type\}/g, types.getSchemaType(type, json, {name: name, moduleTitle: moduleTitle, result: true, namespace: true, overrideRule: config.overrideRule}))
     ).join(', ')
   }
   // everything else is just output as-is
   else {
 
     const template = getTemplate('/parameters/result', templates)
-    const type = types.getSchemaType(result, json, {name: name, moduleTitle: moduleTitle, result: true, namespace: true})
+    const type = types.getSchemaType(result, json, {name: name, moduleTitle: moduleTitle, result: true, namespace: true, overrideRule: config.overrideRule})
     if (type === 'undefined') {
       console.log(`Warning: undefined type for ${name}`)
     }
@@ -1518,7 +1531,7 @@ function generateResultParams(result, json, templates, {name = ''}={}) {
 
 function insertSchemaMacros(template, title, schema, module) {
   return template.replace(/\$\{property\}/g, title)
-    .replace(/\$\{type\}/g, types.getSchemaType(schema, module, { name: title, templateDir: state.typeTemplateDir, destination: state.destination, section: state.section, code: false }))
+    .replace(/\$\{type\}/g, types.getSchemaType(schema, module, { name: title, templateDir: state.typeTemplateDir, destination: state.destination, section: state.section, code: false, overrideRule: config.overrideRule }))
     .replace(/\$\{type.link\}/g, getLinkForSchema(schema, module, { name: title }))
     .replace(/\$\{description\}/g, schema.description || '')
     .replace(/\$\{name\}/g, title || '')
@@ -1529,9 +1542,9 @@ function insertParameterMacros(template, param, method, module) {
   //| `${method.param.name}` | ${method.param.type} | ${method.param.required} | ${method.param.summary} ${method.param.constraints} |
 
   let constraints = getSchemaConstraints(param, module)
-  let type = types.getSchemaType(param.schema, module, { name: param.name, templateDir: state.typeTemplateDir, destination: state.destination, section: state.section, code: false, link: false, asPath: false, expandEnums: false }) //baseUrl: options.baseUrl
+  let type = types.getSchemaType(param.schema, module, { name: param.name, templateDir: state.typeTemplateDir, destination: state.destination, section: state.section, code: false, link: false, asPath: false, expandEnums: false, overrideRule: config.overrideRule  }) //baseUrl: options.baseUrl
   let typeLink = getLinkForSchema(param.schema, module, { name: param.name })
-  let jsonType = types.getSchemaType(param.schema, module, { name: param.name, templateDir: 'json-types', destination: state.destination, section: state.section, code: false, link: false, asPath: false, expandEnums: false })
+  let jsonType = types.getSchemaType(param.schema, module, { name: param.name, templateDir: 'json-types', destination: state.destination, section: state.section, code: false, link: false, asPath: false, expandEnums: false, overrideRule: config.overrideRule  })
 
   if (constraints && type) {
     constraints = '<br/>' + constraints
@@ -1616,7 +1629,7 @@ function insertProviderInterfaceMacros(template, capability, moduleJson = {}, te
           name: 'provider'
         })
         const parametersSchema = method.params[0].schema
-        const parametersShape = types.getSchemaShape(parametersSchema, moduleJson, { destination: state.destination, templateDir: state.typeTemplateDir, section: state.section })
+        const parametersShape = types.getSchemaShape(parametersSchema, moduleJson, { destination: state.destination, templateDir: state.typeTemplateDir, section: state.section, overrideRule: config.overrideRule })
         let methodBlock = insertMethodMacros(getTemplateForMethod(method, templates), method, moduleJson, templates)
         methodBlock = methodBlock.replace(/\${parameters\.shape\}/g, parametersShape)
         const hasProviderParameters = parametersSchema && parametersSchema.properties && Object.keys(parametersSchema.properties).length > 0

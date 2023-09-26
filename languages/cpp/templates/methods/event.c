@@ -3,6 +3,7 @@
         {
 ${event.callback.params.serialization}
             ASSERT(proxyResponse->IsValid() == true);
+
             if (proxyResponse->IsValid() == true) {
 ${event.callback.result.instantiation}
                 proxyResponse->Release();

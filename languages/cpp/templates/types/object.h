@@ -1,3 +1,3 @@
-${inner.anonymous.shapes}struct ${title} {
+struct ${title} {
     ${properties}
 };
