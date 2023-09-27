@@ -31,12 +31,59 @@ ${if.types}
 /* ${TYPES:json-types} */${end.if.types}
 
     ${if.definitions}class ${info.Title}Impl : public I${info.Title} {
+
+    private:
+        ${info.Title}Impl()
+        {
+            ASSERT(_singleton == nullptr);
+            _singleton = this;
+        }
+
+    public:
+        ${info.Title}Impl(const ${info.Title}Impl&) = delete;
+        ${info.Title}Impl& operator=(const ${info.Title}Impl&) = delete;
+
+        ~${info.Title}Impl()
+        {
+            ASSERT(_singleton != nullptr);
+            _singleton = nullptr;
+        }
+
+        static ${info.Title}Impl& Instance()
+        {
+            static ${info.Title}Impl* instance = new ${info.Title}Impl();
+            ASSERT(instance != nullptr);
+            return *instance;
+        }
+
+        static void Dispose()
+        {
+            if (_singleton != nullptr) {
+                delete _singleton;
+            }
+        }
+
+
         // Methods
         /* ${METHODS} */
 
         // Events
         /* ${EVENTS} */
+
+    private:
+        static ${info.Title}Impl* _singleton;
     };${end.if.definitions}
+
+    ${info.Title}Impl* ${info.Title}Impl::_singleton = nullptr;
+
+    /* static */ I${info.Title}& I${info.Title}::Instance()
+    {
+         return (${info.Title}Impl::Instance());
+    }
+    /* static */ void I${info.Title}::Dispose()
+    {
+         ${info.Title}Impl::Dispose();
+    }
 
 }//namespace ${info.Title}
 }${end.if.implementations}

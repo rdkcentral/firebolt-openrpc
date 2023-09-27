@@ -103,15 +103,31 @@ namespace FireboltSDK {
                 delete _singleton;
             }
         }
+
+        void Connect(const Transport<WPEFramework::Core::JSON::IElement>::Listener& listener)
+        {
+            CreateTransport(_config.WsUrl.Value().c_str(), _config.WaitTime.Value(), listener);
+            CreateEventHandler();
+        }
+
+        Firebolt::Error Disconnect()
+        {
+            Firebolt::Error status = Firebolt::Error::None;
+            status = DestroyTransport();
+            if (status == Firebolt::Error::None) {
+                status = DestroyEventHandler();
+            }
+            return status;
+        }
+
         Event& GetEventManager();
         Transport<WPEFramework::Core::JSON::IElement>* GetTransport();
 
     private:
-        int32_t CreateEventHandler();
-        int32_t DestroyEventHandler();
-        int32_t CreateTransport(const string& url, const uint32_t waitTime);
-        int32_t DestroyTransport();
-        int32_t WaitForLinkReady(Transport<WPEFramework::Core::JSON::IElement>* transport, const uint32_t waitTime);
+        Firebolt::Error CreateEventHandler();
+        Firebolt::Error DestroyEventHandler();
+        Firebolt::Error CreateTransport(const string& url, const uint32_t waitTime, const Transport<WPEFramework::Core::JSON::IElement>::Listener& listener);
+        Firebolt::Error DestroyTransport();
 
     private:
         WPEFramework::Core::ProxyType<WorkerPoolImplementation> _workerPool;

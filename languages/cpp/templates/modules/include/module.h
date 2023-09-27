@@ -34,6 +34,8 @@ ${end.if.types}
 struct I${info.Title} {
 
     static I${info.Title}& Instance();
+    static void Dispose();
+
     virtual ~I${info.Title}() = default;
 
     // Methods & Events

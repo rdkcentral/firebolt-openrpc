@@ -23,7 +23,6 @@
 #include "error.h"
 ${module.includes}
 
-
 namespace Firebolt {
 
 struct IFireboltAccessor {
@@ -36,6 +35,38 @@ struct IFireboltAccessor {
      * @return FireboltAccessor Instance
      * */
     static IFireboltAccessor& Instance();
+
+    /**
+     * @brief Inititalize the Firebolt SDK. Sets up the Transport, WorkerPool and Logging Subsystems.
+     *
+     * @param configLine JSON String with configuration options. At a minimum the user is expected to pass in the Websocket URL.
+     *
+     * CONFIG Format:
+     *  {
+     *     "waitTime": 1000,
+     *     "logLevel": "Info",
+     *     "workerPool":{
+     *       "queueSize": 8,
+     *       "threadCount": 3
+     *      },
+     *     "wsUrl": "ws://127.0.0.1:9998"
+     *  }
+     *
+     *
+     * @return None
+     *
+     */
+
+    virtual Firebolt::Error Intitialize ( const std::string& configLine ) = 0;
+
+    /**
+     * @brief Deinititlize the SDK. 
+     *
+     * @return None
+     *
+     */
+    virtual Firebolt::Error Deinitialize ( ) = 0;
+
 
     /**
      * @brief Connection status listener callback
@@ -51,25 +82,11 @@ struct IFireboltAccessor {
      * @brief Attempt a connection to the endpoint. This method is asynchronous and the user is expected to wait for the 
      * OnConnectionChanged callback to report successful connection before calling SDK methods
      *
-     * @param configLine JSON String with configuration options. At a minimum the user is expected to pass in the Websocket URL.
-     *
-     * CONFIG Format:
-     *  {
-     *     "waitTime": 1000,
-     *     "logLevel": "Info",
-     *     "workerPool":{
-     *       "queueSize": 8,
-     *       "threadCount": 3
-     *      },
-     *     "wsUrl": "ws://127.0.0.1:9998"
-     *  }
-     *
      * @param listener Connection status listener
      *
      * @return None
-     *
      */
-    virtual Firebolt::Error Connect ( const std::string& configLine, OnConnectionChanged listener ) = 0;
+    virtual Firebolt::Error Connect ( OnConnectionChanged listener ) = 0;
 
     /**
      * @brief Disconnects from the Websocket endpoint.
@@ -111,7 +128,6 @@ struct IFireboltAccessor {
     // Instances are owned by the FireboltAcccessor and linked with its lifecycle.
 
 ${module.init}
-
 };
 
 }

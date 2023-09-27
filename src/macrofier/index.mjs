@@ -204,7 +204,10 @@ const macrofy = async (
 
             append = true
         })
-        
+        primaryOutput.forEach(output => {
+            outputFiles[output] = engine.clearMacros(outputFiles[output]);
+        })
+
         if (treeshakePattern && treeshakeEntry) {
             const importedFiles = (code, base) => Array.from(new Set([...code.matchAll(treeshakePattern)].map(arr => arr[2]))).map(i => path.join(output, base, i))
 

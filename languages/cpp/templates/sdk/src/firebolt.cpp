@@ -19,35 +19,82 @@
 #pragma once
 
 #include <firebolt.h>
+#include "FireboltSDK.h"
 
 namespace Firebolt {
 
     class FireboltAccessorImpl :: public IFireboltAccessor {
+    private:
+        FireboltAccessorImpl()
+        {
+            ASSERT(_singleton == nullptr);
+            _singleton = this;
+        }
+    public:
+        FireboltAccessorImpl(const FireboltAccessorImpl&) = delete;
+        FireboltAccessorImpl& operator=(const FireboltAccessorImpl&) = delete;
 
-    static IFireboltAccessor& Instance()
-    {
-    }
+        ~FireboltAccessorImp()
+        {
+            ASSERT(_singleton != nullptr);
+            _singleton = nullptr;
+        }
 
-    Firebolt::Error Connect ( const std::string& configLine, OnConnectionChanged listener ) override
-    {
+        static FireboltAccessor& Instance()
+        {
+            static FireboltAccessorImpl* instance = new FireboltAccessorImpl();
+            ASSERT(instance != nullptr);
+            return *instance;
+        }
 
-    }
-
-    Firebolt::Error Disconnect ( ) override
-    {
-    }
-
-    void Dispose() override
-    {
+	static void Dispose()
+        {
 ${module.deinit}
-    }
+            ASSERT(_singleton != nullptr);
+            if (_singleton != nullptr) {
+                delete _singleton;
+            }
+        }
 
-    void ErrorListener(OnError notification) override
-    {
-    }
+        Firebolt::Error Intitialize( const std::string& configLine ) override
+        {
+            _accessor = Accessor::Instance();
+            return Error::None;
+        }
+
+        Firebolt::Error Deinitialize() override
+        {
+            return Error::None;
+        }
+
+        void Connect( OnConnectionChanged listener ) override
+        {
+            _accessor->Connect(listener);
+        }
+
+        Firebolt::Error Disconnect() override
+        {
+            return _accessor->Disconnect();
+        }
+
+        void ErrorListener(OnError notification) override
+        {
+        }
 
 ${module.init}
+    private:
+        Accessor& _accessor;
+        static FireboltAccessorImpl* _singleton;
+    };
 
-};
+    FireboltAccessorImpl* FireboltAccessorImpl::_singleton = nullptr;
 
+    /* static */ IFireboltAccessor& IFireboltAccessor::Instance()
+    {
+         return (FireboltAccessorImpl::Instance());
+    }
+    /* static */ void IFireboltAccessor::Dispose()
+    {
+         FireboltAccessorImpl::Dispose();
+    }
 }

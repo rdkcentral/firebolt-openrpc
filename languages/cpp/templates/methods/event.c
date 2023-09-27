@@ -8,21 +8,20 @@ ${event.callback.params.serialization}
 ${event.callback.result.instantiation}
                 proxyResponse->Release();
 
-                I${method.Name}Notification& notifier = *(reinterpret_cast<I${method.Name}Notification*>(notification);
+                I${method.Name}Notification& notifier = *(reinterpret_cast<I${method.Name}Notification*>(notification));
                 notifier.${method.Name}(${event.callback.response.instantiation});
             }
         }
-        void Subscribe( ${event.signature.params}${if.event.params}, ${end.if.event.params}I${method.Name}Notification& notification, Firebolt_Error *err = nullptr )
+        void Subscribe( ${event.signature.params}${if.event.params}, ${end.if.event.params}I${method.Name}Notification& notification, Firebolt::Error *err = nullptr )
         {
             const string eventName = _T("${info.title.lowercase}.${method.rpc.name}");
-            int32_t status = Firebolt_Error_None;
+            Firebolt::Error status = Firebolt::Error::None;
 
-            if (notification != nullptr) {
+            JsonObject jsonParameters;
 ${event.params.serialization}
-               status = FireboltSDK::Event::Instance().Subscribe<${event.result.json.type}>(eventName, jsonParameters, ${info.Title}${method.Name}InnerCallback, reinterpret_cast<void*>(notification), nullptr);
-            }
+            status = FireboltSDK::Event::Instance().Subscribe<${event.result.json.type}>(eventName, jsonParameters, ${info.Title}${method.Name}InnerCallback, reinterpret_cast<void*>(&notification), nullptr);
         }
-        void Unsubscribe( I${method.Name}Notification& notification, Firebolt_Error *err = nullptr )
+        void Unsubscribe( I${method.Name}Notification& notification, Firebolt::Error *err = nullptr )
         {
-            int32_t status = FireboltSDK::Event::Instance().Unsubscribe(_T("${info.title.lowercase}.${method.rpc.name}"), reinterpret_cast<void*>(notification));
+            Firebolt::Error status = FireboltSDK::Event::Instance().Unsubscribe(_T("${info.title.lowercase}.${method.rpc.name}"), reinterpret_cast<void*>(&notification));
         }

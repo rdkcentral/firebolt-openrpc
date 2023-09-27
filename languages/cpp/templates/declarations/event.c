@@ -4,5 +4,5 @@
     };
     // signature callback params: ${event.signature.callback.params}
     // method result properties : ${method.result.properties}
-    virtual void Subscribe( ${event.signature.params}${if.event.params}, ${end.if.event.params}I${method.Name}Notification& notification, Firebolt_Error *err = nullptr ) = 0;
-    virtual void Unsubscribe( I${method.Name}Notification& notification, Firebolt_Error *err = nullptr ) = 0;
+    virtual void Subscribe( ${event.signature.params}${if.event.params}, ${end.if.event.params}I${method.Name}Notification& notification, Firebolt::Error *err = nullptr ) = 0;
+    virtual void Unsubscribe( I${method.Name}Notification& notification, Firebolt::Error *err = nullptr ) = 0;

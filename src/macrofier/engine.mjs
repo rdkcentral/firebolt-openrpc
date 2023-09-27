@@ -472,7 +472,6 @@ const mergeAnyOfs = (obj) => {
   obj = JSON.parse(JSON.stringify(obj))
 
   findAll('anyOf', obj, anyOf => mergeAnyOf(anyOf))
-//  findAll('onyOf', obj, onyOf => mergeOnyOf(onyOf))
 
 return obj
 }
@@ -570,6 +569,14 @@ const generateMacros = (obj, templates, languages, options = {}) => {
   return macros
 }
 
+const clearMacros = (fContents = '') => {
+  fContents = fContents.replace(/\$\{module.includes\}/g, "")
+  fContents = fContents.replace(/\$\{module.init\}/g, "")
+  fContents = fContents.replace(/\$\{module.deinit\}/g, "")
+
+  return fContents
+}
+
 const insertAggregateMacros = (fContents = '', aggregateMacros = {}) => {
   fContents = fContents.replace(/[ \t]*\/\* \$\{EXPORTS\} \*\/[ \t]*\n/, aggregateMacros.exports)
   fContents = fContents.replace(/[ \t]*\/\* \$\{MOCK_IMPORTS\} \*\/[ \t]*\n/, aggregateMacros.mockImports)
@@ -581,7 +588,7 @@ const insertAggregateMacros = (fContents = '', aggregateMacros = {}) => {
 }
 
 const insertMacros = (fContents = '', macros = {}) => {
-  if (macros.append) {
+  if (macros.append && macros.module) {
     fContents += '\n' + macros.module
   }
 
@@ -606,7 +613,6 @@ const insertMacros = (fContents = '', macros = {}) => {
   fContents = fContents.replace(/[ \t]*\/\* \$\{EVENTS\} \*\/[ \t]*\n/, macros.events)
   fContents = fContents.replace(/[ \t]*\/\* \$\{EVENT_LIST\} \*\/[ \t]*\n/, macros.eventList.join(','))
   fContents = fContents.replace(/[ \t]*\/\* \$\{EVENTS_ENUM\} \*\/[ \t]*\n/, macros.eventsEnum)
-
 
   // Output the originally supported non-configurable schema macros
   fContents = fContents.replace(/[ \t]*\/\* \$\{SCHEMAS\} \*\/[ \t]*\n/, macros.schemas.types)
@@ -1738,6 +1744,7 @@ function insertProviderParameterMacros(data = '', parameters, module = {}, optio
 
 export {
   generateMacros,
+  clearMacros,
   insertMacros,
   generateAggregateMacros,
   insertAggregateMacros
@@ -1745,6 +1752,7 @@ export {
 
 export default {
   generateMacros,
+  clearMacros,
   insertMacros,
   generateAggregateMacros,
   insertAggregateMacros,
