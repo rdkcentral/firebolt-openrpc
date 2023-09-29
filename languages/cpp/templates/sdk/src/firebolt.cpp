@@ -16,16 +16,15 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#pragma once
-
 #include <firebolt.h>
 #include "FireboltSDK.h"
 
 namespace Firebolt {
 
-    class FireboltAccessorImpl :: public IFireboltAccessor {
+    class FireboltAccessorImpl : public IFireboltAccessor {
     private:
         FireboltAccessorImpl()
+            : _accessor(nullptr)
         {
             ASSERT(_singleton == nullptr);
             _singleton = this;
@@ -34,22 +33,28 @@ namespace Firebolt {
         FireboltAccessorImpl(const FireboltAccessorImpl&) = delete;
         FireboltAccessorImpl& operator=(const FireboltAccessorImpl&) = delete;
 
-        ~FireboltAccessorImp()
+        ~FireboltAccessorImpl()
         {
+            if (_accessor != nullptr) {
+                _accessor->Dispose();
+                _accessor = nullptr;
+            }
+
             ASSERT(_singleton != nullptr);
             _singleton = nullptr;
         }
 
-        static FireboltAccessor& Instance()
+        static FireboltAccessorImpl& Instance()
         {
             static FireboltAccessorImpl* instance = new FireboltAccessorImpl();
             ASSERT(instance != nullptr);
             return *instance;
         }
 
-	static void Dispose()
+        static void Dispose()
         {
 ${module.deinit}
+
             ASSERT(_singleton != nullptr);
             if (_singleton != nullptr) {
                 delete _singleton;
@@ -58,7 +63,7 @@ ${module.deinit}
 
         Firebolt::Error Intitialize( const std::string& configLine ) override
         {
-            _accessor = Accessor::Instance();
+            _accessor = &(FireboltSDK::Accessor::Instance(configLine));
             return Error::None;
         }
 
@@ -83,7 +88,7 @@ ${module.deinit}
 
 ${module.init}
     private:
-        Accessor& _accessor;
+        FireboltSDK::Accessor* _accessor;
         static FireboltAccessorImpl* _singleton;
     };
 

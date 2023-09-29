@@ -65,7 +65,7 @@ namespace FireboltSDK {
         return Event::Instance();
     }
 
-    Firebolt::Error Accessor::CreateTransport(const string& url, const uint32_t waitTime = DefaultWaitTime, const Transport<WPEFramework::Core::JSON::IElement>::Listener& listener)
+    Firebolt::Error Accessor::CreateTransport(const string& url, const Transport<WPEFramework::Core::JSON::IElement>::Listener& listener, const uint32_t waitTime = DefaultWaitTime)
     {
         if (_transport != nullptr) {
             delete _transport;

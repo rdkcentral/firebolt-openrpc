@@ -2,5 +2,5 @@
             for (auto& element: ${property}) {
                ${Property}.Add() = element;
             }
-            WPEFramework::Core::JSON::Variant ${Property}Variant = ${Property}
-            jsonParameters.Set(_T("${property}"), ${Property});
+            WPEFramework::Core::JSON::Variant ${Property}Variant(${Property});
+            jsonParameters.Set(_T("${property}"), ${Property}Variant);

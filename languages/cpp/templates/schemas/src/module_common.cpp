@@ -21,7 +21,7 @@
 #include "jsondata_${info.title.lowercase}.h"
 ${if.enums}
 
-namespace Firebolt {
+namespace WPEFramework {
 
 
 /* ${ENUMS} */

@@ -106,7 +106,7 @@ namespace FireboltSDK {
 
         void Connect(const Transport<WPEFramework::Core::JSON::IElement>::Listener& listener)
         {
-            CreateTransport(_config.WsUrl.Value().c_str(), _config.WaitTime.Value(), listener);
+            CreateTransport(_config.WsUrl.Value().c_str(), listener, _config.WaitTime.Value());
             CreateEventHandler();
         }
 
@@ -126,7 +126,7 @@ namespace FireboltSDK {
     private:
         Firebolt::Error CreateEventHandler();
         Firebolt::Error DestroyEventHandler();
-        Firebolt::Error CreateTransport(const string& url, const uint32_t waitTime, const Transport<WPEFramework::Core::JSON::IElement>::Listener& listener);
+        Firebolt::Error CreateTransport(const string& url, const Transport<WPEFramework::Core::JSON::IElement>::Listener& listener, const uint32_t waitTime);
         Firebolt::Error DestroyTransport();
 
     private:

@@ -30,7 +30,7 @@ ${if.types}
     // Types
 /* ${TYPES:json-types} */${end.if.types}
 
-    ${if.definitions}class ${info.Title}Impl : public I${info.Title} {
+    ${if.methods}class ${info.Title}Impl : public I${info.Title} {
 
     private:
         ${info.Title}Impl()
@@ -72,7 +72,7 @@ ${if.types}
 
     private:
         static ${info.Title}Impl* _singleton;
-    };${end.if.definitions}
+    };
 
     ${info.Title}Impl* ${info.Title}Impl::_singleton = nullptr;
 
@@ -83,7 +83,7 @@ ${if.types}
     /* static */ void I${info.Title}::Dispose()
     {
          ${info.Title}Impl::Dispose();
-    }
+    }${end.if.methods}
 
 }//namespace ${info.Title}
 }${end.if.implementations}

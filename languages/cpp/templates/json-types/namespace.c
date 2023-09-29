@@ -1,1 +1,1 @@
-FireboltSDK::${info.Title}::
+Firebolt::${info.Title}::

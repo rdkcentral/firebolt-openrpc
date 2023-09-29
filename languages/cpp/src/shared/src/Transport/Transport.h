@@ -561,11 +561,6 @@ namespace FireboltSDK {
             return _channel->IsOpen();
         }
 
-        void NotifyStatus(Firebolt::Error status)
-        {
-            _listener(false, status);
-        }
-
         void Revoke(const string& eventName)
         {
             _adminLock.Lock();
@@ -616,7 +611,30 @@ namespace FireboltSDK {
             Entry slot;
             uint32_t id = _channel->Sequence();
 
-            return (FireboltErrorValue(Send(eventName, parameters, id)));
+            return Send(eventName, parameters, id);
+        }
+
+        void NotifyStatus(Firebolt::Error status)
+        {
+            _listener(false, status);
+        }
+
+        Firebolt::Error WaitForLinkReady()
+        {
+            uint32_t waiting = _waitTime;
+            static constexpr uint32_t SLEEPSLOT_TIME = 100;
+
+            // Right, a wait till connection is closed is requested..
+            while ((waiting > 0) && (IsOpen() == false) && (_status == Firebolt::Error::NotConnected)) {
+
+                uint32_t sleepSlot = (waiting > SLEEPSLOT_TIME ? SLEEPSLOT_TIME : waiting);
+
+                // Right, lets sleep in slices of 100 ms
+                SleepMs(sleepSlot);
+
+                waiting -= (waiting == WPEFramework::Core::infinite ? 0 : sleepSlot);
+            }
+            return (((waiting == 0) || (IsOpen() == true)) ? Firebolt::Error::None : Firebolt::Error::Timedout);
         }
 
     private:
@@ -850,24 +868,6 @@ namespace FireboltSDK {
             _adminLock.Unlock();
 
             return result;
-        }
-
-        int32_t WaitForLinkReady()
-             {
-            uint32_t waiting = _waitTime;
-            static constexpr uint32_t SLEEPSLOT_TIME = 100;
-
-            // Right, a wait till connection is closed is requested..
-            while ((waiting > 0) && (IsOpen() == false) && (_status == Firebolt::Error::NotConnected)) {
-
-                uint32_t sleepSlot = (waiting > SLEEPSLOT_TIME ? SLEEPSLOT_TIME : waiting);
-
-                // Right, lets sleep in slices of 100 ms
-                SleepMs(sleepSlot);
-
-                waiting -= (waiting == WPEFramework::Core::infinite ? 0 : sleepSlot);
-            }
-            return (((waiting == 0) || (IsOpen() == true)) ? Firebolt::Error::None : Firebolt::Error::Timedout);
         }
 
     public:

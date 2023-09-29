@@ -18,7 +18,7 @@
 
 #pragma once
 
-#include <firebolt.h>
+#include "error.h"
 /* ${IMPORTS} */
 
 ${if.declarations}namespace Firebolt {
@@ -31,7 +31,7 @@ ${if.types}
 // Types
 /* ${TYPES} */
 ${end.if.types}
-struct I${info.Title} {
+${if.methods}struct I${info.Title} {
 
     static I${info.Title}& Instance();
     static void Dispose();
@@ -41,7 +41,7 @@ struct I${info.Title} {
     // Methods & Events
     /* ${DECLARATIONS} */
 
-};
+};${end.if.methods}
 
 } //namespace ${info.Title}
 }${end.if.declarations}

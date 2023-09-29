@@ -26,5 +26,5 @@ namespace ${info.Title} {
 
     // Types
        /* ${SCHEMAS:json-types} */
-    }
+}
 }${end.if.schemas}

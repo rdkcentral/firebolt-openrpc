@@ -20,6 +20,8 @@
 
 #include <functional>
 #include <string>
+#include <unordered_map>
+#include <vector>
 #include "error.h"
 ${module.includes}
 
@@ -86,7 +88,7 @@ struct IFireboltAccessor {
      *
      * @return None
      */
-    virtual Firebolt::Error Connect ( OnConnectionChanged listener ) = 0;
+    virtual void Connect ( OnConnectionChanged listener ) = 0;
 
     /**
      * @brief Disconnects from the Websocket endpoint.
@@ -101,7 +103,7 @@ struct IFireboltAccessor {
      * @return None
      *
      */
-    virtual void Dispose() = 0;
+    static void Dispose();
 
     /**
      * @brief Error callback when a method fails.
