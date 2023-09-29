@@ -33,15 +33,15 @@ namespace FireboltSDK {
 
     public:
         template <typename RESPONSETYPE>
-        static int32_t Get(const string& propertyName, WPEFramework::Core::ProxyType<RESPONSETYPE>& response)
+        static Firebolt::Error Get(const string& propertyName, WPEFramework::Core::ProxyType<RESPONSETYPE>& response)
         {
-            int32_t status = FireboltSDKErrorUnavailable;
+            Firebolt::Error status = Firebolt::Error::General;
             Transport<WPEFramework::Core::JSON::IElement>* transport = Accessor::Instance().GetTransport();
             if (transport != nullptr) {
                 JsonObject parameters;
                 RESPONSETYPE responseType;
                 status = transport->Invoke(propertyName, parameters, responseType);
-                if (status == FireboltSDKErrorNone) {
+                if (status == Firebolt::Error::None) {
                     ASSERT(response.IsValid() == false);
                     if (response.IsValid() == true) {
                         response.Release();
@@ -57,14 +57,14 @@ namespace FireboltSDK {
         }
 
         template <typename PARAMETERS, typename RESPONSETYPE>
-        static int32_t Get(const string& propertyName, const PARAMETERS& parameters, WPEFramework::Core::ProxyType<RESPONSETYPE>& response)
+        static Firebolt::Error Get(const string& propertyName, const PARAMETERS& parameters, WPEFramework::Core::ProxyType<RESPONSETYPE>& response)
         {
-            int32_t status = FireboltSDKErrorUnavailable;
+            Firebolt::Error status = Firebolt::Error::General;
             Transport<WPEFramework::Core::JSON::IElement>* transport = Accessor::Instance().GetTransport();
             if (transport != nullptr) {
                 RESPONSETYPE responseType;
                 status = transport->Invoke(propertyName, parameters, responseType);
-                if (status == FireboltSDKErrorNone) {
+                if (status == Firebolt::Error::None) {
                     ASSERT(response.IsValid() == false);
                     if (response.IsValid() == true) {
                         response.Release();
@@ -81,9 +81,9 @@ namespace FireboltSDK {
 
 
 	template <typename RESPONSETYPE>
-        static int32_t Get(const string& propertyName, RESPONSETYPE& response)
+        static Firebolt::Error Get(const string& propertyName, RESPONSETYPE& response)
         {
-            int32_t status = FireboltSDKErrorUnavailable;
+            Firebolt::Error status = Firebolt::Error::General;
             Transport<WPEFramework::Core::JSON::IElement>* transport = Accessor::Instance().GetTransport();
             if (transport != nullptr) {
                 JsonObject parameters;
@@ -96,9 +96,9 @@ namespace FireboltSDK {
         }
 
         template <typename PARAMETERS, typename RESPONSETYPE>
-        static int32_t Get(const string& propertyName, const PARAMETERS& parameters, RESPONSETYPE& response)
+        static Firebolt::Error Get(const string& propertyName, const PARAMETERS& parameters, RESPONSETYPE& response)
         {
-            int32_t status = FireboltSDKErrorUnavailable;
+            Firebolt::Error status = Firebolt::Error::General;
             Transport<WPEFramework::Core::JSON::IElement>* transport = Accessor::Instance().GetTransport();
             if (transport != nullptr) {
                 status = transport->Invoke(propertyName, parameters, response);
@@ -110,9 +110,9 @@ namespace FireboltSDK {
         }
 
         template <typename PARAMETERS>
-        static int32_t Set(const string& propertyName, const PARAMETERS& parameters)
+        static Firebolt::Error Set(const string& propertyName, const PARAMETERS& parameters)
         {
-            int32_t status = FireboltSDKErrorUnavailable;
+            Firebolt::Error status = Firebolt::Error::General;
             Transport<WPEFramework::Core::JSON::IElement>* transport = Accessor::Instance().GetTransport();
             if (transport != nullptr) {
                 JsonObject responseType;
@@ -125,12 +125,12 @@ namespace FireboltSDK {
         }
 
         template <typename RESULT, typename CALLBACK>
-        static int32_t Subscribe(const string& propertyName, JsonObject& paramsters, const CALLBACK& callback, void* usercb, const void* userdata)
+        static Firebolt::Error Subscribe(const string& propertyName, JsonObject& paramsters, const CALLBACK& callback, void* usercb, const void* userdata)
         {
             return Event::Instance().Subscribe<RESULT, CALLBACK>(EventName(propertyName), paramsters, callback, usercb, userdata);
         }
 
-        static int32_t Unsubscribe(const string& propertyName, void* usercb)
+        static Firebolt::Error Unsubscribe(const string& propertyName, void* usercb)
         {
             return Event::Instance().Unsubscribe(EventName(propertyName), usercb);
         }
