@@ -30,6 +30,8 @@ const primitives = {
   "string": "string"
 }
 
+const isVoid = type => (type === 'void') ? true : false
+const isPrimitiveType = type => primitives[type] ? true : false
 const allocatedPrimitiveProxies = {}
 
 function setTemplates(t) {
@@ -53,15 +55,46 @@ const safeName = value => value.split(':').pop().replace(/[\.\-]/g, '_').replace
 
 // TODO: This is what's left of getMethodSignatureParams. We need to figure out / handle C's `FireboltTypes_StringHandle`
 function getMethodSignatureParams(method, module, { destination, callback }) {
-  const paramRequired = getTemplate('/parameters/default')
   const paramOptional = getTemplate('/parameters/optional')
   return method.params.map(param => {
-    let type = getSchemaType(param.schema, module, { destination })
+    let type = getSchemaType(param.schema, module, { destination, namespace : true })
     if (callback && allocatedPrimitiveProxies[type]) {
       type = allocatedPrimitiveProxies[type]
     }
+
+    let paramRequired = ''
+    let jsonType = getJsonType(param.schema, module, { destination })
+    if (!isPrimitiveType(jsonType) && getTemplate('/parameters/nonprimitive')) {
+      paramRequired = getTemplate('/parameters/nonprimitive')
+    }
+    else if ((jsonType === 'string') && getTemplate('/parameters/string')) {
+      paramRequired = getTemplate('/parameters/string')
+    }
+    else {
+      paramRequired = getTemplate('/parameters/default')
+    }
+
     return (param.required ? paramRequired : paramOptional).replace(/\$\{method\.param\.name\}/g, param.name).replace(/\$\{method\.param\.type\}/g, type)
   }).join(', ')
+}
+
+function getMethodSignatureResult(method, module, { destination, callback }) {
+    let type = getSchemaType(method.result.schema, module, { destination, namespace : true })
+
+    let result = ''
+    let jsonType = getJsonType(method.result.schema, module, { destination })
+
+    if (!isVoid(type) && !isPrimitiveType(jsonType) && getTemplate('/result/nonprimitive')) {
+      result = getTemplate('/result/nonprimitive')
+    }
+    else if ((jsonType === 'string') && getTemplate('/result/string')) {
+      result = getTemplate('/result/string')
+    }
+    else {
+      result = getTemplate('/result/default')
+    }
+
+    return result.replace(/\$\{method\.result\.type\}/g, type)
 }
 
 const getTemplate = (name) => {
@@ -119,8 +152,6 @@ const insertConstMacros = (content, schema, module, name) => {
   content = content.replace(/\$\{value\}/g, JSON.stringify(schema.const))
   return content
 }
-
-
 
 const insertEnumMacros = (content, schema, module, name) => {
   const template = content.split('\n')
@@ -251,6 +282,7 @@ const insertTupleMacros = (content, schema, module, title, options) => {
   const itemsTemplate = getTemplate(path.join(options.templateDir, 'items'))
   const propIndent = (content.split('\n').find(line => line.includes("${properties}")) || '').match(/^\s+/) || [''][0]
   const itemsIndent = (content.split('\n').find(line => line.includes("${items}")) || '').match(/^\s+/) || [''][0]
+  const delimiter = getTemplate(path.join(options.templateDir, 'delimiter'))
 
   const doMacroWork = (str, prop, i, indent) => {
     const schemaShape = getSchemaShape(prop, module, options)
@@ -267,8 +299,8 @@ const insertTupleMacros = (content, schema, module, title, options) => {
       .replace(/\$\{if\.optional\}(.*?)\$\{end\.if\.optional\}/gms, '')
   }
 
-  content = content.replace(/\$\{properties\}/g, schema.items.map((prop, i) => doMacroWork(propTemplate, prop, i, propIndent)).join('\n'))
-  content = content.replace(/\$\{items\}/g, schema.items.map((prop, i) => doMacroWork(itemsTemplate, prop, i, itemsIndent)).join('\n'))  
+  content = content.replace(/\$\{properties\}/g, schema.items.map((prop, i) => doMacroWork(propTemplate, prop, i, propIndent)).join(delimiter))
+  content = content.replace(/\$\{items\}/g, schema.items.map((prop, i) => doMacroWork(itemsTemplate, prop, i, itemsIndent)).join(delimiter))
 
   return content
 }
@@ -287,10 +319,13 @@ const insertPrimitiveMacros = (content, schema, module, name, templateDir) => {
 
 const insertAnyOfMacros = (content, schema, module, name) => {
   const itemTemplate = content
-  content = schema.anyOf.map((item, i) => itemTemplate
-    .replace(/\$\{type\}/g, getSchemaType(item, module))
-    .replace(/\$\{delimiter\}(.*?)\$\{end.delimiter\}/g, i === schema.anyOf.length - 1 ? '' : '$1')
-  ).join('')
+  if (content.split('\n').find(line => line.includes("${type}"))) {
+    content = schema.anyOf.map((item, i) => itemTemplate
+      .replace(/\$\{type\}/g, getSchemaType(item, module))
+      .replace(/\$\{delimiter\}(.*?)\$\{end.delimiter\}/g, i === schema.anyOf.length - 1 ? '' : '$1')
+    ).join('')
+  }
+
   return content
 }
 
@@ -359,14 +394,27 @@ function getSchemaShape(schema = {}, module = {}, { templateDir = 'types', name 
     return insertSchemaMacros(result, schema, module, theTitle, parent, property)
   }
   else if (schema.anyOf || schema.oneOf) {
-    // borrow anyOf logic, note that schema is a copy, so we're not breaking it.
-    if (!schema.anyOf) {
-      schema.anyOf = schema.oneOf
+    const template = getTemplate(path.join(templateDir, 'anyOfSchema' + suffix))
+    let shape
+    if (template) {
+      if (!template.includes('SKIP')) {
+        shape = insertAnyOfMacros(template, schema, module, theTitle)
+      }
     }
-    const shape = insertAnyOfMacros(getTemplate(path.join(templateDir, 'anyOf' + suffix)), schema, module, theTitle)
-
-    result = result.replace(/\$\{shape\}/g, shape)
-    return insertSchemaMacros(result, schema, module, theTitle, parent, property)
+    else {
+      // borrow anyOf logic, note that schema is a copy, so we're not breaking it.
+      if (!schema.anyOf) {
+        schema.anyOf = schema.oneOf
+      }
+      shape = insertAnyOfMacros(getTemplate(path.join(templateDir, 'anyOf' + suffix)), schema, module, theTitle)
+    }
+    if (shape) {
+      result = result.replace(/\$\{shape\}/g, shape)
+      return insertSchemaMacros(result, schema, module, theTitle, parent, property)
+    }
+    else {
+      return ''
+    }
   }
   else if (schema.allOf) {
     const merger = (key) => function (a, b) {
@@ -464,7 +512,7 @@ const isSupportedTuple = schema => {
   }
 }
 
-function getSchemaType(schema, module, { destination, templateDir = 'types', link = false, code = false, asPath = false, event = false, result = false, expandEnums = true, baseUrl = '', namespace = false } = {}) {
+function getSchemaType(schema, module, { destination, templateDir = 'types', link = false, code = false, asPath = false, event = false, result = false, expandEnums = true, baseUrl = '', namespace = false, name = '' } = {}) {
   const wrap = (str, wrapper) => wrapper + str + wrapper
 
   schema = sanitize(schema)
@@ -479,8 +527,9 @@ function getSchemaType(schema, module, { destination, templateDir = 'types', lin
   if (schema['$ref']) {
     if (schema['$ref'][0] === '#') {
       const refSchema = getPath(schema['$ref'], module)
+      const refName = refSchema.title || schema['$ref'].split('/').pop()
       const includeNamespace = (module.info.title !== getXSchemaGroup(refSchema, module))
-      return getSchemaType(refSchema, module, {destination, templateDir, link, title, code, asPath, event, result, expandEnums, baseUrl, namespace:includeNamespace })// { link: link, code: code, destination })
+      return getSchemaType(refSchema, module, {destination, templateDir, link, title, code, asPath, event, result, expandEnums, baseUrl, namespace:includeNamespace, name:refName })// { link: link, code: code, destination })
     }
     else {
       // TODO: This never happens... but might be worth keeping in case we link to an opaque external schema at some point?
@@ -640,6 +689,7 @@ export default {
   setConvertTuples,
   setAllocatedPrimitiveProxies,
   getMethodSignatureParams,
+  getMethodSignatureResult,
   getSchemaShape,
   getSchemaType,
   getJsonType,
