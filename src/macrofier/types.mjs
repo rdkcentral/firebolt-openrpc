@@ -27,9 +27,11 @@ const primitives = {
   "integer": "number",
   "number": "number",
   "boolean": "boolean",
-  "string": "string"
+  "string": "string",
+  "float": "float"
 }
 
+const isPrimitiveType = type => primitives[type] ? true : false
 const allocatedPrimitiveProxies = {}
 
 function setTemplates(t) {
@@ -137,6 +139,39 @@ const insertEnumMacros = (content, schema, module, name) => {
   return template.join('\n')
 }
 
+const insertObjectAdditionalPropertiesMacros = (content, schema, module, title, options) => {
+  options = options ? JSON.parse(JSON.stringify(options)) : {}
+
+  const options2 = JSON.parse(JSON.stringify(options))
+  options2.parent = title
+  options2.level = options.level + 1
+  options2.name = ''
+
+  const shape = getSchemaShape(schema.additionalProperties, module, options2)
+  let type = getSchemaType(schema.additionalProperties, module, options2).trimEnd()
+  const propertyNames = localizeDependencies(schema, module).propertyNames
+
+  let jsonType = getJsonType(schema.additionalProperties, module)
+  if (!isPrimitiveType(jsonType)) {
+    jsonType = 'string'
+  }
+
+  const additionalType = getPrimitiveType(jsonType, 'additional-types')
+  let key = (propertyNames && propertyNames.title) ? propertyNames.title : getTemplate(path.join(options.templateDir, 'additionalPropertiesKey')).trimEnd()
+
+  content = content
+    .replace(/\$\{shape\}/g, shape)
+    .replace(/\$\{parent\.title\}/g, title)
+    .replace(/\$\{title\}/g, title)
+    .replace(/\$\{type\}/g, type)
+    .replace(/\$\{additional\.type\}/g, additionalType)
+    .replace(/\$\{key\}/g, key)
+    .replace(/\$\{delimiter\}(.*?)\$\{end.delimiter\}/g, '')
+    .replace(/\$\{if\.optional\}(.*?)\$\{end\.if\.optional\}/g, '')
+
+  return content
+}
+
 const insertObjectMacros = (content, schema, module, title, property, options) => {
   options = options ? JSON.parse(JSON.stringify(options)) : {}
 
@@ -151,21 +186,7 @@ const insertObjectMacros = (content, schema, module, title, property, options) =
     const template = getTemplate(path.join(options.templateDir, 'property' + (templateType ? `-${templateType}` : ''))).replace(/\n/gms, indent + '\n')
   
     const properties = []
-  
-    if (schema.additionalProperties && (typeof schema.additionalProperties === 'object')) {
-      const template = getTemplate(path.join(options.templateDir, 'additionalProperties'))
-      let type = getSchemaType(schema.additionalProperties, module, options2)
-      const shape = getSchemaShape(schema.additionalProperties, module, options2)
-      properties.push(template
-        .replace(/\$\{property\}/g, '')
-        .replace(/\$\{Property\}/g, '')
-        .replace(/\$\{shape\}/g, shape)
-        .replace(/\$\{parent\.title\}/g, title)
-        .replace(/\$\{title\}/g, type)
-        .replace(/\$\{delimiter\}(.*?)\$\{end.delimiter\}/g, '')
-        .replace(/\$\{if\.optional\}(.*?)\$\{end\.if\.optional\}/g, ''))
-    }
-  
+
     if (schema.properties) {
       Object.entries(schema.properties).forEach(([name, prop], i) => {
         options2.property = name
@@ -614,11 +635,17 @@ function getSchemaType(schema, module, { destination, templateDir = 'types', lin
     // }
   }
   else if (schema.type) {
-    // TODO: this assumes that when type is an array of types, that it's one other primative & 'null', which isn't necessarily true.
-    const schemaType = !Array.isArray(schema.type) ? schema.type : schema.type.find(t => t !== 'null')
-    const primitive = getPrimitiveType(schemaType, templateDir)
-    const type = allocatedProxy ? allocatedPrimitiveProxies[schemaType] || primitive : primitive
-    return wrap(type, code ? '`' : '')
+    const template = getTemplate(path.join(templateDir, 'additionalProperties'))
+    if (schema.additionalProperties && template ) {
+      return insertSchemaMacros(getTemplate(path.join(templateDir, 'Title')), schema, module, theTitle, '', '', false)
+    }
+    else {
+      // TODO: this assumes that when type is an array of types, that it's one other primative & 'null', which isn't necessarily true.
+      const schemaType = !Array.isArray(schema.type) ? schema.type : schema.type.find(t => t !== 'null')
+      const primitive = getPrimitiveType(schemaType, templateDir)
+      const type = allocatedProxy ? allocatedPrimitiveProxies[schemaType] || primitive : primitive
+      return wrap(type, code ? '`' : '')
+    }
   }
   else {
     // TODO this is TypeScript specific
@@ -627,7 +654,21 @@ function getSchemaType(schema, module, { destination, templateDir = 'types', lin
 }
 
 function getJsonType(schema, module, { destination, link = false, title = false, code = false, asPath = false, event = false, expandEnums = true, baseUrl = '' } = {}) {
-  return ''
+
+  schema = sanitize(schema)
+  let type
+  if (schema['$ref']) {
+    if (schema['$ref'][0] === '#') {
+      //Ref points to local schema
+      //Get Path to ref in this module and getSchemaType
+      let definition = getPath(schema['$ref'], module)
+      type = getJsonType(definition, schema, {destination})
+    }
+  }
+  else {
+    type = !Array.isArray(schema.type) ? schema.type : schema.type.find(t => t !== 'null')
+  }
+  return type
 }
 
 function getSchemaInstantiation(schema, module, { instantiationType }) {
