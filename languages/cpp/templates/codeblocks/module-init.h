@@ -1,3 +1,3 @@
-    virtual const ${info.Title}::I${info.Title}& ${info.Title}Interface() const = 0;
+${if.modules}    virtual const ${info.Title}::I${info.Title}& ${info.Title}Interface() const = 0;
 
-${module.init}
+${end.if.modules}${module.init}

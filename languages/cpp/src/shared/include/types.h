@@ -16,22 +16,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef FIREBOLT_TYPES_H
-#define FIREBOLT_TYPES_H
+#pragma once
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <string>
+#include <unordered_map>
+#include <vector>
+#include <optional>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-typedef struct Firebolt_String_s* Firebolt_String_t;
-const char* Firebolt_String(Firebolt_String_t handle);
-void Firebolt_String_Release(Firebolt_String_t handle);
-
-#ifdef __cplusplus
-}
-#endif
-
-#endif // FIREBOLT_TYPES_H

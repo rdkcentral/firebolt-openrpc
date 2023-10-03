@@ -9,6 +9,10 @@ ${method.result.initialization}
             ${if.params.empty}Firebolt::Error status = FireboltSDK::Properties::Get(method, jsonResult);${end.if.params.empty}
             if (status == Firebolt::Error::None) {
 ${method.result.instantiation}
+            } else {
+                err = new Firebolt::Error();
+                *err = status;
             }
+
             return ${method.result.name};
         }${method.setter}

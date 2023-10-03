@@ -87,3 +87,11 @@ ${if.types}
 
 }//namespace ${info.Title}
 }${end.if.implementations}
+${if.enums}
+
+namespace WPEFramework {
+
+
+/* ${ENUMS} */
+
+}${end.if.enums}

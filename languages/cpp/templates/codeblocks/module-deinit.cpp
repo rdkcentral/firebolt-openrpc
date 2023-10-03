@@ -1,2 +1,2 @@
-            ${info.Title}::I${info.Title}::Dispose();
-${module.deinit}
+${if.modules}            ${info.Title}::I${info.Title}::Dispose();
+${end.if.modules}${module.deinit}

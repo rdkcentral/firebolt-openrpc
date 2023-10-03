@@ -620,7 +620,7 @@ namespace FireboltSDK {
         }
 
         Firebolt::Error WaitForLinkReady()
-        {
+     	{
             uint32_t waiting = _waitTime;
             static constexpr uint32_t SLEEPSLOT_TIME = 100;
 

@@ -1,1 +1,1 @@
-/* AnyOf is not supported in C: ${title} */
+WPEFramework::Core::JSON::VariantContainer
