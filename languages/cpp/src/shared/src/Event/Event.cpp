@@ -72,7 +72,7 @@ namespace FireboltSDK {
             }
         } else {
             status = Firebolt::Error::None;
-	    }
+        }
         return status;
     }
 

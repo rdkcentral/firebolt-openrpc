@@ -107,6 +107,10 @@ const getTemplateForDeclaration = (method, templates) => {
   return getTemplateTypeForMethod(method, 'declarations', templates)
 }
 
+const getTemplateForDeclarationOverride = (method, templates) => {
+  return getTemplateTypeForMethod(method, 'declarations-override', templates)
+}
+
 const getTemplateForExample = (method, templates) => {
   return getTemplateTypeForMethod(method, 'examples', templates)
 }
@@ -524,6 +528,7 @@ const generateMacros = (obj, templates, languages, options = {}) => {
   const methodsArray = allMethodsArray.filter(m => m.body && !m.event && (!options.hideExcluded || !m.excluded))
   const eventsArray = allMethodsArray.filter(m => m.body && m.event && (!options.hideExcluded || !m.excluded))
   const declarationsArray = allMethodsArray.filter(m => m.declaration && (!config.excludeDeclarations || (!options.hideExcluded || !m.excluded)))
+  const declarationsOverrideArray = allMethodsArray.filter(m => m.declarationOverride && (!config.excludeDeclarations || (!options.hideExcluded || !m.excluded)))
 
   const imports = generateImports(obj, templates, { destination: (options.destination ? options.destination : '') })
   const initialization = generateInitialization(obj, templates)
@@ -532,7 +537,7 @@ const generateMacros = (obj, templates, languages, options = {}) => {
   const methods = methodsArray.length ? getTemplate('/sections/methods', templates).replace(/\$\{method.list\}/g, methodsArray.map(m => m.body).join('\n')) : ''
   const declarations = declarationsArray.length ? getTemplate('/sections/declarations', templates).replace(/\$\{declaration\.list\}/g, declarationsArray.map(m => m.declaration).join('\n')) : ''
   const methodList = methodsArray.filter(m => m.body).map(m => m.name)
-
+  const declarationsOverride = declarationsOverrideArray.length ? getTemplate('/sections/declarations-override', templates).replace(/\$\{declaration\.override\.list\}/g, declarationsOverrideArray.map(m => m.declarationOverride).join('\n')) : ''
   const providerInterfaces = generateProviderInterfaces(obj, templates)
   const events = eventsArray.length ? getTemplate('/sections/events', templates).replace(/\$\{event.list\}/g, eventsArray.map(m => m.body).join('\n')) : ''
   const eventList = eventsArray.map(m => makeEventName(m))
@@ -541,8 +546,8 @@ const generateMacros = (obj, templates, languages, options = {}) => {
   const suffix = options.destination ? options.destination.split('.').pop().trim() : ''
   const module = getTemplate('/codeblocks/module', templates)
   const moduleInclude = getTemplate(suffix ? `/codeblocks/module-include.${suffix}` : '/codeblocks/module-include', templates)
+  const moduleIncludePrivate = getTemplate(suffix ? `/codeblocks/module-include-private.${suffix}` : '/codeblocks/module-include-private', templates)
   const moduleInit = getTemplate(suffix ? `/codeblocks/module-init.${suffix}` : '/codeblocks/module-init', templates)
-  const moduleDeinit = getTemplate(suffix ? `/codeblocks/module-deinit.${suffix}` : '/codeblocks/module-deinit', templates)
 
   Object.assign(macros, {
     imports,
@@ -553,6 +558,7 @@ const generateMacros = (obj, templates, languages, options = {}) => {
     methods,
     methodList,
     declarations,
+    declarationsOverride,
     defaults,
     examples,
     providerInterfaces,
@@ -561,8 +567,8 @@ const generateMacros = (obj, templates, languages, options = {}) => {
     description: obj.info.description,
     module: module,
     moduleInclude: moduleInclude,
+    moduleIncludePrivate: moduleIncludePrivate,
     moduleInit: moduleInit,
-    moduleDeinit: moduleDeinit,
     public: hasPublicAPIs(obj)
   })
 
@@ -570,9 +576,9 @@ const generateMacros = (obj, templates, languages, options = {}) => {
 }
 
 const clearMacros = (fContents = '') => {
-  fContents = fContents.replace(/\$\{module.includes\}/g, "")
-  fContents = fContents.replace(/\$\{module.init\}/g, "")
-  fContents = fContents.replace(/\$\{module.deinit\}/g, "")
+  fContents = fContents.replace(/\$\{module\.includes\}/g, "")
+  fContents = fContents.replace(/\$\{module\.includes\.private\}/g, "")
+  fContents = fContents.replace(/\$\{module\.init\}/g, "")
 
   return fContents
 }
@@ -603,15 +609,16 @@ const insertMacros = (fContents = '', macros = {}) => {
   fContents = fContents.replace(/\$\{if\.methods\}(.*?)\$\{end\.if\.methods\}/gms, (macros.methods.trim() || macros.events.trim()) ? '$1' : '')
   fContents = fContents.replace(/\$\{if\.implementations\}(.*?)\$\{end\.if\.implementations\}/gms, (macros.methods.trim() || macros.events.trim() || macros.schemas.types.trim()) ? '$1' : '')
 
-  fContents = fContents.replace(/\$\{module.list\}/g, macros.module)
-  fContents = fContents.replace(/\$\{module.includes\}/g, macros.moduleInclude)
-  fContents = fContents.replace(/\$\{module.init\}/g, macros.moduleInit)
-  fContents = fContents.replace(/\$\{module.deinit\}/g, macros.moduleDeinit)
+  fContents = fContents.replace(/\$\{module\.list\}/g, macros.module)
+  fContents = fContents.replace(/\$\{module\.includes\}/g, macros.moduleInclude)
+  fContents = fContents.replace(/\$\{module\.includes\.private\}/g, macros.moduleIncludePrivate)
+  fContents = fContents.replace(/\$\{module\.init\}/g, macros.moduleInit)
 
   fContents = fContents.replace(/\$\{if\.modules\}(.*?)\$\{end\.if\.modules\}/gms, (macros.methods.trim() || macros.events.trim()) ? '$1' : '')
 
   fContents = fContents.replace(/[ \t]*\/\* \$\{METHODS\} \*\/[ \t]*\n/, macros.methods)
   fContents = fContents.replace(/[ \t]*\/\* \$\{DECLARATIONS\} \*\/[ \t]*\n/, macros.declarations)
+  fContents = fContents.replace(/[ \t]*\/\* \$\{DECLARATIONS_OVERRIDE\} \*\/[ \t]*\n/, macros.declarationsOverride)
   fContents = fContents.replace(/[ \t]*\/\* \$\{METHOD_LIST\} \*\/[ \t]*\n/, macros.methodList.join(',\n'))
   fContents = fContents.replace(/[ \t]*\/\* \$\{EVENTS\} \*\/[ \t]*\n/, macros.events)
   fContents = fContents.replace(/[ \t]*\/\* \$\{EVENT_LIST\} \*\/[ \t]*\n/, macros.eventList.join(','))
@@ -1092,6 +1099,7 @@ function generateMethods(json = {}, examples = {}, templates = {}) {
       name: methodObj.name,
       body: '',
       declaration: '',
+      declarationOverride: '',
       excluded: methodObj.tags.find(t => t.name === 'exclude-from-sdk'),
       event: isEventMethod(methodObj)
     }
@@ -1108,6 +1116,13 @@ function generateMethods(json = {}, examples = {}, templates = {}) {
     if (template && template.length) {
       let javascript = insertMethodMacros(template, methodObj, json, templates, examples)
       result.declaration = javascript
+    }
+
+    template = getTemplateForDeclarationOverride(methodObj, templates)
+
+    if (template && template.length) {
+      let javascript = insertMethodMacros(template, methodObj, json, templates, examples)
+      result.declarationOverride = javascript
     }
 
     acc.push(result)

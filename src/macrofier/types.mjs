@@ -80,22 +80,7 @@ function getMethodSignatureParams(method, module, { destination, callback, overr
 }
 
 function getMethodSignatureResult(method, module, { destination, callback, overrideRule = false }) {
-    let type = getSchemaType(method.result.schema, module, { destination, namespace : true, overrideRule })
-
-    let result = ''
-    let jsonType = getJsonType(method.result.schema, module, { destination })
-
-    if (!isVoid(type) && !isPrimitiveType(jsonType) && getTemplate('/result/nonprimitive')) {
-      result = getTemplate('/result/nonprimitive')
-    }
-    else if ((jsonType === 'string') && getTemplate('/result/string')) {
-      result = getTemplate('/result/string')
-    }
-    else {
-      result = getTemplate('/result/default')
-    }
-
-    return result.replace(/\$\{method\.result\.type\}/g, type)
+    return getTemplate('/result/default').replace(/\$\{method\.result\.type\}/g, getSchemaType(method.result.schema, module, { destination, namespace : true, overrideRule }))
 }
 
 const getTemplate = (name) => {

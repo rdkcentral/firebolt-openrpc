@@ -13,7 +13,8 @@
     ],
     "templatesPerModule": [
         "/include/module.h",
-        "/src/module.cpp"
+        "/src/moduleImpl.h",
+        "/src/moduleImpl.cpp"
     ],
     "templatesPerSchema": [
         "/include/common/module.h",

@@ -18,10 +18,14 @@
 
 #include <firebolt.h>
 #include "FireboltSDK.h"
+${module.includes.private}
 
 namespace Firebolt {
 
     class FireboltAccessorImpl : public IFireboltAccessor {
+    private:
+        using ModuleMap = std::unordered_map<string, IModule*>;
+
     private:
         FireboltAccessorImpl()
             : _accessor(nullptr)
@@ -53,7 +57,11 @@ namespace Firebolt {
 
         static void Dispose()
         {
-${module.deinit}
+            ModuleMap::iterator module = _moduleMap.begin();
+            while (module != _moduleMap.end()) {
+                delete module->second;
+                module = _moduleMap.erase(module);
+            }
 
             ASSERT(_singleton != nullptr);
             if (_singleton != nullptr) {
@@ -61,7 +69,7 @@ ${module.deinit}
             }
         }
 
-        Firebolt::Error Intitialize( const std::string& configLine ) override
+        Firebolt::Error Initialize( const std::string& configLine ) override
         {
             _accessor = &(FireboltSDK::Accessor::Instance(configLine));
             return Error::None;
@@ -72,9 +80,9 @@ ${module.deinit}
             return Error::None;
         }
 
-        void Connect( OnConnectionChanged listener ) override
+        Firebolt::Error Connect( OnConnectionChanged listener ) override
         {
-            _accessor->Connect(listener);
+            return _accessor->Connect(listener);
         }
 
         Firebolt::Error Disconnect() override
@@ -90,7 +98,10 @@ ${module.init}
     private:
         FireboltSDK::Accessor* _accessor;
         static FireboltAccessorImpl* _singleton;
+        static ModuleMap _moduleMap;
     };
+
+    FireboltAccessorImpl::ModuleMap FireboltAccessorImpl::_moduleMap;
 
     FireboltAccessorImpl* FireboltAccessorImpl::_singleton = nullptr;
 

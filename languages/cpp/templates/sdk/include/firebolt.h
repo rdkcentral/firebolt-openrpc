@@ -53,16 +53,16 @@ struct IFireboltAccessor {
      *  }
      *
      *
-     * @return None
+     * @return Firebolt::Error
      *
      */
 
-    virtual Firebolt::Error Intitialize ( const std::string& configLine ) = 0;
+    virtual Firebolt::Error Initialize ( const std::string& configLine ) = 0;
 
     /**
      * @brief Deinititlize the SDK. 
      *
-     * @return None
+     * @return Firebolt::Error
      *
      */
     virtual Firebolt::Error Deinitialize ( ) = 0;
@@ -84,14 +84,14 @@ struct IFireboltAccessor {
      *
      * @param listener Connection status listener
      *
-     * @return None
+     * @return Firebolt::Error
      */
-    virtual void Connect ( OnConnectionChanged listener ) = 0;
+    virtual Firebolt::Error Connect ( OnConnectionChanged listener ) = 0;
 
     /**
      * @brief Disconnects from the Websocket endpoint.
      * 
-     * @return None
+     * @return Firebolt::Error
     */
     virtual Firebolt::Error Disconnect ( ) = 0;
 

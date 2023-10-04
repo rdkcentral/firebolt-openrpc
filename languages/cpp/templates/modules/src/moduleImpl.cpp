@@ -16,29 +16,27 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#pragma once
-
-#include "error.h"
+#include "FireboltSDK.h"
 /* ${IMPORTS} */
+#include "${info.title.lowercase}Impl.h"
 
-${if.declarations}namespace Firebolt {
+${if.implementations}
+namespace Firebolt {
 namespace ${info.Title} {
+
+    // Methods
+    /* ${METHODS} */
+
+    // Events
+    /* ${EVENTS} */
+
+}//namespace ${info.Title}
+}${end.if.implementations}
 ${if.enums}
 
-// Enums
-/* ${ENUMS} */${end.if.enums}
-${if.types}
-// Types
-/* ${TYPES} */
-${end.if.types}
-${if.methods}struct I${info.Title} {
+namespace WPEFramework {
 
-    virtual ~I${info.Title}() = default;
 
-    // Methods & Events
-    /* ${DECLARATIONS} */
+/* ${ENUMS} */
 
-};${end.if.methods}
-
-} //namespace ${info.Title}
-}${end.if.declarations}
+}${end.if.enums}
