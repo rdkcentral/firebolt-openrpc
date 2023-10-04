@@ -38,7 +38,7 @@ namespace FireboltSDK {
         enum class Category : uint8_t {
             OpenRPC,
             Core,
-            Management,
+            Manage,
             Discovery
         };
 

@@ -104,10 +104,13 @@ namespace FireboltSDK {
             }
         }
 
-        void Connect(const Transport<WPEFramework::Core::JSON::IElement>::Listener& listener)
+        Firebolt::Error Connect(const Transport<WPEFramework::Core::JSON::IElement>::Listener& listener)
         {
-            CreateTransport(_config.WsUrl.Value().c_str(), listener, _config.WaitTime.Value());
-            CreateEventHandler();
+            Firebolt::Error status = CreateTransport(_config.WsUrl.Value().c_str(), listener, _config.WaitTime.Value());
+            if (status == Firebolt::Error::None) {
+                status = CreateEventHandler();
+            }
+            return status;
         }
 
         Firebolt::Error Disconnect()
