@@ -93,12 +93,12 @@ const getTemplate = (name) => {
 // TODO: this assumes the same title doesn't exist in multiple x-schema groups!
 const getXSchemaGroup = (schema, module, title = '') => {
   let group = module.info.title
-
-  if ((schema.title || title) && module['x-schemas']) {
-    Object.entries(module['x-schemas']).forEach(([title, module]) => {
-      Object.values(module).forEach(s => {
-        if (schema.title === s.title) {
-          group = title
+  title = schema.title || title
+  if (title && module['x-schemas']) {
+    Object.entries(module['x-schemas']).forEach(([name, module]) => {
+      Object.entries(module).forEach(([componentName, component]) => {
+        if (title === component.title || title === componentName) {
+          group = name
         }
       })
     })
@@ -144,7 +144,7 @@ const insertEnumMacros = (content, schema, module, name, suffix) => {
 
   for (var i = 0; i < template.length; i++) {
     if (template[i].indexOf('${key}') >= 0) {
-      template[i] = schema.enum.map(value => {
+      template[i] = schema.enum.filter(value => value).map(value => {
         return template[i].replace(/\$\{key\}/g, safeName(value))
           .replace(/\$\{value\}/g, value)
       }).join('\n')
@@ -386,8 +386,7 @@ function getSchemaShape(schema = {}, module = {}, { templateDir = 'types', name 
 
   let result = level === 0 ? getTemplate(path.join(templateDir, 'default' + suffix)) : '${shape}'
   let genericTemplate = getTemplate(path.join(templateDir, 'generic' + suffix))
-
-  if (enums /*&& level === 0*/ && schema.type === "string" && Array.isArray(schema.enum)) {
+  if (enums /*&& level === 0*/ && Array.isArray(schema.enum) && ((schema.type === "string") || (schema.type[0] === "string"))) {
     result = getTemplate(path.join(templateDir, 'enum' + suffix)) || genericTemplate
     return insertSchemaMacros(insertEnumMacros(result, schema, module, theTitle, suffix), schema, module, theTitle, parent, property)
   }
@@ -395,6 +394,7 @@ function getSchemaShape(schema = {}, module = {}, { templateDir = 'types', name 
   if (schema['$ref']) {
     const someJson = getPath(schema['$ref'], module)
     if (someJson) {
+      name = someJson.title || schema['$ref'].split('/').pop()
       return getSchemaShape(someJson, module, { templateDir, name, parent, property, level, summary, descriptions, destination, enums: false, overrideRule })
     }
     throw "Unresolvable $ref: " + schema['ref'] + ", in " + module.info.title
@@ -575,7 +575,7 @@ function getSchemaType(schema, module, { destination, templateDir = 'types', lin
       }
     }
   }
-  else if (hasTitle && schema.title) {
+  else if (hasTitle && (schema.title || title)) {
     if (link) {
       return '[' + wrap(theTitle, code ? '`' : '') + '](#' + schema.title.toLowerCase() + ')'
     }
