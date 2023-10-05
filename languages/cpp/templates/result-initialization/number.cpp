@@ -1,1 +1,1 @@
-            ${type} ${property} = 0;
+        ${type} ${property} = 0;

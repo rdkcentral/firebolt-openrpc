@@ -1,1 +1,1 @@
-            ${type} ${property} = false;
+        ${type} ${property} = false;

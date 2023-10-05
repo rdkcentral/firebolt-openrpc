@@ -1,1 +1,1 @@
-                ${property} = jsonResult.Value().c_str();
+            ${property} = jsonResult.Value().c_str();

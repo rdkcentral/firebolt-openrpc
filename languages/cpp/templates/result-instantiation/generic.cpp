@@ -1,1 +1,1 @@
-                ${property} = jsonResult.Value();
+            ${property} = jsonResult.Value();

@@ -1,1 +1,1 @@
-                ${type} response = (*proxyResponse)->Value();
+            ${type} response = (*proxyResponse)->Value();

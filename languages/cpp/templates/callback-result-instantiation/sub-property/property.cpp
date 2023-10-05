@@ -1,1 +1,1 @@
-${shape}                ${if.non.object}response.${property.dependency}${property} = (*proxyResponse)->${Property.dependency}${Property};${end.if.non.object}
+${shape}            ${if.non.object}response.${property.dependency}${property} = (*proxyResponse)->${Property.dependency}${Property};${end.if.non.object}
