@@ -924,7 +924,7 @@ namespace FireboltSDK {
         Firebolt::Error FireboltErrorValue(const uint32_t error)
         {
 
-            Firebolt::Error fireboltError = Firebolt::Error::General;
+            Firebolt::Error fireboltError = static_cast<Firebolt::Error>(error);
             switch (error) {
             case WPEFramework::Core::ERROR_NONE:
                 fireboltError = Firebolt::Error::None;

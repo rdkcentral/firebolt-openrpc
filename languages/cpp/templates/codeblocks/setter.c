@@ -8,5 +8,9 @@
 ${if.params}${method.params.serialization}${end.if.params}
 
             Firebolt::Error status = FireboltSDK::Properties::Set(method, jsonParameters);
+            if (err != nullptr) {
+                *err = status;
+            }
+
             return;
         }

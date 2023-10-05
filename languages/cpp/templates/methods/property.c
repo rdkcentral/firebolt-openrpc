@@ -10,5 +10,8 @@ ${method.result.initialization}
             if (status == Firebolt::Error::None) {
 ${method.result.instantiation}
             }
+            if (err != nullptr) {
+                *err = status;
+            }
             return ${method.result.name};
         }${method.setter}

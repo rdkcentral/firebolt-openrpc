@@ -20,8 +20,14 @@ ${event.callback.result.instantiation}
             JsonObject jsonParameters;
 ${event.params.serialization}
             status = FireboltSDK::Event::Instance().Subscribe<${event.result.json.type}>(eventName, jsonParameters, ${info.Title}${method.Name}InnerCallback, reinterpret_cast<void*>(&notification), nullptr);
+            if (err != nullptr) {
+                *err = status;
+            }
         }
         void Unsubscribe( I${method.Name}Notification& notification, Firebolt::Error *err = nullptr )
         {
             Firebolt::Error status = FireboltSDK::Event::Instance().Unsubscribe(_T("${info.title.lowercase}.${method.rpc.name}"), reinterpret_cast<void*>(&notification));
+            if (err != nullptr) {
+                *err = status;
+            }
         }
