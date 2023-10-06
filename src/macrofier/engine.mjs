@@ -727,7 +727,7 @@ const convertEnumTemplate = (schema, templateName, templates) => {
   const template = getTemplate(templateName, templates).split('\n')
   for (var i = 0; i < template.length; i++) {
     if (template[i].indexOf('${key}') >= 0) {
-      template[i] = enumSchema.enum.map(value => {
+      template[i] = enumSchema.enum.filter(value => value).map(value => {
         const safeName = value.split(':').pop().replace(/[\.\-]/g, '_').replace(/\+/g, '_plus').replace(/([a-z])([A-Z0-9])/g, '$1_$2').toUpperCase()
         return template[i].replace(/\$\{key\}/g, safeName)
           .replace(/\$\{value\}/g, value)
@@ -887,7 +887,7 @@ function generateSchemas(json, templates, options) {
     }
     content = content.trim().length ? content : content.trim()
 
-    const isEnum = x => x.type === 'string' && Array.isArray(x.enum) && x.title
+    const isEnum = x => x.type && Array.isArray(x.enum) && x.title && ((x.type === 'string') || (x.type[0]  === 'string'))
 
     const result = uri ? {
       uri: uri,
