@@ -1,4 +1,4 @@
-        ${if.namespace.notsame}FirebotlSDK::${info.Title}::${end.if.namespace.notsame}JsonData_${title} ${Property}Container;
+        ${if.namespace.notsame}Firebolt::${info.Title}::${end.if.namespace.notsame}JsonData_${title} ${Property}Container;
 ${properties}
         string ${Property}Str;
         ${Property}Container.ToString(${Property}Str);

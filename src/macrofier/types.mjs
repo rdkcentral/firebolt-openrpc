@@ -91,14 +91,13 @@ const getTemplate = (name) => {
 }
 
 // TODO: this assumes the same title doesn't exist in multiple x-schema groups!
-const getXSchemaGroup = (schema, module, title = '') => {
+const getXSchemaGroup = (schema, module) => {
   let group = module.info.title
-  title = schema.title || title
-  if (title && module['x-schemas']) {
-    Object.entries(module['x-schemas']).forEach(([name, module]) => {
-      Object.entries(module).forEach(([componentName, component]) => {
-        if (title === component.title || title === componentName) {
-          group = name
+  if (schema.title && module['x-schemas']) {
+    Object.entries(module['x-schemas']).forEach(([title, module]) => {
+      Object.values(module).forEach(s => {
+        if (schema.title === s.title) {
+          group = title
         }
       })
     })
@@ -395,7 +394,7 @@ function getSchemaShape(schema = {}, module = {}, { templateDir = 'types', name 
     const someJson = getPath(schema['$ref'], module)
     if (someJson) {
       name = someJson.title || schema['$ref'].split('/').pop()
-      return getSchemaShape(someJson, module, { templateDir, name, parent, property, level, summary, descriptions, destination, enums: false, overrideRule })
+      return getSchemaShape(someJson, module, { templateDir, name, parent, property, level, summary, descriptions, destination, enums, overrideRule })
     }
     throw "Unresolvable $ref: " + schema['ref'] + ", in " + module.info.title
   }
@@ -553,7 +552,7 @@ function getSchemaType(schema, module, { destination, templateDir = 'types', lin
 
   const suffix = destination && ('.' + destination.split('.').pop()) || ''
   const namespaceStr = namespace ? getTemplate(path.join(templateDir, 'namespace' + suffix)) : ''
-  const theTitle = insertSchemaMacros(namespaceStr + getTemplate(path.join(templateDir, 'title' + suffix)), schema, module, schema.title || title, getXSchemaGroup(schema, module, title), '', false, templateDir)
+  const theTitle = insertSchemaMacros(namespaceStr + getTemplate(path.join(templateDir, 'title' + suffix)), schema, module, schema.title, getXSchemaGroup(schema, module), '', false, templateDir)
   const allocatedProxy = event || result
 
   const hasTitle = schema.type === "object" || schema.enum ? true : false
@@ -562,8 +561,8 @@ function getSchemaType(schema, module, { destination, templateDir = 'types', lin
     if (schema['$ref'][0] === '#') {
       const refSchema = getPath(schema['$ref'], module)
       title = refSchema.title || schema['$ref'].split('/').pop()
-      const includeNamespace = (module.info.title !== getXSchemaGroup(refSchema, module, title))
-      return getSchemaType(refSchema, module, {destination, templateDir, link, hasTitle, code, asPath, event, result, expandEnums, baseUrl, namespace:includeNamespace, title, overrideRule})// { link: link, code: code, destination })
+      const includeNamespace = (module.info.title !== getXSchemaGroup(refSchema, module))
+      return getSchemaType(refSchema, module, {destination, templateDir, link, hasTitle, code, asPath, event, result, expandEnums, baseUrl, namespace:includeNamespace, overrideRule})// { link: link, code: code, destination })
     }
     else {
       // TODO: This never happens... but might be worth keeping in case we link to an opaque external schema at some point?
@@ -575,7 +574,7 @@ function getSchemaType(schema, module, { destination, templateDir = 'types', lin
       }
     }
   }
-  else if (hasTitle && (schema.title || title)) {
+  else if (hasTitle && (schema.title)) {
     if (link) {
       return '[' + wrap(theTitle, code ? '`' : '') + '](#' + schema.title.toLowerCase() + ')'
     }
@@ -650,7 +649,7 @@ function getSchemaType(schema, module, { destination, templateDir = 'types', lin
     // Tuple -> Array
     if (convertTuplesToArraysOrObjects && isTuple(schema) && isHomogenous(schema)) {
       template = insertArrayMacros(getTemplate(path.join(templateDir, 'array')), schema, module, overrideRule)
-      template = insertSchemaMacros(template, firstItem, module, getSchemaType(firstItem, module, {destination, templateDir, link, hasTitle, code, asPath, event, result, expandEnums, baseUrl, namespace, title, overrideRule }), '', '', false, overrideRule)
+      template = insertSchemaMacros(template, firstItem, module, getSchemaType(firstItem, module, {destination, templateDir, link, hasTitle, code, asPath, event, result, expandEnums, baseUrl, namespace, overrideRule }), '', '', false, overrideRule)
     }
     // Normal Array
     else if (!isTuple(schema)) {
@@ -658,7 +657,7 @@ function getSchemaType(schema, module, { destination, templateDir = 'types', lin
       const baseDir = (templateDir !== 'json-types' ? 'types': templateDir)
       template = insertArrayMacros(getTemplate(path.join(baseDir, 'array')), schema, module, overrideRule)
       //const primitive = getPrimitiveType(schemaType, templateDir !== 'json-types' ? 'types': templateDir)
-      template = insertSchemaMacros(template, schema.items, module, getSchemaType(schema.items, module, {destination, templateDir, link, hasTitle, code, asPath, event, result, expandEnums, baseUrl, namespace, title, overrideRule }), '', '', true, overrideRule)
+      template = insertSchemaMacros(template, schema.items, module, getSchemaType(schema.items, module, {destination, templateDir, link, hasTitle, code, asPath, event, result, expandEnums, baseUrl, namespace, overrideRule }), '', '', true, overrideRule)
     }
     else {
       template = insertTupleMacros(getTemplate(path.join(templateDir, 'tuple')), schema, module, '', { templateDir }, overrideRule)
@@ -676,7 +675,7 @@ function getSchemaType(schema, module, { destination, templateDir = 'types', lin
     if (schema.title) {
       union.title = schema.title
     }
-    return getSchemaType(union, module, { templateDir, destination, link, hasTitle, code, asPath, baseUrl, namespace, title, overrideRule })
+    return getSchemaType(union, module, { templateDir, destination, link, hasTitle, code, asPath, baseUrl, namespace, overrideRule })
   }
   else if (schema.oneOf || schema.anyOf) {
     if (!schema.anyOf) {
