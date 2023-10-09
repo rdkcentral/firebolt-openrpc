@@ -35,7 +35,7 @@ ENUM_CONVERSION_BEGIN(FireboltSDK::Logger::Category)
 
     { FireboltSDK::Logger::Category::OpenRPC, _TXT("FireboltSDK::OpenRPC") },
     { FireboltSDK::Logger::Category::Core, _TXT("FireboltSDK::Core") },
-    { FireboltSDK::Logger::Category::Management, _TXT("FireboltSDK::Management") },
+    { FireboltSDK::Logger::Category::Manage, _TXT("FireboltSDK::Manage") },
     { FireboltSDK::Logger::Category::Discovery, _TXT("FireboltSDK::Discovery") },
 
 ENUM_CONVERSION_END(FireboltSDK::Logger::Category)
@@ -45,13 +45,13 @@ ENUM_CONVERSION_END(FireboltSDK::Logger::Category)
 namespace FireboltSDK {
     /* static */  Logger::LogLevel Logger::_logLevel = Logger::LogLevel::Error;
 
-    int32_t Logger::SetLogLevel(Logger::LogLevel logLevel)
+    Firebolt::Error Logger::SetLogLevel(Logger::LogLevel logLevel)
     {
         ASSERT(logLevel < Logger::LogLevel::MaxLevel);
-        int32_t status = FireboltSDKErrorNotSupported;
+        Firebolt::Error status = Firebolt::Error::General;
         if (logLevel < Logger::LogLevel::MaxLevel) {
             _logLevel = logLevel;
-            status = FireboltSDKErrorNone;
+            status = Firebolt::Error::None;
         }
         return status;
     }

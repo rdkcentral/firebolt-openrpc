@@ -18,24 +18,28 @@
 
 #pragma once
 
-#include <firebolt.h>
+#include "error.h"
 /* ${IMPORTS} */
 
 ${if.declarations}namespace Firebolt {
 namespace ${info.Title} {
+${if.enums}
 
 // Enums
-    /* ${ENUMS} */
-
+/* ${ENUMS} */${end.if.enums}
+${if.types}
 // Types
 /* ${TYPES} */
-
+${end.if.types}
 struct I${info.Title} {
 
-    virtual ~I${info.Title} = default;
+    static I${info.Title}& Instance();
+    static void Dispose();
 
-// Methods & Events
-/* ${DECLARATIONS} */
+    virtual ~I${info.Title}() = default;
+
+    // Methods & Events
+    /* ${DECLARATIONS} */
 
 };
 

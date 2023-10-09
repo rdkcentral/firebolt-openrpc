@@ -45,7 +45,7 @@ target_include_directories(${TARGET}
 )
 
 set_target_properties(${TARGET} PROPERTIES
-    CXX_STANDARD 11
+    CXX_STANDARD 17
     CXX_STANDARD_REQUIRED YES
     FRAMEWORK FALSE
     LINK_WHAT_YOU_USE TRUE

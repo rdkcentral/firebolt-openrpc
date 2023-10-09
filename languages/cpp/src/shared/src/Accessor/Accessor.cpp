@@ -27,15 +27,13 @@ namespace FireboltSDK {
         , _transport(nullptr)
         , _config()
     {
+        ASSERT(_singleton == nullptr);
         _singleton = this;
         _config.FromString(configLine);
 
         Logger::SetLogLevel(WPEFramework::Core::EnumerateType<Logger::LogLevel>(_config.LogLevel.Value().c_str()).Value());
 
         FIREBOLT_LOG_INFO(Logger::Category::OpenRPC, Logger::Module<Accessor>(), "Url = %s", _config.WsUrl.Value().c_str());
-        CreateTransport(_config.WsUrl.Value().c_str(), _config.WaitTime.Value());
-        CreateEventHandler();
-
         _workerPool = WPEFramework::Core::ProxyType<WorkerPoolImplementation>::Create(_config.WorkerPool.ThreadCount.Value(), _config.WorkerPool.StackSize.Value(), _config.WorkerPool.QueueSize.Value());
         WPEFramework::Core::WorkerPool::Assign(&(*_workerPool));
         _workerPool->Run();
@@ -43,23 +41,23 @@ namespace FireboltSDK {
 
     Accessor::~Accessor()
     {
-        DestroyTransport();
-        DestroyEventHandler();
         WPEFramework::Core::IWorkerPool::Assign(nullptr);
         _workerPool->Stop();
+
+        ASSERT(_singleton != nullptr);
         _singleton = nullptr;
     }
 
-    int32_t Accessor::CreateEventHandler()
+    Firebolt::Error Accessor::CreateEventHandler()
     {
          Event::Instance().Configure(_transport);
-         return FireboltSDKErrorNone;
+         return Firebolt::Error::None;
     }
 
-    int32_t Accessor::DestroyEventHandler()
+    Firebolt::Error Accessor::DestroyEventHandler()
     {
          Event::Dispose();
-         return FireboltSDKErrorNone;
+         return Firebolt::Error::None;
     }
 
     Event& Accessor::GetEventManager()
@@ -67,29 +65,25 @@ namespace FireboltSDK {
         return Event::Instance();
     }
 
-    int32_t Accessor::CreateTransport(const string& url, const uint32_t waitTime = DefaultWaitTime)
+    Firebolt::Error Accessor::CreateTransport(const string& url, const Transport<WPEFramework::Core::JSON::IElement>::Listener& listener, const uint32_t waitTime = DefaultWaitTime)
     {
         if (_transport != nullptr) {
             delete _transport;
         }
 
-        _transport = new Transport<WPEFramework::Core::JSON::IElement>(static_cast<WPEFramework::Core::URL>(url), waitTime);
-        if (WaitForLinkReady(_transport, waitTime) != FireboltSDKErrorNone) {
-            delete _transport;
-            _transport = nullptr;
-        }
+        _transport = new Transport<WPEFramework::Core::JSON::IElement>(static_cast<WPEFramework::Core::URL>(url), waitTime, listener);
 
         ASSERT(_transport != nullptr);
-        return ((_transport != nullptr) ? FireboltSDKErrorNone : FireboltSDKErrorUnavailable);
+        return ((_transport != nullptr) ? Firebolt::Error::None : Firebolt::Error::Timedout);
     }
 
-    int32_t Accessor::DestroyTransport()
+    Firebolt::Error Accessor::DestroyTransport()
     {
         if (_transport != nullptr) {
             delete _transport;
             _transport = nullptr;
         }
-        return FireboltSDKErrorNone;
+        return Firebolt::Error::None;
     }
 
     Transport<WPEFramework::Core::JSON::IElement>* Accessor::GetTransport()
@@ -98,20 +92,4 @@ namespace FireboltSDK {
         return _transport;
     }
 
-    int32_t Accessor::WaitForLinkReady(Transport<WPEFramework::Core::JSON::IElement>* transport, const uint32_t waitTime = DefaultWaitTime) {
-        uint32_t waiting = (waitTime == WPEFramework::Core::infinite ? WPEFramework::Core::infinite : waitTime);
-        static constexpr uint32_t SLEEPSLOT_TIME = 100;
-
-        // Right, a wait till connection is closed is requested..
-        while ((waiting > 0) && (transport->IsOpen() == false)) {
-
-            uint32_t sleepSlot = (waiting > SLEEPSLOT_TIME ? SLEEPSLOT_TIME : waiting);
-
-            // Right, lets sleep in slices of 100 ms
-            SleepMs(sleepSlot);
-
-            waiting -= (waiting == WPEFramework::Core::infinite ? 0 : sleepSlot);
-        }
-        return (((waiting == 0) || (transport->IsOpen() == true)) ? FireboltSDKErrorNone : FireboltSDKErrorTimedout);
-    }
 }

@@ -19,23 +19,11 @@
 #include "FireboltSDK.h"
 /* ${IMPORTS} */
 #include "jsondata_${info.title.lowercase}.h"
+${if.enums}
 
-namespace Firebolt {
+namespace WPEFramework {
 
 
 /* ${ENUMS} */
 
-namespace ${info.Title} {
-
-
-// Methods
-/* ${METHODS} */
-
-// Events
-/* ${EVENTS} */
-
-
-} //namespace ${info.Title}
-
-}
-
+}${end.if.enums}
