@@ -38,7 +38,7 @@ namespace FireboltSDK {
         enum class Category : uint8_t {
             OpenRPC,
             Core,
-            Management,
+            Manage,
             Discovery
         };
 
@@ -49,7 +49,7 @@ namespace FireboltSDK {
         ~Logger() = default;
 
     public:
-        static int32_t SetLogLevel(LogLevel logLevel);
+        static Firebolt::Error SetLogLevel(LogLevel logLevel);
         static void Log(LogLevel logLevel, Category category, const std::string& module, const std::string file, const std::string function, const uint16_t line, const std::string& format, ...);
 
     public:

@@ -41,6 +41,12 @@ class String : public WPEFramework::Core::JSON::String {
             _value = RHS;
             return (*this);
         }
+        String& operator=(const string RHS)
+        {
+            Base::operator = (RHS);
+            _value = RHS;
+            return (*this);
+        }
 
     public:
         const string& Value() const

@@ -29,7 +29,7 @@ typedef enum {
 } TestEnum;
 
 namespace FireboltSDK {
-    typedef int32_t (*Func)();
+    typedef Firebolt::Error (*Func)();
 
     class Tests {
     public:
@@ -94,19 +94,19 @@ namespace FireboltSDK {
             return 0;
         }
 
-        static int32_t GetDeviceId();
-        static int32_t GetDeviceVersion();
-        static int32_t GetUnKnownMethod();
+        static Firebolt::Error GetDeviceId();
+        static Firebolt::Error GetDeviceVersion();
+        static Firebolt::Error GetUnKnownMethod();
 
-        static int32_t SetLifeCycleClose();
-        static int32_t SetUnKnownMethod();
+        static Firebolt::Error SetLifeCycleClose();
+        static Firebolt::Error SetUnKnownMethod();
 
-        static int32_t SubscribeEvent();
-        static int32_t SubscribeEventwithSameCallback();
-        static int32_t SubscribeEventWithMultipleCallback();
+        static Firebolt::Error SubscribeEvent();
+        static Firebolt::Error SubscribeEventwithSameCallback();
+        static Firebolt::Error SubscribeEventWithMultipleCallback();
 
         template <typename CALLBACK>
-        static int32_t SubscribeEventForC(const string& eventName, JsonObject& jsonParameters, CALLBACK& callbackFunc, void* usercb, const void* userdata);
+        static Firebolt::Error SubscribeEventForC(const string& eventName, JsonObject& jsonParameters, CALLBACK& callbackFunc, void* usercb, const void* userdata);
 
     protected:
         static void PrintJsonObject(const JsonObject::Iterator& iterator);

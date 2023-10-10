@@ -1,7 +1,16 @@
-/* ${method.rpc.name} - ${method.description} */
-int32_t ${method.Name}( ${method.signature.params} )
-{
-    const string method = _T("${info.title.lowercase}.${method.rpc.name}");
+
+        /* ${method.rpc.name} - ${method.description} */
+        void ${method.Name}( ${method.signature.params}${if.params}, ${end.if.params}Firebolt::Error *err = nullptr )
+        {
+            const string method = _T("${info.title.lowercase}.${method.rpc.name}");
+
+            JsonObject jsonParameters;
 ${if.params}${method.params.serialization}${end.if.params}
-    return FireboltSDK::Properties::Set(method, jsonParameters);
-}
+
+            Firebolt::Error status = FireboltSDK::Properties::Set(method, jsonParameters);
+            if (err != nullptr) {
+                *err = status;
+            }
+
+            return;
+        }

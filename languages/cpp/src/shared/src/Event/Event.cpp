@@ -60,33 +60,35 @@ namespace FireboltSDK {
         _transport->SetEventHandler(this);
     }
 
-    int32_t Event::Unsubscribe(const string& eventName, void* usercb)
+    Firebolt::Error Event::Unsubscribe(const string& eventName, void* usercb)
     {
-        int32_t status = Revoke(eventName, usercb);
+        Firebolt::Error status = Revoke(eventName, usercb);
 
-        if (status == FireboltSDKErrorNone) {
+        if (status == Firebolt::Error::None) {
             if (_transport != nullptr) {
 
                 const string parameters("{\"listen\":false}");
                 status = _transport->Unsubscribe(eventName, parameters);
             }
+        } else {
+            status = Firebolt::Error::None;
         }
-        return ((status == FireboltSDKErrorInUse) ? FireboltSDKErrorNone: status);
+        return status;
     }
 
-    int32_t Event::ValidateResponse(const WPEFramework::Core::ProxyType<WPEFramework::Core::JSONRPC::Message>& jsonResponse, bool& enabled) /* override */
+    Firebolt::Error Event::ValidateResponse(const WPEFramework::Core::ProxyType<WPEFramework::Core::JSONRPC::Message>& jsonResponse, bool& enabled) /* override */
     {
-        int32_t result = FireboltSDKErrorGeneral;
+        Firebolt::Error result = Firebolt::Error::General;
         Response response;
         _transport->FromMessage((WPEFramework::Core::JSON::IElement*)&response, *jsonResponse);
         if (response.Listening.IsSet() == true) {
-            result = FireboltSDKErrorNone;
+            result = Firebolt::Error::None;
             enabled = response.Listening.Value();
         }
         return result;
     }
 
-    int32_t Event::Dispatch(const string& eventName, const WPEFramework::Core::ProxyType<WPEFramework::Core::JSONRPC::Message>& jsonResponse) /* override */
+    Firebolt::Error Event::Dispatch(const string& eventName, const WPEFramework::Core::ProxyType<WPEFramework::Core::JSONRPC::Message>& jsonResponse) /* override */
     {
         string response = jsonResponse->Result.Value();
         _adminLock.Lock();
@@ -117,12 +119,12 @@ namespace FireboltSDK {
         }
         _adminLock.Unlock();
 
-        return FireboltSDKErrorNone;;
+        return Firebolt::Error::None;;
     }
 
-    int32_t Event::Revoke(const string& eventName, void* usercb)
+    Firebolt::Error Event::Revoke(const string& eventName, void* usercb)
     {
-        int32_t status = FireboltSDKErrorNone;
+        Firebolt::Error status = Firebolt::Error::None;
         _adminLock.Lock();
         EventMap::iterator eventIndex = _eventMap.find(eventName);
         if (eventIndex != _eventMap.end()) {
@@ -137,7 +139,7 @@ namespace FireboltSDK {
             if (eventIndex->second.size() == 0) {
                 _eventMap.erase(eventIndex);
             } else {
-                status = FireboltSDKErrorInUse;
+                status = Firebolt::Error::General;
             }
         }
         _adminLock.Unlock();
