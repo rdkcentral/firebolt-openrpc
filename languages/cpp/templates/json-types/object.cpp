@@ -6,20 +6,20 @@
         ${title}()
             : WPEFramework::Core::JSON::Container()
         {
-            ${properties.register}
+${properties.register}
         }
 
         ${title}(const ${title}& other)
         {
-            ${properties.assign}
+${properties.assign}
         }
 
         ${title}& operator=(const ${title}& other)
         {
-            ${properties.assign}
+${properties.assign}
             return (*this);
         }
 
     public:
-        ${properties}
+${properties}
     };

@@ -1,0 +1,1 @@
+${shape}            ${if.non.object}response.${property} = (*proxyResponse)->${Property};${end.if.non.object}
