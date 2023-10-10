@@ -1321,6 +1321,7 @@ function insertMethodMacros(template, methodObj, json, templates, examples = {})
   }
 
   template = insertExampleMacros(template, examples[methodObj.name] || [], methodObj, json, templates)
+
   template = template.replace(/\$\{method\.name\}/g, method.name)
     .replace(/\$\{method\.rpc\.name\}/g, methodObj.title || methodObj.name)
     .replace(/\$\{method\.summary\}/g, methodObj.summary)
@@ -1378,9 +1379,9 @@ function insertMethodMacros(template, methodObj, json, templates, examples = {})
     .replace(/\$\{method\.result\.summary\}/g, result.summary)
     .replace(/\$\{method\.result\.link\}/g, getLinkForSchema(result.schema, json, { name: result.name })) //, baseUrl: options.baseUrl
     .replace(/\$\{method\.result\.type\}/g, types.getSchemaType(result.schema, json, { name: result.name, templateDir: state.typeTemplateDir, hasTitle: true, asPath: false, destination: state.destination, result: true, overrideRule: config.overrideRule })) //, baseUrl: options.baseUrl
-    .replace(/\$\{method\.result\.json\}/g, types.getSchemaType(result.schema, json, { name: result.name, templateDir: 'json-types', destination: state.destination, section: state.section, hasTitle: true, code: false, link: false, asPath: false, expandEnums: false, namespace: true, overrideRule: config.overrideRule }))
+    .replace(/\$\{method\.result\.json\}/g, types.getSchemaType(result.schema, json, { name: result.name, templateDir: 'json-types', destination: state.destination, section: state.section, title: true, code: false, link: false, asPath: false, expandEnums: false, namespace: true, overrideRule: config.overrideRule }))
     // todo: what does prefix do?
-    .replace(/\$\{event\.result\.type\}/g, isEventMethod(methodObj) ? types.getMethodSignatureResult(event, json, { destination: state.destination, section: state.section }) : '')
+    .replace(/\$\{event\.result\.type\}/g, isEventMethod(methodObj) ? types.getMethodSignatureResult(event, json, { destination: state.destination, section: state.section, callback: true }) : '')
     .replace(/\$\{event\.result\.json\.type\}/g, resultJsonType)
     .replace(/\$\{event\.result\.json\.type\}/g, callbackResultJsonType)
     .replace(/\$\{event\.pulls\.param\.name\}/g, pullsEventParamName)

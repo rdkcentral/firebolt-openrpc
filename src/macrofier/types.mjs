@@ -27,8 +27,7 @@ const primitives = {
   "integer": "number",
   "number": "number",
   "boolean": "boolean",
-  "string": "string",
-  "float": "float"
+  "string": "string"
 }
 
 const isVoid = type => (type === 'void') ? true : false
@@ -80,7 +79,26 @@ function getMethodSignatureParams(method, module, { destination, callback, overr
 }
 
 function getMethodSignatureResult(method, module, { destination, callback, overrideRule = false }) {
-    return getTemplate('/result/default').replace(/\$\{method\.result\.type\}/g, getSchemaType(method.result.schema, module, { destination, namespace : true, overrideRule }))
+    let type = getSchemaType(method.result.schema, module, { destination, namespace : true, overrideRule })
+    let result = ''
+
+    if (callback) {
+      let jsonType = getJsonType(method.result.schema, module, { destination })
+
+      if (!isVoid(type) && !isPrimitiveType(jsonType) && getTemplate('/result-callback/nonprimitive')) {
+        result = getTemplate('/result-callback/nonprimitive')
+      }
+      else if ((jsonType === 'string') && getTemplate('/result-callback/string')) {
+        result = getTemplate('/result-callback/string')
+      }
+      else {
+        result = getTemplate('/result-callback/default')
+      }
+    }
+    else {
+      result = getTemplate('/result/default')
+    }
+    return result.replace(/\$\{method\.result\.type\}/g, type)
 }
 
 const getTemplate = (name) => {
@@ -93,6 +111,7 @@ const getTemplate = (name) => {
 // TODO: this assumes the same title doesn't exist in multiple x-schema groups!
 const getXSchemaGroup = (schema, module) => {
   let group = module.info.title
+
   if (schema.title && module['x-schemas']) {
     Object.entries(module['x-schemas']).forEach(([title, module]) => {
       Object.values(module).forEach(s => {
@@ -213,6 +232,7 @@ const insertObjectMacros = (content, schema, module, title, property, options) =
         const schemaShape = getSchemaShape(prop, module, options2)
 
         const type = getSchemaType(prop, module, options2)
+
         // don't push properties w/ unsupported types
         if (type) {
           let replacedTemplate  = template
@@ -248,9 +268,9 @@ const insertObjectMacros = (content, schema, module, title, property, options) =
             // skip properties that were already defined above
             return
           }
-
           // TODO: add language config feature for 'unknown' type
           let type; // = { type: "null" }
+
           if (schema.additionalProperties && (typeof schema.additionalProperties === 'object')) {
             type = schema.additionalProperties
           }
@@ -283,6 +303,7 @@ const insertObjectMacros = (content, schema, module, title, property, options) =
     }
     
     const regex = new RegExp("\\$\\{" + macro + "\\}", "g")
+
     content = content.replace(regex, properties.join('\n'))
     content = options.overrideRule ? (properties.length ? content : '') : content
   })
@@ -388,7 +409,6 @@ function getSchemaShape(schema = {}, module = {}, { templateDir = 'types', name 
   if (schema['$ref']) {
     const someJson = getPath(schema['$ref'], module)
     if (someJson) {
-      name = someJson.title || schema['$ref'].split('/').pop()
       return getSchemaShape(someJson, module, { templateDir, name, parent, property, level, summary, descriptions, destination, enums, enumSuffix, overrideRule })
     }
     throw "Unresolvable $ref: " + schema['ref'] + ", in " + module.info.title
@@ -558,6 +578,7 @@ function getSchemaType(schema, module, { destination, templateDir = 'types', lin
     }
     else {
       // TODO: This never happens... but might be worth keeping in case we link to an opaque external schema at some point?
+
       if (link) {
         return '[' + wrap(theTitle, code ? '`' : '') + '](' + schema['$ref'] + ')'
       }
@@ -566,7 +587,7 @@ function getSchemaType(schema, module, { destination, templateDir = 'types', lin
       }
     }
   }
-  else if (title && (schema.title)) {
+  else if (title && schema.title) {
     if (link) {
       return '[' + wrap(theTitle, code ? '`' : '') + '](#' + schema.title.toLowerCase() + ')'
     }
@@ -648,7 +669,6 @@ function getSchemaType(schema, module, { destination, templateDir = 'types', lin
       // FIXME: revisit this hardcoding of baseDir
       const baseDir = (templateDir !== 'json-types' ? 'types': templateDir)
       template = insertArrayMacros(getTemplate(path.join(baseDir, 'array')), schema, module, overrideRule)
-      //const primitive = getPrimitiveType(schemaType, templateDir !== 'json-types' ? 'types': templateDir)
       template = insertSchemaMacros(template, schema.items, module, getSchemaType(schema.items, module, {destination, templateDir, link, title, code, asPath, event, result, expandEnums, baseUrl, namespace, overrideRule }), '', '', true, overrideRule)
     }
     else {
