@@ -120,7 +120,7 @@ const getLinkForSchema = (schema, json, { name = '' } = {}) => {
   const dirs = config.createModuleDirectories
   const copySchemasIntoModules = config.copySchemasIntoModules
 
-  const type = types.getSchemaType(schema, json, { name: name, templateDir: state.typeTemplateDir, destination: state.destination, section: state.section })
+  const type = types.getSchemaType(schema, json, { templateDir: state.typeTemplateDir, destination: state.destination, section: state.section })
 
   // local - insert a bogus link, that we'll update later based on final table-of-contents
   if (json.components.schemas[type]) {

@@ -142,7 +142,7 @@ function insertSchemaMacros(content, schema, module, name, parent, property, rec
   //        .replace(/\$\{type.link\}/g, getLinkForSchema(schema, module, { name: title }))
 
   if (recursive) {
-    content = content.replace(/\$\{type\}/g, getSchemaType(schema, module, { name: title, destination: state.destination, section: state.section, code: false }))
+    content = content.replace(/\$\{type\}/g, getSchemaType(schema, module, { destination: state.destination, section: state.section, code: false }))
   }
   return content
 }
@@ -282,7 +282,7 @@ const insertTupleMacros = (content, schema, module, title, options) => {
   const itemsTemplate = getTemplate(path.join(options.templateDir, 'items'))
   const propIndent = (content.split('\n').find(line => line.includes("${properties}")) || '').match(/^\s+/) || [''][0]
   const itemsIndent = (content.split('\n').find(line => line.includes("${items}")) || '').match(/^\s+/) || [''][0]
-  const delimiter = getTemplate(path.join(options.templateDir, 'delimiter'))
+  const tupleDelimiter = getTemplate(path.join(options.templateDir, 'tuple-delimiter'))
 
   const doMacroWork = (str, prop, i, indent) => {
     const schemaShape = getSchemaShape(prop, module, options)
@@ -299,8 +299,8 @@ const insertTupleMacros = (content, schema, module, title, options) => {
       .replace(/\$\{if\.optional\}(.*?)\$\{end\.if\.optional\}/gms, '')
   }
 
-  content = content.replace(/\$\{properties\}/g, schema.items.map((prop, i) => doMacroWork(propTemplate, prop, i, propIndent)).join(delimiter))
-  content = content.replace(/\$\{items\}/g, schema.items.map((prop, i) => doMacroWork(itemsTemplate, prop, i, itemsIndent)).join(delimiter))
+  content = content.replace(/\$\{properties\}/g, schema.items.map((prop, i) => doMacroWork(propTemplate, prop, i, propIndent)).join(tupleDelimiter))
+  content = content.replace(/\$\{items\}/g, schema.items.map((prop, i) => doMacroWork(itemsTemplate, prop, i, itemsIndent)).join(tupleDelimiter))
 
   return content
 }
@@ -394,12 +394,10 @@ function getSchemaShape(schema = {}, module = {}, { templateDir = 'types', name 
     return insertSchemaMacros(result, schema, module, theTitle, parent, property)
   }
   else if (schema.anyOf || schema.oneOf) {
-    const template = getTemplate(path.join(templateDir, 'anyOfSchema' + suffix))
+    const template = getTemplate(path.join(templateDir, 'anyOfSchemaShape' + suffix))
     let shape
     if (template) {
-      if (!template.includes('SKIP')) {
         shape = insertAnyOfMacros(template, schema, module, theTitle)
-      }
     }
     else {
       // borrow anyOf logic, note that schema is a copy, so we're not breaking it.
@@ -512,7 +510,7 @@ const isSupportedTuple = schema => {
   }
 }
 
-function getSchemaType(schema, module, { destination, templateDir = 'types', link = false, code = false, asPath = false, event = false, result = false, expandEnums = true, baseUrl = '', namespace = false, name = '' } = {}) {
+function getSchemaType(schema, module, { destination, templateDir = 'types', link = false, code = false, asPath = false, event = false, result = false, expandEnums = true, baseUrl = '', namespace = false } = {}) {
   const wrap = (str, wrapper) => wrapper + str + wrapper
 
   schema = sanitize(schema)
@@ -527,9 +525,8 @@ function getSchemaType(schema, module, { destination, templateDir = 'types', lin
   if (schema['$ref']) {
     if (schema['$ref'][0] === '#') {
       const refSchema = getPath(schema['$ref'], module)
-      const refName = refSchema.title || schema['$ref'].split('/').pop()
       const includeNamespace = (module.info.title !== getXSchemaGroup(refSchema, module))
-      return getSchemaType(refSchema, module, {destination, templateDir, link, title, code, asPath, event, result, expandEnums, baseUrl, namespace:includeNamespace, name:refName })// { link: link, code: code, destination })
+      return getSchemaType(refSchema, module, {destination, templateDir, link, code, asPath, event, result, expandEnums, baseUrl, namespace:includeNamespace })// { link: link, code: code, destination })
     }
     else {
       // TODO: This never happens... but might be worth keeping in case we link to an opaque external schema at some point?
