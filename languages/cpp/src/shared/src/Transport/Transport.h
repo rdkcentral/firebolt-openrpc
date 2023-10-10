@@ -539,6 +539,7 @@ namespace FireboltSDK {
             , _scheduledTime(0)
             , _waitTime(waitTime)
             , _listener(listener)
+            , _connected(false)
             , _status(Firebolt::Error::NotConnected)
         {
             _channel->Register(*this);
@@ -680,7 +681,10 @@ namespace FireboltSDK {
         virtual void Opened()
         {
             _status = Firebolt::Error::None;
-            _listener(true, _status);
+            if (_connected != true) {
+                _connected = true;
+                _listener(_connected, _status);
+            }
         }
 
         void Closed()
@@ -696,7 +700,10 @@ namespace FireboltSDK {
             }
 
             _adminLock.Unlock();
-            _listener(false, _status);
+            if (_connected != false) {
+                _connected = false;
+                _listener(_connected, _status);
+            }
         }
 
         int32_t Submit(const WPEFramework::Core::ProxyType<WPEFramework::Core::JSONRPC::Message>& inbound)
@@ -953,6 +960,7 @@ namespace FireboltSDK {
         uint64_t _scheduledTime;
         uint32_t _waitTime;
         Listener _listener;
+        bool _connected;
         Firebolt::Error _status;
     };
 }

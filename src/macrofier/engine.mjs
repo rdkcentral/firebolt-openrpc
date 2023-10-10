@@ -57,6 +57,7 @@ let config = {
   extractSubSchemas: false,
   unwrapResultObjects: false,
   excludeDeclarations: false,
+  enumSuffix: false,
   overrideRule: false
 }
 
@@ -123,7 +124,7 @@ const getTemplateForExampleResult = (method, templates) => {
 const getLinkForSchema = (schema, json, { name = '' } = {}) => {
   const dirs = config.createModuleDirectories
   const copySchemasIntoModules = config.copySchemasIntoModules
-  const type = types.getSchemaType(schema, json, { name: name, templateDir: state.typeTemplateDir, destination: state.destination, section: state.section, overrideRule: config.overrideRule })
+  const type = types.getSchemaType(schema, json, { templateDir: state.typeTemplateDir, destination: state.destination, section: state.section, overrideRule: config.overrideRule })
 
   // local - insert a bogus link, that we'll update later based on final table-of-contents
   if (json.components.schemas[type]) {
@@ -773,7 +774,7 @@ const convertEnumTemplate = (schema, templateName, templates) => {
         return template[i].replace(/\$\{key\}/g, safeName)
           .replace(/\$\{value\}/g, value)
       }).join('\n')
-      if (!templateName.includes(".cpp")) {
+      if (!templateName.includes(config.enumSuffix)) {
         template[i] = template[i].replace(/,*$/, '');
       }
     }
@@ -908,7 +909,7 @@ function generateSchemas(json, templates, options) {
     else {
       content = content.replace(/\$\{if\.description\}(.*?)\{end\.if\.description\}/gms, '$1')
     }
-    const schemaShape = types.getSchemaShape(schema, json, { name, prefix, templateDir: state.typeTemplateDir, destination: state.destination, section: options.section, overrideRule: config.overrideRule })
+    const schemaShape = types.getSchemaShape(schema, json, { name, prefix, templateDir: state.typeTemplateDir, destination: state.destination, section: options.section, enumSuffix: config.enumSuffix, overrideRule: config.overrideRule })
 
     content = content
       .replace(/\$\{schema.title\}/, (schema.title || name))
@@ -1549,7 +1550,7 @@ function generateResult(result, json, templates, { name = '' } = {}) {
     else {
       const schema = localizeDependencies(result, json)
       return getTemplate('/types/default', templates)
-        .replace(/\$\{type\}/, types.getSchemaShape(schema, json, { name: result.$ref.split("/").pop(), templateDir: state.typeTemplateDir, overrideRule: config.overrideRule }))
+        .replace(/\$\{type\}/, types.getSchemaShape(schema, json, { name: result.$ref.split("/").pop(), templateDir: state.typeTemplateDir, overrideRule: config.overrideRule, enumSuffix: config.enumSuffix }))
     }
   }
   else {

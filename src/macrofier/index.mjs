@@ -53,6 +53,7 @@ const macrofy = async (
         convertTuplesToArraysOrObjects,
         additionalSchemaTemplates,
         excludeDeclarations,
+        enumSuffix,
         overrideRule,
         aggregateFiles,
         operators,
@@ -96,6 +97,7 @@ const macrofy = async (
             allocatedPrimitiveProxies,
             additionalSchemaTemplates,
             excludeDeclarations,
+            enumSuffix,
             overrideRule,
             operators
         })

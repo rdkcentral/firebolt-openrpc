@@ -69,6 +69,7 @@ const run = async ({
     allocatedPrimitiveProxies: config.allocatedPrimitiveProxies,
     additionalSchemaTemplates: config.additionalSchemaTemplates,
     excludeDeclarations: config.excludeDeclarations,
+    enumSuffix: config.enumSuffix,
     overrideRule: config.overrideRule,
     staticModuleNames: staticModuleNames,
     hideExcluded: true,
