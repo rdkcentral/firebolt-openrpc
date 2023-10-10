@@ -375,7 +375,10 @@ const promoteSchema = (location, property, title, document, destinationPath) => 
 }
 
 // only consider sub-objects and sub enums to be sub-schemas
-const isSubSchema = (schema) => schema.type === 'object' || (schema.type === 'string' && schema.enum) // || (schema.type === 'array' && schema.items)
+const isSubSchema = (schema) => schema.type === 'object' || (schema.type === 'string' && schema.enum)
+
+// check schema is sub enum of array
+const isSubEnumOfArraySchema = (schema) => (schema.type === 'array' && schema.items.enum)
 
 const promoteAndNameSubSchemas = (obj) => {
   // make a copy so we don't polute our inputs
@@ -402,19 +405,30 @@ const promoteAndNameSubSchemas = (obj) => {
     while (more) {
       more = false
       Object.entries(obj.components.schemas).forEach(([key, schema]) => {
-        if ((schema.type === "object") && schema.properties) {
-          Object.entries(schema.properties).forEach(([name, propSchema]) => {
-            if (isSubSchema(propSchema)) {
-              more = true
-              const descriptor = {
-                name: name,
-                schema: propSchema
+        let componentSchemaProperties = schema.allOf ? schema.allOf : [schema]
+        componentSchemaProperties.forEach((componentSchema) => {
+          if ((componentSchema.type === "object") && componentSchema.properties) {
+            Object.entries(componentSchema.properties).forEach(([name, propSchema]) => {
+              if (isSubSchema(propSchema)) {
+                more = true
+                const descriptor = {
+                  name: name,
+                  schema: propSchema
+                }
+                addContentDescriptorSubSchema(descriptor, key, obj)
+                componentSchema.properties[name] = descriptor.schema
               }
-              addContentDescriptorSubSchema(descriptor, key, obj)
-              schema.properties[name] = descriptor.schema
-            }
-          })
-        }
+              if (isSubEnumOfArraySchema(propSchema)) {
+                const descriptor = {
+                  name: name,
+                  schema: propSchema.items
+                }
+                addContentDescriptorSubSchema(descriptor, key, obj)
+                componentSchema.properties[name].items = descriptor.schema
+              }
+            })
+          }
+	})
 
         if (!schema.title) {
           schema.title = capitalize(key)
@@ -732,7 +746,7 @@ const convertEnumTemplate = (schema, templateName, templates) => {
         return template[i].replace(/\$\{key\}/g, safeName)
           .replace(/\$\{value\}/g, value)
       }).join('\n')
-      if (!templateName.includes(".cpp")) {
+      if (!templateName.includes(config.enumSuffix)) {
         template[i] = template[i].replace(/,*$/, '');
       }
     }
