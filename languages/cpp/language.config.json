@@ -6,6 +6,7 @@
     "unwrapResultObjects": false,
     "createPolymorphicMethods": true,
     "excludeDeclarations":true,
+    "enumSuffix": ".cpp",
     "aggregateFiles": [
         "/include/firebolt.h",
         "/src/firebolt.cpp"

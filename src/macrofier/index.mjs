@@ -54,6 +54,7 @@ const macrofy = async (
         additionalSchemaTemplates,
         additionalMethodTemplates,
         excludeDeclarations,
+        enumSuffix,
         aggregateFiles,
         operators,
         primitives,
@@ -97,6 +98,7 @@ const macrofy = async (
             additionalSchemaTemplates,
             additionalMethodTemplates,
             excludeDeclarations,
+            enumSuffix,
             operators
         })
 
