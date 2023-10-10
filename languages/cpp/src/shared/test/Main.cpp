@@ -16,25 +16,29 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include "Module.h"
-#include "types.h"
-#include "TypesPriv.h"
+#include "OpenRPCTests.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+int __cnt = 0;
+int __pass = 0;
 
-// String Type Handler Interfaces
-const char* Firebolt_String(Firebolt_String_t handle)
+int TotalTests = 0;
+int TotalTestsPassed = 0;
+
+int main()
 {
-    return ((reinterpret_cast<FireboltSDK::JSON::String*>(handle))->Value().c_str());
-}
+    const std::string config = _T("{\
+    \"waitTime\": 1000,\
+    \"logLevel\": \"Info\",\
+    \"workerPool\":{\
+        \"queueSize\": 8,\
+        \"threadCount\": 3\
+    },\
+    \"wsUrl\": \"ws://127.0.0.1:9998\"\
+}");
+    FireboltSDK::Accessor::Instance(config);
+    FireboltSDK::Tests::Main<FireboltSDK::Tests>();
 
-void Firebolt_String_Release(Firebolt_String_t handle)
-{
-    delete reinterpret_cast<FireboltSDK::JSON::String*>(handle);
-}
 
-#ifdef __cplusplus
+    printf("TOTAL: %i tests; %i PASSED, %i FAILED\n", TotalTests, TotalTestsPassed, (TotalTests - TotalTestsPassed));
+    FireboltSDK::Accessor::Dispose();
 }
-#endif

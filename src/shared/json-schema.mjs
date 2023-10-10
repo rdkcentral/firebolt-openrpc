@@ -233,7 +233,6 @@ const localizeDependencies = (json, document, schemas = {}, options = defaultLoc
         path.pop() // drop ref
         if (refToPath(ref).length > 1) {
           let resolvedSchema = JSON.parse(JSON.stringify(getPathOr(null, refToPath(ref), document)))
-        
           if (schemaReferencesItself(resolvedSchema, refToPath(ref))) {
             resolvedSchema = null
           }

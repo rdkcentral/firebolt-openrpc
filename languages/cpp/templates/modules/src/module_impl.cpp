@@ -16,24 +16,25 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include "FireboltSDK.h"
+#include "${info.title.lowercase}_impl.h"
+
+${if.implementations}
+namespace Firebolt {
+namespace ${info.Title} {
+
+    // Methods
+    /* ${METHODS} */
+
+    // Events
+    /* ${EVENTS} */
+
+}//namespace ${info.Title}
+}${end.if.implementations}
+${if.enums}
+
+namespace WPEFramework {
 
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+/* ${ENUMS} */
 
-
-int32_t FireboltSDK_Initialize(char* configLine) {
-    FireboltSDK::Accessor::Instance(configLine);
-    return FireboltSDKErrorNone;
-}
-
-int32_t FireboltSDK_Deinitialize(void) {
-    FireboltSDK::Accessor::Dispose();
-    return FireboltSDKErrorNone;
-}
-
-#ifdef __cplusplus
-}
-#endif
+}${end.if.enums}
