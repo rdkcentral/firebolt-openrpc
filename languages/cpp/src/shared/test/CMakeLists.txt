@@ -63,7 +63,7 @@ set(TESTAPP "FireboltSDKTestApp")
 
 message("Setup ${TESTAPP}")
 
-add_executable(${TESTAPP} Main.c)
+add_executable(${TESTAPP} Main.cpp)
 
 target_link_libraries(${TESTAPP}
     PRIVATE

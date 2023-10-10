@@ -130,6 +130,7 @@ function insertSchemaMacros(content, schema, module, name, parent, property, rec
     .replace(/\$\{TITLE\}/g, title.toUpperCase())
     .replace(/\$\{property\}/g, property)
     .replace(/\$\{Property\}/g, capitalize(property))
+    .replace(/\$\{if\.namespace\.notsame}(.*?)\$\{end\.if\.namespace\.notsame\}/g, (module.info.title !== parent) ? '$1' : '')
     .replace(/\$\{parent\.title\}/g, parent)
     .replace(/\$\{parent\.Title\}/g, capitalize(parent))
     .replace(/\$\{description\}/g, schema.description ? schema.description : '')
@@ -139,10 +140,9 @@ function insertSchemaMacros(content, schema, module, name, parent, property, rec
     .replace(/\$\{info.title\}/g, moduleTitle)
     .replace(/\$\{info.Title\}/g, capitalize(moduleTitle))
     .replace(/\$\{info.TITLE\}/g, moduleTitle.toUpperCase())
-  //        .replace(/\$\{type.link\}/g, getLinkForSchema(schema, module, { name: title }))
 
   if (recursive) {
-    content = content.replace(/\$\{type\}/g, getSchemaType(schema, module, { destination: state.destination, section: state.section, code: false }))
+    content = content.replace(/\$\{type\}/g, getSchemaType(schema, module, { destination: state.destination, section: state.section, code: false, namespace: true }))
   }
   return content
 }
@@ -234,7 +234,7 @@ const insertObjectMacros = (content, schema, module, title, property, options) =
           if (schema.additionalProperties && (typeof schema.additionalProperties === 'object')) {
             type = schema.additionalProperties
           }
-  
+
           if (schema.patternProperties) {
             Object.entries(schema.patternProperties).forEach(([pattern, schema]) => {
               let regex = new RegExp(pattern)
@@ -637,7 +637,7 @@ function getSchemaType(schema, module, { destination, templateDir = 'types', lin
     if (schema.title) {
       union.title = schema.title
     }
-    return getSchemaType(union, module, { destination, link, title, code, asPath, baseUrl })
+    return getSchemaType(union, module, { destination, link, title, code, asPath, baseUrl, namespace })
   }
   else if (schema.oneOf || schema.anyOf) {
     if (!schema.anyOf) {
