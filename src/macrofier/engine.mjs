@@ -1207,7 +1207,7 @@ function insertMethodMacros(template, methodObj, json, templates, examples = {})
   // todo: what does prefix do in Types.mjs? need to account for it somehow
   const callbackResultJsonType = event && result.schema ? types.getSchemaType(result.schema, json, { name: result.name, prefix: method.alternative, templateDir: 'json-types' }) : ''
 
-  const pullsForParamType = pullsParams ? types.getSchemaType(pullsParams, json, { destination: state.destination, section: state.section  }) : ''
+  const pullsForParamType = pullsParams ? types.getSchemaType(pullsParams, json, { destination: state.destination, section: state.section }) : ''
   const pullsForJsonType = pullsResult ? types.getSchemaType(pullsResult, json, { name: result.name, templateDir: 'json-types' }) : ''
   const pullsForParamJsonType = pullsParams ? types.getSchemaType(pullsParams, json, { name: pullsParams.title , templateDir: 'json-types' }) : ''
   
@@ -1289,7 +1289,7 @@ function insertMethodMacros(template, methodObj, json, templates, examples = {})
     .replace(/\$\{method\.result\.type\}/g, types.getSchemaType(result.schema, json, { name: result.name, templateDir: state.typeTemplateDir, title: true, asPath: false, destination: state.destination, result: true })) //, baseUrl: options.baseUrl
     .replace(/\$\{method\.result\.json\}/, types.getSchemaType(result.schema, json, { name: result.name, templateDir: 'json-types', destination: state.destination, section: state.section, title: true, code: false, link: false, asPath: false, expandEnums: false, namespace: true }))
     // todo: what does prefix do?
-    .replace(/\$\{event\.result\.type\}/g, isEventMethod(methodObj) ? types.getMethodSignatureResult(event, json, { destination: state.destination, section: state.section }) : '')
+    .replace(/\$\{event\.result\.type\}/g, isEventMethod(methodObj) ? types.getMethodSignatureResult(event, json, { destination: state.destination, section: state.section, callback: true }) : '')
     .replace(/\$\{event\.result\.json\.type\}/g, resultJsonType)
     .replace(/\$\{event\.result\.json\.type\}/g, callbackResultJsonType)
     .replace(/\$\{event\.pulls\.param\.name\}/g, pullsEventParamName)

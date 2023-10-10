@@ -78,22 +78,26 @@ function getMethodSignatureParams(method, module, { destination, callback }) {
   }).join(', ')
 }
 
-function getMethodSignatureResult(method, module, { destination, callback }) {
+function getMethodSignatureResult(method, module, { destination, callback, overrideRule = false }) {
     let type = getSchemaType(method.result.schema, module, { destination, namespace : true })
-
     let result = ''
-    let jsonType = getJsonType(method.result.schema, module, { destination })
 
-    if (!isVoid(type) && !isPrimitiveType(jsonType) && getTemplate('/result/nonprimitive')) {
-      result = getTemplate('/result/nonprimitive')
-    }
-    else if ((jsonType === 'string') && getTemplate('/result/string')) {
-      result = getTemplate('/result/string')
+    if (callback) {
+      let jsonType = getJsonType(method.result.schema, module, { destination })
+
+      if (!isVoid(type) && !isPrimitiveType(jsonType) && getTemplate('/result-callback/nonprimitive')) {
+        result = getTemplate('/result-callback/nonprimitive')
+      }
+      else if ((jsonType === 'string') && getTemplate('/result-callback/string')) {
+        result = getTemplate('/result-callback/string')
+      }
+      else {
+        result = getTemplate('/result-callback/default')
+      }
     }
     else {
       result = getTemplate('/result/default')
     }
-
     return result.replace(/\$\{method\.result\.type\}/g, type)
 }
 
@@ -230,7 +234,7 @@ const insertObjectMacros = (content, schema, module, title, property, options) =
           }
           // TODO: add language config feature for 'unknown' type
           let type; // = { type: "null" }
-  
+
           if (schema.additionalProperties && (typeof schema.additionalProperties === 'object')) {
             type = schema.additionalProperties
           }
@@ -243,7 +247,7 @@ const insertObjectMacros = (content, schema, module, title, property, options) =
               }
             })
           }
-  
+
           if (type) {
             options2.property = prop
             const schemaShape = getSchemaShape(type, module, options2)
@@ -354,7 +358,7 @@ function getSchemaShape(schema = {}, module = {}, { templateDir = 'types', name 
   if (level === 0 && !schema.title) {
     return ''
   }
-  
+
   const suffix = destination && ('.' + destination.split('.').pop()) || ''
   const theTitle = insertSchemaMacros(getTemplate(path.join(templateDir, 'title' + suffix)), schema, module, schema.title || name, parent, property, false)
 
