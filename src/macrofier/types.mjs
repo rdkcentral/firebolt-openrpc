@@ -27,8 +27,7 @@ const primitives = {
   "integer": "number",
   "number": "number",
   "boolean": "boolean",
-  "string": "string",
-  "float": "float"
+  "string": "string"
 }
 
 const isPrimitiveType = type => primitives[type] ? true : false
@@ -108,10 +107,9 @@ function insertSchemaMacros(content, schema, module, name, parent, property, rec
     .replace(/\$\{info.title\}/g, moduleTitle)
     .replace(/\$\{info.Title\}/g, capitalize(moduleTitle))
     .replace(/\$\{info.TITLE\}/g, moduleTitle.toUpperCase())
-  //        .replace(/\$\{type.link\}/g, getLinkForSchema(schema, module, { name: title }))
 
   if (recursive) {
-    content = content.replace(/\$\{type\}/g, getSchemaType(schema, module, { name: title, destination: state.destination, section: state.section, code: false }))
+    content = content.replace(/\$\{type\}/g, getSchemaType(schema, module, { destination: state.destination, section: state.section, code: false }))
   }
   return content
 }
@@ -140,12 +138,9 @@ const insertEnumMacros = (content, schema, module, name) => {
 }
 
 const insertObjectAdditionalPropertiesMacros = (content, schema, module, title, options) => {
-  options = options ? JSON.parse(JSON.stringify(options)) : {}
-
-  const options2 = JSON.parse(JSON.stringify(options))
+  const options2 = options ? JSON.parse(JSON.stringify(options)) : {}
   options2.parent = title
   options2.level = options.level + 1
-  options2.name = ''
 
   const shape = getSchemaShape(schema.additionalProperties, module, options2)
   let type = getSchemaType(schema.additionalProperties, module, options2).trimEnd()
@@ -173,12 +168,9 @@ const insertObjectAdditionalPropertiesMacros = (content, schema, module, title, 
 }
 
 const insertObjectMacros = (content, schema, module, title, property, options) => {
-  options = options ? JSON.parse(JSON.stringify(options)) : {}
-
-  const options2 = JSON.parse(JSON.stringify(options))
+  const options2 = options ? JSON.parse(JSON.stringify(options)) : {}
   options2.parent = title
   options2.level = options.level + 1
-  options2.name = ''
 
   ;(['properties', 'properties.register', 'properties.assign']).forEach(macro => {
     const indent = (content.split('\n').find(line => line.includes("${" + macro + "}")) || '').match(/^\s+/) || [''][0]
@@ -340,7 +332,7 @@ function getSchemaShape(schema = {}, module = {}, { templateDir = 'types', name 
   if (level === 0 && !schema.title) {
     return ''
   }
-  
+
   const suffix = destination && ('.' + destination.split('.').pop()) || ''
   const theTitle = insertSchemaMacros(getTemplate(path.join(templateDir, 'title' + suffix)), schema, module, schema.title || name, parent, property, false)
 
@@ -374,8 +366,14 @@ function getSchemaShape(schema = {}, module = {}, { templateDir = 'types', name 
     return insertSchemaMacros(result, schema, module, theTitle, parent, property)
   }
   else if (schema.type === 'object') {
-    const shape = insertObjectMacros(getTemplate(path.join(templateDir, 'object' + suffix)), schema, module, theTitle, property, { level, parent, property, templateDir, descriptions, destination, section, enums })
-
+    let shape
+    const additionalPropertiesTemplate = getTemplate(path.join(templateDir, 'additionalProperties'))
+    if (additionalPropertiesTemplate && schema.additionalProperties && (typeof schema.additionalProperties === 'object')) {
+      shape = insertObjectAdditionalPropertiesMacros(additionalPropertiesTemplate, schema, module, theTitle, { level, parent, templateDir, namespace: true })
+    }
+    else {
+      shape = insertObjectMacros(getTemplate(path.join(templateDir, 'object' + suffix)) || genericTemplate, schema, module, theTitle, property, { level, parent, property, templateDir, descriptions, destination, section, enums, namespace: true })
+    }
     result = result.replace(/\$\{shape\}/g, shape)
     return insertSchemaMacros(result, schema, module, theTitle, parent, property)
   }
@@ -683,6 +681,5 @@ export default {
   getMethodSignatureParams,
   getSchemaShape,
   getSchemaType,
-  getJsonType,
   getSchemaInstantiation
 }
