@@ -373,7 +373,7 @@ function getSchemaShape(schema = {}, module = {}, { templateDir = 'types', name 
       shape = insertObjectAdditionalPropertiesMacros(additionalPropertiesTemplate, schema, module, theTitle, { level, parent, templateDir, namespace: true })
     }
     else {
-      shape = insertObjectMacros(getTemplate(path.join(templateDir, 'object' + suffix)) || genericTemplate, schema, module, theTitle, property, { level, parent, property, templateDir, descriptions, destination, section, enums, namespace: true })
+      shape = insertObjectMacros(getTemplate(path.join(templateDir, 'object' + suffix)), schema, module, theTitle, property, { level, parent, property, templateDir, descriptions, destination, section, enums, namespace: true })
     }
     result = result.replace(/\$\{shape\}/g, shape)
     return insertSchemaMacros(result, schema, module, theTitle, parent, property)
