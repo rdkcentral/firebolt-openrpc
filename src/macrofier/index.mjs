@@ -155,7 +155,7 @@ const macrofy = async (
                 // Note: '/foo/bar/file.js'.split('/') => ['', 'foo', 'bar', 'file.js'] so we need to drop one more that you might suspect, hence slice(2) below...
                 const dirsToDrop = outputDirectory === '' ? 1 : 2
                 let outputFile = path.sep + file.split(path.sep).slice(dirsToDrop).join(path.sep)
-                const isPrimary = (aggregateFiles.includes(outputFile))
+                const isPrimary = (aggregateFiles && aggregateFiles.includes(outputFile))
                 if (rename[outputFile]) {
                     outputFile = outputFile.split(path.sep).slice(0, -1).concat([rename[outputFile]]).join(path.sep)
                 }
@@ -196,13 +196,11 @@ const macrofy = async (
                 logSuccess(`Generated macros for module ${path.relative(output, location)}`)
             })
 
-            if (primaryOutput) {
-                primaryOutput.forEach(output => {
-                    const macros = engine.generateMacros(module, templates, exampleTemplates, {hideExcluded: hideExcluded, copySchemasIntoModules: copySchemasIntoModules, createPolymorphicMethods: createPolymorphicMethods, destination: output})
-                    macros.append = append
-                    outputFiles[output] = engine.insertMacros(outputFiles[output], macros)
-                })
-            }
+            primaryOutput.forEach(output => {
+                const macros = engine.generateMacros(module, templates, exampleTemplates, {hideExcluded: hideExcluded, copySchemasIntoModules: copySchemasIntoModules, createPolymorphicMethods: createPolymorphicMethods, destination: output})
+                macros.append = append
+                outputFiles[output] = engine.insertMacros(outputFiles[output], macros)
+            })
 
             append = true
         })
