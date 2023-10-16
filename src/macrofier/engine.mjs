@@ -42,9 +42,18 @@ const _inspector = obj => {
   }
 }
 
+const filterBlackListedSchemas = (module) => {
+//  const blackList = ["Parameters", "Discovery", "SecondScreen", "Intents", "Entertainment", "Lifecycle", "Advertising", "Account", "Authentication", "Accessibility", "Capabilities", "Keyboard", "Localization", "SecureStorage", "Metrics", "Profile", "Types", "Device", "PinChallenge", "Wifi", "qUserGrants", "VoiceGuidance", "Privacy", "AudioDescriptions", "AcknowledgeChallenge", "ClosedCaptions"]
+//  const blackList = ["Parameters", "Discovery", "Entertainment", "Intents", "Advertising", "Accessibility"]
+  //const blackList = ["Capabilities", "Discovery1"]
+  const blackList = []
+  return blackList.includes(getModuleName(module))
+}
+
 // getSchemaType(schema, module, options = { destination: 'file.txt', hasTitle: true })
 // getSchemaShape(schema, module, options = { name: 'Foo', destination: 'file.txt' })
 // getJsonType(schema, module, options = { name: 'Foo', prefix: '', descriptions: false, level: 0 })
+//
 // getSchemaInstantiation(schema, module, options = {type: 'params' | 'result' | 'callback.params'| 'callback.result' | 'callback.response'})
 
 let types = {
@@ -345,9 +354,11 @@ const makeProviderMethod = x => x.name["onRequest".length].toLowerCase() + x.nam
 //import { default as platform } from '../Platform/defaults'
 const generateAggregateMacros = (openrpc, modules, templates, library) => Object.values(modules)
   .reduce((acc, module) => {
+    if (filterBlackListedSchemas(module) === false) {
     acc.exports += insertMacros(getTemplate('/codeblocks/export', templates) + '\n', generateMacros(module, templates))
     acc.mockImports += insertMacros(getTemplate('/codeblocks/mock-import', templates) + '\n', generateMacros(module, templates))
     acc.mockObjects += insertMacros(getTemplate('/codeblocks/mock-parameter', templates) + '\n', generateMacros(module, templates))
+    }
     return acc
   }, {
     exports: '',
@@ -1010,16 +1021,20 @@ const generateImports = (json, templates, options = { destination: '' }) => {
   if (methodsWithXMethodsInResult(json).length) {
     imports += getTemplate('/imports/x-method', templates)
   }
-  const suffix = options.destination.split('.').pop()
-  const prefix = options.destination.split('/').pop().split('_')[0].toLowerCase()
 
+  const suffix = options.destination.split('.').pop()
   if (callsMetrics(json).length) {
     imports += getTemplate(suffix ? `/imports/calls-metrics.${suffix}` : '/imports/calls-metrics', templates)
   }
 
-  let template = prefix ? getTemplate(`/imports/default.${prefix}`, templates) : ''
+  const destinationArray = options.destination.split('/').pop().split(/[_.]+/)
+  let template = ''
+  destinationArray.filter(value => value).every((suffix) => {
+    template = getTemplate(`/imports/default.${suffix}`, templates)
+    return template ? false: true
+  })
   if (!template) {
-    template = getTemplate(suffix ? `/imports/default.${suffix}` : '/imports/default', templates)
+      template = getTemplate('/imports/default', templates)
   }
 
   if (json['x-schemas'] && Object.keys(json['x-schemas']).length > 0 && !json.info['x-uri-titles']) {
@@ -1282,10 +1297,10 @@ function insertMethodMacros(template, methodObj, json, templates, examples = {})
   const pullsResultType = pullsResult && types.getSchemaShape(pullsResult, json, { destination: state.destination, templateDir: state.typeTemplateDir, section: state.section, overrideRule: config.overrideRule })
   const pullsForType = pullsResult && types.getSchemaType(pullsResult, json, { destination: state.destination, templateDir: state.typeTemplateDir, section: state.section, overrideRule: config.overrideRule })
   const pullsParamsType = pullsParams ? types.getSchemaShape(pullsParams, json, { destination: state.destination, templateDir: state.typeTemplateDir, section: state.section, overrideRule: config.overrideRule }) : ''
-  const serializedParams = flattenedMethod.params.map(param => types.getSchemaShape(param.schema, json, { templateDir: 'parameter-serialization', property: param.name, destination: state.destination, section: state.section, level: 1, skipTitleOnce: true, overrideRule: config.overrideRule })).join('\n')
+  const serializedParams = flattenedMethod.params.map(param => types.getSchemaShape(param.schema, json, { templateDir: 'parameter-serialization', property: param.name, required: param.required ? true: false, destination: state.destination, section: state.section, level: 1, skipTitleOnce: true, overrideRule: config.overrideRule })).join('\n')
   const resultInst = types.getSchemaShape(flattenedMethod.result.schema, json, { templateDir: 'result-instantiation', property: flattenedMethod.result.name, destination: state.destination, section: state.section, level: 1, skipTitleOnce: true, overrideRule: config.overrideRule }) // w/out level: 1, getSchemaShape skips anonymous types, like primitives
   const resultInit = types.getSchemaShape(flattenedMethod.result.schema, json, { templateDir: 'result-initialization', property: flattenedMethod.result.name, destination: state.destination, section: state.section, level: 1, skipTitleOnce: true, overrideRule: config.overrideRule }) // w/out level: 1, getSchemaShape skips anonymous types, like primitives
-  const serializedEventParams = event ? flattenedMethod.params.filter(p => p.name !== 'listen').map(param => types.getSchemaShape(param.schema, json, {templateDir: 'parameter-serialization', property: param.name, destination: state.destination, section: state.section, level: 1, skipTitleOnce: true, overrideRule: config.overrideRule })).join('\n') : ''
+  const serializedEventParams = event ? flattenedMethod.params.filter(p => p.name !== 'listen').map(param => types.getSchemaShape(param.schema, json, {templateDir: 'parameter-serialization', property: param.name, required: param.required? true: false, destination: state.destination, section: state.section, level: 1, skipTitleOnce: true, overrideRule: config.overrideRule })).join('\n') : ''
   // this was wrong... check when we merge if it was fixed
   const callbackSerializedParams = event ? types.getSchemaShape(event.result.schema, json, { templateDir: 'callback-parameter-serialization', property: result.name, destination: state.destination, section: state.section, level: 1, skipTitleOnce: true, overrideRule: config.overrideRule }) : ''
 
@@ -1293,6 +1308,7 @@ function insertMethodMacros(template, methodObj, json, templates, examples = {})
   // hmm... how is this different from callbackSerializedParams? i guess they get merged?
   const callbackResponseInst = event ? types.getSchemaShape(event.result.schema, json, { templateDir: 'callback-response-instantiation', property: result.name, destination: state.destination, section: state.section, level: 1, skipTitleOnce: true, overrideRule: config.overrideRule }) : ''
   const resultType = result.schema ? types.getSchemaType(result.schema, json, { name: result.name, templateDir: state.typeTemplateDir, overrideRule: config.overrideRule }) : ''
+  //console.log("Calling -- ", result.name) 
   const resultJsonType = result.schema ? types.getSchemaType(result.schema, json, { name: result.name, templateDir: 'json-types', overrideRule: config.overrideRule }) : ''
   const resultParams = generateResultParams(result.schema, json, templates, { name: result.name})
 
@@ -1806,7 +1822,8 @@ export {
   clearMacros,
   insertMacros,
   generateAggregateMacros,
-  insertAggregateMacros
+  insertAggregateMacros,
+  filterBlackListedSchemas
 }
 
 export default {
@@ -1816,5 +1833,6 @@ export default {
   generateAggregateMacros,
   insertAggregateMacros,
   setTyper,
-  setConfig
+  setConfig,
+  filterBlackListedSchemas
 }

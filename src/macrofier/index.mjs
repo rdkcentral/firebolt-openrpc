@@ -179,7 +179,7 @@ const macrofy = async (
         let append = false
 
         modules.forEach(module => {
-
+        if (engine.filterBlackListedSchemas(module) === false) {
             // Pick the index and defaults templates for each module.
             templatesPerModule.forEach(t => {
                 const macros = engine.generateMacros(module, templates, exampleTemplates, {hideExcluded: hideExcluded, copySchemasIntoModules: copySchemasIntoModules, createPolymorphicMethods: createPolymorphicMethods, destination: t})
@@ -203,6 +203,7 @@ const macrofy = async (
             })
 
             append = true
+        }
         })
         primaryOutput.forEach(output => {
             outputFiles[output] = engine.clearMacros(outputFiles[output]);
@@ -280,6 +281,7 @@ const macrofy = async (
                 
         // Output any schema templates for each bundled external schema document
         Object.values(externalSchemas).forEach( document => {
+            if (engine.filterBlackListedSchemas(document) === false) {
             if (templatesPerSchema) {
                 templatesPerSchema.forEach( t => {
                     const macros = engine.generateMacros(document, templates, exampleTemplates, {hideExcluded: hideExcluded, createPolymorphicMethods: createPolymorphicMethods, destination: t})
@@ -294,6 +296,7 @@ const macrofy = async (
                     logSuccess(`Generated macros for schema ${path.relative(output, location)}`)
                 })
             }
+	    }
         })
 
         if (clearTargetDirectory) {
