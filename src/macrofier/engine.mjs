@@ -43,10 +43,10 @@ const _inspector = obj => {
 }
 
 const filterBlackListedSchemas = (module) => {
-  const blackList = ["Parameters", "Discovery", "SecondScreen", "Intents", "Entertainment", "Lifecycle", "Advertising", "Account", "Authentication", "Accessibility", "Capabilities", "Keyboard", "Localization", "SecureStorage", "Metrics", "Profile", "Types", "Device", "PinChallenge", "1Wifi", "UserGrants", "VoiceGuidance", "Privacy", "AudioDescriptions", "AcknowledgeChallenge", "ClosedCaptions"]
+//  const blackList = ["Parameters", "Discovery", "SecondScreen", "Intents", "Entertainment", "Lifecycle", "Advertising", "Account", "Authentication", "Accessibility", "1Capabilities", "Keyboard", "Localization", "SecureStorage", "Metrics", "Profile", "1Types", "Device", "PinChallenge", "1Wifi", "1UserGrants", "VoiceGuidance", "Privacy", "AudioDescriptions", "AcknowledgeChallenge", "ClosedCaptions"]
 //  const blackList = ["Parameters", "Discovery", "Entertainment", "Intents", "Advertising", "Accessibility"]
   //const blackList = ["Capabilities", "Discovery1"]
-//  const blackList = []
+  const blackList = []
   return blackList.includes(getModuleName(module))
 }
 
@@ -1297,10 +1297,10 @@ function insertMethodMacros(template, methodObj, json, templates, examples = {})
   const pullsResultType = pullsResult && types.getSchemaShape(pullsResult, json, { destination: state.destination, templateDir: state.typeTemplateDir, section: state.section, overrideRule: config.overrideRule })
   const pullsForType = pullsResult && types.getSchemaType(pullsResult, json, { destination: state.destination, templateDir: state.typeTemplateDir, section: state.section, overrideRule: config.overrideRule })
   const pullsParamsType = pullsParams ? types.getSchemaShape(pullsParams, json, { destination: state.destination, templateDir: state.typeTemplateDir, section: state.section, overrideRule: config.overrideRule }) : ''
-  const serializedParams = flattenedMethod.params.map(param => types.getSchemaShape(param.schema, json, { templateDir: 'parameter-serialization', property: param.name, required: param.required ? param.required : false, destination: state.destination, section: state.section, level: 1, skipTitleOnce: true, overrideRule: config.overrideRule })).join('\n')
+  const serializedParams = flattenedMethod.params.map(param => types.getSchemaShape(param.schema, json, { templateDir: 'parameter-serialization', property: param.name, required: param.required || false, destination: state.destination, section: state.section, level: 1, skipTitleOnce: true, overrideRule: config.overrideRule })).join('\n')
   const resultInst = types.getSchemaShape(flattenedMethod.result.schema, json, { templateDir: 'result-instantiation', property: flattenedMethod.result.name, destination: state.destination, section: state.section, level: 1, skipTitleOnce: true, overrideRule: config.overrideRule }) // w/out level: 1, getSchemaShape skips anonymous types, like primitives
   const resultInit = types.getSchemaShape(flattenedMethod.result.schema, json, { templateDir: 'result-initialization', property: flattenedMethod.result.name, destination: state.destination, section: state.section, level: 1, skipTitleOnce: true, overrideRule: config.overrideRule }) // w/out level: 1, getSchemaShape skips anonymous types, like primitives
-  const serializedEventParams = event ? flattenedMethod.params.filter(p => p.name !== 'listen').map(param => types.getSchemaShape(param.schema, json, {templateDir: 'parameter-serialization', property: param.name, required: param.required? true: false, destination: state.destination, section: state.section, level: 1, skipTitleOnce: true, overrideRule: config.overrideRule })).join('\n') : ''
+  const serializedEventParams = event ? flattenedMethod.params.filter(p => p.name !== 'listen').map(param => types.getSchemaShape(param.schema, json, {templateDir: 'parameter-serialization', property: param.name, required: param.required || false, destination: state.destination, section: state.section, level: 1, skipTitleOnce: true, overrideRule: config.overrideRule })).join('\n') : ''
   // this was wrong... check when we merge if it was fixed
   const callbackSerializedParams = event ? types.getSchemaShape(event.result.schema, json, { templateDir: 'callback-parameter-serialization', property: result.name, destination: state.destination, section: state.section, level: 1, skipTitleOnce: true, overrideRule: config.overrideRule }) : ''
 

@@ -1,3 +1,3 @@
-            ${type} ${property}Result;
+            ${type} ${property}Result${level};
 ${properties}
-            ${property} = ${property}Result;
+            ${property} = ${property}Result${level};
