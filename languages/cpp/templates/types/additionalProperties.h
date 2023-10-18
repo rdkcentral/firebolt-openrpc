@@ -1,1 +1,1 @@
-${title} value;
+std::unordered_map<${key}, ${type}> ${title};
