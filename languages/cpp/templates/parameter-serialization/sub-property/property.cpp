@@ -1,1 +1,1 @@
-${shape}            ${if.non.object}${title}.${Property.dependency}${Property} = ${base.title}.${property.dependency}${property};${end.if.non.object}
+${shape}            ${if.non.object}${title}.${Property.dependency}${Property} = element${if.base.optional}.value()${end.if.base.optional}.${property.dependency}${property}${if.optional}.value()${end.if.optional};${end.if.non.object}
