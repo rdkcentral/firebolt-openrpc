@@ -28,5 +28,6 @@
         "string": "std::string"
     },
     "langVersion" : "c++17",
-    "additionalSchemaTemplates": [ "json-types" ]
+    "additionalSchemaTemplates": [ "json-types" ],
+    "additionalDeclarationTemplates": [ "declarations-override" ]
 }
