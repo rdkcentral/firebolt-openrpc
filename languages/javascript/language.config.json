@@ -23,5 +23,6 @@
         "number": "number",
         "string": "string",
         "object": "object"
-    }
+    },
+    "additionalMethodTemplates": [ "declarations" ]
 }

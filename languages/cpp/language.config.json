@@ -29,5 +29,5 @@
     },
     "langVersion" : "c++17",
     "additionalSchemaTemplates": [ "json-types" ],
-    "additionalDeclarationTemplates": [ "declarations-override" ]
+    "additionalMethodTemplates": [ "declarations", "declarations-override" ]
 }

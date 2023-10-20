@@ -40,7 +40,7 @@ ${if.types}
         ~${info.Title}Impl() override = default;
 
         // Methods & Events
-        /* ${DECLARATIONS:declarations-override} */
+        /* ${METHODS:declarations-override} */
     };${end.if.methods}
 
 }//namespace ${info.Title}
