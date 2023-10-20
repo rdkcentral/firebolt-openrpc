@@ -142,6 +142,7 @@ const getXSchemaGroup = (schema, module) => {
 function insertSchemaMacros(content, schema, module, { name = '', parent = '', property = '', required = true, recursive = true, overrideRule = false, templateDir = 'types'}) {
   const title = name || schema.title || ''
   let moduleTitle = getXSchemaGroup(schema, module)
+
   content = content
     .replace(/\$\{title\}/g, title)
     .replace(/\$\{Title\}/g, capitalize(title))
@@ -192,7 +193,6 @@ const insertEnumMacros = (content, schema, module, name, suffix, enumSuffix) => 
 }
 
 const insertObjectAdditionalPropertiesMacros = (content, schema, module, title, options) => {
-
   const options2 = options ? JSON.parse(JSON.stringify(options)) : {}
   options2.parent = title
   options2.level = options.level + 1
@@ -803,6 +803,5 @@ export default {
   getMethodSignatureResult,
   getSchemaShape,
   getSchemaType,
-  getJsonType,
   getSchemaInstantiation
 }
