@@ -43,7 +43,7 @@ const _inspector = obj => {
 }
 
 const filterBlackListedSchemas = (module) => {
-//  const blackList = ["Parameters", "Discovery", "SecondScreen", "Intents", "Entertainment", "Lifecycle", "Advertising", "Account", "Authentication", "Accessibility", "Capabilities", "Keyboard", "Localization", "SecureStorage", "Metrics", "Profile", "Types", "Device", "PinChallenge", "Wifi", "UserGrants", "VoiceGuidance", "Privacy", "AudioDescriptions", "AcknowledgeChallenge", "qClosedCaptions"]
+ // const blackList = ["Parameters", "Discovery", "SecondScreen", "Intents", "Entertainment", "Lifecycle", "Advertising", "Account", "Authentication", "Accessibility", "Capabilities", "Keyboard", "Localization", "SecureStorage", "Metrics", "Profile", "Types", "Device", "PinChallenge", "Wifi", "UserGrants", "VoiceGuidance", "Privacy", "AudioDescriptions", "AcknowledgeChallenge", "qClosedCaptions"]
 //  const blackList = ["Parameters", "Discovery", "Entertainment", "Intents", "Advertising", "Accessibility"]
   //const blackList = ["Capabilities", "Discovery1"]
   const blackList = []
@@ -560,7 +560,6 @@ const generateMacros = (obj, templates, languages, options = {}) => {
     schemas: {},
     types: {},
     enums: {},
-    declarations: {},
     methods: {},
     events: {},
     methodList: '',
@@ -583,21 +582,23 @@ const generateMacros = (obj, templates, languages, options = {}) => {
   const examples = generateExamples(obj, templates, languages)
   const allMethodsArray = generateMethods(obj, examples, templates)
 
-  Array.from(new Set(['declarations'].concat(config.additionalDeclarationTemplates))).filter(dir => dir).forEach(dir => {
-    const declarationsArray = allMethodsArray.filter(m => m.declaration[dir] && (!config.excludeDeclarations || (!options.hideExcluded || !m.excluded)))
-    macros.declarations[dir] = declarationsArray.length ? getTemplate('/sections/declarations', templates).replace(/\$\{declaration\.list\}/g, declarationsArray.map(m => m.declaration[dir]).join('\n')) : ''
-  })
-
   Array.from(new Set(['methods'].concat(config.additionalMethodTemplates))).filter(dir => dir).forEach(dir => {
-    const methodsArray = allMethodsArray.filter(m => m.body[dir] && !m.event && (!options.hideExcluded || !m.excluded))
-    macros.methods[dir] = methodsArray.length ? getTemplate('/sections/methods', templates).replace(/\$\{method.list\}/g, methodsArray.map(m => m.body[dir]).join('\n')) : ''
 
-    const eventsArray = allMethodsArray.filter(m => m.body[dir] && m.event && (!options.hideExcluded || !m.excluded))
-    macros.events[dir] = eventsArray.length ? getTemplate('/sections/events', templates).replace(/\$\{event.list\}/g, eventsArray.map(m => m.body[dir]).join('\n')) : ''
+    if (dir.includes('declarations')) {
+      const declarationsArray = allMethodsArray.filter(m => m.declaration[dir] && (!config.excludeDeclarations || (!options.hideExcluded || !m.excluded)))
+      macros.methods[dir] = declarationsArray.length ? getTemplate('/sections/declarations', templates).replace(/\$\{declaration\.list\}/g, declarationsArray.map(m => m.declaration[dir]).join('\n')) : ''
+    }
+    else if (dir.includes('methods')) {
+      const methodsArray = allMethodsArray.filter(m => m.body[dir] && !m.event && (!options.hideExcluded || !m.excluded))
+      macros.methods[dir] = methodsArray.length ? getTemplate('/sections/methods', templates).replace(/\$\{method.list\}/g, methodsArray.map(m => m.body[dir]).join('\n')) : ''
 
-    if (dir === 'methods') {
-      macros.methodList = methodsArray.filter(m => m.body).map(m => m.name)
-      macros.eventList = eventsArray.map(m => makeEventName(m))
+      const eventsArray = allMethodsArray.filter(m => m.body[dir] && m.event && (!options.hideExcluded || !m.excluded))
+      macros.events[dir] = eventsArray.length ? getTemplate('/sections/events', templates).replace(/\$\{event.list\}/g, eventsArray.map(m => m.body[dir]).join('\n')) : ''
+
+      if (dir === 'methods') {
+        macros.methodList = methodsArray.filter(m => m.body).map(m => m.name)
+        macros.eventList = eventsArray.map(m => makeEventName(m))
+      }
     }
   })
 
@@ -659,9 +660,9 @@ const insertMacros = (fContents = '', macros = {}) => {
   fContents = fContents.replace(/\$\{if\.types\}(.*?)\$\{end\.if\.types\}/gms, macros.types.types.trim() ? '$1' : '')
   fContents = fContents.replace(/\$\{if\.schemas\}(.*?)\$\{end\.if\.schemas\}/gms, macros.schemas.types.trim() ? '$1' : '')
   fContents = fContents.replace(/\$\{if\.enums\}(.*?)\$\{end\.if\.enums\}/gms, macros.enums.types.trim() ? '$1' : '')
-  fContents = fContents.replace(/\$\{if\.declarations\}(.*?)\$\{end\.if\.declarations\}/gms, (macros.declarations.declarations.trim() || macros.enums.types.trim()) || macros.types.types.trim()? '$1' : '')
+  fContents = fContents.replace(/\$\{if\.declarations\}(.*?)\$\{end\.if\.declarations\}/gms, (macros.methods.declarations && macros.methods.declarations.trim() || macros.enums.types.trim()) || macros.types.types.trim()? '$1' : '')
 
-  fContents = fContents.replace(/\$\{if\.methods\}(.*?)\$\{end\.if\.methods\}/gms, (macros.methods.methods.trim() || macros.events.methods.trim()) ? '$1' : '')
+  fContents = fContents.replace(/\$\{if\.methods\}(.*?)\$\{end\.if\.methods\}/gms, macros.methods.methods.trim() || macros.events.methods.trim() ? '$1' : '')
   fContents = fContents.replace(/\$\{if\.implementations\}(.*?)\$\{end\.if\.implementations\}/gms, (macros.methods.methods.trim() || macros.events.methods.trim() || macros.schemas.types.trim()) ? '$1' : '')
 
   fContents = fContents.replace(/\$\{module\.list\}/g, macros.module)
@@ -671,16 +672,6 @@ const insertMacros = (fContents = '', macros = {}) => {
 
   fContents = fContents.replace(/\$\{if\.modules\}(.*?)\$\{end\.if\.modules\}/gms, (macros.methods.methods.trim() || macros.events.methods.trim()) ? '$1' : '')
 
-  // Output the originally supported non-configurable declarations macros
-  fContents = fContents.replace(/[ \t]*\/\* \$\{DECLARATIONS\} \*\/[ \t]*\n/, macros.declarations.declarations)
-  // Output all declarations with all dynamically configured templates
-  Array.from(new Set(['declarations'].concat(config.additionalDeclarationTemplates))).filter(dir => dir).forEach(dir => {
-    ['DECLARATIONS'].forEach(type => {
-      const regex = new RegExp('[ \\t]*\\/\\* \\$\\{' + type + '\\:' + dir + '\\} \\*\\/[ \\t]*\\n', 'g')
-      fContents = fContents.replace(regex, macros[type.toLowerCase()][dir])
-    })
-  })
-
   // Output the originally supported non-configurable methods & events macros
   fContents = fContents.replace(/[ \t]*\/\* \$\{METHODS\} \*\/[ \t]*\n/, macros.methods.methods)
   fContents = fContents.replace(/[ \t]*\/\* \$\{METHOD_LIST\} \*\/[ \t]*\n/, macros.methodList.join(',\n'))
@@ -688,7 +679,7 @@ const insertMacros = (fContents = '', macros = {}) => {
   fContents = fContents.replace(/[ \t]*\/\* \$\{EVENT_LIST\} \*\/[ \t]*\n/, macros.eventList.join(','))
   fContents = fContents.replace(/[ \t]*\/\* \$\{EVENTS_ENUM\} \*\/[ \t]*\n/, macros.eventsEnum)
 
-  // Output all methods & events with all dynamically configured templates
+  // Output all declarations, methods & events with all dynamically configured templates
   Array.from(new Set(['methods'].concat(config.additionalMethodTemplates))).filter(dir => dir).forEach(dir => {
     ['METHODS', 'EVENTS'].forEach(type => {
       const regex = new RegExp('[ \\t]*\\/\\* \\$\\{' + type + '\\:' + dir + '\\} \\*\\/[ \\t]*\\n', 'g')
@@ -1170,17 +1161,15 @@ function generateMethodResult(type, templates) {
     declaration: {},
   }
 
-  Array.from(new Set(['declarations'].concat(config.additionalDeclarationTemplates))).filter(dir => dir).forEach(dir => {
-     const template = getTemplate(('/' + dir + '/' + type), templates)
-     if (template) {
-       result.declaration[dir] = template
-     }
-  })
-
   Array.from(new Set(['methods'].concat(config.additionalMethodTemplates))).filter(dir => dir).forEach(dir => {
      const template = getTemplate(('/' + dir + '/' + type), templates)
      if (template) {
-       result.body[dir] = template
+       if (dir.includes('declarations')) {
+         result.declaration[dir] = template
+       }
+       else if (dir.includes('methods')) {
+         result.body[dir] = template
+       }
      }
   })
   return result
@@ -1202,21 +1191,19 @@ function generateMethods(json = {}, examples = {}, templates = {}) {
       event: isEventMethod(methodObj)
     }
 
-    // Generate declarations for both dynamic and static configured templates
-    Array.from(new Set(['declarations'].concat(config.additionalDeclarationTemplates))).filter(dir => dir).forEach(dir => {
-      const template = getTemplateForDeclaration(methodObj, templates, dir)
-      if (template && template.length) {
-        let javascript = insertMethodMacros(template, methodObj, json, templates, examples)
-        result.declaration[dir] = javascript
-      }
-    })
-
     // Generate implementation of methods/events for both dynamic and static configured templates
     Array.from(new Set(['methods'].concat(config.additionalMethodTemplates))).filter(dir => dir).forEach(dir => {
-      const template = getTemplateForMethod(methodObj, templates, dir)
-      if (template && template.length) {
-        let javascript = insertMethodMacros(template, methodObj, json, templates, examples)
-        result.body[dir] = javascript
+      if (dir.includes('declarations')) {
+        const template = getTemplateForDeclaration(methodObj, templates, dir)
+        if (template && template.length) {
+          result.declaration[dir] = insertMethodMacros(template, methodObj, json, templates, examples)
+        }
+      }
+      else if (dir.includes('methods')) {
+        const template = getTemplateForMethod(methodObj, templates, dir)
+        if (template && template.length) {
+          result.body[dir] = insertMethodMacros(template, methodObj, json, templates, examples)
+        }
       }
     })
 

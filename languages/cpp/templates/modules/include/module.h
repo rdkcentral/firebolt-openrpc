@@ -36,7 +36,7 @@ ${if.methods}struct I${info.Title} {
     virtual ~I${info.Title}() = default;
 
     // Methods & Events
-    /* ${DECLARATIONS} */
+    /* ${METHODS:declarations} */
 
 };${end.if.methods}
 
