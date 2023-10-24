@@ -45,7 +45,7 @@ cp -ar ${SdkPath}/include ${ReleasePath}
 cp -ar ${SdkPath}/cmake ${ReleasePath}
 cp -ar ${SdkPath}/scripts/build.sh ${ReleasePath}
 cp -ar ${SdkPath}/CMakeLists.txt ${ReleasePath}
-cp -ar ${SdkPath}/ctest ${ReleasePath}/test
+cp -ar ${SdkPath}/cpptest ${ReleasePath}/test
 
 sed -i '/EnableTest="ON";;/d' ${ReleasePath}/build.sh
 sed -i 's/getopts p:s:tch/getopts p:s:ch/g' ${ReleasePath}/build.sh

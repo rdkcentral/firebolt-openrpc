@@ -52,8 +52,9 @@ const macrofy = async (
         allocatedPrimitiveProxies,
         convertTuplesToArraysOrObjects,
         additionalSchemaTemplates,
+        additionalMethodTemplates,
         excludeDeclarations,
-        aggregateFile,
+        aggregateFiles,
         operators,
         primitives,
         hidePrivate = true,
@@ -94,6 +95,7 @@ const macrofy = async (
             primitives,
             allocatedPrimitiveProxies,
             additionalSchemaTemplates,
+            additionalMethodTemplates,
             excludeDeclarations,
             operators
         })
@@ -144,22 +146,21 @@ const macrofy = async (
         const outputFiles = Object.fromEntries(Object.entries(await readFiles( staticCodeList, staticContent))
                                 .map( ([n, v]) => [path.join(output, n), v]))
         
-        let primaryOutput
+        let primaryOutput = []
 
         Object.keys(templates).forEach(file => {
             if (file.startsWith(path.sep + outputDirectory + path.sep) || outputDirectory === '') {
                 // Note: '/foo/bar/file.js'.split('/') => ['', 'foo', 'bar', 'file.js'] so we need to drop one more that you might suspect, hence slice(2) below...
                 const dirsToDrop = outputDirectory === '' ? 1 : 2
                 let outputFile = path.sep + file.split(path.sep).slice(dirsToDrop).join(path.sep)
-                const isPrimary = outputFile === aggregateFile
-
+                const isPrimary = (aggregateFiles && aggregateFiles.includes(outputFile))
                 if (rename[outputFile]) {
                     outputFile = outputFile.split(path.sep).slice(0, -1).concat([rename[outputFile]]).join(path.sep)
                 }
 
                 if (isPrimary) {
-                    primaryOutput = path.join(output, outputFile)
-                }
+                    primaryOutput.push(path.join(output, outputFile))
+		}
 
                 const content = engine.insertAggregateMacros(templates[file], aggregateMacros)
                 outputFiles[path.join(output, outputFile)] = content
@@ -193,15 +194,18 @@ const macrofy = async (
                 logSuccess(`Generated macros for module ${path.relative(output, location)}`)
             })
 
-            if (primaryOutput) {
-                const macros = engine.generateMacros(module, templates, exampleTemplates, {hideExcluded: hideExcluded, copySchemasIntoModules: copySchemasIntoModules, createPolymorphicMethods: createPolymorphicMethods, destination: primaryOutput})
+            primaryOutput.forEach(output => {
+                const macros = engine.generateMacros(module, templates, exampleTemplates, {hideExcluded: hideExcluded, copySchemasIntoModules: copySchemasIntoModules, createPolymorphicMethods: createPolymorphicMethods, destination: output})
                 macros.append = append
-                outputFiles[primaryOutput] = engine.insertMacros(outputFiles[primaryOutput], macros)
-            }
+                outputFiles[output] = engine.insertMacros(outputFiles[output], macros)
+            })
 
             append = true
         })
-        
+        primaryOutput.forEach(output => {
+            outputFiles[output] = engine.clearMacros(outputFiles[output]);
+        })
+
         if (treeshakePattern && treeshakeEntry) {
             const importedFiles = (code, base) => Array.from(new Set([...code.matchAll(treeshakePattern)].map(arr => arr[2]))).map(i => path.join(output, base, i))
 

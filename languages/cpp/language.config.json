@@ -6,9 +6,14 @@
     "unwrapResultObjects": false,
     "createPolymorphicMethods": true,
     "excludeDeclarations":true,
+    "aggregateFiles": [
+        "/include/firebolt.h",
+        "/src/firebolt.cpp"
+    ],
     "templatesPerModule": [
         "/include/module.h",
-        "/src/module.cpp"
+        "/src/module_impl.h",
+        "/src/module_impl.cpp"
     ],
     "templatesPerSchema": [
         "/include/common/module.h",
@@ -23,5 +28,6 @@
         "string": "std::string"
     },
     "langVersion" : "c++17",
-    "additionalSchemaTemplates": [ "json-types" ]
+    "additionalSchemaTemplates": [ "json-types" ],
+    "additionalMethodTemplates": [ "declarations", "declarations-override" ]
 }

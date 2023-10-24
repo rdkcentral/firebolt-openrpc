@@ -16,29 +16,32 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#pragma once
-
-#include "error.h"
+#include "FireboltSDK.h"
+#include "IModule.h"
 /* ${IMPORTS} */
+#include "${info.title.lowercase}.h"
 
-${if.declarations}namespace Firebolt {
+${if.implementations}
+namespace Firebolt {
 namespace ${info.Title} {
 ${if.enums}
 
-// Enums
-/* ${ENUMS} */${end.if.enums}
+/* ${ENUMS:json-types} */${end.if.enums}
 ${if.types}
-// Types
-/* ${TYPES} */
-${end.if.types}
-${if.methods}struct I${info.Title} {
+    // Types
+/* ${TYPES:json-types} */${end.if.types}
+    ${if.methods}class ${info.Title}Impl : public I${info.Title}, public IModule {
 
-    virtual ~I${info.Title}() = default;
+    public:
+        ${info.Title}Impl() = default;
+        ${info.Title}Impl(const ${info.Title}Impl&) = delete;
+        ${info.Title}Impl& operator=(const ${info.Title}Impl&) = delete;
 
-    // Methods & Events
-    /* ${METHODS:declarations} */
+        ~${info.Title}Impl() override = default;
 
-};${end.if.methods}
+        // Methods & Events
+        /* ${METHODS:declarations-override} */
+    };${end.if.methods}
 
-} //namespace ${info.Title}
-}${end.if.declarations}
+}//namespace ${info.Title}
+}${end.if.implementations}
