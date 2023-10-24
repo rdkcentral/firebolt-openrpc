@@ -428,7 +428,7 @@ const promoteAndNameSubSchemas = (obj) => {
               }
             })
           }
-	})
+        })
 
         if (!schema.title) {
           schema.title = capitalize(key)
@@ -741,14 +741,12 @@ const convertEnumTemplate = (schema, templateName, templates) => {
   const template = getTemplate(templateName, templates).split('\n')
   for (var i = 0; i < template.length; i++) {
     if (template[i].indexOf('${key}') >= 0) {
-      template[i] = enumSchema.enum.filter(value => value).map(value => {
+      template[i] = enumSchema.enum.map((value, id) => {
         const safeName = value.split(':').pop().replace(/[\.\-]/g, '_').replace(/\+/g, '_plus').replace(/([a-z])([A-Z0-9])/g, '$1_$2').toUpperCase()
         return template[i].replace(/\$\{key\}/g, safeName)
           .replace(/\$\{value\}/g, value)
+          .replace(/\$\{delimiter\}(.*?)\$\{end.delimiter\}/g, id === enumSchema.enum.length - 1 ? '' : '$1')
       }).join('\n')
-      if (!templateName.includes(config.enumSuffix)) {
-        template[i] = template[i].replace(/,*$/, '');
-      }
     }
   }
   return template.join('\n')
@@ -881,7 +879,7 @@ function generateSchemas(json, templates, options) {
     else {
       content = content.replace(/\$\{if\.description\}(.*?)\{end\.if\.description\}/gms, '$1')
     }
-    const schemaShape = types.getSchemaShape(schema, json, { templateDir: state.typeTemplateDir, destination: state.destination, section: options.section, enumSuffix: config.enumSuffix })
+    const schemaShape = types.getSchemaShape(schema, json, { templateDir: state.typeTemplateDir, destination: state.destination, section: options.section})
 
     content = content
       .replace(/\$\{schema.title\}/, (schema.title || name))
