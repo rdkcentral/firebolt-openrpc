@@ -54,6 +54,7 @@ const macrofy = async (
         additionalSchemaTemplates,
         additionalMethodTemplates,
         excludeDeclarations,
+        overrideRule,
         aggregateFiles,
         operators,
         primitives,
@@ -110,6 +111,7 @@ const macrofy = async (
         typer.setPrimitives(primitives)
         typer.setAllocatedPrimitiveProxies(allocatedPrimitiveProxies)
         typer.setConvertTuples(convertTuplesToArraysOrObjects)
+        typer.setOverrideRule(overrideRule)
 
         let templatesPermission = {}
         if (persistPermission) {

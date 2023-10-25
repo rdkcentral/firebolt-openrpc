@@ -5,7 +5,8 @@
     "extractSubSchemas": true,
     "unwrapResultObjects": false,
     "createPolymorphicMethods": true,
-    "excludeDeclarations":true,
+    "excludeDeclarations": true,
+    "overrideRule": true,
     "aggregateFiles": [
         "/include/firebolt.h",
         "/src/firebolt.cpp"
