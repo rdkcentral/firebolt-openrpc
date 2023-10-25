@@ -70,7 +70,6 @@ const run = async ({
     additionalSchemaTemplates: config.additionalSchemaTemplates,
     additionalMethodTemplates: config.additionalMethodTemplates,
     excludeDeclarations: config.excludeDeclarations,
-    enumSuffix: config.enumSuffix,
     overrideRule: config.overrideRule,
     staticModuleNames: staticModuleNames,
     hideExcluded: true,

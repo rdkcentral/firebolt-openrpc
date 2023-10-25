@@ -1,4 +1,4 @@
 /* ${title} ${description} */
 enum class ${name} {
-    ${key},
+    ${key}${delimiter},${end.delimiter}
 };
