@@ -64,7 +64,7 @@ let config = {
   copySchemasIntoModules: false,
   extractSubSchemas: false,
   unwrapResultObjects: false,
-  excludeDeclarations: false,
+  excludeDeclarations: false
 }
 
 const state = {
@@ -1570,7 +1570,7 @@ function generateResult(result, json, templates, { name = '' } = {}) {
     else {
       const schema = localizeDependencies(result, json)
       return getTemplate('/types/default', templates)
-        .replace(/\$\{type\}/, types.getSchemaShape(schema, json, { templateDir: state.typeTemplateDir}))
+        .replace(/\$\{type\}/, types.getSchemaShape(schema, json, { templateDir: state.typeTemplateDir }))
     }
   }
   else {
@@ -1637,9 +1637,9 @@ function insertParameterMacros(template, param, method, module) {
   //| `${method.param.name}` | ${method.param.type} | ${method.param.required} | ${method.param.summary} ${method.param.constraints} |
 
   let constraints = getSchemaConstraints(param, module)
-  let type = types.getSchemaType(param.schema, module, { templateDir: state.typeTemplateDir, destination: state.destination, section: state.section, code: false, link: false, asPath: false, expandEnums: false  }) //baseUrl: options.baseUrl
+  let type = types.getSchemaType(param.schema, module, { templateDir: state.typeTemplateDir, destination: state.destination, section: state.section, code: false, link: false, asPath: false, expandEnums: false }) //baseUrl: options.baseUrl
   let typeLink = getLinkForSchema(param.schema, module)
-  let jsonType = types.getSchemaType(param.schema, module, { templateDir: 'json-types', destination: state.destination, section: state.section, code: false, link: false, asPath: false, expandEnums: false  })
+  let jsonType = types.getSchemaType(param.schema, module, { templateDir: 'json-types', destination: state.destination, section: state.section, code: false, link: false, asPath: false, expandEnums: false })
 
   if (constraints && type) {
     constraints = '<br/>' + constraints
@@ -1803,7 +1803,7 @@ function insertProviderParameterMacros(data = '', parameters, module = {}, optio
 
   Object.entries(parameters.properties).forEach(([name, param]) => {
     let constraints = getSchemaConstraints(param, module)
-    let type = types.getSchemaType(param, module, { destination: state.destination, templateDir: state.typeTemplateDir, section: state.section, code: true, link: true, asPath: options.asPath, baseUrl: options.baseUrl  })
+    let type = types.getSchemaType(param, module, { destination: state.destination, templateDir: state.typeTemplateDir, section: state.section, code: true, link: true, asPath: options.asPath, baseUrl: options.baseUrl })
 
     if (constraints && type) {
       constraints = '<br/>' + constraints
