@@ -1,1 +1,1 @@
-        ${Title} ${property};
+        ${if.namespace.notsame}${parent.Title}::${end.if.namespace.notsame}${Title} ${property};
