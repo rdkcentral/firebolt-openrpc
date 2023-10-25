@@ -1224,6 +1224,11 @@ const getModule = (name, json, copySchemas) => {
                         ...(openrpc[destination[0]][destination[1]][destination[2]] || {})
                     }    
                 }
+                const capitalize = str => str[0].toUpperCase() + str.substr(1)
+                if (!schema.title) {
+                    schema.title = capitalize(parts.pop())
+                }
+
                 openrpc = setPath(destination, schema, openrpc)
             }
         })

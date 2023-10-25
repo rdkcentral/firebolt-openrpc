@@ -375,7 +375,10 @@ const promoteSchema = (location, property, title, document, destinationPath) => 
 }
 
 // only consider sub-objects and sub enums to be sub-schemas
-const isSubSchema = (schema) => schema.type === 'object' || (schema.type === 'string' && schema.enum) // || (schema.type === 'array' && schema.items)
+const isSubSchema = (schema) => schema.type === 'object' || (schema.type === 'string' && schema.enum)
+
+// check schema is sub enum of array
+const isSubEnumOfArraySchema = (schema) => (schema.type === 'array' && schema.items.enum)
 
 const promoteAndNameSubSchemas = (obj) => {
   // make a copy so we don't polute our inputs
@@ -402,19 +405,30 @@ const promoteAndNameSubSchemas = (obj) => {
     while (more) {
       more = false
       Object.entries(obj.components.schemas).forEach(([key, schema]) => {
-        if ((schema.type === "object") && schema.properties) {
-          Object.entries(schema.properties).forEach(([name, propSchema]) => {
-            if (isSubSchema(propSchema)) {
-              more = true
-              const descriptor = {
-                name: name,
-                schema: propSchema
+        let componentSchemaProperties = schema.allOf ? schema.allOf : [schema]
+        componentSchemaProperties.forEach((componentSchema) => {
+          if ((componentSchema.type === "object") && componentSchema.properties) {
+            Object.entries(componentSchema.properties).forEach(([name, propSchema]) => {
+              if (isSubSchema(propSchema)) {
+                more = true
+                const descriptor = {
+                  name: name,
+                  schema: propSchema
+                }
+                addContentDescriptorSubSchema(descriptor, key, obj)
+                componentSchema.properties[name] = descriptor.schema
               }
-              addContentDescriptorSubSchema(descriptor, key, obj)
-              schema.properties[name] = descriptor.schema
-            }
-          })
-        }
+              if (isSubEnumOfArraySchema(propSchema)) {
+                const descriptor = {
+                  name: name,
+                  schema: propSchema.items
+                }
+                addContentDescriptorSubSchema(descriptor, key, obj)
+                componentSchema.properties[name].items = descriptor.schema
+              }
+            })
+          }
+        })
 
         if (!schema.title) {
           schema.title = capitalize(key)
@@ -727,14 +741,12 @@ const convertEnumTemplate = (schema, templateName, templates) => {
   const template = getTemplate(templateName, templates).split('\n')
   for (var i = 0; i < template.length; i++) {
     if (template[i].indexOf('${key}') >= 0) {
-      template[i] = enumSchema.enum.map(value => {
+      template[i] = enumSchema.enum.map((value, id) => {
         const safeName = value.split(':').pop().replace(/[\.\-]/g, '_').replace(/\+/g, '_plus').replace(/([a-z])([A-Z0-9])/g, '$1_$2').toUpperCase()
         return template[i].replace(/\$\{key\}/g, safeName)
           .replace(/\$\{value\}/g, value)
+          .replace(/\$\{delimiter\}(.*?)\$\{end.delimiter\}/g, id === enumSchema.enum.length - 1 ? '' : '$1')
       }).join('\n')
-      if (!templateName.includes(".cpp")) {
-        template[i] = template[i].replace(/,*$/, '');
-      }
     }
   }
   return template.join('\n')
@@ -867,7 +879,7 @@ function generateSchemas(json, templates, options) {
     else {
       content = content.replace(/\$\{if\.description\}(.*?)\{end\.if\.description\}/gms, '$1')
     }
-    const schemaShape = types.getSchemaShape(schema, json, { templateDir: state.typeTemplateDir, destination: state.destination, section: options.section })
+    const schemaShape = types.getSchemaShape(schema, json, { templateDir: state.typeTemplateDir, destination: state.destination, section: options.section})
 
     content = content
       .replace(/\$\{schema.title\}/, (schema.title || name))
@@ -887,7 +899,7 @@ function generateSchemas(json, templates, options) {
     }
     content = content.trim().length ? content : content.trim()
 
-    const isEnum = x => x.type === 'string' && Array.isArray(x.enum) && x.title
+    const isEnum = x => x.type && Array.isArray(x.enum) && x.title && ((x.type === 'string') || (x.type[0]  === 'string'))
 
     const result = uri ? {
       uri: uri,

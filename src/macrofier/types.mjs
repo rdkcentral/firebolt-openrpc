@@ -157,14 +157,21 @@ const insertConstMacros = (content, schema, module, name) => {
   return content
 }
 
-const insertEnumMacros = (content, schema, module, name) => {
+const insertEnumMacros = (content, schema, module, name, suffix, templateDir = "types") => {
   const template = content.split('\n')
 
   for (var i = 0; i < template.length; i++) {
     if (template[i].indexOf('${key}') >= 0) {
-      template[i] = schema.enum.map(value => {
-        return template[i].replace(/\$\{key\}/g, safeName(value))
-          .replace(/\$\{value\}/g, value)
+      let values = []
+      schema.enum.map(value => {
+        if (!value) {
+          value = getTemplate(path.join(templateDir, 'unset' + suffix))
+	}
+        value ? values.push(template[i].replace(/\$\{key\}/g, safeName(value))
+                                       .replace(/\$\{value\}/g, value)) : ''
+      })
+      template[i] = values.map((value, id) => {
+        return value.replace(/\$\{delimiter\}(.*?)\$\{end.delimiter\}/g, id === values.length - 1 ? '' : '$1')
       }).join('\n')
     }
   }
@@ -377,15 +384,15 @@ function getSchemaShape(schema = {}, module = {}, { templateDir = 'types', name 
 
   let result = level === 0 ? getTemplate(path.join(templateDir, 'default' + suffix)) : '${shape}'
 
-  if (enums && level === 0 && schema.type === "string" && Array.isArray(schema.enum)) {
+  if (enums && level === 0 && Array.isArray(schema.enum) && ((schema.type === "string") || (schema.type[0] === "string"))) {
     result = getTemplate(path.join(templateDir, 'enum' + suffix))
-    return insertSchemaMacros(insertEnumMacros(result, schema, module, theTitle), schema, module, theTitle, parent, property)
+    return insertSchemaMacros(insertEnumMacros(result, schema, module, theTitle, suffix, templateDir), schema, module, theTitle, parent, property)
   }
 
   if (schema['$ref']) {
     const someJson = getPath(schema['$ref'], module)
     if (someJson) {
-      return getSchemaShape(someJson, module, { templateDir, name, parent, property, level, summary, descriptions, destination, enums: false })
+      return getSchemaShape(someJson, module, { templateDir, name, parent, property, level, summary, descriptions, destination, enums })
     }
     throw "Unresolvable $ref: " + schema['ref'] + ", in " + module.info.title
   }
@@ -395,8 +402,9 @@ function getSchemaShape(schema = {}, module = {}, { templateDir = 'types', name 
     return result
   }
   else if (!skipTitleOnce && (level > 0) && schema.title) {
+    let enumType = (schema.type === 'string' && Array.isArray(schema.enum))
     // TODO: allow the 'ref' template to actually insert the shape using getSchemaShape
-    const innerShape = getSchemaShape(schema, module, { skipTitleOnce: true, templateDir, name, parent, property, level, summary, descriptions, destination, enums: false })
+    const innerShape = getSchemaShape(schema, module, { skipTitleOnce: true, templateDir, name, parent, property, level, summary, descriptions, destination, enums: enumType })
 
     const shape = getTemplate(path.join(templateDir, 'ref' + suffix))
       .replace(/\$\{shape\}/g, innerShape)
