@@ -1,0 +1,1 @@
+${shape}            ${if.non.array}${if.non.object}${base.title}Result${level}.${property} = jsonResult.${Property}.Value();${end.if.non.object}${end.if.non.array}

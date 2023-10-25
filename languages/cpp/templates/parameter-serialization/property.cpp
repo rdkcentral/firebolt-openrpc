@@ -1,0 +1,1 @@
+${shape}        ${if.non.object}${base.Title}Container.${Property} = element${if.base.optional}.value()${end.if.base.optional}.${property}${if.optional}.value()${end.if.optional};${end.if.non.object}

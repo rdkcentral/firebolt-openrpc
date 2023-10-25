@@ -1,0 +1,1 @@
+${shape}            ${if.non.object}${base.title}Result${level}.${property.dependency}${if.impl.optional}value().${end.if.impl.optional}${property} = jsonResult.${Property.dependency}${Property};${end.if.non.object}
