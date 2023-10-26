@@ -204,6 +204,7 @@ const insertObjectAdditionalPropertiesMacros = (content, schema, module, title, 
   const options2 = options ? JSON.parse(JSON.stringify(options)) : {}
   options2.parent = title
   options2.level = options.level + 1
+  options2.required = options.required
 
   const shape = getSchemaShape(schema.additionalProperties, module, options2)
   let type = getSchemaType(schema.additionalProperties, module, options2).trimEnd()
@@ -216,7 +217,6 @@ const insertObjectAdditionalPropertiesMacros = (content, schema, module, title, 
 
   const additionalType = getPrimitiveType(jsonType, 'additional-types')
   let key = (propertyNames && propertyNames.title) ? propertyNames.title : getTemplate(path.join(options.templateDir, 'additionalPropertiesKey')).trimEnd()
-
   content = content
     .replace(/\$\{shape\}/g, shape)
     .replace(/\$\{parent\.title\}/g, title)
@@ -226,8 +226,7 @@ const insertObjectAdditionalPropertiesMacros = (content, schema, module, title, 
     .replace(/\$\{key\}/g, key)
     .replace(/\$\{delimiter\}(.*?)\$\{end.delimiter\}/g, '')
     .replace(/\$\{if\.optional\}(.*?)\$\{end\.if\.optional\}/g, '')
-    .replace(/\$\{if\.impl.optional\}(.*?)\$\{end\.if\.impl.optional\}/g, '')
-
+    .replace(/\$\{if\.impl.optional\}(.*?)\$\{end\.if\.impl.optional\}/g, options.required ? '' : '$1')
   return content
 }
 
@@ -338,10 +337,11 @@ const insertObjectMacros = (content, schema, module, title, property, options) =
     }
     
     const regex = new RegExp("\\$\\{" + macro + "\\}", "g")
-
     content = content.replace(regex, properties.join('\n'))
                      .replace(/\$\{level}/g, options.parentLevel > 0 ? options.parentLevel : '')
-    content = overrideRule ? (properties.length ? content : '') : content
+    if (overrideRule && !schema.propertyNames && !schema.properties) {
+        content = getTemplate(path.join(options.templateDir, 'object-empty-property'))
+    }
   })
   return content
 }
@@ -474,7 +474,7 @@ function getSchemaShape(schema = {}, module = {}, { templateDir = 'types', paren
     let shape
     const additionalPropertiesTemplate = getTemplate(path.join(templateDir, 'additionalProperties'))
     if (additionalPropertiesTemplate && schema.additionalProperties && (typeof schema.additionalProperties === 'object')) {
-      shape = insertObjectAdditionalPropertiesMacros(additionalPropertiesTemplate, schema, module, theTitle, { level, parent, templateDir, namespace: true })
+      shape = insertObjectAdditionalPropertiesMacros(additionalPropertiesTemplate, schema, module, theTitle, { level, parent, templateDir, namespace: true, required })
     }
     else {
       let objectLevel = array ? 0 : level
