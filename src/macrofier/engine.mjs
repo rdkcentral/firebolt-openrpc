@@ -43,9 +43,9 @@ const _inspector = obj => {
 }
 
 const filterBlackListedSchemas = (module) => {
-// const blackList = ["Parameters", "1Discovery", "SecondScreen", "1Intents", "1Entertainment", "Lifecycle", "Advertising", "Account", "Authentication", "Accessibility", "Capabilities", "Keyboard", "Localization", "SecureStorage", "Metrics", "Profile", "1Types", "1Device", "PinChallenge", "Wifi", "UserGrants", "VoiceGuidance", "Privacy", "AudioDescriptions", "AcknowledgeChallenge", "ClosedCaptions"]
+// const blackList = ["Parameters", "Discovery", "SecondScreen", "Intents", "Entertainment", "Lifecycle", "qAdvertising", "Account", "Authentication", "1Accessibility", "Capabilities", "Keyboard", "Localization", "SecureStorage", "Metrics", "Profile", "Types", "Device", "PinChallenge", "Wifi", "UserGrants", "VoiceGuidance", "Privacy", "AudioDescriptions", "AcknowledgeChallenge", "ClosedCaptions"]
 //  const blackList = ["Parameters", "Discovery", "Entertainment", "Intents", "Advertising", "Accessibility"]
-//  const blackList = ["Device", "Discovery", "Capabilities", "Accessibility"]
+//  const blackList = ["1Device", "Discovery", "Capabilities"]
   //const blackList = ["Capabilities", "Discovery1"]
   const blackList = []
   return blackList.includes(getModuleName(module))
@@ -1302,16 +1302,16 @@ function insertMethodMacros(template, methodObj, json, templates, examples = {})
   const pullsResultType = pullsResult && types.getSchemaShape(pullsResult, json, { destination: state.destination, templateDir: state.typeTemplateDir, section: state.section })
   const pullsForType = pullsResult && types.getSchemaType(pullsResult, json, { destination: state.destination, templateDir: state.typeTemplateDir, section: state.section })
   const pullsParamsType = pullsParams ? types.getSchemaShape(pullsParams, json, { destination: state.destination, templateDir: state.typeTemplateDir, section: state.section }) : ''
-  const serializedParams = flattenedMethod.params.map(param => types.getSchemaShape(param.schema, json, { templateDir: 'parameter-serialization', property: param.name, required: param.required || false, destination: state.destination, section: state.section, level: 1, skipTitleOnce: true })).join('\n')
-  const resultInst = types.getSchemaShape(flattenedMethod.result.schema, json, { templateDir: 'result-instantiation', property: flattenedMethod.result.name, destination: state.destination, section: state.section, level: 1, skipTitleOnce: true }) // w/out level: 1, getSchemaShape skips anonymous types, like primitives
-  const resultInit = types.getSchemaShape(flattenedMethod.result.schema, json, { templateDir: 'result-initialization', property: flattenedMethod.result.name, destination: state.destination, section: state.section, level: 1, skipTitleOnce: true }) // w/out level: 1, getSchemaShape skips anonymous types, like primitives
-  const serializedEventParams = event ? flattenedMethod.params.filter(p => p.name !== 'listen').map(param => types.getSchemaShape(param.schema, json, {templateDir: 'parameter-serialization', property: param.name, required: param.required || false, destination: state.destination, section: state.section, level: 1, skipTitleOnce: true })).join('\n') : ''
+  const serializedParams = flattenedMethod.params.map(param => types.getSchemaShape(param.schema, json, { templateDir: 'parameter-serialization', property: param.name, required: param.required || false, destination: state.destination, section: state.section, primitive: true, skipTitleOnce: true })).join('\n')
+  const resultInst = types.getSchemaShape(flattenedMethod.result.schema, json, { templateDir: 'result-instantiation', property: flattenedMethod.result.name, destination: state.destination, section: state.section, primitive: true, skipTitleOnce: true }) // w/out primitive: true, getSchemaShape skips anonymous types, like primitives
+  const resultInit = types.getSchemaShape(flattenedMethod.result.schema, json, { templateDir: 'result-initialization', property: flattenedMethod.result.name, destination: state.destination, section: state.section, primitive: true, skipTitleOnce: true }) // w/out primitive: true, getSchemaShape skips anonymous types, like primitives
+  const serializedEventParams = event ? flattenedMethod.params.filter(p => p.name !== 'listen').map(param => types.getSchemaShape(param.schema, json, {templateDir: 'parameter-serialization', property: param.name, required: param.required || false, destination: state.destination, section: state.section, primitive: true, skipTitleOnce: true })).join('\n') : ''
   // this was wrong... check when we merge if it was fixed
-  const callbackSerializedParams = event ? types.getSchemaShape(event.result.schema, json, { templateDir: 'callback-parameter-serialization', property: result.name, required: event.result.schema.required || false, destination: state.destination, section: state.section, level: 1, skipTitleOnce: true }) : ''
+  const callbackSerializedParams = event ? types.getSchemaShape(event.result.schema, json, { templateDir: 'callback-parameter-serialization', property: result.name, required: event.result.schema.required || false, destination: state.destination, section: state.section, primitive: true, skipTitleOnce: true }) : ''
 
-  const callbackResultInst = event ? types.getSchemaShape(event.result.schema, json, { templateDir: 'callback-result-instantiation', property: result.name, destination: state.destination, section: state.section, level: 1, skipTitleOnce: true }) : ''
+  const callbackResultInst = event ? types.getSchemaShape(event.result.schema, json, { templateDir: 'callback-result-instantiation', property: result.name, destination: state.destination, section: state.section, primitive: true, skipTitleOnce: true }) : ''
   // hmm... how is this different from callbackSerializedParams? i guess they get merged?
-  const callbackResponseInst = event ? types.getSchemaShape(event.result.schema, json, { templateDir: 'callback-response-instantiation', property: result.name, destination: state.destination, section: state.section, level: 1, skipTitleOnce: true }) : ''
+  const callbackResponseInst = event ? types.getSchemaShape(event.result.schema, json, { templateDir: 'callback-response-instantiation', property: result.name, destination: state.destination, section: state.section, primitive: true, skipTitleOnce: true }) : ''
   const resultType = result.schema ? types.getSchemaType(result.schema, json, { templateDir: state.typeTemplateDir }) : ''
   const resultJsonType = result.schema ? types.getSchemaType(result.schema, json, { templateDir: 'json-types' }) : ''
   const resultParams = generateResultParams(result.schema, json, templates, { name: result.name})
