@@ -6,7 +6,6 @@
     "unwrapResultObjects": false,
     "createPolymorphicMethods": true,
     "excludeDeclarations": true,
-    "overrideRule": true,
     "aggregateFiles": [
         "/include/firebolt.h",
         "/src/firebolt.cpp"
@@ -22,12 +21,7 @@
         "/src/jsondata_module.h"
     ],
     "persistPermission": true,
-    "primitives": {
-        "boolean": "bool",
-        "integer": "int32_t",
-        "number": "float",
-        "string": "std::string"
-    },
+    "primitives": {},
     "langVersion" : "c++17",
     "additionalSchemaTemplates": [ "json-types" ],
     "additionalMethodTemplates": [ "declarations", "declarations-override" ]

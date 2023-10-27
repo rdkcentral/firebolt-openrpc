@@ -21,18 +21,18 @@ import { getPath, localizeDependencies } from '../shared/json-schema.mjs'
 import path from "path"
 
 let convertTuplesToArraysOrObjects = false
-let overrideRule = false
 const templates = {}
 const state = {}
-const primitives = {
+let primitives = {
   "integer": "number",
   "number": "number",
   "boolean": "boolean",
   "string": "string"
 }
+const stdPrimitives = [ "integer", "number", "boolean", "string" ]
 
 const isVoid = type => (type === 'void') ? true : false
-const isPrimitiveType = type => primitives[type] ? true : false
+const isPrimitiveType = type => stdPrimitives.includes(type) ? true : false
 const allocatedPrimitiveProxies = {}
 
 function setTemplates(t) {
@@ -40,7 +40,9 @@ function setTemplates(t) {
 }
 
 function setPrimitives(p) {
-  Object.assign(primitives, p)
+  if (p) {
+    primitives = p
+  }
 }
 
 function setConvertTuples(t) {
@@ -49,10 +51,6 @@ function setConvertTuples(t) {
 
 function setAllocatedPrimitiveProxies(m) {
   Object.assign(allocatedPrimitiveProxies, m)
-}
-
-function setOverrideRule(rule) {
-   overrideRule = rule
 }
 
 const capitalize = str => str ? str[0].toUpperCase() + str.substr(1) : str
@@ -144,7 +142,7 @@ const getXSchemaGroup = (schema, module) => {
   return group
 }
 
-function insertSchemaMacros(content, schema, module, { name = '', parent = '', property = '', required = true, recursive = true, templateDir = 'types'}) {
+function insertSchemaMacros(content, schema, module, { name = '', parent = '', property = '', required = false, recursive = true, templateDir = 'types'}) {
   const title = name || schema.title || ''
   let moduleTitle = getXSchemaGroup(schema, module)
 
@@ -250,7 +248,7 @@ const insertObjectMacros = (content, schema, module, title, property, options) =
         options2.templateDir += subProperty ? '/sub-property' : ''
         const objSeparator = getTemplate(path.join(options2.templateDir, 'object-separator'))
 
-        options2.required = prop.required ? prop.required : false
+        options2.required = schema.required && schema.required.includes(name)
         const schemaShape = getSchemaShape(prop, module, options2)
 
         const type = getSchemaType(prop, module, options2)
@@ -389,7 +387,7 @@ const insertTupleMacros = (content, schema, module, title, options) => {
 
 const getPrimitiveType = (type, templateDir = 'types') => {
   const template = getTemplate(path.join(templateDir, type)) || getTemplate(path.join(templateDir, 'generic'))
-  return overrideRule === true ? (template || primitives[type]) : (primitives[type] || template)
+  return (primitives[type] || template)
 }
 
 const pickBestType = types => Array.isArray(types) ? types.find(t => t !== 'null') : types
@@ -427,7 +425,7 @@ const sanitize = (schema) => {
   return result
 }
 
-function getSchemaShape(schema = {}, module = {}, { templateDir = 'types', parent = '', property = '', required = true, parentLevel = 0, level = 0, summary, descriptions = true, destination, section, enums = true, skipTitleOnce = false, array = false, primitive = false } = {}) {
+function getSchemaShape(schema = {}, module = {}, { templateDir = 'types', parent = '', property = '', required = false, parentLevel = 0, level = 0, summary, descriptions = true, destination, section, enums = true, skipTitleOnce = false, array = false, primitive = false } = {}) {
   schema = sanitize(schema)
   state.destination = destination
   state.section = section
@@ -799,7 +797,6 @@ export default {
   setPrimitives,
   setConvertTuples,
   setAllocatedPrimitiveProxies,
-  setOverrideRule,
   getMethodSignatureParams,
   getMethodSignatureResult,
   getSchemaShape,
