@@ -29,10 +29,10 @@ let primitives = {
   "boolean": "boolean",
   "string": "string"
 }
-const defaultPrimitives = primitives
+const stdPrimitives = [ "integer", "number", "boolean", "string" ]
 
 const isVoid = type => (type === 'void') ? true : false
-const isPrimitiveType = type => primitives[type] || defaultPrimitives[type] ? true : false
+const isPrimitiveType = type => stdPrimitives.includes(type) ? true : false
 const allocatedPrimitiveProxies = {}
 
 function setTemplates(t) {
@@ -142,7 +142,7 @@ const getXSchemaGroup = (schema, module) => {
   return group
 }
 
-function insertSchemaMacros(content, schema, module, { name = '', parent = '', property = '', required = true, recursive = true, templateDir = 'types'}) {
+function insertSchemaMacros(content, schema, module, { name = '', parent = '', property = '', required = false, recursive = true, templateDir = 'types'}) {
   const title = name || schema.title || ''
   let moduleTitle = getXSchemaGroup(schema, module)
 
@@ -262,7 +262,7 @@ const insertObjectMacros = (content, schema, module, title, property, options) =
         if (localizedProp.type === 'array' || localizedProp.anyOf || localizedProp.oneOf) {
            options2.property = name
         }
-        options2.required = schema.required && schema.required.includes(name) || false
+        options2.required = schema.required && schema.required.includes(name)
         const schemaShape = getSchemaShape(prop, module, options2)
         const type = getSchemaType(prop, module, options2)
         // don't push properties w/ unsupported types
@@ -439,7 +439,7 @@ const sanitize = (schema) => {
   return result
 }
 
-function getSchemaShape(schema = {}, module = {}, { templateDir = 'types', parent = '', property = '', required = true, parentLevel = 0, level = 0, summary, descriptions = true, destination, section, enums = true, skipTitleOnce = false, array = false, primitive = false } = {}) {
+function getSchemaShape(schema = {}, module = {}, { templateDir = 'types', parent = '', property = '', required = false, parentLevel = 0, level = 0, summary, descriptions = true, destination, section, enums = true, skipTitleOnce = false, array = false, primitive = false } = {}) {
   schema = sanitize(schema)
   state.destination = destination
   state.section = section
