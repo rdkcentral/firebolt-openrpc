@@ -29,9 +29,10 @@ let primitives = {
   "boolean": "boolean",
   "string": "string"
 }
+const defaultPrimitives = primitives
 
 const isVoid = type => (type === 'void') ? true : false
-const isPrimitiveType = type => primitives[type] ? true : false
+const isPrimitiveType = type => primitives[type] || defaultPrimitives[type] ? true : false
 const allocatedPrimitiveProxies = {}
 
 function setTemplates(t) {
@@ -42,8 +43,6 @@ function setPrimitives(p) {
   if (p) {
     primitives = p
   }
-  //Object.assign(primitives, p)
-  console.log("primitives -- ", primitives)
 }
 
 function setConvertTuples(t) {
@@ -263,9 +262,8 @@ const insertObjectMacros = (content, schema, module, title, property, options) =
         if (localizedProp.type === 'array' || localizedProp.anyOf || localizedProp.oneOf) {
            options2.property = name
         }
-        options2.required = schema.required && schema.required.includes(name)
+        options2.required = schema.required && schema.required.includes(name) || false
         const schemaShape = getSchemaShape(prop, module, options2)
-
         const type = getSchemaType(prop, module, options2)
         // don't push properties w/ unsupported types
         if (type) {
@@ -472,6 +470,7 @@ function getSchemaShape(schema = {}, module = {}, { templateDir = 'types', paren
     return insertSchemaMacros(result.replace(/\$\{shape\}/g, shape), schema, module, { name: theTitle, parent, property, required })
   }
   else if (!skipTitleOnce && (level > 0) && schema.title) {
+
     let enumType = (schema.type === 'string' && Array.isArray(schema.enum))
     // TODO: allow the 'ref' template to actually insert the shape using getSchemaShape
     const innerShape = getSchemaShape(schema, module, { skipTitleOnce: true, templateDir, parent, property, required, parentLevel, level, summary, descriptions, destination, enums: enumType, array, primitive })
@@ -508,7 +507,6 @@ function getSchemaShape(schema = {}, module = {}, { templateDir = 'types', paren
         schema.anyOf = schema.oneOf
       }
       shape = insertAnyOfMacros(getTemplate(path.join(templateDir, 'anyOf' + suffix)) || genericTemplate, schema, module, theTitle)
-
     }
     if (shape) {
       result = result.replace(/\$\{shape\}/g, shape)
@@ -552,7 +550,6 @@ function getSchemaShape(schema = {}, module = {}, { templateDir = 'types', paren
     // array
     const items = getSchemaShape(schema.items, module, { templateDir, parent, property, required, parentLevel: parentLevel + 1, level, summary, descriptions, destination, enums: false, array: true, primitive })
     const shape = insertArrayMacros(getTemplate(path.join(templateDir, 'array' + suffix)) || genericTemplate, schema, module, level, items, schema.required) 
-
     result = result.replace(/\$\{shape\}/g, shape)
               .replace(/\$\{if\.object\}(.*?)\$\{end\.if\.object\}/gms, (schema.items.type === 'object') ? '$1' : '')
               .replace(/\$\{if\.non\.object\}(.*?)\$\{end\.if\.non\.object\}/gms, (schema.items.type !== 'object') ? '$1' : '')

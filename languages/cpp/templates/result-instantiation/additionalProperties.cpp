@@ -5,4 +5,5 @@
                 ${property}.emplace(std::piecewise_construct,
                     std::forward_as_tuple(key),
                     std::forward_as_tuple(jsonResult.Variants().Current().${additional.type}));
+
             }
