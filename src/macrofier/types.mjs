@@ -258,10 +258,14 @@ const insertObjectMacros = (content, schema, module, title, property, options) =
         let localizedProp = localizeDependencies(prop, module)
         const subProperty = getTemplate(path.join(options2.templateDir, 'sub-property/object'))
         options2.templateDir += subProperty ? '/sub-property' : ''
+
         const objSeparator = getTemplate(path.join(options2.templateDir, 'object-separator'))
-        if (localizedProp.type === 'array' || localizedProp.anyOf || localizedProp.oneOf) {
+        if (localizedProp.type === 'array' || localizedProp.anyOf || localizedProp.oneOf || (typeof localizedProp.const === 'string')) {
            options2.property = name
         }
+        else {
+           options2.property = options.property
+	}
         options2.required = schema.required && schema.required.includes(name)
         const schemaShape = getSchemaShape(prop, module, options2)
         const type = getSchemaType(prop, module, options2)
@@ -282,6 +286,7 @@ const insertObjectMacros = (content, schema, module, title, property, options) =
           .replace(/\$\{if\.non\.object\}(.*?)\$\{end\.if\.non\.object\}/gms, (localizedProp.type === 'object') ? '' : '$1')
           .replace(/\$\{if\.non\.array\}(.*?)\$\{end\.if\.non\.array\}/gms, (localizedProp.type === 'array') ? '' : '$1')
           .replace(/\$\{if\.non\.anyOf\}(.*?)\$\{end\.if\.non\.anyOf\}/gms, (localizedProp.anyOf || localizedProp.anyOneOf) ? '' : '$1')
+          .replace(/\$\{if\.non\.const\}(.*?)\$\{end\.if\.non\.const\}/gms, (typeof localizedProp.const === 'string') ? '' : '$1')
           let baseTitle = options.property
           if (localizedProp.type === 'object') {
             replacedTemplate = replacedTemplate
@@ -466,7 +471,7 @@ function getSchemaShape(schema = {}, module = {}, { templateDir = 'types', paren
     throw "Unresolvable $ref: " + schema['ref'] + ", in " + module.info.title
   }
   else if (schema.hasOwnProperty('const')) {
-    const shape = insertConstMacros(getTemplate(path.join(templateDir, 'const' + suffix)), schema, module, theTitle)
+    const shape = insertConstMacros(getTemplate(path.join(templateDir, 'const' + suffix)) || genericTemplate, schema, module, theTitle)
     return insertSchemaMacros(result.replace(/\$\{shape\}/g, shape), schema, module, { name: theTitle, parent, property, required })
   }
   else if (!skipTitleOnce && (level > 0) && schema.title) {

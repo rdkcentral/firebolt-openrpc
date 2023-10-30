@@ -43,7 +43,7 @@ const _inspector = obj => {
 }
 
 const filterBlackListedSchemas = (module) => {
-// const blackList = ["Parameters", "Discovery", "qSecondScreen", "Intents", "Entertainment", "Lifecycle", "qAdvertising", "Account", "Authentication", "Accessibility", "Capabilities", "Keyboard", "Localization", "SecureStorage", "Metrics", "Profile", "Types", "Device", "PinChallenge", "Wifi", "UserGrants", "VoiceGuidance", "Privacy", "AudioDescriptions", "AcknowledgeChallenge", "ClosedCaptions"]
+// const blackList = ["Parameters", "1Discovery", "SecondScreen", "1Intents", "1Entertainment", "Lifecycle", "Advertising", "Account", "Authentication", "Accessibility", "Capabilities", "Keyboard", "Localization", "SecureStorage", "Metrics", "Profile", "1Types", "Device", "PinChallenge", "Wifi", "UserGrants", "VoiceGuidance", "Privacy", "AudioDescriptions", "AcknowledgeChallenge", "ClosedCaptions"]
 //  const blackList = ["Parameters", "Discovery", "Entertainment", "Intents", "Advertising", "Accessibility"]
 //  const blackList = ["Device", "Discovery", "Capabilities"]
   //const blackList = ["Capabilities", "Discovery1"]
