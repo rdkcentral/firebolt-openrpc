@@ -1,5 +1,4 @@
-            ${if.namespace.notsame}Firebolt::${info.Title}::${end.if.namespace.notsame}JsonData_${title}::Iterator elements = (*proxyResponse)->Variants();
-            ${if.namespace.notsame}${info.Title}::${end.if.namespace.notsame}${title} response;
+            ${if.namespace.notsame}Firebolt::${info.Title}::${end.if.namespace.notsame}JsonData_${title}::Iterator elements = proxyResponse->Variants();
             while (elements.Next()) {
-//                response.insert(elements.Label(), elements.Current().${additional.type};
+//Relook                ${property}.insert(elements.Label(), elements.Current().${additional.type};
             }

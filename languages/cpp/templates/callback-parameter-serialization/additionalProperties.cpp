@@ -1,1 +1,0 @@
-        WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::VariantContainer>* proxyResponse = reinterpret_cast<WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::VariantContainer>*>(jsonResponse);

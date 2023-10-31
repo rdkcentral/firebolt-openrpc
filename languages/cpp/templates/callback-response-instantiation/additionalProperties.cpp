@@ -1,1 +1,1 @@
-response
+${property}

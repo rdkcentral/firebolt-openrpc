@@ -1,12 +1,13 @@
     /* ${method.rpc.name} - ${method.description} */
     static void ${info.Title}${method.Name}InnerCallback( void* notification, const void* userData, void* jsonResponse )
     {
-${event.callback.params.serialization}
-        ASSERT(proxyResponse->IsValid() == true);
+${event.callback.serialization}
+        ASSERT(proxyResponse.IsValid() == true);
 
-        if (proxyResponse->IsValid() == true) {
-${event.callback.result.instantiation}
-            proxyResponse->Release();
+        if (proxyResponse.IsValid() == true) {
+${event.callback.initialization}
+${event.callback.instantiation}
+            proxyResponse.Release();
 
             I${info.Title}::I${method.Name}Notification& notifier = *(reinterpret_cast<I${info.Title}::I${method.Name}Notification*>(notification));
             notifier.${method.Name}(${event.callback.response.instantiation});
