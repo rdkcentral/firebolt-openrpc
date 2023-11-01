@@ -1,3 +1,10 @@
+## [2.1.1-next.2](https://github.com/rdkcentral/firebolt-openrpc/compare/v2.1.1-next.1...v2.1.1-next.2) (2023-11-01)
+
+
+### Bug Fixes
+
+* Errors thrown in async provider methods do not send the JSONRPC error response ([#143](https://github.com/rdkcentral/firebolt-openrpc/issues/143)) ([ec8e259](https://github.com/rdkcentral/firebolt-openrpc/commit/ec8e2599d530f9d2bd38fbb53b36e13c038edf2a))
+
 ## [2.1.1-next.1](https://github.com/rdkcentral/firebolt-openrpc/compare/v2.1.0...v2.1.1-next.1) (2023-09-14)
 
 
