@@ -6,6 +6,7 @@ ${event.callback.serialization}
 
         if (proxyResponse.IsValid() == true) {
 ${event.callback.initialization}
+
 ${event.callback.instantiation}
             proxyResponse.Release();
 
