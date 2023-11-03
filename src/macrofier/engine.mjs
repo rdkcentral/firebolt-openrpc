@@ -385,44 +385,6 @@ const promoteSchema = (location, property, title, document, destinationPath) => 
   }
 }
 
-const skipConflictingMethods = (obj) => {
-  // make a copy so we don't polute our inputs
-  obj = JSON.parse(JSON.stringify(obj))
-  let nonConflictingMethods = []
-
-  let skipMethod = ''
-  // find anonymous method param or result schemas and name/promote them
-  obj.methods && obj.methods.forEach(method => {
-     if (skipMethod && method.name.startsWith('set') && method.name === ('set' + capitalize(skipMethod))) {
-         skipMethod = ''
-         return true
-     }
-     if (obj.components && obj.components.schemas) {
-        Object.entries(obj.components.schemas).forEach(([key, schema]) => {
-           if (capitalize(method.name) === capitalize(key) && isSubSchema(schema)) {
-             skipMethod = method.name
-             return true
-           }
-        })
-     }
-     if (obj['x-schemas']) {
-       Object.entries(obj['x-schemas']).forEach(([title, module]) => {
-         Object.entries(module).forEach(([key, schema]) => {
-           if ((capitalize(method.name) === capitalize(key) && (obj.info.title === title)) && isSubSchema(schema)) {
-             skipMethod = method.name
-             return true
-           }
-         })
-       })
-     }
-     if (skipMethod !== method.name) {
-       nonConflictingMethods.push(method);
-     }
-  })
-  obj.methods = nonConflictingMethods
-  return obj
-}
-
 // only consider sub-objects and sub enums to be sub-schemas
 const isSubSchema = (schema) => schema.type === 'object' || (schema.type === 'string' && schema.enum)
 
@@ -530,7 +492,6 @@ const generateMacros = (obj, templates, languages, options = {}) => {
   if (config.extractSubSchemas) {
     obj = promoteAndNameSubSchemas(obj)
   }
-  obj = skipConflictingMethods(obj)
   if (options.createPolymorphicMethods) {
     let methods = []
     obj.methods && obj.methods.forEach(method => {

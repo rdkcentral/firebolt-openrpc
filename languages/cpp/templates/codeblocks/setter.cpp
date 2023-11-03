@@ -1,6 +1,6 @@
 
     /* ${method.rpc.name} - ${method.description} */
-    void ${info.Title}Impl::${method.Name}( ${method.signature.params}${if.params}, ${end.if.params}Firebolt::Error *err )
+    void ${info.Title}Impl::${method.name}( ${method.signature.params}${if.params}, ${end.if.params}Firebolt::Error *err )
     {
         const string method = _T("${info.title.lowercase}.${method.rpc.name}");
 
