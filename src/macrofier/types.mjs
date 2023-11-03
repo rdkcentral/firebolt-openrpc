@@ -355,8 +355,8 @@ const insertObjectMacros = (content, schema, module, title, property, options) =
 
     const regex = new RegExp("\\$\\{" + macro + "\\}", "g")
     content = content.replace(regex, properties.join('\n')).replace(/\$\{level}/g, options.parentLevel > 0 ? options.parentLevel : '')
-    if (!schema.properties && ! schema.propertyNames) {
-      content = !schema.additionalProperties ? getTemplate(path.join(options.templateDir, 'object-empty-property')) : ''
+    if (!schema.properties && !schema.propertyNames && !schema.additionalProperties) {
+      content = getTemplate(path.join(options.templateDir, 'object-empty-property'))
     }
   })
   return content
