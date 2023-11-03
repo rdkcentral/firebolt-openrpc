@@ -1,5 +1,5 @@
     /* ${method.rpc.name} - ${method.description} */
-    ${method.signature.result} ${info.Title}Impl::${method.Name}( ${method.signature.params}${if.params}, ${end.if.params}Firebolt::Error *err ) ${if.result.nonvoid}${if.params.empty} const${end.if.params.empty}${end.if.result.nonvoid}
+    ${method.signature.result} ${info.Title}Impl::${method.name}( ${method.signature.params}${if.params}, ${end.if.params}Firebolt::Error *err ) ${if.result.nonvoid}${if.params.empty} const${end.if.params.empty}${end.if.result.nonvoid}
     {
         Firebolt::Error status = Firebolt::Error::NotConnected;
 ${if.result.nonvoid}${method.result.initialization}${end.if.result.nonvoid}
