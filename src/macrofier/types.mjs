@@ -338,7 +338,7 @@ const insertObjectMacros = (content, schema, module, title, property, options) =
     content = content.replace(regex, properties.join('\n'))
                      .replace(/\$\{level}/g, options.parentLevel > 0 ? options.parentLevel : '')
 
-    if (!schema.properties && ! schema.propertyNames) {
+    if (!schema.properties && !schema.propertyNames && !schema.additionalProperties) {
       content = !schema.additionalProperties ? getTemplate(path.join(options.templateDir, 'object-empty-property')) : ''
     }
   })
