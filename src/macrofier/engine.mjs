@@ -1070,7 +1070,7 @@ function insertMethodMacros(template, methodObj, json, templates, examples = {})
   }
   const method = {
     name: methodObj.name,
-    params: methodObj.params.map(p => p.name).join(''),
+    params: methodObj.params.map(p => p.name).join(', '),
     transforms: null,
     alternative: null,
     deprecated: isDeprecatedMethod(methodObj),
