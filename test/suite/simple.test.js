@@ -19,21 +19,17 @@
 import { Simple } from '../../build/sdk/javascript/src/sdk.mjs'
 import { expect } from '@jest/globals';
 
-let state = {
-    spy: null,
-    responder: null
-}
 
 class TransportSpy {
 
     constructor(spy) {
-        state.spy = spy
+        this.spy = spy
+        this.responder = null
     }
 
     async send(msg) {
         let parsed = JSON.parse(msg)
-        console.log(state.spy)
-        state.spy(parsed)
+        this.spy(parsed)
         this.responder(JSON.stringify({
             jsonrpc: '2.0',
             id: parsed.id,
