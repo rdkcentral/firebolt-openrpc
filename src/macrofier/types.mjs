@@ -254,6 +254,7 @@ const insertObjectMacros = (content, schema, module, title, property, options) =
     const template = getTemplate(path.join(options.templateDir, 'property' + (templateType ? `-${templateType}` : ''))).replace(/\n/gms, indent + '\n')
     const properties = []
     if (schema.properties) {
+
       Object.entries(schema.properties).forEach(([name, prop], i) => {
         let localizedProp = localizeDependencies(prop, module)
         const subProperty = getTemplate(path.join(options2.templateDir, 'sub-property/object'))
@@ -262,13 +263,15 @@ const insertObjectMacros = (content, schema, module, title, property, options) =
         const objSeparator = getTemplate(path.join(options2.templateDir, 'object-separator'))
         if (localizedProp.type === 'array' || localizedProp.anyOf || localizedProp.oneOf || (typeof localizedProp.const === 'string')) {
            options2.property = name
-        }
-        else {
+        } else {
            options2.property = options.property
-	}
+           if (localizedProp.type === 'object' && !localizedProp.title) {
+              localizedProp.title = schema.title + capitalize(name)
+           }
+        }
         options2.required = schema.required && schema.required.includes(name)
-        const schemaShape = getSchemaShape(prop, module, options2)
-        const type = getSchemaType(prop, module, options2)
+        const schemaShape = getSchemaShape(localizedProp, module, options2)
+        const type = getSchemaType(localizedProp, module, options2)
         // don't push properties w/ unsupported types
         if (type) {
           let replacedTemplate  = template
@@ -291,7 +294,7 @@ const insertObjectMacros = (content, schema, module, title, property, options) =
           if (localizedProp.type === 'object') {
             replacedTemplate = replacedTemplate
               .replace(/\$\{if\.impl.optional\}(.*?)\$\{end\.if\.impl.optional\}/gms, schema.required && schema.required.includes(name)  ? '' : '$1')
-              .replace(/\$\{property.dependency\}/g, ((options.level > 0) ? '${property.dependency}${if.impl.optional}value().${end.if.impl.optional}' : '') + name + objSeparator)
+              .replace(/\$\{property.dependency\}/g, ((options.level > 0) ? '${property.dependency}${if.impl.optional}.value()${end.if.impl.optional}' : '') + objSeparator + name)
               .replace(/\$\{Property.dependency\}/g, ((options.level > 0) ? '${Property.dependency}' : '') + capitalize(name) + (objSeparator))
           }
           else {
@@ -466,6 +469,7 @@ function getSchemaShape(schema = {}, module = {}, { templateDir = 'types', paren
   if (schema['$ref']) {
     const someJson = getPath(schema['$ref'], module)
     if (someJson) {
+
       return getSchemaShape(someJson, module, { templateDir, parent, property, required, parentLevel, level, summary, descriptions, destination, enums, array, primitive })
     }
     throw "Unresolvable $ref: " + schema['ref'] + ", in " + module.info.title

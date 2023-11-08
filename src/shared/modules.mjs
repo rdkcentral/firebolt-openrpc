@@ -1228,7 +1228,6 @@ const getModule = (name, json, copySchemas) => {
                 if (!schema.title) {
                     schema.title = capitalize(parts.pop())
                 }
-
                 openrpc = setPath(destination, schema, openrpc)
             }
         })
