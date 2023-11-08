@@ -17,11 +17,51 @@
  */
 
 import { Simple } from '../../build/sdk/javascript/src/sdk.mjs'
-import Setup from '../Setup'
 import { expect } from '@jest/globals';
+
+let state = {
+    spy: null,
+    responder: null
+}
+
+class TransportSpy {
+
+    constructor(spy) {
+        state.spy = spy
+    }
+
+    async send(msg) {
+        let parsed = JSON.parse(msg)
+        console.log(state.spy)
+        state.spy(parsed)
+        this.responder(JSON.stringify({
+            jsonrpc: '2.0',
+            id: parsed.id,
+            result: {}
+        }))
+    }
+
+    receive(callback) {
+        this.responder = callback
+    }
+}
 
 test('Basic', () => {
     return Simple.method(true).then(result => {
         expect(result.foo).toBe("here's foo")
     })
+});
+
+test('Multiple Parameters', async () => {
+    let cb = null;
+    let promise = new Promise((resolve, reject) => {
+        cb = resolve
+    })
+    window['__firebolt'].setTransportLayer(new TransportSpy(cb))
+    await Simple.methodWithMultipleParams(5, 'foo')
+    let msg = await promise
+    expect(msg.method).toBe('simple.methodWithMultipleParams')
+    expect(msg.params.id).toBe(5)
+    expect(msg.params.title).toBe('foo')
+    console.log(JSON.stringify(msg))
 });

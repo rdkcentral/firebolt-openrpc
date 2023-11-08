@@ -311,6 +311,61 @@
                     }
                 }
             ]
+        },
+        {
+            "name": "methodWithMultipleParams",
+            "summary": "A method that takes two parameters",
+            "description": "A method that takes two parameters",
+            "tags": [
+                {
+                    "name": "capabilities",
+                    "x-uses": ["xrn:firebolt:capability:test:test"]
+                }
+            ],
+            "params": [
+                {
+                    "name": "id",
+                    "required": true,
+                    "schema": {
+                        "type": "number"
+                    },
+                    "summary": "A test number"
+                },
+                {
+                    "name": "title",
+                    "required": true,
+                    "schema": {
+                        "type": "string"
+                    },
+                    "summary": "A string test parameter."
+                }
+            ],
+            "result": {
+                "name": "result",
+                "summary": "A result for testing basic method generation.",
+                "schema": {
+                    "type": "null"
+                }
+            },
+            "examples": [
+                {
+                    "name": "Default Example",
+                    "params": [
+                        {
+                            "name": "id",
+                            "value": 42
+                        },
+                        {
+                            "name": "title",
+                            "value": "test"
+                        }
+                    ],
+                    "result": {
+                        "name": "Default Result",
+                        "value": null
+                    }
+                }
+            ]
         }
     ],
     "components": {
