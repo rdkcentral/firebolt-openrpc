@@ -133,12 +133,11 @@ const macrofy = async (
         const staticModules = staticModuleNames.map(name => ( { info: { title: name } } ))
         
         let modules
-        
         if (hidePrivate) {
-            modules = moduleList.map(name => getModule(name, openrpc, copySchemasIntoModules)).filter(hasPublicAPIs)
+            modules = moduleList.map(name => getModule(name, openrpc, copySchemasIntoModules, extractSubSchemas)).filter(hasPublicAPIs)
         }
         else {
-            modules = moduleList.map(name => getModule(name, openrpc, copySchemasIntoModules))
+            modules = moduleList.map(name => getModule(name, openrpc, copySchemasIntoModules, extractSubSchemas))
         }
 
         const aggregateMacros = engine.generateAggregateMacros(openrpc, modules.concat(staticModules), templates, libraryName)
@@ -160,7 +159,7 @@ const macrofy = async (
 
                 if (isPrimary) {
                     primaryOutput.push(path.join(output, outputFile))
-		}
+                }
 
                 const content = engine.insertAggregateMacros(templates[file], aggregateMacros)
                 outputFiles[path.join(output, outputFile)] = content

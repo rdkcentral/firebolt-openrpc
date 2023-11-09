@@ -126,16 +126,34 @@ const getTemplate = (name) => {
   return templates[Object.keys(templates).find(k => k === name)] || templates[Object.keys(templates).find(k => k.startsWith(name.split('.').shift() + '.'))] || ''
 }
 
+const getXSchemaGroupFromProperties = (schema, title, properties, group) => {
+  if (properties) {
+    Object.entries(properties).forEach(([name, prop]) => {
+      if (schema.title === prop.title) {
+        group = title
+      } else {
+        group = getXSchemaGroupFromProperties(schema, title, prop.properties, group)
+      }
+    })
+  }
+  return group
+}
+
 // TODO: this assumes the same title doesn't exist in multiple x-schema groups!
 const getXSchemaGroup = (schema, module) => {
   let group = module.info.title
 
   if (schema.title && module['x-schemas']) {
     Object.entries(module['x-schemas']).forEach(([title, module]) => {
-      Object.values(module).forEach(s => {
-        if (schema.title === s.title) {
-          group = title
-        }
+      Object.values(module).forEach(moduleSchema => {
+        let schemas = moduleSchema.allOf ? moduleSchema.allOf : [moduleSchema]
+        schemas.forEach((s) => {
+          if (schema.title === s.title || schema.title === moduleSchema.title) {
+            group = title
+          } else {
+            group = getXSchemaGroupFromProperties(schema, title, s.properties, group)
+	  }
+        })
       })
     })
   }

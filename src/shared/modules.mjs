@@ -986,6 +986,49 @@ const createPolymorphicMethods = (method, json) => {
     return polymorphicMethodSchemas
 }
 
+const isSubSchema = (schema) => schema.type === 'object' || (schema.type === 'string' && schema.enum)
+
+const addComponentSubSchemasNameForProperties = (key, schema) => {
+  if ((schema.type === "object") && schema.properties) {
+    Object.entries(schema.properties).forEach(([name, propSchema]) => {
+      if (isSubSchema(propSchema)) {
+        key = key + name.charAt(0).toUpperCase() + name.substring(1)
+        if (!propSchema.title) {
+          propSchema.title = key
+        }
+        propSchema = addComponentSubSchemasNameForProperties(key, propSchema)
+      }
+    })
+  }
+
+  return schema
+}
+
+const addComponentSubSchemasName = (obj, schemas) => {
+    Object.entries(schemas).forEach(([key, schema]) => {
+      let componentSchemaProperties = schema.allOf ? schema.allOf : [schema]
+      componentSchemaProperties.forEach((componentSchema) => {
+        key = key.charAt(0).toUpperCase() + key.substring(1)
+        componentSchema = addComponentSubSchemasNameForProperties(key, componentSchema)
+      })
+      if (!schema.title && !key) {
+         schema.title = capitalize(key)
+      }
+    })
+
+  return schemas
+}
+
+const promoteAndNameXSchemas = (obj) => {
+  obj = JSON.parse(JSON.stringify(obj))
+  if (obj['x-schemas']) {
+    Object.entries(obj['x-schemas']).forEach(([name, schemas]) => {
+      schemas = addComponentSubSchemasName(obj, schemas)
+    })
+  }
+  return obj
+}
+
 const getPathFromModule = (module, path) => {
     console.error("DEPRECATED: getPathFromModule")
     
@@ -1170,7 +1213,7 @@ const removeUnusedSchemas = (json) => {
     return schema
 }
 
-const getModule = (name, json, copySchemas) => {
+const getModule = (name, json, copySchemas, extractSubSchemas) => {
     let openrpc = JSON.parse(JSON.stringify(json))
     openrpc.methods = openrpc.methods
                         .filter(method => method.name.toLowerCase().startsWith(name.toLowerCase() + '.'))
@@ -1230,6 +1273,9 @@ const getModule = (name, json, copySchemas) => {
                 }
 
                 openrpc = setPath(destination, schema, openrpc)
+                if (extractSubSchemas) {
+                    openrpc = promoteAndNameXSchemas(openrpc)
+                }
             }
         })
     }
