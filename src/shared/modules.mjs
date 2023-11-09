@@ -625,21 +625,16 @@ const createResponseFromProvider = (provider, type, json) => {
     if (provider.tags.find(t => t[`x-${type.toLowerCase()}`])) {
         response.params = [
             {
-                name: type.toLowerCase(),
-                required: true,
+                name: "correlationId",
                 schema: {
-                    allOf: [
-                        {
-                            "$ref": "https://meta.comcast.com/firebolt/types#/definitions/ProviderResponse" // use this schema for both Errors and Results
-                        },
-                        {
-                            "type": "object",
-                            "properties": {
-                                "result": provider.tags.find(t => t[`x-${type.toLowerCase()}`])[`x-${type.toLowerCase()}`]
-                            }
-                        }
-                    ]
-                }
+                    type: "string"
+                },
+                required: true
+            },
+            {
+                name: type === 'Error' ? 'error' : "result",
+                schema: provider.tags.find(t => t[`x-${type.toLowerCase()}`])[`x-${type.toLowerCase()}`],
+                required: true
             }
         ]
 
@@ -680,11 +675,12 @@ const createResponseFromProvider = (provider, type, json) => {
                 name: schema.examples.length === 1 ? "Example" : `Example #${n++}`,
                 params: [
                     {
-                        name: `${type.toLowerCase()}`,
-                        value: {
-                            correlationId: "123",
-                            result: param
-                        }
+                        name: 'correlationId',
+                        value: '123'
+                    },
+                    {
+                        name: 'result',
+                        value: param
                     }
                 ],
                 result: {
@@ -723,11 +719,12 @@ const createResponseFromProvider = (provider, type, json) => {
                 name: 'Example 1',
                 params: [
                     {
-                        name: `${type.toLowerCase()}`,
-                        value: {
-                            correlationId: "123",
-                            result: value
-                        }                        
+                        name: 'correlationId',
+                        value: '123'
+                    },
+                    {
+                        name: type === 'Error' ? 'error' : 'result',
+                        value
                     }
                 ],
                 result: {
