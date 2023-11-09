@@ -126,16 +126,34 @@ const getTemplate = (name) => {
   return templates[Object.keys(templates).find(k => k === name)] || templates[Object.keys(templates).find(k => k.startsWith(name.split('.').shift() + '.'))] || ''
 }
 
+const getXSchemaGroupFromProperties = (schema, title, properties, group) => {
+  if (properties) {
+    Object.entries(properties).forEach(([name, prop]) => {
+      if (schema.title === prop.title) {
+        group = title
+      } else {
+        group = getXSchemaGroupFromProperties(schema, title, prop.properties, group)
+      }
+    })
+  }
+  return group
+}
+
 // TODO: this assumes the same title doesn't exist in multiple x-schema groups!
 const getXSchemaGroup = (schema, module) => {
   let group = module.info.title
 
   if (schema.title && module['x-schemas']) {
     Object.entries(module['x-schemas']).forEach(([title, module]) => {
-      Object.values(module).forEach(s => {
-        if (schema.title === s.title) {
-          group = title
-        }
+      Object.values(module).forEach(moduleSchema => {
+        let schemas = moduleSchema.allOf ? moduleSchema.allOf : [moduleSchema]
+        schemas.forEach((s) => {
+          if (schema.title === s.title || schema.title === moduleSchema.title) {
+            group = title
+          } else {
+            group = getXSchemaGroupFromProperties(schema, title, s.properties, group)
+	  }
+        })
       })
     })
   }
@@ -254,20 +272,15 @@ const insertObjectMacros = (content, schema, module, title, property, options) =
     const template = getTemplate(path.join(options.templateDir, 'property' + (templateType ? `-${templateType}` : ''))).replace(/\n/gms, indent + '\n')
     const properties = []
     if (schema.properties) {
-
       Object.entries(schema.properties).forEach(([name, prop], i) => {
         let localizedProp = localizeDependencies(prop, module)
         const subProperty = getTemplate(path.join(options2.templateDir, 'sub-property/object'))
         options2.templateDir += subProperty ? '/sub-property' : ''
-
         const objSeparator = getTemplate(path.join(options2.templateDir, 'object-separator'))
         if (localizedProp.type === 'array' || localizedProp.anyOf || localizedProp.oneOf || (typeof localizedProp.const === 'string')) {
            options2.property = name
         } else {
            options2.property = options.property
-           if (localizedProp.type === 'object' && !localizedProp.title) {
-              localizedProp.title = schema.title + capitalize(name)
-           }
         }
         options2.required = schema.required && schema.required.includes(name)
         const schemaShape = getSchemaShape(localizedProp, module, options2)
@@ -469,7 +482,6 @@ function getSchemaShape(schema = {}, module = {}, { templateDir = 'types', paren
   if (schema['$ref']) {
     const someJson = getPath(schema['$ref'], module)
     if (someJson) {
-
       return getSchemaShape(someJson, module, { templateDir, parent, property, required, parentLevel, level, summary, descriptions, destination, enums, array, primitive })
     }
     throw "Unresolvable $ref: " + schema['ref'] + ", in " + module.info.title
@@ -479,7 +491,6 @@ function getSchemaShape(schema = {}, module = {}, { templateDir = 'types', paren
     return insertSchemaMacros(result.replace(/\$\{shape\}/g, shape), schema, module, { name: theTitle, parent, property, required })
   }
   else if (!skipTitleOnce && (level > 0) && schema.title) {
-
     let enumType = (schema.type === 'string' && Array.isArray(schema.enum))
     // TODO: allow the 'ref' template to actually insert the shape using getSchemaShape
     const innerShape = getSchemaShape(schema, module, { skipTitleOnce: true, templateDir, parent, property, required, parentLevel, level, summary, descriptions, destination, enums: enumType, array, primitive })
@@ -558,7 +569,7 @@ function getSchemaShape(schema = {}, module = {}, { templateDir = 'types', paren
   else if (schema.type === "array" && schema.items && !Array.isArray(schema.items)) {
     // array
     const items = getSchemaShape(schema.items, module, { templateDir, parent, property, required, parentLevel: parentLevel + 1, level, summary, descriptions, destination, enums: false, array: true, primitive })
-    const shape = insertArrayMacros(getTemplate(path.join(templateDir, 'array' + suffix)) || genericTemplate, schema, module, level, items, schema.required) 
+    const shape = insertArrayMacros(getTemplate(path.join(templateDir, 'array' + suffix)) || genericTemplate, schema, module, level, items, schema.required)
     result = result.replace(/\$\{shape\}/g, shape)
               .replace(/\$\{if\.object\}(.*?)\$\{end\.if\.object\}/gms, (schema.items.type === 'object') ? '$1' : '')
               .replace(/\$\{if\.non\.object\}(.*?)\$\{end\.if\.non\.object\}/gms, (schema.items.type !== 'object') ? '$1' : '')
