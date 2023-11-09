@@ -1,3 +1,10 @@
+## [2.1.2](https://github.com/rdkcentral/firebolt-openrpc/compare/v2.1.1...v2.1.2) (2023-11-09)
+
+
+### Bug Fixes
+
+* Provider openrpc response and error methods have a wrapper object ([#148](https://github.com/rdkcentral/firebolt-openrpc/issues/148)) ([373626e](https://github.com/rdkcentral/firebolt-openrpc/commit/373626ed598447bb670ac67e97ca8ed1bf32f28f))
+
 ## [2.1.1](https://github.com/rdkcentral/firebolt-openrpc/compare/v2.1.0...v2.1.1) (2023-11-01)
 
 
