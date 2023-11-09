@@ -1,1 +1,1 @@
-using ${title} = std::unordered_map<${key}, ${type}>;
+using ${title} = std::unordered_map<${namespace}${key}, ${type}>;
