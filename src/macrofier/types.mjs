@@ -129,9 +129,10 @@ const getTemplate = (name) => {
 const getXSchemaGroupFromProperties = (schema, title, properties, group) => {
   if (properties) {
     Object.entries(properties).forEach(([name, prop]) => {
-      if (schema.title === prop.title) {
+      if ((schema.title === prop.title) || (prop.items && prop.items.title === schema.title)) {
         group = title
-      } else {
+      } 
+      else {
         group = getXSchemaGroupFromProperties(schema, title, prop.properties, group)
       }
     })
@@ -183,6 +184,9 @@ function insertSchemaMacros(content, schema, module, { name = '', parent = '', p
     .replace(/\$\{info.TITLE\}/g, moduleTitle.toUpperCase())
 
   if (recursive) {
+    if (property === 'videoQuality1') {
+       console.log(" schema --- ", schema, " getSchemaType --- ", getSchemaType(schema, module, { templateDir: templateDir, destination: state.destination, section: state.section, code: false, namespace: true }))
+    }
     content = content.replace(/\$\{type\}/g, getSchemaType(schema, module, { templateDir: templateDir, destination: state.destination, section: state.section, code: false, namespace: true }))
   }
   return content
@@ -572,7 +576,12 @@ function getSchemaShape(schema = {}, module = {}, { templateDir = 'types', paren
     const shape = insertArrayMacros(getTemplate(path.join(templateDir, 'array' + suffix)) || genericTemplate, schema, module, level, items, schema.required)
     result = result.replace(/\$\{shape\}/g, shape)
               .replace(/\$\{if\.object\}(.*?)\$\{end\.if\.object\}/gms, (schema.items.type === 'object') ? '$1' : '')
-              .replace(/\$\{if\.non\.object\}(.*?)\$\{end\.if\.non\.object\}/gms, (schema.items.type !== 'object') ? '$1' : '')
+              .replace(/\$\{if\.enum\}(.*?)\$\{end\.if\.enum\}/gms, (schema.items.type === 'string' && schema.items.enum) ? '$1' : '')
+              .replace(/\$\{if\.non\.object}(.*?)\$\{end\.if\.non\.object\}/gms, (schema.items.type !== 'object') ? '$1' : '')
+              .replace(/\$\{if\.generic\}(.*?)\$\{end\.if\.generic\}/gms, ((schema.items.type !== 'object') && !(schema.items.type == 'string' && schema.items.enum)) ? '$1' : '')
+    if (property === 'videoQuality1') {
+    console.log("calling insertSchemaMacros for ", property, " schema  --- ", schema);
+    }
     return insertSchemaMacros(result, schema, module, { name: items, parent, property, required, templateDir })
   }
   else if (schema.type) {
@@ -643,6 +652,10 @@ function getSchemaType(schema, module, { destination, templateDir = 'types', lin
   const namespaceStr = namespace ? getTemplate(path.join(templateDir, 'namespace' + suffix)) : ''
   const theTitle = insertSchemaMacros(namespaceStr + getTemplate(path.join(templateDir, 'title' + suffix)), schema, module, { name: schema.title, parent: getXSchemaGroup(schema, module), recursive: false })
   const allocatedProxy = event || result
+  if ( schema.title === 'WayToWatchVideoQuality1') {
+    console.log(" start of getSchemaType ------ theTitle ", theTitle, " getXSchemaGroup ", getXSchemaGroup(schema, module))
+  }
+
 
   const title = schema.type === "object" || schema.enum ? true : false
 
@@ -723,6 +736,7 @@ function getSchemaType(schema, module, { destination, templateDir = 'types', lin
     }
   }
   else if (schema.type === 'array' && schema.items) {
+
     let firstItem
     if (Array.isArray(schema.items)) {
       if (!isHomogenous(schema.items)) {
@@ -744,6 +758,9 @@ function getSchemaType(schema, module, { destination, templateDir = 'types', lin
     else if (!isTuple(schema)) {
       const baseDir = (templateDir !== 'json-types' ? 'types': templateDir)
       template = insertArrayMacros(getTemplate(path.join(baseDir, 'array')), schema, module)
+      if ( schema.items && schema.items.title === 'WayToWatchVideoQuality1') {
+      console.log(" inside getSchemaType ------ array ", template)
+      }
       template = insertSchemaMacros(template, schema.items, module, { name: getSchemaType(schema.items, module, {destination, templateDir, link, title, code, asPath, event, result, expandEnums, baseUrl, namespace })})
     }
     else {

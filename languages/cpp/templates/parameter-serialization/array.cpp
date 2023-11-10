@@ -1,6 +1,6 @@
         WPEFramework::Core::JSON::ArrayType<WPEFramework::Core::JSON::Variant> ${Property};
         for (auto& element : ${property}) {
-${if.object}${items.with.indent}${end.if.object}${if.non.object}${Property}.Add() = element;${end.if.non.object}
+${if.object}${items.with.indent}${end.if.object}${if.enum}            ${Property}.Add() = static_cast<int32_t>(element);${end.if.enum}${if.generic}            ${Property}.Add() = element;${end.if.generic}
         }
         WPEFramework::Core::JSON::Variant ${Property}Variant;
         ${Property}Variant.Array(${Property});

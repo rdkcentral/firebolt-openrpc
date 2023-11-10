@@ -987,6 +987,7 @@ const createPolymorphicMethods = (method, json) => {
 }
 
 const isSubSchema = (schema) => schema.type === 'object' || (schema.type === 'string' && schema.enum)
+const isSubEnumOfArraySchema = (schema) => (schema.type === 'array' && schema.items.enum)
 
 const addComponentSubSchemasNameForProperties = (key, schema) => {
   if ((schema.type === "object") && schema.properties) {
@@ -997,6 +998,12 @@ const addComponentSubSchemasNameForProperties = (key, schema) => {
           propSchema.title = key
         }
         propSchema = addComponentSubSchemasNameForProperties(key, propSchema)
+      }
+      else if (isSubEnumOfArraySchema(propSchema)) {
+        key = key + name.charAt(0).toUpperCase() + name.substring(1)
+        if (!propSchema.items.title) {
+          propSchema.items.title = key
+        }
       }
     })
   }
@@ -1023,9 +1030,7 @@ const promoteAndNameXSchemas = (obj) => {
   obj = JSON.parse(JSON.stringify(obj))
   if (obj['x-schemas']) {
     Object.entries(obj['x-schemas']).forEach(([name, schemas]) => {
-      if (name === 'Intents') {
       schemas = addComponentSubSchemasName(obj, schemas)
-      }
     })
   }
   return obj
