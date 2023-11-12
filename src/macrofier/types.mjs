@@ -354,7 +354,6 @@ const insertObjectMacros = (content, schema, module, title, property, options) =
               }
             })
           }
-
           if (type) {
             options2.property = prop
             const schemaShape = getSchemaShape(type, module, options2)
@@ -375,8 +374,13 @@ const insertObjectMacros = (content, schema, module, title, property, options) =
 
     const regex = new RegExp("\\$\\{" + macro + "\\}", "g")
     content = content.replace(regex, properties.join('\n')).replace(/\$\{level}/g, options.parentLevel > 0 ? options.parentLevel : '')
-    if (!schema.properties && !schema.propertyNames && !schema.additionalProperties) {
-      content = getTemplate(path.join(options.templateDir, 'object-empty-property'))
+    if (!schema.properties && !schema.additionalProperties) {
+      if (schema.propertyNames && schema.propertyNames.enum) {
+        content = getTemplate(path.join(options.templateDir, 'enum-empty-property'))
+      }
+      else {
+        content = getTemplate(path.join(options.templateDir, 'object-empty-property'))
+      }
     }
   })
   return content
