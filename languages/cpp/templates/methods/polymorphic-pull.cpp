@@ -5,7 +5,7 @@
 ${if.result.nonvoid}${method.result.initialization}${end.if.result.nonvoid}
         FireboltSDK::Transport<WPEFramework::Core::JSON::IElement>* transport = FireboltSDK::Accessor::Instance().GetTransport();
         if (transport != nullptr) {
-        
+            string correlationId = "";
             JsonObject jsonParameters;
     ${method.params.serialization.with.indent}
             ${method.result.json.type} jsonResult;
