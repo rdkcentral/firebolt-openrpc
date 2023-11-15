@@ -1,1 +1,1 @@
-${shape}        ${if.non.const}${if.non.anyOf}${if.non.array}${if.non.object}${base.Title}Container.${Property} = element.${property}${if.optional}.value()${end.if.optional};${end.if.non.object}${end.if.non.array}${end.if.non.anyOf}${end.if.non.const}
+${shape}        ${if.non.const}${if.non.anyOf}${if.non.array}${if.non.object}${base.title}Container.${Property} = element.${property}${if.optional}.value()${end.if.optional};${end.if.non.object}${end.if.non.array}${end.if.non.anyOf}${end.if.non.const}
