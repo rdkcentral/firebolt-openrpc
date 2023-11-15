@@ -1,6 +1,4 @@
 import { ${module} } from '${package.name}'
 
-${module}.${method.setter.for}(${example.params})
-    .then(${method.result.name} => {
-        console.log(${method.result.name})
-    })
+let ${method.result.name} = await ${module}.${method.setter.for}(${example.params})
+console.log(${method.result.name})

@@ -1271,6 +1271,11 @@ function insertMethodMacros(template, methodObj, json, templates, examples = {})
   return template
 }
 
+function jsonToJsObject(json) {
+  json.replace(/\\"/g,"\uFFFF")
+  return json.replace(/"([^"]+)":/g, '$1:').replace(/\uFFFF/g, '\\\"')
+}
+
 function insertExampleMacros(template, examples, method, json, templates) {
 
   let content = ''
@@ -1299,13 +1304,13 @@ function insertExampleMacros(template, examples, method, json, templates) {
       first = false
 
       const formatParams = (params, delimit, pretty = false) => params.map(p => JSON.stringify((example.json.params.find(x => x.name === p.name) || { value: null }).value, null, pretty ? '  ' : null)).join(delimit)
-      let indent = ' '.repeat(json.info.title.length + method.name.length + 2)
+      let hasObjectParam = example.json.params.find(p => typeof p.value === 'object') != null
       let params = formatParams(method.params, ', ')
-      if (params.length + indent > 80) {
+      if ((params.length > 80) || hasObjectParam) {
         params = formatParams(method.params, ',\n', true)
         params = params.split('\n')
         let first = params.shift()
-        params = params.map(p => indent + p)
+        params = params.map(p => '  ' + p)
         params.unshift(first)
         params = params.join('\n')
       }
@@ -1318,7 +1323,7 @@ function insertExampleMacros(template, examples, method, json, templates) {
 
         .replace(/\$\{method\.result\.name\}/g, method.result.name)
         .replace(/\$\{method\.name\}/g, method.name)
-        .replace(/\$\{example\.params\}/g, params)
+        .replace(/\$\{example\.params\}/g, jsonToJsObject(params))
         .replace(/\$\{example\.result\}/g, language.result)
         .replace(/\$\{example\.result\.item\}/g, Array.isArray(example.json.result.value) ? JSON.stringify(example.json.result.value[0], null, '\t') : '')
         .replace(/\$\{module\}/g, json.info.title)
@@ -1326,12 +1331,16 @@ function insertExampleMacros(template, examples, method, json, templates) {
       const matches = [...languageContent.matchAll(/\$\{method\.params\[([0-9]+)\]\.example\.value\}/g)]
       matches.forEach(match => {
         const paramIndex = parseInt(match[1])
-        let indent = 0
-        while (match.index - indent >= 0 && match.input[match.index - indent] !== '\n') {
-          indent++
+        let indent = 2
+        if (language.langcode === 'json') {
+          indent = 0
+          while (match.index - indent >= 0 && match.input[match.index - indent] !== '\n') {
+            indent++
+          }
         }
         const value = JSON.stringify(method.examples[index].params[paramIndex].value, null, '\t').split('\n').map((line, i) => i > 0 ? ' '.repeat(indent) + line : line).join('\n')
-        languageContent = languageContent.replace(/\$\{method\.params\[([0-9]+)\]\.example\.value\}/g, value)
+        const objText = language.langcode === 'json' ? value : jsonToJsObject(value)
+        languageContent = languageContent.replace(/\$\{method\.params\[([0-9]+)\]\.example\.value\}/g, objText)
       })
 
 
@@ -1340,12 +1349,16 @@ function insertExampleMacros(template, examples, method, json, templates) {
         const matches = [...languageContent.matchAll(/\$\{originator\.params\[([0-9]+)\]\.example\.value\}/g)]
         matches.forEach(match => {
           const paramIndex = parseInt(match[1])
-          let indent = 0
-          while (match.index - indent >= 0 && match.input[match.index - indent] !== '\n') {
-            indent++
+          let indent = 2
+          if (language.langcode === 'json') {
+            indent = 0
+            while (match.index - indent >= 0 && match.input[match.index - indent] !== '\n') {
+              indent++
+            }
           }
           const value = JSON.stringify(originalExample.params[paramIndex].value, null, '\t').split('\n').map((line, i) => i > 0 ? ' '.repeat(indent) + line : line).join('\n')
-          languageContent = languageContent.replace(/\$\{originator\.params\[([0-9]+)\]\.example\.value\}/g, value)
+          const objText = language.langcode === 'json' ? value : jsonToJsObject(value)
+          languageContent = languageContent.replace(/\$\{originator\.params\[([0-9]+)\]\.example\.value\}/g, objText)
         })
       }
 
