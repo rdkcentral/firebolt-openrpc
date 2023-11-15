@@ -585,9 +585,7 @@ function getSchemaShape(schema = {}, module = {}, { templateDir = 'types', paren
     const shape = insertArrayMacros(getTemplate(path.join(templateDir, 'array' + suffix)) || genericTemplate, schema, module, level, items, Array.isArray(required) ? required.includes(property) : required)
     result = result.replace(/\$\{shape\}/g, shape)
               .replace(/\$\{if\.object\}(.*?)\$\{end\.if\.object\}/gms, (schema.items.type === 'object') ? '$1' : '')
-              .replace(/\$\{if\.enum\}(.*?)\$\{end\.if\.enum\}/gms, (schema.items.type === 'string' && schema.items.enum) ? '$1' : '')
               .replace(/\$\{if\.non\.object}(.*?)\$\{end\.if\.non\.object\}/gms, (schema.items.type !== 'object') ? '$1' : '')
-              .replace(/\$\{if\.generic\}(.*?)\$\{end\.if\.generic\}/gms, ((schema.items.type !== 'object') && !(schema.items.type == 'string' && schema.items.enum)) ? '$1' : '')
     return insertSchemaMacros(result, schema, module, { name: items, parent, property, required, templateDir })
   }
   else if (schema.type) {

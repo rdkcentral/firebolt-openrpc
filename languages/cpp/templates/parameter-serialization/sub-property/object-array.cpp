@@ -1,3 +1,3 @@
-            ${if.namespace.notsame}Firebolt::${info.Title}::${end.if.namespace.notsame}JsonData_${title} ${Property}Container;
+            ${if.namespace.notsame}Firebolt::${info.Title}::${end.if.namespace.notsame}JsonData_${title} ${property}Container;
 ${properties}
-        ${Property}.Add() = ${Property}Container;
+        ${property}Array.Add() = ${property}Container;

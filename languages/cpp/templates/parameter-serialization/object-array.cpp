@@ -1,7 +1,7 @@
-            ${if.namespace.notsame}Firebolt::${info.Title}::${end.if.namespace.notsame}JsonData_${title} ${Property}Container;
+            ${if.namespace.notsame}Firebolt::${info.Title}::${end.if.namespace.notsame}JsonData_${title} ${property}Container;
 ${properties}
-        string ${Property}Str;
-        ${Property}Container.ToString(${Property}Str);
-        WPEFramework::Core::JSON::VariantContainer ${Property}VariantContainer(${Property}Str);
-        WPEFramework::Core::JSON::Variant ${Property}Variant = ${Property}VariantContainer;
-        ${Property}.Add() = ${Property}Variant;
+        string ${property}Str;
+        ${property}Container.ToString(${property}Str);
+        WPEFramework::Core::JSON::VariantContainer ${property}VariantContainer(${property}Str);
+        WPEFramework::Core::JSON::Variant ${property}Variant = ${property}VariantContainer;
+        ${property}Array.Add() = ${property}Variant;
