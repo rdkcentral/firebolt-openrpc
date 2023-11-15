@@ -1,1 +1,1 @@
-${shape}            ${if.non.object}response.${property} = (*proxyResponse)->${Property};${end.if.non.object}
+${shape}            ${if.non.const}${if.non.anyOf}${if.non.array}${if.non.object}${base.title}.${property} = proxyResponse->${Property};${end.if.non.object}${end.if.non.array}${end.if.non.anyOf}${end.if.non.const}

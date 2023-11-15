@@ -1,5 +1,4 @@
-            auto index((*proxyResponse)->Elements());
-            ${type} response;
+            auto index(proxyResponse->Elements());
             while (index.Next() == true) {
-                response.push_back(index.Current().Value());
+                ${property}.push_back(index.Current().Value());
             }

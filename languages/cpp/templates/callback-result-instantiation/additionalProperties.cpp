@@ -1,5 +1,7 @@
-            ${if.namespace.notsame}Firebolt::${info.Title}::${end.if.namespace.notsame}JsonData_${title} elements = (*proxyResponse)->Variants();
-            ${if.namespace.notsame}${info.Title}::${end.if.namespace.notsame}${title} response;
+            ${if.namespace.notsame}${info.Title}::${end.if.namespace.notsame}JsonData_${title}::Iterator elements = proxyResponse->Variants();
             while (elements.Next()) {
-                response.insert(elements.Label(), elements.Current().${additional.type}.Value());
+${if.not.default}                ${namespace}${key} key = WPEFramework::Core::EnumerateType<${namespace}${key}>(elements.Label(), false).Value();${end.if.not.default}${if.default}                ${key} key = elements.Label();${end.if.default}
+                ${property}.emplace(std::piecewise_construct,
+                    std::forward_as_tuple(key),
+                    std::forward_as_tuple(elements.Current().${additional.type}));
             }

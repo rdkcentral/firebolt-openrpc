@@ -1,4 +1,4 @@
-        auto element = ${property};
+        auto element = ${property}${if.impl.optional}.value()${end.if.impl.optional};
         ${if.namespace.notsame}Firebolt::${info.Title}::${end.if.namespace.notsame}JsonData_${title} ${Property}Container;
 ${properties}
         string ${Property}Str;

@@ -1,1 +1,1 @@
-    /* anyOf schema shape is not supported right now */
+/* anyOf schema shape is not supported right now */

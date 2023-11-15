@@ -1,2 +1,1 @@
-            ${title} response;
 ${properties}
