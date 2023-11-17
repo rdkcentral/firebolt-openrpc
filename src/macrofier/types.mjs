@@ -34,7 +34,7 @@ const stdPrimitives = [ "integer", "number", "boolean", "string" ]
 const isVoid = type => (type === 'void') ? true : false
 const isPrimitiveType = type => stdPrimitives.includes(type) ? true : false
 const allocatedPrimitiveProxies = {}
-
+const isObject = schema => (schema.type === 'object') || (Array.isArray(schema.type) && schema.type.includes("object"))
 function setTemplates(t) {
   Object.assign(templates, t)
 }
@@ -135,7 +135,7 @@ const getXSchemaGroupFromProperties = (schema, title, properties, group) => {
     Object.entries(properties).forEach(([name, prop]) => {
       if ((schema.title === prop.title) || (prop.items && prop.items.title === schema.title)) {
         group = title
-      } 
+      }
       else {
         group = getXSchemaGroupFromProperties(schema, title, prop.properties, group)
       }
@@ -304,12 +304,12 @@ const insertObjectMacros = (content, schema, module, title, property, options) =
           .replace(/\$\{delimiter\}(.*?)\$\{end.delimiter\}/gms, i === schema.properties.length - 1 ? '' : '$1')
           .replace(/\$\{if\.optional\}(.*?)\$\{end\.if\.optional\}/gms, schema.required && schema.required.includes(name) ? '' : '$1')
           .replace(/\$\{if\.base\.optional\}(.*?)\$\{end\.if\.base\.optional\}/gms, options.required ? '' : '$1')
-          .replace(/\$\{if\.non\.object\}(.*?)\$\{end\.if\.non\.object\}/gms, (localizedProp.type === 'object') ? '' : '$1')
+          .replace(/\$\{if\.non\.object\}(.*?)\$\{end\.if\.non\.object\}/gms, isObject(localizedProp) ? '' : '$1')
           .replace(/\$\{if\.non\.array\}(.*?)\$\{end\.if\.non\.array\}/gms, (localizedProp.type === 'array') ? '' : '$1')
           .replace(/\$\{if\.non\.anyOf\}(.*?)\$\{end\.if\.non\.anyOf\}/gms, (localizedProp.anyOf || localizedProp.anyOneOf) ? '' : '$1')
           .replace(/\$\{if\.non\.const\}(.*?)\$\{end\.if\.non\.const\}/gms, (typeof localizedProp.const === 'string') ? '' : '$1')
           let baseTitle = options.property
-          if (localizedProp.type === 'object') {
+          if (isObject(localizedProp)) {
             replacedTemplate = replacedTemplate
               .replace(/\$\{if\.impl.optional\}(.*?)\$\{end\.if\.impl.optional\}/gms, schema.required && schema.required.includes(name)  ? '' : '$1')
               .replace(/\$\{property.dependency\}/g, ((options.level > 0) ? '${property.dependency}${if.impl.optional}.value()${end.if.impl.optional}' : '') + objSeparator + name)
@@ -355,6 +355,7 @@ const insertObjectMacros = (content, schema, module, title, property, options) =
               }
             })
           }
+
           if (type) {
             options2.property = prop
             const schemaShape = getSchemaShape(type, module, options2)
@@ -470,6 +471,7 @@ const sanitize = (schema) => {
 }
 
 function getSchemaShape(schema = {}, module = {}, { templateDir = 'types', parent = '', property = '', required = false, parentLevel = 0, level = 0, summary, descriptions = true, destination, section, enums = true, skipTitleOnce = false, array = false, primitive = false } = {}) {
+
   schema = sanitize(schema)
   state.destination = destination
   state.section = section
@@ -510,7 +512,7 @@ function getSchemaShape(schema = {}, module = {}, { templateDir = 'types', paren
     result = result.replace(/\$\{shape\}/g, shape)
     return insertSchemaMacros(result, schema, module, { name: theTitle, parent, property, required })
   }
-  else if (schema.type === 'object') {
+  else if (isObject(schema)) {
     let shape
     const additionalPropertiesTemplate = getTemplate(path.join(templateDir, 'additionalProperties'))
     if (additionalPropertiesTemplate && schema.additionalProperties && (typeof schema.additionalProperties === 'object')) {
@@ -520,12 +522,10 @@ function getSchemaShape(schema = {}, module = {}, { templateDir = 'types', paren
       let objectLevel = array ? 0 : level
       shape = insertObjectMacros(getTemplate(path.join(templateDir, 'object' + (array ? '-array' : '') + suffix)) || genericTemplate, schema, module, theTitle, property, { parentLevel, level: objectLevel, parent, property, required, templateDir, descriptions, destination, section, enums, namespace: true, primitive })
     }
-
     result = result.replace(/\$\{shape\}/g, shape)
     if (level === 0) {
       result = result.replace(/\$\{if\.impl.optional\}(.*?)\$\{end\.if\.impl.optional\}/gms, (Array.isArray(required) ? required.includes(property) : required) ? '' : '$1')
     }
-
     return insertSchemaMacros(result, schema, module, { name: theTitle, parent, property, required, templateDir })
   }
   else if (schema.anyOf || schema.oneOf) {
@@ -584,8 +584,8 @@ function getSchemaShape(schema = {}, module = {}, { templateDir = 'types', paren
     const items = getSchemaShape(schema.items, module, { templateDir, parent, property, required, parentLevel: parentLevel + 1, level, summary, descriptions, destination, enums: false, array: true, primitive })
     const shape = insertArrayMacros(getTemplate(path.join(templateDir, 'array' + suffix)) || genericTemplate, schema, module, level, items, Array.isArray(required) ? required.includes(property) : required)
     result = result.replace(/\$\{shape\}/g, shape)
-              .replace(/\$\{if\.object\}(.*?)\$\{end\.if\.object\}/gms, (schema.items.type === 'object') ? '$1' : '')
-              .replace(/\$\{if\.non\.object}(.*?)\$\{end\.if\.non\.object\}/gms, (schema.items.type !== 'object') ? '$1' : '')
+              .replace(/\$\{if\.object\}(.*?)\$\{end\.if\.object\}/gms, isObject(schema.items) ? '$1' : '')
+              .replace(/\$\{if\.non\.object\}(.*?)\$\{end\.if\.non\.object\}/gms, (schema.items.type !== 'object') ? '$1' : '')
     return insertSchemaMacros(result, schema, module, { name: items, parent, property, required, templateDir })
   }
   else if (schema.type) {
@@ -657,7 +657,7 @@ function getSchemaType(schema, module, { destination, templateDir = 'types', lin
   const theTitle = insertSchemaMacros(namespaceStr + getTemplate(path.join(templateDir, 'title' + suffix)), schema, module, { name: schema.title, parent: getXSchemaGroup(schema, module), recursive: false })
   const allocatedProxy = event || result
 
-  const title = schema.type === "object" || schema.enum ? true : false
+  const title = schema.type === "object" || Array.isArray(schema.type) && schema.type.includes("object") ||  schema.enum ? true : false
 
   if (schema['$ref']) {
     if (schema['$ref'][0] === '#') {
@@ -736,7 +736,6 @@ function getSchemaType(schema, module, { destination, templateDir = 'types', lin
     }
   }
   else if (schema.type === 'array' && schema.items) {
-
     let firstItem
     if (Array.isArray(schema.items)) {
       if (!isHomogenous(schema.items)) {
@@ -776,7 +775,8 @@ function getSchemaType(schema, module, { destination, templateDir = 'types', lin
     if (schema.title) {
       union.title = schema.title
     }
-    return getSchemaType(union, module, { templateDir, destination, link, title, code, asPath, baseUrl, namespace })
+    let result = getSchemaType(union, module, { templateDir, destination, link, title, code, asPath, baseUrl, namespace })
+    return result 
   }
   else if (schema.oneOf || schema.anyOf) {
     if (!schema.anyOf) {
@@ -813,7 +813,12 @@ function getSchemaType(schema, module, { destination, templateDir = 'types', lin
     }
   }
   else {
-    const template = getTemplate(path.join(templateDir, 'void')) || 'void'
+    let type
+    if (schema.title) { 
+      const baseDir = (templateDir !== 'json-types' ? 'types': templateDir)
+      type = getPrimitiveType('string', baseDir)
+    }
+    const template = type || getTemplate(path.join(templateDir, 'void')) ||  'void'
     // TODO this is TypeScript specific
     return wrap(template, code ? '`' : '')
   }

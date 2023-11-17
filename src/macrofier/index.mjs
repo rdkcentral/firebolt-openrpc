@@ -54,6 +54,7 @@ const macrofy = async (
         additionalSchemaTemplates,
         additionalMethodTemplates,
         excludeDeclarations,
+        extractProviderSchema,
         aggregateFiles,
         operators,
         primitives,
@@ -97,6 +98,7 @@ const macrofy = async (
             additionalSchemaTemplates,
             additionalMethodTemplates,
             excludeDeclarations,
+            extractProviderSchema,
             operators
         })
 

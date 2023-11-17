@@ -6,6 +6,7 @@
     "unwrapResultObjects": false,
     "createPolymorphicMethods": true,
     "excludeDeclarations": true,
+    "extractProviderSchema": true,
     "aggregateFiles": [
         "/include/firebolt.h",
         "/src/firebolt.cpp"
