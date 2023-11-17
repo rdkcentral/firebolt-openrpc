@@ -74,7 +74,11 @@ const safeName = value => value.split(':').pop().replace(/[\.\-]/g, '_').replace
 // TODO: This is what's left of getMethodSignatureParams. We need to figure out / handle C's `FireboltTypes_StringHandle`
 function getMethodSignatureParams(method, module, { destination, callback }) {
   const paramOptional = getTemplate('/parameters/optional')
+  let polymorphicPull = method.tags.find(t => t.name === 'polymorphic-pull')
   return method.params.map(param => {
+    if (polymorphicPull && (param.name === 'correlationId')) {
+      return
+    }
     let type = getSchemaType(param.schema, module, { destination, namespace : true })
     if (callback && allocatedPrimitiveProxies[type]) {
       type = allocatedPrimitiveProxies[type]
@@ -93,7 +97,7 @@ function getMethodSignatureParams(method, module, { destination, callback }) {
     }
 
     return (param.required ? paramRequired : paramOptional).replace(/\$\{method\.param\.name\}/g, param.name).replace(/\$\{method\.param\.type\}/g, type)
-  }).join(', ')
+  }).filter(param => param).join(', ')
 }
 
 function getMethodSignatureResult(method, module, { destination, callback }) {
