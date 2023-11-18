@@ -1252,6 +1252,12 @@ function insertMethodMacros(template, methodObj, json, templates, examples = {})
   const pullsResultType = pullsResult && types.getSchemaShape(pullsResult, json, { destination: state.destination, templateDir: state.typeTemplateDir, section: state.section })
   const pullsForType = pullsResult && types.getSchemaType(pullsResult, json, { destination: state.destination, templateDir: state.typeTemplateDir, section: state.section })
   const pullsParamsType = pullsParams ? types.getSchemaShape(pullsParams, json, { destination: state.destination, templateDir: state.typeTemplateDir, section: state.section }) : ''
+  const pullsForParamTitle = pullsParams ? pullsParams.title.charAt(0).toLowerCase() + pullsParams.title.substring(1) : ''
+  const pullsForResultTitle = pullsResult ? pullsResult.title.charAt(0).toLowerCase() + pullsResult.title.substring(1) : ''
+  const pullsResponseInit = pullsParams ? types.getSchemaShape(pullsParams, json, { templateDir: 'result-initialization', property: pullsForParamTitle, required: pullsParams.required, destination: state.destination, section: state.section, primitive: true, skipTitleOnce: true }) : ''
+  const pullsResponseInst = pullsParams ? types.getSchemaShape(pullsParams, json, { templateDir: 'result-instantiation', property: pullsForParamTitle, required: pullsParams.required, destination: state.destination, section: state.section, primitive: true, skipTitleOnce: true }) : ''
+  const pullsResultSerialize = pullsResult ? types.getSchemaShape(pullsResult, json, { templateDir: 'parameter-serialization/sub-property', property: pullsForResultTitle, required: pullsResult.required, destination: state.destination, section: state.section, primitive: true, skipTitleOnce: true }) : ''
+
   const serializedParams = flattenedMethod.params.map(param => types.getSchemaShape(param.schema, json, { templateDir: 'parameter-serialization', property: param.name, required: param.required, destination: state.destination, section: state.section, primitive: true, skipTitleOnce: true })).join('\n')
   const resultInst = types.getSchemaShape(flattenedMethod.result.schema, json, { templateDir: 'result-instantiation', property: flattenedMethod.result.name, required: flattenedMethod.result.required, destination: state.destination, section: state.section, primitive: true, skipTitleOnce: true }) // w/out primitive: true, getSchemaShape skips anonymous types, like primitives
   const resultInit = types.getSchemaShape(flattenedMethod.result.schema, json, { templateDir: 'result-initialization', property: flattenedMethod.result.name, destination: state.destination, section: state.section, primitive: true, skipTitleOnce: true }) // w/out primitive: true, getSchemaShape skips anonymous types, like primitives
@@ -1274,7 +1280,6 @@ function insertMethodMacros(template, methodObj, json, templates, examples = {})
     }
   }
   // hmm... how is this different from callbackSerializedList? i guess they get merged?
-  //console.log("event --- ", event)
   const callbackResponseInst = event ? (event.params && event.params.length ? (event.params.map(param => types.getSchemaShape(param.schema, json, { templateDir: 'callback-response-instantiation', property: param.name, required: param.required, destination: state.destination, section: state.section, primitive: true, skipTitleOnce: true })).join(', ')) + ', ' : '' ) + (types.getSchemaShape(event.result.schema, json, { templateDir: 'callback-response-instantiation', property: result.name, destination: state.destination, section: state.section, primitive: true, skipTitleOnce: true })) : ''
   const resultType = result.schema ? types.getSchemaType(result.schema, json, { templateDir: state.typeTemplateDir }) : ''
   const resultJsonType = result.schema ? types.getSchemaType(result.schema, json, { templateDir: 'json-types' }) : ''
@@ -1383,10 +1388,15 @@ function insertMethodMacros(template, methodObj, json, templates, examples = {})
     .replace(/\$\{method\.pulls\.type\}/g, pullsForType)
     .replace(/\$\{method\.pulls\.json\.type\}/g, pullsForJsonType)
     .replace(/\$\{method\.pulls\.result\}/g, pullsResultType)
+    .replace(/\$\{method\.pulls\.result\.title\}/g, pullsForResultTitle)
     .replace(/\$\{method\.pulls\.params.type\}/g, pullsParams ? pullsParams.title : '')
     .replace(/\$\{method\.pulls\.params\}/g, pullsParamsType)
     .replace(/\$\{method\.pulls\.param\.type\}/g, pullsForParamType)
+    .replace(/\$\{method\.pulls\.param\.title\}/g, pullsForParamTitle)
     .replace(/\$\{method\.pulls\.param\.json\.type\}/g, pullsForParamJsonType)
+    .replace(/\$\{method\.pulls\.response\.initialization\}/g, pullsResponseInit)
+    .replace(/\$\{method\.pulls\.response\.instantiation}/g, pullsResponseInst)
+    .replace(/\$\{method\.pulls\.result\.serialization\.with\.indent\}/g, indent(pullsResultSerialize, '        '))
     .replace(/\$\{method\.setter\.for\}/g, setterFor)
     .replace(/\$\{method\.puller\}/g, pullerTemplate) // must be last!!
     .replace(/\$\{method\.setter\}/g, setterTemplate) // must be last!!
