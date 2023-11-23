@@ -43,7 +43,8 @@ const _inspector = obj => {
 }
 
 const filterBlackListedSchemas = (module) => {
-//  const blackList = ["Parameters", "Discovery", "SecondScreen", "Intents", "Entertainment", "Lifecycle", "Advertising", "Account", "Authentication", "1Accessibility", "Capabilities", "1Keyboard", "1Localization", "SecureStorage", "Metrics", "Profile", "1Types", "1Device", "PinChallenge", "Wifi", "UserGrants", "VoiceGuidance", "Privacy", "AudioDescriptions", "AcknowledgeChallenge", "1ClosedCaptions"]
+//  const blackList = ["Parameters", "1Discovery", "SecondScreen", "1Intents", "1Entertainment", "Lifecycle", "Advertising", "Account", "Authentication", "1Accessibility", "Capabilities", "1Keyboard", "1Localization", "SecureStorage", "Metrics", "Profile", "1Types", "1Device", "PinChallenge", "Wifi", "UserGrants", "VoiceGuidance", "Privacy", "AudioDescriptions", "AcknowledgeChallenge", "1ClosedCaptions"]
+//const blackList = ["Parameters", "1Discovery", "SecondScreen", "Intents", "Entertainment", "Lifecycle", "Advertising", "Account", "Authentication", "Accessibility", "Capabilities", "1Keyboard", "Localization", "SecureStorage", "Metrics", "Profile", "Types", "Device", "PinChallenge", "Wifi", "1UserGrants", "VoiceGuidance", "Privacy", "AudioDescriptions", "AcknowledgeChallenge", "ClosedCaptions"]
 //  const blackList = ["Parameters", "Discovery", "Entertainment", "Intents", "Advertising", "Accessibility"]
   const blackList = []
   return blackList.includes(getModuleName(module))
@@ -530,7 +531,6 @@ const generateMacros = (obj, templates, languages, options = {}) => {
     schemas: {},
     types: {},
     enums: {},
-    providers: {}, 
     methods: {},
     events: {},
     methodList: '',
@@ -1747,7 +1747,7 @@ function insertProviderXValues(template, moduleJson, xValues) {
     template = template.replace(/\$\{provider\.xerror\.serialization\}/gms, xErrorInst)
       .replace(/\$\{provider\.xerror\.name\}/gms, xValues['x-error'].title)
   }
-  return template 
+  return template
 }
 
 function insertProviderSubscribeMacros(template, capability, moduleJson = {}, templates) {

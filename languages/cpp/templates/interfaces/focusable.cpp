@@ -15,7 +15,7 @@
         }
         void result( ${provider.xresponse.name} response,  Firebolt::Error *err = nullptr ) override
         {
-            ProviderResultSession("${info.title.lowercase}.${method.name}Result", _correlationId, response, err);
+            ProviderResultSession("${info.title.lowercase}.${method.name}Response", _correlationId, response, err);
         }
         void error( ${provider.xerror.name} error,  Firebolt::Error *err = nullptr ) override
         {

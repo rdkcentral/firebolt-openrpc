@@ -18,8 +18,9 @@ ${method.pulls.response.instantiation}
                 WPEFramework::Core::JSON::Variant CorrelationId = proxyResponse->CorrelationId.Value();
                 jsonParameters.Set(_T("correlationId"), CorrelationId);
                 ${method.pulls.json.type} ${method.pulls.result.title}Container;
-
+                {
         ${method.pulls.result.serialization.with.indent}
+                }
                 string resultStr;
                 ${method.pulls.result.title}Container.ToString(resultStr);
                 WPEFramework::Core::JSON::VariantContainer resultContainer(resultStr);
