@@ -11,7 +11,7 @@
         }
         void focus( Firebolt::Error *err = nullptr ) override
         {
-            ProviderFocusSession("${info.title.lowercase}.${method.name}Focus", err);
+            ProviderFocusSession("${info.title.lowercase}.${method.name}Focus", _correlationId, err);
         }
         void result( ${provider.xresponse.name} response,  Firebolt::Error *err = nullptr ) override
         {

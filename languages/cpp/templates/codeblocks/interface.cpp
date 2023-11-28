@@ -17,9 +17,12 @@
             *err = status;
         }
     }
-    static void ProviderFocusSession(std::string methodName, Firebolt::Error *err = nullptr)
+    static void ProviderFocusSession(std::string methodName, std::string& correlationId, Firebolt::Error *err = nullptr)
     {
         JsonObject jsonParameters;
+        WPEFramework::Core::JSON::Variant CorrelationId(correlationId);
+        jsonParameters.Set(_T("correlationId"), CorrelationId);
+
 	ProviderInvokeSession(methodName, jsonParameters, err);
     }
     static void ProviderResultSession(std::string methodName, std::string& correlationId, ${provider.xresponse.name} result, Firebolt::Error *err = nullptr)
