@@ -1,1 +1,1 @@
-            ${if.namespace.notsame}${info.Title}::${end.if.namespace.notsame}${title} response = proxyResponse->Value();
+            ${property} = proxyResponse->Value();

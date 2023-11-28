@@ -29,15 +29,14 @@ ${if.enums}
 /* ${ENUMS} */${end.if.enums}
 ${if.types}
 // Types
-/* ${TYPES} */
-${end.if.types}
+/* ${TYPES} */${end.if.types}
+${if.providers}/* ${PROVIDERS} */${end.if.providers}
 ${if.methods}struct I${info.Title} {
 
     virtual ~I${info.Title}() = default;
 
     // Methods & Events
     /* ${METHODS:declarations} */
-
 };${end.if.methods}
 
 } //namespace ${info.Title}

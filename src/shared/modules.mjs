@@ -85,7 +85,7 @@ const getProviderInterfaceMethods = (capability, json) => {
 }
   
 
-function getProviderInterface(capability, module) {
+function getProviderInterface(capability, module, extractProviderSchema = false) {
     module = JSON.parse(JSON.stringify(module))
     const iface = getProviderInterfaceMethods(capability, module).map(method => localizeDependencies(method, module, null, { mergeAllOfs: true }))
   
@@ -95,61 +95,62 @@ function getProviderInterface(capability, module) {
   
       // remove `onRequest`
       method.name = method.name.charAt(9).toLowerCase() + method.name.substr(10)
+
+        method.params = [
+          {
+            "name": "parameters",
+            "required": true,
+            "schema": payload.properties.parameters
+          }
+        ]
   
-      method.params = [
-        {
-          "name": "parameters",
-          "required": true,
-          "schema": payload.properties.parameters
-        }
-      ]
+      if (!extractProviderSchema) {
+        let exampleResult = null
+
+        if (method.tags.find(tag => tag['x-response'])) {
+          const result = method.tags.find(tag => tag['x-response'])['x-response']
   
-      let exampleResult = null
+          method.result = {
+            "name": "result",
+            "schema": result
+          }
   
-      if (method.tags.find(tag => tag['x-response'])) {
-        const result = method.tags.find(tag => tag['x-response'])['x-response']
-  
-        method.result = {
-          "name": "result",
-          "schema": result
-        }
-  
-        if (result.examples && result.examples[0]) {
-          exampleResult = result.examples[0]
-        }
-      }
-      else {
-        method.result = {
-          "name": "result",
-          "schema": {
-            "const": null
+          if (result.examples && result.examples[0]) {
+            exampleResult = result.examples[0]
           }
         }
-      }
-  
-      method.examples = method.examples.map( example => (
-        {
-          params: [
-            {
-              name: "parameters",
-              value: example.result.value.parameters
-            },
-            {
-                name: "correlationId",
-                value: example.result.value.correlationId
+        else {
+          method.result = {
+            "name": "result",
+            "schema": {
+              "const": null
             }
-          ],
-          result: {
-            name: "result",
-            value: exampleResult
           }
         }
-      ))
   
-      // remove event tag
-      method.tags = method.tags.filter(tag => tag.name !== 'event')
+        method.examples = method.examples.map( example => (
+          {
+            params: [
+              {
+                name: "parameters",
+                value: example.result.value.parameters
+              },
+              {
+                  name: "correlationId",
+                  value: example.result.value.correlationId
+              }
+            ],
+            result: {
+              name: "result",
+              value: exampleResult
+            }
+          }
+        ))
+  
+        // remove event tag
+        method.tags = method.tags.filter(tag => tag.name !== 'event')
+      }
     })
-  
   
     return iface
   }
