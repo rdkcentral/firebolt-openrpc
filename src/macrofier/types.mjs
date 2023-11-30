@@ -477,7 +477,6 @@ const sanitize = (schema) => {
 }
 
 function getSchemaShape(schema = {}, module = {}, { templateDir = 'types', parent = '', property = '', required = false, parentLevel = 0, level = 0, summary, descriptions = true, destination, section, enums = true, skipTitleOnce = false, array = false, primitive = false } = {}) {
-
   schema = sanitize(schema)
   state.destination = destination
   state.section = section
@@ -664,7 +663,7 @@ function getSchemaType(schema, module, { destination, templateDir = 'types', lin
   const theTitle = insertSchemaMacros(namespaceStr + getTemplate(path.join(templateDir, 'title' + suffix)), schema, module, { name: schema.title, parent: getXSchemaGroup(schema, module), recursive: false })
   const allocatedProxy = event || result
 
-  const title = schema.type === "object" || Array.isArray(schema.type) && schema.type.includes("object") ||  schema.enum ? true : false
+  const title = schema.type === "object" || Array.isArray(schema.type) && schema.type.includes("object") || schema.enum ? true : false
 
   if (schema['$ref']) {
     if (schema['$ref'][0] === '#') {
@@ -782,8 +781,7 @@ function getSchemaType(schema, module, { destination, templateDir = 'types', lin
     if (schema.title) {
       union.title = schema.title
     }
-    let result = getSchemaType(union, module, { templateDir, destination, link, title, code, asPath, baseUrl, namespace })
-    return result
+    return getSchemaType(union, module, { templateDir, destination, link, title, code, asPath, baseUrl, namespace })
   }
   else if (schema.oneOf || schema.anyOf) {
     if (!schema.anyOf) {
