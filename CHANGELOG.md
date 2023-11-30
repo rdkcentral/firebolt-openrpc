@@ -1,3 +1,10 @@
+# [2.2.0](https://github.com/rdkcentral/firebolt-openrpc/compare/v2.1.2...v2.2.0) (2023-11-30)
+
+
+### Features
+
+* Improve generated doc formatting ([#155](https://github.com/rdkcentral/firebolt-openrpc/issues/155)) ([4613281](https://github.com/rdkcentral/firebolt-openrpc/commit/46132810ac5e5b0a8b9baa22903cb8a367b46f63))
+
 ## [2.1.2](https://github.com/rdkcentral/firebolt-openrpc/compare/v2.1.1...v2.1.2) (2023-11-09)
 
 
