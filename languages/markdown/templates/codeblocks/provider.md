@@ -23,7 +23,7 @@ import { ${info.title} } from '${package.name}'
 class My${provider} {
 ${provider.interface.start}
     async ${provider.interface.name}(parameters, session) {
-        return await Promise.resolve(${provider.interface.example.result})
+        return ${provider.interface.example.result}
     }
 ${provider.interface.end}
 }
