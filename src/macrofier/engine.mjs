@@ -29,7 +29,7 @@ import isString from 'crocks/core/isString.js'
 import predicates from 'crocks/predicates/index.js'
 const { isObject, isArray, propEq, pathSatisfies, propSatisfies } = predicates
 
-import { isRPCOnlyMethod, isProviderInterfaceMethod, getProviderInterface, getPayloadFromEvent, providerHasNoParameters, isTemporalSetMethod, hasMethodAttributes, getMethodAttributes, isEventMethodWithContext, getSemanticVersion, getSetterFor, getProvidedCapabilities, isPolymorphicPullMethod, hasPublicAPIs, createPolymorphicMethods, isExcludedMethod, isCallsMetricsMethod } from '../shared/modules.mjs'
+import { isRPCOnlyMethod, isProviderInterfaceMethod, getProviderInterface, getPayloadFromEvent, providerHasNoParameters, isTemporalSetMethod, hasMethodAttributes, getMethodAttributes, isEventMethodWithContext, getSemanticVersion, getSetterFor, getProvidedCapabilities, isPolymorphicPullMethod, hasPublicAPIs, createPolymorphicMethods, isExcludedMethod, isCallsMetricsMethod, isPolymorphicReducer } from '../shared/modules.mjs'
 import isEmpty from 'crocks/core/isEmpty.js'
 import { getPath as getJsonPath, getLinkedSchemaPaths, getSchemaConstraints, isSchema, localizeDependencies, isDefinitionReferencedBySchema, mergeAnyOf, mergeOneOf } from '../shared/json-schema.mjs'
 
@@ -43,7 +43,7 @@ const _inspector = obj => {
 }
 
 const filterBlackListedSchemas = (module) => {
-//  const blackList = ["Parameters", "1Discovery", "SecondScreen", "1Intents", "1Entertainment", "Lifecycle", "Advertising", "Account", "Authentication", "1Accessibility", "Capabilities", "1Keyboard", "1Localization", "SecureStorage", "Metrics", "Profile", "1Types", "1Device", "PinChallenge", "Wifi", "UserGrants", "VoiceGuidance", "Privacy", "AudioDescriptions", "AcknowledgeChallenge", "1ClosedCaptions"]
+//  const blackList = ["Parameters", "1Discovery", "SecondScreen", "Intents", "Entertainment", "Lifecycle", "Advertising", "Account", "Authentication", "Accessibility", "Capabilities", "Keyboard", "Localization", "SecureStorage", "Metrics", "Profile", "Types", "Device", "PinChallenge", "Wifi", "UserGrants", "VoiceGuidance", "Privacy", "AudioDescriptions", "AcknowledgeChallenge", "ClosedCaptions"]
 //const blackList = ["Parameters", "1Discovery", "SecondScreen", "Intents", "Entertainment", "Lifecycle", "Advertising", "Account", "Authentication", "Accessibility", "Capabilities", "1Keyboard", "Localization", "SecureStorage", "Metrics", "Profile", "Types", "Device", "PinChallenge", "Wifi", "1UserGrants", "VoiceGuidance", "Privacy", "AudioDescriptions", "AcknowledgeChallenge", "ClosedCaptions"]
 //  const blackList = ["Parameters", "Discovery", "Entertainment", "Intents", "Advertising", "Accessibility"]
   const blackList = []
@@ -388,8 +388,9 @@ const promoteSchema = (location, property, title, document, destinationPath) => 
 // only consider sub-objects and sub enums to be sub-schemas
 const isSubSchema = (schema) => schema.type === 'object' || (schema.type === 'string' && schema.enum)
 
+const isParamSubSchema = (schema) => (schema.type === 'array' && schema.items.type === 'object')
 // check schema is sub enum of array
-const isSubEnumOfArraySchema = (schema) => (schema.type === 'array' && schema.items.enum)
+const isSubSchemaOfArraySchema = (schema) => (schema.type === 'array' && (schema.items.enum || (schema.items.type === 'object')))
 
 const promoteAndNameSubSchemas = (obj) => {
   // make a copy so we don't polute our inputs
@@ -399,6 +400,14 @@ const promoteAndNameSubSchemas = (obj) => {
     method.params && method.params.forEach(param => {
       if (isSubSchema(param.schema)) {
         addContentDescriptorSubSchema(param, '', obj)
+      }
+      if (isSubSchemaOfArraySchema(param.schema)) {
+         const descriptor = {
+             name: param.schema.items.title,
+             schema: param.schema.items
+         }
+         addContentDescriptorSubSchema(descriptor, '', obj)
+         param.schema.items = descriptor.schema
       }
     })
     if (isSubSchema(method.result.schema)) {
@@ -440,7 +449,7 @@ const promoteAndNameSubSchemas = (obj) => {
                 addContentDescriptorSubSchema(descriptor, key, obj)
                 componentSchema.properties[name] = descriptor.schema
               }
-              if (isSubEnumOfArraySchema(propSchema)) {
+              if (isSubSchemaOfArraySchema(propSchema)) {
                 const descriptor = {
                   name: name,
                   schema: propSchema.items
@@ -499,10 +508,6 @@ return obj
 }
 
 const generateMacros = (obj, templates, languages, options = {}) => {
-  // for languages that don't support nested schemas, let's promote them to first-class schemas w/ titles
-  if (config.extractSubSchemas) {
-    obj = promoteAndNameSubSchemas(obj)
-  }
   if (options.createPolymorphicMethods) {
     let methods = []
     obj.methods && obj.methods.forEach(method => {
@@ -517,6 +522,10 @@ const generateMacros = (obj, templates, languages, options = {}) => {
       }
     })
     obj.methods = methods
+  }
+  // for languages that don't support nested schemas, let's promote them to first-class schemas w/ titles
+  if (config.extractSubSchemas) {
+    obj = promoteAndNameSubSchemas(obj)
   }
 
   // config.mergeAnyOfs = true
@@ -1210,6 +1219,7 @@ function insertMethodMacros(template, methodObj, json, templates, examples = {})
   }
   const method = {
     name: methodObj.name,
+    title: methodObj.title,
     params: methodObj.params.map(p => p.name).join(', '),
     transforms: null,
     alternative: null,
@@ -1338,6 +1348,7 @@ function insertMethodMacros(template, methodObj, json, templates, examples = {})
   template = insertExampleMacros(template, examples[methodObj.name] || [], methodObj, json, templates)
 
   template = template.replace(/\$\{method\.name\}/g, method.name)
+    .replace(/\$\{method\.title\}/g, method.title ? method.title : method.name)
     .replace(/\$\{method\.rpc\.name\}/g, methodObj.title || methodObj.name)
     .replace(/\$\{method\.summary\}/g, methodObj.summary)
     .replace(/\$\{method\.description\}/g, methodObj.description

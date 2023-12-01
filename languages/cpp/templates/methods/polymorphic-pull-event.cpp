@@ -10,7 +10,7 @@ ${event.callback.serialization}
 ${method.pulls.response.instantiation}
 
             I${info.Title}::I${method.Name}Notification& notifier = *(reinterpret_cast<I${info.Title}::I${method.Name}Notification*>(notification));
-            ${method.pulls.type} element = notifier.${method.name}(${method.pulls.param.title});
+            ${method.pulls.type} element = notifier.${method.title}(${method.pulls.param.title});
             Firebolt::Error status = Firebolt::Error::NotConnected;
             FireboltSDK::Transport<WPEFramework::Core::JSON::IElement>* transport = FireboltSDK::Accessor::Instance().GetTransport();
             if (transport != nullptr) {

@@ -304,8 +304,8 @@ const insertObjectMacros = (content, schema, module, title, property, options) =
           .replace(/\$\{description\}/g, prop.description || '')
           .replace(/\$\{summary\}/g, prop.description ? prop.description.split('\n')[0] : '')
           .replace(/\$\{delimiter\}(.*?)\$\{end.delimiter\}/gms, i === schema.properties.length - 1 ? '' : '$1')
-          .replace(/\$\{if\.optional\}(.*?)\$\{end\.if\.optional\}/gms, schema.required && schema.required.includes(name) ? '' : '$1')
-          .replace(/\$\{if\.non.optional\}(.*?)\$\{end\.if\.non.optional\}/gms, schema.required && schema.required.includes(name) ? '$1' : '')
+          .replace(/\$\{if\.optional\}(.*?)\$\{end\.if\.optional\}/gms, ((schema.required && schema.required.includes(name)) || (localizedProp.required && localizedProp.required === true)) ? '' : '$1')
+          .replace(/\$\{if\.non.optional\}(.*?)\$\{end\.if\.non.optional\}/gms, ((schema.required && schema.required.includes(name)) || (localizedProp.required && localizedProp.required === true)) ? '$1' : '')
           .replace(/\$\{if\.base\.optional\}(.*?)\$\{end\.if\.base\.optional\}/gms, options.required ? '' : '$1')
           .replace(/\$\{if\.non\.object\}(.*?)\$\{end\.if\.non\.object\}/gms, isObject(localizedProp) ? '' : '$1')
           .replace(/\$\{if\.non\.array\}(.*?)\$\{end\.if\.non\.array\}/gms, (localizedProp.type === 'array') ? '' : '$1')
@@ -314,8 +314,8 @@ const insertObjectMacros = (content, schema, module, title, property, options) =
           let baseTitle = options.property
           if (isObject(localizedProp)) {
             replacedTemplate = replacedTemplate
-              .replace(/\$\{if\.impl.optional\}(.*?)\$\{end\.if\.impl.optional\}/gms, schema.required && schema.required.includes(name)  ? '' : '$1')
-              .replace(/\$\{if\.impl.non.optional\}(.*?)\$\{end\.if\.impl.non.optional\}/gms, schema.required && schema.required.includes(name)  ? '$1' : '')
+              .replace(/\$\{if\.impl.optional\}(.*?)\$\{end\.if\.impl.optional\}/gms, ((schema.required && schema.required.includes(name)) || (localizedProp.required && localizedProp.required === true)) ? '' : '$1')
+              .replace(/\$\{if\.impl.non.optional\}(.*?)\$\{end\.if\.impl.non.optional\}/gms, ((schema.required && schema.required.includes(name)) || (localizedProp.required && localizedProp.required === true))  ? '$1' : '')
               .replace(/\$\{property.dependency\}/g, ((options.level > 0) ? '${property.dependency}${if.impl.optional}.value()${end.if.impl.optional}' : '') + objSeparator + name)
               .replace(/\$\{Property.dependency\}/g, ((options.level > 0) ? '${Property.dependency}' : '') + capitalize(name) + (objSeparator))
           }
