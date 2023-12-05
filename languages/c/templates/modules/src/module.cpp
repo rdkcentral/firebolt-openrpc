@@ -23,11 +23,11 @@
 ${if.types}namespace FireboltSDK {
     namespace ${info.Title} {
     // Types
-       /* ${TYPES:json-types} */
+       /* ${TYPES} */
     }
 }${end.if.types}
 
-/* ${ENUMS:json-types} */
+/* ${ENUMS} */
 
 ${if.definitions}#ifdef __cplusplus
 extern "C" {

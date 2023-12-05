@@ -3,9 +3,6 @@
     "langcode": "c",
     "createModuleDirectories": false,
     "extractSubSchemas": true,
-    "unwrapResultObjects": false,
-    "createPolymorphicMethods": true,
-    "excludeDeclarations":true,
     "templatesPerModule": [
         "/include/module.h",
         "/src/module.cpp"
@@ -16,14 +13,6 @@
         "/src/jsondata_module.h"
     ],
     "persistPermission": true,
-    "primitives": {
-        "boolean": "bool",
-        "integer": "int",
-        "number": "float",
-        "string": "char*"
-    },
-    "allocatedPrimitiveProxies": {
-        "string": "FireboltTypes_StringHandle"
-    },
-    "additionalSchemaTemplates": [ "json-types" ]
+    "createPolymorphicMethods": true,
+    "excludeDeclarations":true
 }

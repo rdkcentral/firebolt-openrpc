@@ -27,3 +27,4 @@ int32_t ${info.Title}_${method.Name}( ${method.signature.params}${if.result}${if
   
     return status;
 }
+

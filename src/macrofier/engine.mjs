@@ -1679,7 +1679,6 @@ function generateProviderSubscribe(json, templates) {
   return interfaces.length ? template.replace(/\$\{providers\.list\}/g, providers) : ''
 }
 
-
 function generateProviderInterfaces(json, templates) {
   const interfaces = getProvidedCapabilities(json)
   const suffix = state.destination ? state.destination.split('.').pop() : ''

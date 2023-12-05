@@ -1,3 +1,60 @@
+# [2.2.0-next.1](https://github.com/rdkcentral/firebolt-openrpc/compare/v2.1.1-next.3...v2.2.0-next.1) (2023-11-30)
+
+
+### Features
+
+* Improve generated doc formatting ([#155](https://github.com/rdkcentral/firebolt-openrpc/issues/155)) ([4613281](https://github.com/rdkcentral/firebolt-openrpc/commit/46132810ac5e5b0a8b9baa22903cb8a367b46f63))
+
+## [2.1.1-next.3](https://github.com/rdkcentral/firebolt-openrpc/compare/v2.1.1-next.2...v2.1.1-next.3) (2023-11-09)
+
+
+### Bug Fixes
+
+* Provider openrpc response and error methods have a wrapper object ([#148](https://github.com/rdkcentral/firebolt-openrpc/issues/148)) ([373626e](https://github.com/rdkcentral/firebolt-openrpc/commit/373626ed598447bb670ac67e97ca8ed1bf32f28f))
+
+## [2.1.1-next.2](https://github.com/rdkcentral/firebolt-openrpc/compare/v2.1.1-next.1...v2.1.1-next.2) (2023-11-01)
+
+
+### Bug Fixes
+
+* Errors thrown in async provider methods do not send the JSONRPC error response ([#143](https://github.com/rdkcentral/firebolt-openrpc/issues/143)) ([ec8e259](https://github.com/rdkcentral/firebolt-openrpc/commit/ec8e2599d530f9d2bd38fbb53b36e13c038edf2a))
+
+## [2.1.1-next.1](https://github.com/rdkcentral/firebolt-openrpc/compare/v2.1.0...v2.1.1-next.1) (2023-09-14)
+
+
+### Bug Fixes
+
+* Macro not replaced for provider docs ([ef1aecd](https://github.com/rdkcentral/firebolt-openrpc/commit/ef1aecd0092a8652bc7b936604f9478b7b55df27))
+
+# [2.1.0](https://github.com/rdkcentral/firebolt-openrpc/compare/v2.0.4...v2.1.0) (2023-09-07)
+
+
+### Bug Fixes
+
+* Changes based on schema update ([#131](https://github.com/rdkcentral/firebolt-openrpc/issues/131)) ([9df4f15](https://github.com/rdkcentral/firebolt-openrpc/commit/9df4f1545835ed6d81d8998174f9e11b8df53550))
+* Enabled setter to have null as param value ([#122](https://github.com/rdkcentral/firebolt-openrpc/issues/122)) ([2bfee25](https://github.com/rdkcentral/firebolt-openrpc/commit/2bfee2514bdc9e11ba7390ae40b6c6c820de6784))
+* Setters w/ no params fail mock ([#124](https://github.com/rdkcentral/firebolt-openrpc/issues/124)) ([0538eff](https://github.com/rdkcentral/firebolt-openrpc/commit/0538effd64ac84f7468f3dc6a5050167f5e5b152))
+* Update package.json ([c7bf0e3](https://github.com/rdkcentral/firebolt-openrpc/commit/c7bf0e3cf8a90b2a3afce23cecaf10c027a7319d))
+
+
+### Features
+
+* C Language Support ([#130](https://github.com/rdkcentral/firebolt-openrpc/issues/130)) ([33db98c](https://github.com/rdkcentral/firebolt-openrpc/commit/33db98ca5f6a4179c42b3693c96b797210e85a67)), closes [#90](https://github.com/rdkcentral/firebolt-openrpc/issues/90) [#93](https://github.com/rdkcentral/firebolt-openrpc/issues/93) [#94](https://github.com/rdkcentral/firebolt-openrpc/issues/94) [#96](https://github.com/rdkcentral/firebolt-openrpc/issues/96) [#97](https://github.com/rdkcentral/firebolt-openrpc/issues/97) [#100](https://github.com/rdkcentral/firebolt-openrpc/issues/100) [#99](https://github.com/rdkcentral/firebolt-openrpc/issues/99) [#101](https://github.com/rdkcentral/firebolt-openrpc/issues/101) [#102](https://github.com/rdkcentral/firebolt-openrpc/issues/102) [#107](https://github.com/rdkcentral/firebolt-openrpc/issues/107) [#106](https://github.com/rdkcentral/firebolt-openrpc/issues/106) [#105](https://github.com/rdkcentral/firebolt-openrpc/issues/105) [#103](https://github.com/rdkcentral/firebolt-openrpc/issues/103) [#109](https://github.com/rdkcentral/firebolt-openrpc/issues/109) [#112](https://github.com/rdkcentral/firebolt-openrpc/issues/112) [#111](https://github.com/rdkcentral/firebolt-openrpc/issues/111) [#113](https://github.com/rdkcentral/firebolt-openrpc/issues/113) [#114](https://github.com/rdkcentral/firebolt-openrpc/issues/114) [#115](https://github.com/rdkcentral/firebolt-openrpc/issues/115) [#110](https://github.com/rdkcentral/firebolt-openrpc/issues/110) [#117](https://github.com/rdkcentral/firebolt-openrpc/issues/117) [#116](https://github.com/rdkcentral/firebolt-openrpc/issues/116) [#118](https://github.com/rdkcentral/firebolt-openrpc/issues/118) [#121](https://github.com/rdkcentral/firebolt-openrpc/issues/121) [#119](https://github.com/rdkcentral/firebolt-openrpc/issues/119) [#90](https://github.com/rdkcentral/firebolt-openrpc/issues/90) [#93](https://github.com/rdkcentral/firebolt-openrpc/issues/93) [#94](https://github.com/rdkcentral/firebolt-openrpc/issues/94) [#96](https://github.com/rdkcentral/firebolt-openrpc/issues/96) [#97](https://github.com/rdkcentral/firebolt-openrpc/issues/97) [#100](https://github.com/rdkcentral/firebolt-openrpc/issues/100) [#99](https://github.com/rdkcentral/firebolt-openrpc/issues/99) [#101](https://github.com/rdkcentral/firebolt-openrpc/issues/101) [#102](https://github.com/rdkcentral/firebolt-openrpc/issues/102) [#107](https://github.com/rdkcentral/firebolt-openrpc/issues/107) [#106](https://github.com/rdkcentral/firebolt-openrpc/issues/106) [#105](https://github.com/rdkcentral/firebolt-openrpc/issues/105) [#103](https://github.com/rdkcentral/firebolt-openrpc/issues/103) [#109](https://github.com/rdkcentral/firebolt-openrpc/issues/109) [#112](https://github.com/rdkcentral/firebolt-openrpc/issues/112) [#111](https://github.com/rdkcentral/firebolt-openrpc/issues/111) [#113](https://github.com/rdkcentral/firebolt-openrpc/issues/113) [#114](https://github.com/rdkcentral/firebolt-openrpc/issues/114) [#115](https://github.com/rdkcentral/firebolt-openrpc/issues/115) [#110](https://github.com/rdkcentral/firebolt-openrpc/issues/110) [#117](https://github.com/rdkcentral/firebolt-openrpc/issues/117) [#116](https://github.com/rdkcentral/firebolt-openrpc/issues/116) [#118](https://github.com/rdkcentral/firebolt-openrpc/issues/118) [#121](https://github.com/rdkcentral/firebolt-openrpc/issues/121) [#119](https://github.com/rdkcentral/firebolt-openrpc/issues/119) [#127](https://github.com/rdkcentral/firebolt-openrpc/issues/127)
+
+# [2.1.0-next.3](https://github.com/rdkcentral/firebolt-openrpc/compare/v2.1.0-next.2...v2.1.0-next.3) (2023-09-07)
+
+
+### Bug Fixes
+
+* Null support for property setters ([#125](https://github.com/rdkcentral/firebolt-openrpc/issues/125)) ([1ff5f42](https://github.com/rdkcentral/firebolt-openrpc/commit/1ff5f42c36de0e70a03ede35baaedfb78351e9c2)), closes [#122](https://github.com/rdkcentral/firebolt-openrpc/issues/122) [#123](https://github.com/rdkcentral/firebolt-openrpc/issues/123) [#124](https://github.com/rdkcentral/firebolt-openrpc/issues/124)
+
+## [2.0.4](https://github.com/rdkcentral/firebolt-openrpc/compare/v2.0.3...v2.0.4) (2023-08-11)
+
+
+### Bug Fixes
+
+* Null support for property setters ([#125](https://github.com/rdkcentral/firebolt-openrpc/issues/125)) ([1ff5f42](https://github.com/rdkcentral/firebolt-openrpc/commit/1ff5f42c36de0e70a03ede35baaedfb78351e9c2)), closes [#122](https://github.com/rdkcentral/firebolt-openrpc/issues/122) [#123](https://github.com/rdkcentral/firebolt-openrpc/issues/123) [#124](https://github.com/rdkcentral/firebolt-openrpc/issues/124)
+
 ## [2.0.4-next.3](https://github.com/rdkcentral/firebolt-openrpc/compare/v2.0.4-next.2...v2.0.4-next.3) (2023-08-10)
 
 

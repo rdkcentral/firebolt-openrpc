@@ -25,6 +25,6 @@ ${if.schemas}namespace FireboltSDK {
     namespace ${info.Title} {
     // Types
 
-       /* ${SCHEMAS:json-types} */
+       /* ${SCHEMAS} */
     }
 }${end.if.schemas}

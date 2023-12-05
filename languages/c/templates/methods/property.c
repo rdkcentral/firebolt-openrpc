@@ -1,5 +1,5 @@
 /* ${method.rpc.name} - ${method.description} */
-int32_t ${info.Title}_Get${method.Name}( ${method.signature.params}${if.params}, ${end.if.params} ${method.result.type}* ${method.result.name} )
+int32_t ${info.Title}_Get${method.Name}( ${method.signature.params}${if.params}, ${end.if.params}OUT ${method.result.type}* ${method.result.name} )
 {
     const string method = _T("${info.title.lowercase}.${method.rpc.name}");
 ${if.params}${method.params.serialization}${end.if.params}

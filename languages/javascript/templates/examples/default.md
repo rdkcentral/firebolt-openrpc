@@ -1,6 +1,4 @@
 import { ${module} } from '${package.name}'
 
-${module}.${method.name}(${example.params})
-    .then(${method.result.name} => {
-        console.log(${method.result.name})
-    })
+let ${method.result.name} = await ${module}.${method.name}(${example.params})
+console.log(${method.result.name})
