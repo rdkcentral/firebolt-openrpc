@@ -18,6 +18,9 @@ ${if.result.nonvoid}${method.result.initialization}${end.if.result.nonvoid}
         } else {
             FIREBOLT_LOG_ERROR(FireboltSDK::Logger::Category::OpenRPC, FireboltSDK::Logger::Module<FireboltSDK::Accessor>(), "Error in getting Transport err = %d", status);
         }
+        if (err != nullptr) {
+            *err = status;
+        }
 
         return${if.result.nonvoid} ${method.result.name}${end.if.result.nonvoid};
     }

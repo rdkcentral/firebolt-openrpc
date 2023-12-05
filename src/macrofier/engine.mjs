@@ -56,7 +56,8 @@ let config = {
   copySchemasIntoModules: false,
   extractSubSchemas: false,
   unwrapResultObjects: false,
-  excludeDeclarations: false
+  excludeDeclarations: false,
+  extractProviderSchema: false,
 }
 
 const state = {
@@ -397,6 +398,17 @@ const promoteAndNameSubSchemas = (obj) => {
       // TODO: the `1` below is brittle... should find the index of the non-ListenResponse schema
       promoteSchema(method.result.schema.anyOf, 1, getPromotionNameFromContentDescriptor(method.result, ''), obj, '#/components/schemas')
     }
+    if (method.tags.find(t => t['x-error'])) {
+      method.tags.forEach(tag => {
+        if (tag['x-error']) {
+          const descriptor = {
+              name: obj.info.title + 'Error',
+              schema: tag['x-error']
+          }
+          addContentDescriptorSubSchema(descriptor, '', obj)
+        }
+      })
+    }
   })
 
   // find non-primitive sub-schemas of components.schemas and name/promote them
@@ -551,6 +563,7 @@ const generateMacros = (obj, templates, languages, options = {}) => {
     }
   })
 
+  const providerSubscribe = generateProviderSubscribe(obj, templates)
   const providerInterfaces = generateProviderInterfaces(obj, templates)
   const defaults = generateDefaults(obj, templates)
 
@@ -567,6 +580,7 @@ const generateMacros = (obj, templates, languages, options = {}) => {
     defaults,
     examples,
     providerInterfaces,
+    providerSubscribe,
     version: getSemanticVersion(obj),
     title: obj.info.title,
     description: obj.info.description,
@@ -612,6 +626,7 @@ const insertMacros = (fContents = '', macros = {}) => {
   fContents = fContents.replace(/\$\{if\.declarations\}(.*?)\$\{end\.if\.declarations\}/gms, (macros.methods.declarations && macros.methods.declarations.trim() || macros.enums.types.trim()) || macros.types.types.trim()? '$1' : '')
 
   fContents = fContents.replace(/\$\{if\.methods\}(.*?)\$\{end\.if\.methods\}/gms, macros.methods.methods.trim() || macros.events.methods.trim() ? '$1' : '')
+  fContents = fContents.replace(/\$\{if\.providers\}(.*?)\$\{end\.if\.providers\}/gms, macros.providerInterfaces.trim() ? '$1' : '')
   fContents = fContents.replace(/\$\{if\.implementations\}(.*?)\$\{end\.if\.implementations\}/gms, (macros.methods.methods.trim() || macros.events.methods.trim() || macros.schemas.types.trim()) ? '$1' : '')
 
   fContents = fContents.replace(/\$\{module\.list\}/g, macros.module)
@@ -650,6 +665,7 @@ const insertMacros = (fContents = '', macros = {}) => {
   })
 
   fContents = fContents.replace(/[ \t]*\/\* \$\{PROVIDERS\} \*\/[ \t]*\n/, macros.providerInterfaces)
+  fContents = fContents.replace(/[ \t]*\/\* \$\{PROVIDERS_SUBSCRIBE\} \*\/[ \t]*\n/, macros.providerSubscribe)
   fContents = fContents.replace(/[ \t]*\/\* \$\{IMPORTS\} \*\/[ \t]*\n/, macros.imports)
   fContents = fContents.replace(/[ \t]*\/\* \$\{INITIALIZATION\} \*\/[ \t]*\n/, macros.initialization)
   fContents = fContents.replace(/[ \t]*\/\* \$\{DEFAULTS\} \*\/[ \t]*\n/, macros.defaults)
@@ -1263,11 +1279,11 @@ function insertMethodMacros(template, methodObj, json, templates, examples = {})
   const resultInit = types.getSchemaShape(flattenedMethod.result.schema, json, { templateDir: 'result-initialization', property: flattenedMethod.result.name, destination: state.destination, section: state.section, primitive: true, skipTitleOnce: true }) // w/out primitive: true, getSchemaShape skips anonymous types, like primitives
   const serializedEventParams = event ? flattenedMethod.params.filter(p => p.name !== 'listen').map(param => types.getSchemaShape(param.schema, json, {templateDir: 'parameter-serialization', property: param.name, required: param.required, destination: state.destination, section: state.section, primitive: true, skipTitleOnce: true })).join('\n') : ''
   // this was wrong... check when we merge if it was fixed
-  const callbackSerializedList = event ? types.getSchemaShape(event.result.schema, json, { templateDir: event.params && event.params.length ? 'callback-serialization' : 'callback-result-serialization', property: result.name, required: event.result.schema.required, destination: state.destination, section: state.section, primitive: true, skipTitleOnce: true }) : ''
-  const callbackInitialization = event ? ((event.params && event.params.length ? (event.params.map(param => types.getSchemaShape(param.schema, json, { templateDir: 'callback-initialization', property: param.name, required: param.required, destination: state.destination, section: state.section, primitive: true, skipTitleOnce: true })).join('\n')) + '\n' : '' ) + (types.getSchemaShape(event.result.schema, json, { templateDir: 'callback-initialization', property: result.name, destination: state.destination, section: state.section, primitive: true, skipTitleOnce: true }))) : ''
+  const callbackSerializedList = event ? types.getSchemaShape(event.result.schema, json, { templateDir: event.params && event.params.length && !event.tags.find(t => t.name === 'provider') ? 'callback-serialization' : 'callback-result-serialization', property: result.name, required: event.result.schema.required, destination: state.destination, section: state.section, primitive: true, skipTitleOnce: true }) : ''
+  const callbackInitialization = event ? ((event.params && event.params.length && !event.tags.find(t => t.name === 'provider') ? (event.params.map(param => types.getSchemaShape(param.schema, json, { templateDir: 'callback-initialization', property: param.name, required: param.required, destination: state.destination, section: state.section, primitive: true, skipTitleOnce: true })).join('\n')) + '\n' : '' ) + (types.getSchemaShape(event.result.schema, json, { templateDir: 'callback-initialization', property: result.name, destination: state.destination, section: state.section, primitive: true, skipTitleOnce: true }))) : ''
   let callbackInstantiation = ''
   if (event) {
-    if (event.params && event.params.length) {
+    if (event.params && event.params.length && !event.tags.find(t => t.name === 'provider')) {
       callbackInstantiation = types.getSchemaShape(event.result.schema, json, { templateDir: 'callback-instantiation', property: result.name, destination: state.destination, section: state.section, primitive: true, skipTitleOnce: true })
       let paramInstantiation = event.params.map(param => types.getSchemaShape(param.schema, json, { templateDir: 'callback-context-instantiation', property: param.name, required: param.required, destination: state.destination, section: state.section, primitive: true, skipTitleOnce: true })).join('\n')
       let resultInstantiation = types.getSchemaShape(event.result.schema, json, { templateDir: 'callback-context-instantiation', property: result.name, destination: state.destination, section: state.section, primitive: true, skipTitleOnce: true })
@@ -1651,38 +1667,113 @@ function insertCapabilityMacros(template, capabilities, method, module) {
   return content.join()
 }
 
-function generateProviderInterfaces(json, templates) {
+function generateProviderSubscribe(json, templates) {
   const interfaces = getProvidedCapabilities(json)
-  let template = getTemplate('/sections/provider-interfaces', templates)
+  const suffix = state.destination ? state.destination.split('.').pop() : ''
+  let template = getTemplate(suffix ? `/sections/provider-subscribe.${suffix}` : '/sections/provider-subscribe', templates)
   const providers = reduce((acc, capability) => {
-    const template = insertProviderInterfaceMacros(getTemplate('/codeblocks/provider', templates), capability, json, templates)
-
+    const template = insertProviderSubscribeMacros(getTemplate(suffix ? `/codeblocks/provider-subscribe.${suffix}` : '/codeblocks/provider-subscribe', templates), capability, json, templates)
     return acc + template
   }, '', interfaces)
 
   return interfaces.length ? template.replace(/\$\{providers\.list\}/g, providers) : ''
 }
 
-function insertProviderInterfaceMacros(template, capability, moduleJson = {}, templates) {
-  const iface = getProviderInterface(capability, moduleJson, { destination: state.destination, section: state.section })//.map(method => { method.name = method.name.charAt(9).toLowerCase() + method.name.substr(10); return method } )
 
+function generateProviderInterfaces(json, templates) {
+  const interfaces = getProvidedCapabilities(json)
+  const suffix = state.destination ? state.destination.split('.').pop() : ''
+  let template = getTemplate(suffix ? `/sections/provider-interfaces.${suffix}` : '/sections/provider-interfaces', templates)
+  if (!template) {
+    template = getTemplate('/sections/provider-interfaces', templates)
+  }
+
+  const providers = reduce((acc, capability) => {
+    let providerTemplate = getTemplate(suffix ? `/codeblocks/provider.${suffix}` : '/codeblocks/provider', templates)
+    if (!providerTemplate) {
+      providerTemplate = getTemplate('/codeblocks/provider', templates)
+    }
+
+    const template = insertProviderInterfaceMacros(providerTemplate, capability, json, templates)
+    return acc + template
+  }, '', interfaces)
+
+  return interfaces.length ? template.replace(/\$\{providers\.list\}/g, providers) : ''
+}
+
+function getProviderInterfaceName(iface, capability, moduleJson = {}) {
   const uglyName = capability.split(":").slice(-2).map(capitalize).reverse().join('') + "Provider"
   let name = iface.length === 1 ? iface[0].name.charAt(0).toUpperCase() + iface[0].name.substr(1) + "Provider" : uglyName
 
   if (moduleJson.info['x-interface-names']) {
     name = moduleJson.info['x-interface-names'][capability] || name
   }
+  return name
+}
 
-  let interfaceShape = getTemplate('/codeblocks/interface', templates)
+function getProviderXValues(method) {
+  let xValues = []
+  if (method.tags.find(t => t['x-error']) || method.tags.find(t => t['x-response'])) {
+    method.tags.forEach(tag => {
+      if (tag['x-response']) {
+        xValues['x-response'] = tag['x-response']
+      }
+      if (tag['x-error']) {
+        xValues['x-error'] = tag['x-error']
+      }
+    })
+  }
+  return xValues
+}
+
+function insertProviderXValues(template, moduleJson, xValues) {
+  if (xValues['x-response']) {
+    const xResponseInst = types.getSchemaShape(xValues['x-response'], moduleJson, { templateDir: 'parameter-serialization', property: 'result', required: true, destination: state.destination, section: state.section, primitive: true, skipTitleOnce: true })
+    template = template.replace(/\$\{provider\.xresponse\.serialization\}/gms, xResponseInst)
+      .replace(/\$\{provider\.xresponse\.name\}/gms, xValues['x-response'].title)
+  }
+  if (xValues['x-error']) {
+    const xErrorInst = types.getSchemaShape(xValues['x-error'], moduleJson, { templateDir: 'parameter-serialization', property: 'result', required: true, destination: state.destination, section: state.section, primitive: true, skipTitleOnce: true })
+    template = template.replace(/\$\{provider\.xerror\.serialization\}/gms, xErrorInst)
+      .replace(/\$\{provider\.xerror\.name\}/gms, xValues['x-error'].title)
+  }
+  return template
+}
+
+function insertProviderSubscribeMacros(template, capability, moduleJson = {}, templates) {
+  const iface = getProviderInterface(capability, moduleJson, config.extractProviderSchema)
+  let name = getProviderInterfaceName(iface, capability, moduleJson)
+
+  const suffix = state.destination ? state.destination.split('.').pop() : ''
+  template = template.replace(/\$\{subscribe\}/gms, iface.map(method => {
+      return insertMethodMacros(getTemplate(suffix ? `/codeblocks/subscribe.${suffix}` : '/codeblocks/subscribe', templates), method, moduleJson, { destination: state.destination, section: state.section })
+    }).join('\n') + '\n')
+  return template
+}
+
+function insertProviderInterfaceMacros(template, capability, moduleJson = {}, templates) {
+  const iface = getProviderInterface(capability, moduleJson, config.extractProviderSchema)
+  let name = getProviderInterfaceName(iface, capability, moduleJson)
+  let xValues
+  const suffix = state.destination ? state.destination.split('.').pop() : ''
+  let interfaceShape = getTemplate(suffix ? `/codeblocks/interface.${suffix}` : '/codeblocks/interface', templates)
+  if (!interfaceShape) {
+    interfaceShape = getTemplate('/codeblocks/interface', templates)
+  }
 
   interfaceShape = interfaceShape.replace(/\$\{name\}/g, name)
     .replace(/\$\{capability\}/g, capability)
     .replace(/[ \t]*\$\{methods\}[ \t]*\n/g, iface.map(method => {
       const focusable = method.tags.find(t => t['x-allow-focus'])
-      const interfaceDeclaration = getTemplate('/interfaces/' + (focusable ? 'focusable' : 'default'), templates)
+      const interfaceTemplate = '/interfaces/' + (focusable ? 'focusable' : 'default')
+      const interfaceDeclaration = getTemplate(suffix ? `${interfaceTemplate}.${suffix}` : interfaceTemplate, templates)
+      xValues = getProviderXValues(method)
+      method.tags.unshift({
+        name: 'provider'
+      })
       return insertMethodMacros(interfaceDeclaration, method, moduleJson, { destination: state.destination, section: state.section, isInterface: true })
     }).join('') + '\n')
-      
+
   if (iface.length === 0) {
     template = template.replace(/\$\{provider\.methods\}/gms, '')
   }
@@ -1765,6 +1856,7 @@ function insertProviderInterfaceMacros(template, capability, moduleJson = {}, te
   template = template.replace(/\$\{provider\}/g, name)
   template = template.replace(/\$\{interface\}/g, interfaceShape)
   template = template.replace(/\$\{capability\}/g, capability)
+  template = insertProviderXValues(template, moduleJson, xValues)
 
   return template
 }

@@ -1,1 +1,3 @@
-${shape}        ${if.non.const}${if.non.anyOf}${if.non.array}${if.non.object}${base.title}Container.${Property} = element.${property}${if.optional}.value()${end.if.optional};${end.if.non.object}${end.if.non.array}${end.if.non.anyOf}${end.if.non.const}
+${shape}            ${if.non.const}${if.non.anyOf}${if.non.array}${if.non.object}${if.optional}if (element.${property}.has_value()) {
+                ${base.title}Container.${Property} = element.${property}.value();
+            }${end.if.optional}${if.non.optional}${base.title}Container.${Property} = element.${property};${end.if.non.optional}${end.if.non.object}${end.if.non.array}${end.if.non.anyOf}${end.if.non.const}

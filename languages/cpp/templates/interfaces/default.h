@@ -1,0 +1,1 @@
+    virtual void ${method.name}( ${method.signature.params}, IProviderSession& session ) = 0;
