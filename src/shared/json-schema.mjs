@@ -18,6 +18,8 @@
 
 import deepmerge from 'deepmerge'
 import crocks from 'crocks'
+import path from 'path'
+
 const { setPath, getPathOr } = crocks
 
 const isNull = schema => {
@@ -103,16 +105,16 @@ const replaceUri = (existing, replacement, schema) => {
   }  
 }
 
-const replaceRef = (existing, replacement, schema) => {
+const replaceRef = (existing, replacement, schema, dir = '') => {
   if (schema) {
     if (schema.hasOwnProperty('$ref') && (typeof schema['$ref'] === 'string')) {
-      if (schema['$ref'] === existing) {
+      if (path.join(dir, schema['$ref']) === existing) {
         schema['$ref'] = replacement
       }
     }
     else if (typeof schema === 'object') {
       Object.keys(schema).forEach(key => {
-        replaceRef(existing, replacement, schema[key])
+        replaceRef(existing, replacement, schema[key], dir)
       })
     }
   }

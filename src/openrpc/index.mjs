@@ -45,12 +45,17 @@ const run = async ({
   Object.entries(sharedSchemas).forEach(([path, schema]) => {
     const json = JSON.parse(schema)
     const id = json.$id
-    sharedSchemas[id] = json
-    delete sharedSchemas[path]
+    if (id) { 
+      sharedSchemas[id] = json
+      delete sharedSchemas[path]
+    }
+    else {
+      sharedSchemas[path] = json
+    }
   })
 
   const moduleList = input ? await readDir(path.join(input, 'openrpc'), { recursive: true }) : []
-  const modules = await readFiles(moduleList, path.join(input, 'openrpc'))
+  const modules = await readFiles(moduleList, path.resolve('..'))
 
   const descriptionsList = input ? await readDir(path.join(input, 'descriptions'), { recursive: true }) : []
   const markdown = await readFiles(descriptionsList, path.join(input, 'descriptions'))
@@ -94,7 +99,7 @@ const run = async ({
     json.components && Object.assign(openrpc.components.schemas, json.components.schemas)
 
     // add externally referenced schemas that are in our shared schemas path
-    openrpc = addExternalSchemas(openrpc, sharedSchemas)
+    openrpc = addExternalSchemas(openrpc, sharedSchemas, path.dirname(key))
 
     modules[key] = JSON.stringify(json, null, '\t')
 

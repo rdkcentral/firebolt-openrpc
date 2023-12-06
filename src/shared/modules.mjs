@@ -31,6 +31,7 @@ import predicates from 'crocks/predicates/index.js'
 import { getExternalSchemaPaths, isDefinitionReferencedBySchema, isNull, localizeDependencies, isSchema, getLocalSchemaPaths, replaceRef } from './json-schema.mjs'
 import { getPath as getRefDefinition } from './json-schema.mjs'
 const { isObject, isArray, propEq, pathSatisfies, hasProp, propSatisfies } = predicates
+import path from 'path'
 
 // util for visually debugging crocks ADTs
 const inspector = obj => {
@@ -630,7 +631,8 @@ const createResponseFromProvider = (provider, type, json) => {
                 schema: {
                     allOf: [
                         {
-                            "$ref": "https://meta.comcast.com/firebolt/types#/definitions/ProviderResponse" // use this schema for both Errors and Results
+                            "$ref": "#/x-schemas/Types/ProviderResponse" // use this schema for both Errors and Results
+//                            "$ref": "https://meta.comcast.com/firebolt/types#/definitions/ProviderResponse" // use this schema for both Errors and Results
                         },
                         {
                             "type": "object",
@@ -843,7 +845,8 @@ const generateEventListenResponse = json => {
         // only want or and xor here (might even remove xor)
         const anyOf = event.result.schema.oneOf || event.result.schema.anyOf
         const ref = {
-            "$ref": "https://meta.comcast.com/firebolt/types#/definitions/ListenResponse"
+            "$ref": "#/x-schemas/Types/ListenResponse"
+//            "$ref": "https://meta.comcast.com/firebolt/types#/definitions/ListenResponse"
         }
 
         if (anyOf) {
@@ -1051,7 +1054,7 @@ const getExternalPath = (uri = '', schemas = {}) => {
     
     const [mainPath, subPath] = uri.split('#')
     const json = schemas[mainPath] || schemas[mainPath + '/'] 
-    
+   
     // copy to avoid side effects
     let result
   
@@ -1067,7 +1070,7 @@ const getExternalPath = (uri = '', schemas = {}) => {
     return result
 }
 
-const getExternalSchemas = (json = {}, schemas = {}) => {
+const getExternalSchemas = (json = {}, schemas = {}, dir = '') => {
     // make a copy for safety!
     json = JSON.parse(JSON.stringify(json))
   
@@ -1077,20 +1080,58 @@ const getExternalSchemas = (json = {}, schemas = {}) => {
   
     while (refs.length > 0) {
       for (let i=0; i<refs.length; i++) {
-        let path = refs[i]      
-        const ref = getPathOr(null, path, json)
-        path.pop() // drop ref
+        let refPath = refs[i]      
+        let ref = getPathOr(null, refPath, json)
+        if (['.', '/'].includes(ref.charAt(0))) {
+            ref = path.join(dir, ref)
+        }
+        refPath.pop() // drop ref
         let resolvedSchema = getExternalPath(ref, schemas)
         
         if (!resolvedSchema) {
           // rename it so the while loop ends
           throw "Unresolved schema: " + ref
         }
+
+        // adjust relative paths
+        const rels = getExternalSchemaPaths(resolvedSchema)
+        rels.forEach(external => {
+            external.pop()
+            const node = getPathOr(null, external, resolvedSchema)
+            const target = path.join(path.dirname(ref.split('#')[0]), node.$ref.split('#')[0])
+            // console.log(target)
+            const modified = path.relative(dir, target)
+            // console.log('old: ' + node.$ref)
+            // console.log('rel: ' + dir)
+            // console.log('tar: ' + target)
+            // console.log('mod: ' + modified)
+            const hash = node.$ref.split('#')[1]
+            node.$ref = modified + '#' + hash//[modified].concat(node.$ref.split('#')).slice(1).join('#')
+            console.log('fin: ' + node.$ref)
+        })
+
+        const locals = getLocalSchemaPaths(resolvedSchema)
+        locals.forEach(local => {
+            local.pop()
+            const node = getPathOr(null, local, resolvedSchema)
+            console.log('loc0: ' + ref.split('#')[0])
+            console.log('loc1: ' + node.$ref)
+            const target = path.join(path.dirname(ref.split('#')[0]), node.$ref.split('#')[0])
+            const modified = path.relative(dir, ref.split('#')[0])
+            console.log('loc2: ' + node.$ref)
+            console.log('loc3: ' + dir)
+            console.log('loc4: ' + target)
+            console.log('loc5: ' + modified)
+            const hash = node.$ref.split('#')[1]
+            node.$ref = modified + '#' + hash//[modified].concat(node.$ref.split('#')).slice(1).join('#')
+            console.log('loc!: ' + node.$ref)
+        })
+
         // replace the ref so we can recursively grab more refs if needed...
-        else if (path.length) {
+        if (refPath.length) {
           returnedSchemas[ref] = JSON.parse(JSON.stringify(resolvedSchema))
           // use a copy, so we don't pollute the returned schemas
-          json = setPath(path, JSON.parse(JSON.stringify(resolvedSchema)), json)
+          json = setPath(refPath, JSON.parse(JSON.stringify(resolvedSchema)), json)
         }
         else {
           delete json['$ref']
@@ -1103,17 +1144,18 @@ const getExternalSchemas = (json = {}, schemas = {}) => {
     return returnedSchemas
 }
 
-const addExternalSchemas = (json, sharedSchemas) => {
+const addExternalSchemas = (json, sharedSchemas, dir) => {
+    console.log('addExternalSchemas')
     json = JSON.parse(JSON.stringify(json))
 
     let searching = true
 
     while (searching) {
         searching = false
-        const externalSchemas = getExternalSchemas(json, sharedSchemas)
+        const externalSchemas = getExternalSchemas(json, sharedSchemas, dir)
         Object.entries(externalSchemas).forEach( ([name, schema]) => {
             const group = sharedSchemas[name.split('#')[0]].title
-            const id = sharedSchemas[name.split('#')[0]].$id
+            const id = sharedSchemas[name.split('#')[0]].$id || name.split('#')[0]
             const refs = getLocalSchemaPaths(schema)
             refs.forEach(ref => {
                 ref.pop() // drop the actual '$ref' so we can modify it
@@ -1127,6 +1169,7 @@ const addExternalSchemas = (json, sharedSchemas) => {
                 return
             }
             searching = true
+
             json['x-schemas'] = json['x-schemas'] || {}
             json['x-schemas'][group] = json['x-schemas'][group] || { uri: name.split("#")[0]}
             json['x-schemas'][group][name.split("/").pop()] = schema
@@ -1134,8 +1177,9 @@ const addExternalSchemas = (json, sharedSchemas) => {
     
         //update references to external schemas to be local
         Object.keys(externalSchemas).forEach(ref => {
+          console.log('localizing: ' + ref)
           const group = sharedSchemas[ref.split('#')[0]].title
-          replaceRef(ref, `#/x-schemas/${group}/${ref.split("#").pop().substring('/definitions/'.length)}`, json)
+          replaceRef(ref, `#/x-schemas/${group}/${ref.split("#").pop().substring('/definitions/'.length)}`, json, dir)
         })    
     }
 
