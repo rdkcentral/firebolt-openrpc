@@ -42,6 +42,13 @@ const _inspector = obj => {
   }
 }
 
+const filterBlackListedSchemas = (module) => {
+  const blackList = ["Parameters", "1Discovery", "SecondScreen", "Intents", "Entertainment", "Lifecycle", "Advertising", "Account", "Authentication", "Accessibility", "Capabilities", "Keyboard", "Localization", "SecureStorage", "Metrics", "Profile", "Types", "Device", "1PinChallenge", "1Wifi", "1UserGrants", "VoiceGuidance", "Privacy", "AudioDescriptions", "AcknowledgeChallenge", "ClosedCaptions"]
+//  const blackList = ["Parameters", "Discovery", "Entertainment", "Intents", "Advertising", "Accessibility"]
+//  const blackList = []
+  return blackList.includes(getModuleName(module))
+}
+
 // getSchemaType(schema, module, options = { destination: 'file.txt', title: true })
 // getSchemaShape(schema, module, options = { name: 'Foo', destination: 'file.txt' })
 // getJsonType(schema, module, options = { name: 'Foo', prefix: '', descriptions: false, level: 0 })
@@ -355,9 +362,11 @@ const makeProviderMethod = x => x.name["onRequest".length].toLowerCase() + x.nam
 //import { default as platform } from '../Platform/defaults'
 const generateAggregateMacros = (openrpc, modules, templates, library) => Object.values(modules)
   .reduce((acc, module) => {
+    if (filterBlackListedSchemas(module) === false) {
     acc.exports += insertMacros(getTemplate('/codeblocks/export', templates) + '\n', generateMacros(module, templates))
     acc.mockImports += insertMacros(getTemplate('/codeblocks/mock-import', templates) + '\n', generateMacros(module, templates))
     acc.mockObjects += insertMacros(getTemplate('/codeblocks/mock-parameter', templates) + '\n', generateMacros(module, templates))
+    }
     return acc
   }, {
     exports: '',
@@ -1906,7 +1915,8 @@ export {
   clearMacros,
   insertMacros,
   generateAggregateMacros,
-  insertAggregateMacros
+  insertAggregateMacros,
+  filterBlackListedSchemas
 }
 
 export default {
@@ -1916,5 +1926,6 @@ export default {
   generateAggregateMacros,
   insertAggregateMacros,
   setTyper,
-  setConfig
+  setConfig,
+  filterBlackListedSchemas
 }
