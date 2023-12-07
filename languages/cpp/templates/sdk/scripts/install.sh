@@ -18,7 +18,7 @@ do
     case "${flag}" in
         i) InstallPath="${OPTARG}";;
         s) SdkPath="${OPTARG}";;
-	m) ModuleName="${OPTARG}";;
+        m) ModuleName="${OPTARG}";;
         h) usage && exit 1;;
     esac
 done

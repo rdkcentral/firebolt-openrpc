@@ -14,7 +14,7 @@ ${method.pulls.response.instantiation}
             Firebolt::Error status = Firebolt::Error::NotConnected;
             FireboltSDK::Transport<WPEFramework::Core::JSON::IElement>* transport = FireboltSDK::Accessor::Instance().GetTransport();
             if (transport != nullptr) {
-		JsonObject jsonParameters;
+                JsonObject jsonParameters;
                 WPEFramework::Core::JSON::Variant CorrelationId = proxyResponse->CorrelationId.Value();
                 jsonParameters.Set(_T("correlationId"), CorrelationId);
                 ${method.pulls.json.type} ${method.pulls.result.title}Container;

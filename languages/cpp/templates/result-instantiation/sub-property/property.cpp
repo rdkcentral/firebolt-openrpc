@@ -1,1 +1,3 @@
-${shape}            ${if.non.anyOf}${if.non.array}${if.non.object}${base.title}Result${level}${property.dependency}${if.impl.optional}.value()${end.if.impl.optional}.${property} = jsonResult.${Property.dependency}${Property};${end.if.non.object}${end.if.non.array}${end.if.non.anyOf}
+${shape}            ${if.non.anyOf}${if.non.array}${if.non.object}${if.optional}if (jsonResult.${Property.dependency}${Property}.IsSet()) {
+                ${base.title}Result${level}${property.dependency}${if.impl.optional}.value()${end.if.impl.optional}.${property} = jsonResult.${Property.dependency}${Property};
+            }${end.if.optional}${if.non.optional}${base.title}Result${level}${property.dependency}${if.impl.optional}.value()${end.if.impl.optional}.${property} = jsonResult.${Property.dependency}${Property};${end.if.non.optional}${end.if.non.object}${end.if.non.array}${end.if.non.anyOf}

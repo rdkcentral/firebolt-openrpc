@@ -80,7 +80,7 @@ namespace FireboltSDK {
         }
 
 
-	template <typename RESPONSETYPE>
+        template <typename RESPONSETYPE>
         static Firebolt::Error Get(const string& propertyName, RESPONSETYPE& response)
         {
             Firebolt::Error status = Firebolt::Error::General;

@@ -53,7 +53,7 @@ namespace FireboltSDK {
         static void Log(LogLevel logLevel, Category category, const std::string& module, const std::string file, const std::string function, const uint16_t line, const std::string& format, ...);
 
     public:
-    	template<typename CLASS>
+        template<typename CLASS>
         static const string Module()
         {
             return WPEFramework::Core::ClassNameOnly(typeid(CLASS).name()).Text(); 

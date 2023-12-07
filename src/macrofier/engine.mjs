@@ -68,12 +68,26 @@ const state = {
 
 const capitalize = str => str[0].toUpperCase() + str.substr(1)
 
-const indent = (str, padding) => {
+const indent = (str, paddingStr, repeat = 1, endRepeat = 0) => {
   let first = true
-  return str.split('\n').map(line => {
+  let padding = ''
+  for (let i = 0; i < repeat; i++) {
+    padding += paddingStr
+  }
+
+  let length = str.split('\n').length - 1
+  let endPadding = ''
+  for (let i = 0; length && i < endRepeat; i++) {
+    endPadding += paddingStr
+  }
+
+  return str.split('\n').map((line, index) => {
     if (first) {
       first = false
       return line
+    }
+    else if (index === length && endPadding) {
+      return endPadding + line
     }
     else {
       return padding + line
@@ -1288,7 +1302,7 @@ function insertMethodMacros(template, methodObj, json, templates, examples = {})
       let paramInstantiation = event.params.map(param => types.getSchemaShape(param.schema, json, { templateDir: 'callback-context-instantiation', property: param.name, required: param.required, destination: state.destination, section: state.section, primitive: true, skipTitleOnce: true })).join('\n')
       let resultInstantiation = types.getSchemaShape(event.result.schema, json, { templateDir: 'callback-context-instantiation', property: result.name, destination: state.destination, section: state.section, primitive: true, skipTitleOnce: true })
       callbackInstantiation = callbackInstantiation
-        .replace(/\$\{callback\.param\.instantiation\.with\.indent\}/g, indent(paramInstantiation, '        '))
+        .replace(/\$\{callback\.param\.instantiation\.with\.indent\}/g, indent(paramInstantiation, '    ', 2))
         .replace(/\$\{callback\.result\.instantiation\}/g, resultInstantiation)
     }
     else {
@@ -1412,7 +1426,7 @@ function insertMethodMacros(template, methodObj, json, templates, examples = {})
     .replace(/\$\{method\.pulls\.param\.json\.type\}/g, pullsForParamJsonType)
     .replace(/\$\{method\.pulls\.response\.initialization\}/g, pullsResponseInit)
     .replace(/\$\{method\.pulls\.response\.instantiation}/g, pullsResponseInst)
-    .replace(/\$\{method\.pulls\.result\.serialization\.with\.indent\}/g, indent(pullsResultSerialize, '        '))
+    .replace(/\$\{method\.pulls\.result\.serialization\.with\.indent\}/g, indent(pullsResultSerialize, '    ', 3, 2))
     .replace(/\$\{method\.setter\.for\}/g, setterFor)
     .replace(/\$\{method\.puller\}/g, pullerTemplate) // must be last!!
     .replace(/\$\{method\.setter\}/g, setterTemplate) // must be last!!
