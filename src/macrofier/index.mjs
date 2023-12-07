@@ -133,7 +133,7 @@ const macrofy = async (
 
         const staticCodeList = staticContent ? await readDir(staticContent, { recursive: true }) : []
         const staticModules = staticModuleNames.map(name => ( { info: { title: name } } ))
-        
+
         let modules
         if (hidePrivate) {
             modules = moduleList.map(name => getModule(name, openrpc, copySchemasIntoModules, extractSubSchemas)).filter(hasPublicAPIs)
