@@ -23,25 +23,25 @@
         WPEFramework::Core::JSON::Variant CorrelationId(correlationId);
         jsonParameters.Set(_T("correlationId"), CorrelationId);
 
-	ProviderInvokeSession(methodName, jsonParameters, err);
+        ProviderInvokeSession(methodName, jsonParameters, err);
     }
     static void ProviderResultSession(std::string methodName, std::string& correlationId, ${provider.xresponse.name} result, Firebolt::Error *err = nullptr)
     {
         JsonObject jsonParameters;
-	WPEFramework::Core::JSON::Variant CorrelationId(correlationId);
+        WPEFramework::Core::JSON::Variant CorrelationId(correlationId);
         jsonParameters.Set(_T("correlationId"), CorrelationId);
 
 ${provider.xresponse.serialization}
-	ProviderInvokeSession(methodName, jsonParameters, err);
+        ProviderInvokeSession(methodName, jsonParameters, err);
     }
     static void ProviderErrorSession(std::string methodName, std::string& correlationId, ${provider.xerror.name} result, Firebolt::Error *err = nullptr)
     {
         JsonObject jsonParameters;
-	WPEFramework::Core::JSON::Variant CorrelationId(correlationId);
+        WPEFramework::Core::JSON::Variant CorrelationId(correlationId);
         jsonParameters.Set(_T("correlationId"), CorrelationId);
 
 ${provider.xerror.serialization}
-	ProviderInvokeSession(methodName, jsonParameters, err);
+        ProviderInvokeSession(methodName, jsonParameters, err);
     }
   
 ${methods}

@@ -1,3 +1,3 @@
 struct ${title} {
-    ${properties}
+${properties}
 };

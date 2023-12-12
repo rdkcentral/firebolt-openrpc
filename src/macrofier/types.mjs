@@ -267,6 +267,7 @@ const insertObjectAdditionalPropertiesMacros = (content, schema, module, title, 
   return content
 }
 
+const getIndents = level => level ? '    ' : ''
 const insertObjectMacros = (content, schema, module, title, property, options) => {
   const options2 = options ? JSON.parse(JSON.stringify(options)) : {}
   options2.parent = title
@@ -274,9 +275,9 @@ const insertObjectMacros = (content, schema, module, title, property, options) =
   options2.level = options.level + 1
   options2.templateDir = options.templateDir
   ;(['properties', 'properties.register', 'properties.assign']).forEach(macro => {
-    const indent = (content.split('\n').find(line => line.includes("${" + macro + "}")) || '').match(/^\s+/) || [''][0]
+    const indent = getIndents(options.parentLevel || (options.level ? 1 : 0))
     const templateType = macro.split('.').slice(1).join('')
-    const template = getTemplate(path.join(options.templateDir, 'property' + (templateType ? `-${templateType}` : ''))).replace(/\n/gms, indent + '\n')
+    const template = getTemplate(path.join(options.templateDir, 'property' + (templateType ? `-${templateType}` : ''))).replace(/\n/gms, '\n' + indent)
     const properties = []
     if (schema.properties) {
       Object.entries(schema.properties).forEach(([name, prop], i) => {
@@ -286,11 +287,12 @@ const insertObjectMacros = (content, schema, module, title, property, options) =
         const objSeparator = getTemplate(path.join(options2.templateDir, 'object-separator'))
         if (localizedProp.type === 'array' || localizedProp.anyOf || localizedProp.oneOf || (typeof localizedProp.const === 'string')) {
            options2.property = name
+           options2.required = schema.required
         } else {
            options2.property = options.property
+           options2.required = schema.required && schema.required.includes(name)
         }
-        options2.required = schema.required
-        const schemaShape = getSchemaShape(localizedProp, module, options2)
+        const schemaShape = indent + getSchemaShape(localizedProp, module, options2).replace(/\n/gms, '\n' + indent)
         const type = getSchemaType(localizedProp, module, options2)
         // don't push properties w/ unsupported types
         if (type) {
@@ -331,7 +333,7 @@ const insertObjectMacros = (content, schema, module, title, property, options) =
             .replace(/\$\{obj\.separator}/g, objSeparator)
             .replace(/\$\{base.title\}/g, (baseTitle ? (baseTitle)[0].toLowerCase() + (baseTitle).substr(1) : '')).trimEnd()
             .replace(/\$\{base.Title\}/g, (baseTitle ? (baseTitle)[0].toUpperCase() + (baseTitle).substr(1) : '')).trimEnd()
-          properties.push((i !== 0 ? indent : '') + replacedTemplate)
+          properties.push(replacedTemplate)
         }
       })
     }
@@ -363,7 +365,7 @@ const insertObjectMacros = (content, schema, module, title, property, options) =
           if (type) {
             options2.property = prop
             const schemaShape = getSchemaShape(type, module, options2)
-            properties.push((i !== 0 ? indent : '') + template
+            properties.push(template
               .replace(/\$\{property\}/g, safeName(prop))
               .replace(/\$\{Property\}/g, capitalize(safeName(prop)))
               .replace(/\$\{parent\.title\}/g, title)
