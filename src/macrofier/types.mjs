@@ -319,7 +319,7 @@ const insertObjectMacros = (content, schema, module, title, property, options) =
               .replace(/\$\{if\.impl.optional\}(.*?)\$\{end\.if\.impl.optional\}/gms, schema.required && schema.required.includes(name)  ? '' : '$1')
               .replace(/\$\{if\.impl.non.optional\}(.*?)\$\{end\.if\.impl.non.optional\}/gms, schema.required && schema.required.includes(name)  ? '$1' : '')
               .replace(/\$\{property.dependency\}/g, ((options.level > 0) ? '${property.dependency}${if.impl.optional}.value()${end.if.impl.optional}' : '') + objSeparator + name)
-              .replace(/\$\{Property.dependency\}/g, ((options.level > 0) ? '${Property.dependency}' : '') + capitalize(name) + (objSeparator))
+              .replace(/\$\{Property.dependency\}/g, ((options.level > 0) ? '${Property.dependency}' : '') + (objSeparator) + capitalize(name))
           }
           else {
             if (options2.level <= 1) {
