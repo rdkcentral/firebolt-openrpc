@@ -281,6 +281,12 @@ const isRPCOnlyMethod = compose(
     getPath(['tags'])
 )
 
+const hasReducedTag = compose(
+    option(false),
+    map(_ => true),
+    chain(find(propEq('name', 'reduced'))),
+    getPath(['tags'])
+)
 
 const isPolymorphicReducer = compose(
     option(false),
@@ -921,10 +927,11 @@ const generateResultAnyOfSchema = (method, methodResult, anyOf, anyOfTypes, titl
     return methodResultSchema
 }
 
-const createPolymorphicMethods = (method, json) => {
+const createPolymorphicMethodsForAnyOfSchema = (method, json) => {
     let anyOfTypes
     let methodParams = []
     let methodResult = Object.assign({}, method.result)
+
     method.params.forEach(p => {
         if (p.schema) {
             let param = getAnyOfSchema(p, json)
@@ -968,7 +975,7 @@ const createPolymorphicMethods = (method, json) => {
             let title = localized.title || localized.name || ''
             let summary = localized.summary || localized.description || ''
             polymorphicMethodSchema.title = method.name
-            polymorphicMethodSchema.name = foundAnyOfParams ? `${method.name}With${title}` : `${method.name}${title}`
+            polymorphicMethodSchema.name = foundAnyOfResult && isEventMethod(method) ? `${method.name}${title}` : method.name
             polymorphicMethodSchema.tags = method.tags
             polymorphicMethodSchema.params = foundAnyOfParams ? generateParamsAnyOfSchema(methodParams, anyOf, anyOfTypes, title, summary) : methodParams
             polymorphicMethodSchema.result = Object.assign({}, method.result)
@@ -982,6 +989,52 @@ const createPolymorphicMethods = (method, json) => {
     }
 
     return polymorphicMethodSchemas
+}
+
+const getPolymorphicReducedParamSchema = (method) => {
+  let reducedParamSchema = {
+    name : `${method.name}Info`,
+    schema : {
+      type: "array",
+      items: {
+        title: `${method.name}Info`,
+        type: "object",
+        properties: {}
+      }
+    },
+    required: true
+  }
+  method.params.forEach(p => {
+     p.type = p.schema.type
+     reducedParamSchema.schema.items.properties[p.name] = p
+     return p
+  })
+  return reducedParamSchema
+}
+
+const createPolymorphicMethodsForReducer = (method, json) => {
+    if (hasReducedTag(method) === false) {
+      let polymorphicMethodSchemas = []
+      method.tags.unshift({
+        name: "reduced",
+      })
+      polymorphicMethodSchemas.push(Object.assign({}, method))
+      method.params = [getPolymorphicReducedParamSchema(method)]
+      polymorphicMethodSchemas.push(Object.assign({}, method))
+      return polymorphicMethodSchemas
+    }
+    else {
+      return method
+    }
+}
+
+const createPolymorphicMethods = (method, json) => {
+    if (isPolymorphicReducer(method)) {
+      return createPolymorphicMethodsForReducer(method, json)
+    }
+    else {
+      return createPolymorphicMethodsForAnyOfSchema(method, json)
+    }
 }
 
 const isSubSchema = (schema) => schema.type === 'object' || (schema.type === 'string' && schema.enum)

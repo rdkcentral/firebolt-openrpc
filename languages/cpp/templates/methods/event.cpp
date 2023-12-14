@@ -11,7 +11,7 @@ ${event.callback.instantiation}
             proxyResponse.Release();
 
             I${info.Title}::I${method.Name}Notification& notifier = *(reinterpret_cast<I${info.Title}::I${method.Name}Notification*>(notification));
-            notifier.${method.name}(${event.callback.response.instantiation});
+            notifier.${method.title}(${event.callback.response.instantiation});
         }
     }
     void ${info.Title}Impl::subscribe( ${event.signature.params}${if.event.params}, ${end.if.event.params}I${info.Title}::I${method.Name}Notification& notification, Firebolt::Error *err )
