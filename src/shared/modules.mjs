@@ -880,7 +880,7 @@ const getAnyOfSchema = (inType, json) => {
 
 const generateAnyOfSchema = (anyOf, name, summary) => {
     let anyOfType = {}
-    anyOfType["name"] = name[0].toLowerCase() + name.substr(1)
+    anyOfType["name"] = name;
     anyOfType["summary"] = summary
     anyOfType["schema"] = anyOf
     return anyOfType
@@ -890,7 +890,7 @@ const generateParamsAnyOfSchema = (methodParams, anyOf, anyOfTypes, title, summa
     let params = []
     methodParams.forEach(p => {
         if (p.schema.anyOf === anyOfTypes) {
-            let anyOfType = generateAnyOfSchema(anyOf, title, summary)
+            let anyOfType = generateAnyOfSchema(anyOf, p.name, summary)
             anyOfType.required = p.required
             params.push(anyOfType)
         }
@@ -979,7 +979,7 @@ const createPolymorphicMethodsForAnyOfSchema = (method, json) => {
             polymorphicMethodSchema.tags = method.tags
             polymorphicMethodSchema.params = foundAnyOfParams ? generateParamsAnyOfSchema(methodParams, anyOf, anyOfTypes, title, summary) : methodParams
             polymorphicMethodSchema.result = Object.assign({}, method.result)
-            polymorphicMethodSchema.result.schema = foundAnyOfResult ? generateResultAnyOfSchema(method, methodResult, anyOf, anyOfTypes, title, summary) : methodResult
+            polymorphicMethodSchema.result.schema = foundAnyOfResult ? generateResultAnyOfSchema(method, methodResult, anyOf, anyOfTypes, title, summary) : methodResult.schema
             polymorphicMethodSchema.examples = method.examples
             polymorphicMethodSchemas.push(Object.assign({}, polymorphicMethodSchema))
         })
