@@ -740,6 +740,18 @@ const createResponseFromProvider = (provider, type, json) => {
     return response
 }
 
+const copyAllowFocusTags = (json) => {
+    // for each allow focus provider method, set the value on any `use` methods that share the same capability
+    json.methods.filter(m => m.tags.find(t => t['x-allow-focus'] && t['x-provides'])).forEach(method => {
+        const cap = method.tags.find(t => t.name === "capabilities")['x-provides']
+        json.methods.filter(m => m.tags.find(t => t['x-uses'] && t['x-uses'].includes(cap))).forEach(useMethod => {
+            useMethod.tags.find(t => t.name === "capabilities")['x-allow-focus'] = true
+        })
+    })
+
+    return json
+}
+
 const generatePropertyEvents = json => {
     const properties = json.methods.filter( m => m.tags && m.tags.find( t => t.name == 'property')) || []
     const readonlies = json.methods.filter( m => m.tags && m.tags.find( t => t.name == 'property:readonly')) || []
@@ -1065,6 +1077,12 @@ const fireboltize = (json) => {
     return json
 }
 
+const fireboltizeMerged = (json) => {
+    json = copyAllowFocusTags(json)
+
+    return json
+}
+
 const getExternalMarkdownPaths = obj => {
     return getExternalSchemaPaths(obj)
             .filter(x => /^file:/.test(getPathOr(null, x, obj)))
@@ -1356,6 +1374,7 @@ export {
     getSchemas,
     getParamsFromMethod,
     fireboltize,
+    fireboltizeMerged,
     getPayloadFromEvent,
     getPathFromModule,
     providerHasNoParameters,
