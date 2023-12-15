@@ -87,8 +87,6 @@ const run = async ({
     }
 
 
-
-
     // add methods from this module
     openrpc.methods.push(...json.methods)
 
