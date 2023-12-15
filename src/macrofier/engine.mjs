@@ -980,6 +980,20 @@ function getRelatedSchemaLinks(schema = {}, json = {}, templates = {}, options =
   return links
 }
 
+function getTemplateFromDestination(destination, templateName, templates) {
+  const destinationArray = destination.split('/').pop().split(/[_.]+/)
+
+  let template = ''
+  destinationArray.filter(value => value).every((suffix) => {
+    template = getTemplate(templateName +`.${suffix}`, templates)
+    return template ? false: true
+  })
+  if (!template) {
+      template = getTemplate(templateName, templates)
+  }
+  return template
+}
+
 const generateImports = (json, templates, options = { destination: '' }) => {
   let imports = ''
 
@@ -1011,21 +1025,11 @@ const generateImports = (json, templates, options = { destination: '' }) => {
     imports += getTemplate('/imports/x-method', templates)
   }
 
-  const suffix = options.destination.split('.').pop()
   if (callsMetrics(json).length) {
-    imports += getTemplate(suffix ? `/imports/calls-metrics.${suffix}` : '/imports/calls-metrics', templates)
+    imports += getTemplateFromDestination(options.destination, '/imports/calls-metrics', templates)
   }
 
-  const destinationArray = options.destination.split('/').pop().split(/[_.]+/)
-  let template = ''
-  destinationArray.filter(value => value).every((suffix) => {
-    template = getTemplate(`/imports/default.${suffix}`, templates)
-    return template ? false: true
-  })
-  if (!template) {
-      template = getTemplate('/imports/default', templates)
-  }
-
+  let template = getTemplateFromDestination(options.destination, '/imports/default', templates)
   if (json['x-schemas'] && Object.keys(json['x-schemas']).length > 0 && !json.info['x-uri-titles']) {
     imports += Object.keys(json['x-schemas']).map(shared => template.replace(/\$\{info.title.lowercase\}/g, shared.toLowerCase())).join('')
   }
@@ -1312,6 +1316,7 @@ function insertMethodMacros(template, methodObj, json, templates, examples = {})
   // hmm... how is this different from callbackSerializedList? i guess they get merged?
   const callbackResponseInst = event ? (event.params && event.params.length ? (event.params.map(param => types.getSchemaShape(param.schema, json, { templateDir: 'callback-response-instantiation', property: param.name, required: param.required, destination: state.destination, section: state.section, primitive: true, skipTitleOnce: true })).join(', ')) + ', ' : '' ) + (types.getSchemaShape(event.result.schema, json, { templateDir: 'callback-response-instantiation', property: result.name, destination: state.destination, section: state.section, primitive: true, skipTitleOnce: true })) : ''
   const resultType = result.schema ? types.getSchemaType(result.schema, json, { templateDir: state.typeTemplateDir }) : ''
+  const resultSchemaType = result.schema.type
   const resultJsonType = result.schema ? types.getSchemaType(result.schema, json, { templateDir: 'json-types' }) : ''
   const resultParams = generateResultParams(result.schema, json, templates, { name: result.name})
 
@@ -1357,6 +1362,7 @@ function insertMethodMacros(template, methodObj, json, templates, examples = {})
     .replace(/\$\{if\.params\}(.*?)\$\{end\.if\.params\}/gms, method.params.length ? '$1' : '')
     .replace(/\$\{if\.result\}(.*?)\$\{end\.if\.result\}/gms, resultType ? '$1' : '')
     .replace(/\$\{if\.result.nonvoid\}(.*?)\$\{end\.if\.result.nonvoid\}/gms, resultType && resultType !== 'void' ? '$1' : '')
+    .replace(/\$\{if\.result.nonboolean\}(.*?)\$\{end\.if\.result.nonboolean\}/gms, resultSchemaType && resultSchemaType !== 'boolean' ? '$1' : '')
     .replace(/\$\{if\.result\.properties\}(.*?)\$\{end\.if\.result\.properties\}/gms, resultParams ? '$1' : '')
     .replace(/\$\{if\.params\.empty\}(.*?)\$\{end\.if\.params\.empty\}/gms, method.params.length === 0 ? '$1' : '')
     .replace(/\$\{if\.signature\.empty\}(.*?)\$\{end\.if\.signature\.empty\}/gms, (method.params.length === 0 && resultType === '') ? '$1' : '')
