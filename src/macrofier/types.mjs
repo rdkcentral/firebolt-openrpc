@@ -267,6 +267,36 @@ const insertObjectAdditionalPropertiesMacros = (content, schema, module, title, 
   return content
 }
 
+const insertObjectPatternPropertiesMacros = (content, schema, module, title, options) => {
+  const options2 = options ? JSON.parse(JSON.stringify(options)) : {}
+  options2.parent = title
+  options2.level = options.level + 1
+  options2.required = options.required
+
+  let patternSchema;
+  Object.entries(schema.patternProperties).forEach(([pattern, sch]) => {
+      patternSchema = sch
+  })
+
+  if (patternSchema) {
+    const shape = getSchemaShape(patternSchema, module, options2)
+    let type = getSchemaType(patternSchema, module, options2).trimEnd()
+    const propertyNames = localizeDependencies(schema, module).propertyNames
+
+    content = content
+      .replace(/\$\{shape\}/g, shape)
+      .replace(/\$\{parent\.title\}/g, title)
+      .replace(/\$\{title\}/g, title)
+      .replace(/\$\{type\}/g, type)
+      .replace(/\$\{delimiter\}(.*?)\$\{end.delimiter\}/g, '')
+      .replace(/\$\{if\.optional\}(.*?)\$\{end\.if\.optional\}/g, '')
+      .replace(/\$\{if\.impl.optional\}(.*?)\$\{end\.if\.impl.optional\}/g, options.required ? '' : '$1')
+      .replace(/\$\{if\.impl.non.optional\}(.*?)\$\{end\.if\.impl.non.optional\}/g, options.required ? '$1' : '')
+  }
+
+  return content
+}
+
 const getIndents = level => level ? '    ' : ''
 const insertObjectMacros = (content, schema, module, title, property, options) => {
   const options2 = options ? JSON.parse(JSON.stringify(options)) : {}
@@ -526,8 +556,13 @@ function getSchemaShape(schema = {}, module = {}, { templateDir = 'types', paren
       shape = insertObjectAdditionalPropertiesMacros(additionalPropertiesTemplate, schema, module, theTitle, { level, parent, templateDir, namespace: true, required })
     }
     else {
-      let objectLevel = array ? 0 : level
-      shape = insertObjectMacros(getTemplate(path.join(templateDir, 'object' + (array ? '-array' : '') + suffix)) || genericTemplate, schema, module, theTitle, property, { parentLevel, level: objectLevel, parent, property, required, templateDir, descriptions, destination, section, enums, namespace: true, primitive })
+      const patternPropertiesTemplate = getTemplate(path.join(templateDir, 'patternProperties'))
+      if (patternPropertiesTemplate && schema.patternProperties) {
+        shape = insertObjectPatternPropertiesMacros(patternPropertiesTemplate, schema, module, theTitle, { level, parent, templateDir, namespace: true, required })
+      } else {
+        let objectLevel = array ? 0 : level
+        shape = insertObjectMacros(getTemplate(path.join(templateDir, 'object' + (array ? '-array' : '') + suffix)) || genericTemplate, schema, module, theTitle, property, { parentLevel, level: objectLevel, parent, property, required, templateDir, descriptions, destination, section, enums, namespace: true, primitive })
+      }
     }
     result = result.replace(/\$\{shape\}/g, shape)
     if (level === 0) {
@@ -806,17 +841,23 @@ function getSchemaType(schema, module, { destination, templateDir = 'types', lin
     // }
   }
   else if (schema.type) {
-    const template = getTemplate(path.join(templateDir, 'additionalProperties'))
+    let template = getTemplate(path.join(templateDir, 'additionalProperties'))
     if (schema.additionalProperties && template ) {
       return insertSchemaMacros(getTemplate(path.join(templateDir, 'Title')), schema, module, { name: theTitle, recursive: false })
     }
     else {
-      // TODO: this assumes that when type is an array of types, that it's one other primative & 'null', which isn't necessarily true.
-      const schemaType = !Array.isArray(schema.type) ? schema.type : schema.type.find(t => t !== 'null')
-      const baseDir = (templateDir !== 'json-types' ? 'types': templateDir)
-      const primitive = getPrimitiveType(schemaType, baseDir)
-      const type = allocatedProxy ? allocatedPrimitiveProxies[schemaType] || primitive : primitive
-      return wrap(type, code ? '`' : '')
+      template = getTemplate(path.join(templateDir, 'patternProperties'))
+      if (schema.paternProperties && template ) {
+       return insertSchemaMacros(getTemplate(path.join(templateDir, 'Title')), schema, module, { name: theTitle, recursive: false })
+      }
+      else {
+        // TODO: this assumes that when type is an array of types, that it's one other primative & 'null', which isn't necessarily true.
+        const schemaType = !Array.isArray(schema.type) ? schema.type : schema.type.find(t => t !== 'null')
+        const baseDir = (templateDir !== 'json-types' ? 'types': templateDir)
+        const primitive = getPrimitiveType(schemaType, baseDir)
+        const type = allocatedProxy ? allocatedPrimitiveProxies[schemaType] || primitive : primitive
+        return wrap(type, code ? '`' : '')
+      }
     }
   }
   else {
