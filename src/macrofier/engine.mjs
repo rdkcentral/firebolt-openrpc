@@ -1218,7 +1218,6 @@ function insertMethodMacros(template, methodObj, json, templates, examples = {})
   }
   const method = {
     name: methodObj.name,
-    title: methodObj.title,
     params: methodObj.params.map(p => p.name).join(', '),
     transforms: null,
     alternative: null,
@@ -1348,8 +1347,7 @@ function insertMethodMacros(template, methodObj, json, templates, examples = {})
   template = insertExampleMacros(template, examples[methodObj.name] || [], methodObj, json, templates)
 
   template = template.replace(/\$\{method\.name\}/g, method.name)
-    .replace(/\$\{method\.title\}/g, method.title ? method.title : method.name)
-    .replace(/\$\{method\.rpc\.name\}/g, methodObj.title || methodObj.name)
+    .replace(/\$\{method\.rpc\.name\}/g, methodObj.rpc_name || methodObj.name)
     .replace(/\$\{method\.summary\}/g, methodObj.summary)
     .replace(/\$\{method\.description\}/g, methodObj.description
       || methodObj.summary)

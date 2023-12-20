@@ -1,7 +1,7 @@
-    /* ${method.rpc.name} - ${method.description} */
+    /* ${method.name} - ${method.description} */
     ${method.signature.result} ${info.Title}Impl::${method.name}( ${method.signature.params}${if.params}, ${end.if.params}Firebolt::Error *err ) const
     {
-        const string method = _T("${info.title.lowercase}.${method.rpc.name}");
+        const string method = _T("${info.title.lowercase}.${method.name}");
         ${if.params}${method.params.serialization}${end.if.params}
         ${method.result.json} jsonResult;
 ${method.result.initialization}

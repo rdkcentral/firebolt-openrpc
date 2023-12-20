@@ -980,7 +980,7 @@ const createPolymorphicMethods = (method, json) => {
             let localized = localizeDependencies(anyOf, json)
             let title = localized.title || localized.name || ''
             let summary = localized.summary || localized.description || ''
-            polymorphicMethodSchema.title = method.name
+            polymorphicMethodSchema.rpc_name = method.name
             polymorphicMethodSchema.name = foundAnyOfResult && isEventMethod(method) ? `${method.name}${title}` : method.name
             polymorphicMethodSchema.tags = method.tags
             polymorphicMethodSchema.params = foundAnyOfParams ? generateParamsAnyOfSchema(methodParams, anyOf, anyOfTypes, title, summary) : methodParams
