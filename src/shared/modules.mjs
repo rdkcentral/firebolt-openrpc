@@ -886,7 +886,7 @@ const getAnyOfSchema = (inType, json) => {
 
 const generateAnyOfSchema = (anyOf, name, summary) => {
     let anyOfType = {}
-    anyOfType["name"] = name[0].toLowerCase() + name.substr(1)
+    anyOfType["name"] = name;
     anyOfType["summary"] = summary
     anyOfType["schema"] = anyOf
     return anyOfType
@@ -896,7 +896,7 @@ const generateParamsAnyOfSchema = (methodParams, anyOf, anyOfTypes, title, summa
     let params = []
     methodParams.forEach(p => {
         if (p.schema.anyOf === anyOfTypes) {
-            let anyOfType = generateAnyOfSchema(anyOf, title, summary)
+            let anyOfType = generateAnyOfSchema(anyOf, p.name, summary)
             anyOfType.required = p.required
             params.push(anyOfType)
         }
@@ -937,6 +937,7 @@ const createPolymorphicMethods = (method, json) => {
     let anyOfTypes
     let methodParams = []
     let methodResult = Object.assign({}, method.result)
+
     method.params.forEach(p => {
         if (p.schema) {
             let param = getAnyOfSchema(p, json)
@@ -979,12 +980,12 @@ const createPolymorphicMethods = (method, json) => {
             let localized = localizeDependencies(anyOf, json)
             let title = localized.title || localized.name || ''
             let summary = localized.summary || localized.description || ''
-            polymorphicMethodSchema.title = method.name
-            polymorphicMethodSchema.name = foundAnyOfParams ? `${method.name}With${title}` : `${method.name}${title}`
+            polymorphicMethodSchema.rpc_name = method.name
+            polymorphicMethodSchema.name = foundAnyOfResult && isEventMethod(method) ? `${method.name}${title}` : method.name
             polymorphicMethodSchema.tags = method.tags
             polymorphicMethodSchema.params = foundAnyOfParams ? generateParamsAnyOfSchema(methodParams, anyOf, anyOfTypes, title, summary) : methodParams
             polymorphicMethodSchema.result = Object.assign({}, method.result)
-            polymorphicMethodSchema.result.schema = foundAnyOfResult ? generateResultAnyOfSchema(method, methodResult, anyOf, anyOfTypes, title, summary) : methodResult
+            polymorphicMethodSchema.result.schema = foundAnyOfResult ? generateResultAnyOfSchema(method, methodResult, anyOf, anyOfTypes, title, summary) : methodResult.schema
             polymorphicMethodSchema.examples = method.examples
             polymorphicMethodSchemas.push(Object.assign({}, polymorphicMethodSchema))
         })

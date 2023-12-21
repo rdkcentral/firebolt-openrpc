@@ -1,4 +1,4 @@
-    /* ${method.rpc.name} - ${method.description} */
+    /* ${method.name} - ${method.description} */
     static void ${method.name}InnerCallback( void* notification, const void* userData, void* jsonResponse )
     {
 ${event.callback.serialization}
@@ -10,7 +10,7 @@ ${event.callback.serialization}
 ${method.pulls.response.instantiation}
 
             I${info.Title}::I${method.Name}Notification& notifier = *(reinterpret_cast<I${info.Title}::I${method.Name}Notification*>(notification));
-            ${method.pulls.type} element = notifier.${method.name}(${method.pulls.param.title});
+            ${method.pulls.type} element = notifier.${method.rpc.name}(${method.pulls.param.title});
             Firebolt::Error status = Firebolt::Error::NotConnected;
             FireboltSDK::Transport<WPEFramework::Core::JSON::IElement>* transport = FireboltSDK::Accessor::Instance().GetTransport();
             if (transport != nullptr) {
@@ -30,7 +30,7 @@ ${method.pulls.response.instantiation}
 
                 status = transport->Invoke("${info.title.lowercase}.${method.pulls.for}", jsonParameters, jsonResult);
                 if (status == Firebolt::Error::None) {
-                    FIREBOLT_LOG_INFO(FireboltSDK::Logger::Category::OpenRPC, FireboltSDK::Logger::Module<FireboltSDK::Accessor>(), "${info.Title}.${method.rpc.name} is successfully pushed with status as %d", jsonResult.Value());
+                    FIREBOLT_LOG_INFO(FireboltSDK::Logger::Category::OpenRPC, FireboltSDK::Logger::Module<FireboltSDK::Accessor>(), "${info.Title}.${method.name} is successfully pushed with status as %d", jsonResult.Value());
                 }
 
             } else {

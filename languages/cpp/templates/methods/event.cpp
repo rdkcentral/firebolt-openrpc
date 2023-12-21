@@ -1,4 +1,4 @@
-    /* ${method.rpc.name} - ${method.description} */
+    /* ${method.name} - ${method.description} */
     static void ${method.name}InnerCallback( void* notification, const void* userData, void* jsonResponse )
     {
 ${event.callback.serialization}
@@ -11,7 +11,7 @@ ${event.callback.instantiation}
             proxyResponse.Release();
 
             I${info.Title}::I${method.Name}Notification& notifier = *(reinterpret_cast<I${info.Title}::I${method.Name}Notification*>(notification));
-            notifier.${method.name}(${event.callback.response.instantiation});
+            notifier.${method.rpc.name}(${event.callback.response.instantiation});
         }
     }
     void ${info.Title}Impl::subscribe( ${event.signature.params}${if.event.params}, ${end.if.event.params}I${info.Title}::I${method.Name}Notification& notification, Firebolt::Error *err )
