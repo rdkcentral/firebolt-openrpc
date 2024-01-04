@@ -43,7 +43,7 @@ const _inspector = obj => {
 }
 
 const filterBlackListedSchemas = (module) => {
-//  const blackList = ["Parameters", "Discovery", "SecondScreen", "Intents", "Entertainment", "Lifecycle", "Advertising", "Account", "Authentication", "Accessibility", "1Capabilities", "Keyboard", "Localization", "SecureStorage", "Metrics", "Profile", "Types", "Device", "PinChallenge", "1Wifi", "1UserGrants", "VoiceGuidance", "Privacy", "AudioDescriptions", "AcknowledgeChallenge", "ClosedCaptions"]
+  //const blackList = ["Parameters", "Discovery", "SecondScreen", "Intents", "Entertainment", "Lifecycle", "Advertising", "Account", "Authentication", "Accessibility", "1Capabilities", "Keyboard", "1Localization", "SecureStorage", "Metrics", "Profile", "1Types", "Device", "PinChallenge", "1Wifi", "UserGrants", "VoiceGuidance", "Privacy", "AudioDescriptions", "AcknowledgeChallenge", "ClosedCaptions"]
 //  const blackList = ["Parameters", "Discovery", "Entertainment", "Intents", "Advertising", "Accessibility"]
   const blackList = []
   return blackList.includes(getModuleName(module))
@@ -1244,7 +1244,6 @@ function insertMethodMacros(template, methodObj, json, templates, examples = {})
   }
   const method = {
     name: methodObj.name,
-    title: methodObj.title,
     params: methodObj.params.map(p => p.name).join(', '),
     transforms: null,
     alternative: null,
@@ -1325,15 +1324,17 @@ function insertMethodMacros(template, methodObj, json, templates, examples = {})
   const serializedEventParams = event ? flattenedMethod.params.filter(p => p.name !== 'listen').map(param => types.getSchemaShape(param.schema, json, {templateDir: 'parameter-serialization', property: param.name, required: param.required, destination: state.destination, section: state.section, primitive: true, skipTitleOnce: true })).join('\n') : ''
   // this was wrong... check when we merge if it was fixed
   const callbackSerializedList = event ? types.getSchemaShape(event.result.schema, json, { templateDir: eventHasOptionalParam(event) && !event.tags.find(t => t.name === 'provider') ? 'callback-serialization' : 'callback-result-serialization', property: result.name, required: event.result.schema.required, destination: state.destination, section: state.section, primitive: true, skipTitleOnce: true }) : ''
-  const callbackInitialization = event ? (eventHasOptionalParam(event) && !event.tags.find(t => t.name === 'provider') ? (event.params.map(param => isOptionalParam(param) ? types.getSchemaShape(param.schema, json, { templateDir: 'callback-initialization', property: param.name, required: param.required, destination: state.destination, section: state.section, primitive: true, skipTitleOnce: true }) : '').filter(param => param).join('\n') + '\n') : '' ) + (types.getSchemaShape(event.result.schema, json, { templateDir: 'callback-initialization', property: result.name, destination: state.destination, section: state.section, primitive: true, skipTitleOnce: true })) : ''
+  const callbackInitialization = event ? (eventHasOptionalParam(event) && !event.tags.find(t => t.name === 'provider') ? (event.params.map(param => isOptionalParam(param) ? types.getSchemaShape(param.schema, json, { templateDir: 'callback-initialization-optional', property: param.name, required: param.required, destination: state.destination, section: state.section, primitive: true, skipTitleOnce: true }) : '').filter(param => param).join('\n') + '\n') : '' ) + (types.getSchemaShape(event.result.schema, json, { templateDir: 'callback-initialization', property: result.name, destination: state.destination, section: state.section, primitive: true, skipTitleOnce: true })) : ''
   let callbackInstantiation = ''
   if (event) {
     if (eventHasOptionalParam(event) && !event.tags.find(t => t.name === 'provider'))  {
       callbackInstantiation = types.getSchemaShape(event.result.schema, json, { templateDir: 'callback-instantiation', property: result.name, destination: state.destination, section: state.section, primitive: true, skipTitleOnce: true })
       let paramInstantiation = event.params.map(param => isOptionalParam(param) ? types.getSchemaShape(param.schema, json, { templateDir: 'callback-context-instantiation', property: param.name, required: param.required, destination: state.destination, section: state.section, primitive: true, skipTitleOnce: true }) : '').filter(param => param).join('\n')
-      let resultInstantiation = types.getSchemaShape(event.result.schema, json, { templateDir: 'callback-context-instantiation', property: result.name, destination: state.destination, section: state.section, primitive: true, skipTitleOnce: true })
+      let resultInitialization = types.getSchemaShape(event.result.schema, json, { templateDir: 'callback-value-initialization', property: result.name, destination: state.destination, section: state.section, primitive: true, skipTitleOnce: true })
+      let resultInstantiation = types.getSchemaShape(event.result.schema, json, { templateDir: 'callback-value-instantiation', property: result.name, destination: state.destination, section: state.section, primitive: true, skipTitleOnce: true })
       callbackInstantiation = callbackInstantiation
-        .replace(/\$\{callback\.param\.instantiation\.with\.indent\}/g, indent(paramInstantiation, '    ', 2))
+        .replace(/\$\{callback\.param\.instantiation\.with\.indent\}/g, indent(paramInstantiation, '    ', 3))
+        .replace(/\$\{callback\.result\.initialization\.with\.indent\}/g, indent(resultInitialization, '    ', 1))
         .replace(/\$\{callback\.result\.instantiation\}/g, resultInstantiation)
     }
     else {
@@ -1372,10 +1373,8 @@ function insertMethodMacros(template, methodObj, json, templates, examples = {})
   }
 
   template = insertExampleMacros(template, examples[methodObj.name] || [], methodObj, json, templates)
-
   template = template.replace(/\$\{method\.name\}/g, method.name)
-    .replace(/\$\{method\.title\}/g, method.title ? method.title : method.name)
-    .replace(/\$\{method\.rpc\.name\}/g, methodObj.title || methodObj.name)
+    .replace(/\$\{method\.rpc\.name\}/g, methodObj.rpc_name || methodObj.name)
     .replace(/\$\{method\.summary\}/g, methodObj.summary)
     .replace(/\$\{method\.description\}/g, methodObj.description
       || methodObj.summary)

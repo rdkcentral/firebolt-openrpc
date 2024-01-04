@@ -97,7 +97,7 @@ function getMethodSignatureParams(method, module, { destination, callback }) {
     }
 
     if (callback) {
-      return (!(param.required && param.required === true) ? paramRequired.replace(/\$\{method\.param\.name\}/g, param.name).replace(/\$\{method\.param\.type\}/g, type) : '')
+      return (!(param.required && param.required === true) ? paramOptional.replace(/\$\{method\.param\.name\}/g, param.name).replace(/\$\{method\.param\.type\}/g, type) : '')
     }
     else {
       return (param.required ? paramRequired : paramOptional).replace(/\$\{method\.param\.name\}/g, param.name).replace(/\$\{method\.param\.type\}/g, type)
