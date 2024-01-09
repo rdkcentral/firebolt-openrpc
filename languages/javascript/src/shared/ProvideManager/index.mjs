@@ -93,6 +93,18 @@ const provide = function(capability, provider) {
       const response = {
         correlationId: request.correlationId
       }
+      let handleError = error => {
+        response.error = {
+          code: error.code || 1000, // todo: should be some reserved code for "Unknown"
+          message: error.message || `An error occured while calling provided ${method} method.`
+        }
+
+        if (error.data) {
+          response.error.data = JSON.parse(JSON.stringify(error.data))
+        }
+
+        Transport.send(module, `${method}Error`, response)
+      }
 
       try {
         const result = provider[method].apply(provider, providerCallArgs)
@@ -107,19 +119,10 @@ const provide = function(capability, provider) {
           }
 
           Transport.send(module, `${method}Response`, response)
-        })
+        }).catch(err => handleError(err))
       }
       catch(error) {
-        response.error = {
-          code: error.code || 1000, // todo: should be some reserved code for "Unknown"
-          message: error.message || `An error occured while calling provided ${method} method.`
-        }
-
-        if (error.data) {
-          response.error.data = JSON.parse(JSON.stringify(error.data))
-        }
-
-        Transport.send(module, `${method}Error`, response)
+        handleError(error)
       }
     })
   })
