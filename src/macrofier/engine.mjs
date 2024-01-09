@@ -1093,7 +1093,7 @@ function insertMethodMacros(template, methodObj, json, templates, examples = {})
     }
   }
 
-  const paramDelimiter = config.operators ? config.operators.paramDelimiter : ', '
+  const paramDelimiter = config.operators ? config.operators.paramDelimiter : ''
 
   const temporalItemName = isTemporalSetMethod(methodObj) ? methodObj.result.schema.items && methodObj.result.schema.items.title || 'Item' : ''
   const temporalAddName = isTemporalSetMethod(methodObj) ? `on${temporalItemName}Available` : ''

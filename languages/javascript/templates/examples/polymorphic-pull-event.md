@@ -1,9 +1,8 @@
 import { ${module} } from '${package.name}'
 
-${module}.${method.pulls.for}(function(parameters) {
+let success = await ${module}.${method.pulls.for}(async parameters => {
   console.log(parameters.entityId)
   console.log(parameters.assetId)
-  return Promise.resolve(${originator.params[1].example.value})
-}).then(success => {
-  console.log(success)
+  return ${originator.params[1].example.value}
 })
+console.log(success)
