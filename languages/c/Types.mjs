@@ -17,7 +17,7 @@
  */
 
 import deepmerge from 'deepmerge'
-import { getPath } from '../../src/shared/json-schema.mjs'
+import { getPath, getSafeEnumKeyName } from '../../src/shared/json-schema.mjs'
 import { getTypeName, getModuleName, description, getObjectManagement, getNativeType, getPropertyAccessors, capitalize, isOptional, generateEnum, getMapAccessors, getArrayAccessors, getPropertyGetterSignature, getFireboltStringType } from './src/types/NativeHelpers.mjs'
 import { getArrayAccessorsImpl, getMapAccessorsImpl, getObjectManagementImpl, getParameterInstantiation, getPropertyAccessorsImpl, getResultInstantiation, getCallbackParametersInstantiation, getCallbackResultInstantiation, getCallbackResponseInstantiation } from './src/types/ImplHelpers.mjs'
 import { getJsonContainerDefinition, getJsonDataStructName, getJsonDataPrefix } from './src/types/JSONHelpers.mjs'
@@ -715,24 +715,6 @@ function getJsonTypeInfo(module = {}, json = {}, name = '', schemas, prefix = ''
     structure.type = 'JsonObject'
   }
   return structure
-}
-
-function getTypeScriptType(jsonType) {
-  if (jsonType === 'integer') {
-    return 'number'
-  }
-  else {
-    return jsonType
-  }
-}
-
-const enumReducer = (acc, val, i, arr) => {
-  const keyName = val.split(':').pop().replace(/[\.\-]/g, '_').replace(/\+/g, '_plus').replace(/([a-z])([A-Z0-9])/g, '$1_$2').toUpperCase()
-  acc = acc + `    ${keyName} = '${val}'`
-  if (i < arr.length - 1) {
-    acc = acc.concat(',\n')
-  }
-  return acc
 }
 
 function getSchemaInstantiation(schema, module, name, { instantiationType = '', prefix = '' } = {}) {
