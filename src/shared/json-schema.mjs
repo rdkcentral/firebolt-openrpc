@@ -355,8 +355,16 @@ const isDefinitionReferencedBySchema = (name = '', moduleJson = {}) => {
   return (refs.length > 0)
 }
 
+const getSafeEnumKeyName = (value) => value.split(':').pop()                           // use last portion of urn:style:values
+                                        .replace(/[\.\-]/g, '_')                       // replace dots and dashes
+                                        .replace(/\+/g, '_plus')                       // change + to _plus
+                                        .replace(/([a-z])([A-Z0-9])/g, '$1_$2')        // camel -> snake case
+                                        .replace(/^([0-9]+(\.[0-9]+)?)/, 'v$1')        // insert `v` in front of things that look like version numbers
+                                        .toUpperCase()                 
+
 export {
   getSchemaConstraints,
+  getSafeEnumKeyName,
   getExternalSchemaPaths,
   getLocalSchemas,
   getLocalSchemaPaths,
