@@ -1,16 +1,24 @@
-# [2.2.0-next.1](https://github.com/rdkcentral/firebolt-openrpc/compare/v2.1.1-next.3...v2.2.0-next.1) (2023-11-30)
+# [2.2.0](https://github.com/rdkcentral/firebolt-openrpc/compare/v2.1.2...v2.2.0) (2023-11-30)
 
 
 ### Features
 
 * Improve generated doc formatting ([#155](https://github.com/rdkcentral/firebolt-openrpc/issues/155)) ([4613281](https://github.com/rdkcentral/firebolt-openrpc/commit/46132810ac5e5b0a8b9baa22903cb8a367b46f63))
 
-## [2.1.1-next.3](https://github.com/rdkcentral/firebolt-openrpc/compare/v2.1.1-next.2...v2.1.1-next.3) (2023-11-09)
+## [2.1.2](https://github.com/rdkcentral/firebolt-openrpc/compare/v2.1.1...v2.1.2) (2023-11-09)
 
 
 ### Bug Fixes
 
 * Provider openrpc response and error methods have a wrapper object ([#148](https://github.com/rdkcentral/firebolt-openrpc/issues/148)) ([373626e](https://github.com/rdkcentral/firebolt-openrpc/commit/373626ed598447bb670ac67e97ca8ed1bf32f28f))
+
+## [2.1.1](https://github.com/rdkcentral/firebolt-openrpc/compare/v2.1.0...v2.1.1) (2023-11-01)
+
+
+### Bug Fixes
+
+* Errors thrown in async provider methods do not send the JSONRPC error response ([#143](https://github.com/rdkcentral/firebolt-openrpc/issues/143)) ([ec8e259](https://github.com/rdkcentral/firebolt-openrpc/commit/ec8e2599d530f9d2bd38fbb53b36e13c038edf2a))
+* Macro not replaced for provider docs ([ef1aecd](https://github.com/rdkcentral/firebolt-openrpc/commit/ef1aecd0092a8652bc7b936604f9478b7b55df27))
 
 ## [2.1.1-next.2](https://github.com/rdkcentral/firebolt-openrpc/compare/v2.1.1-next.1...v2.1.1-next.2) (2023-11-01)
 
