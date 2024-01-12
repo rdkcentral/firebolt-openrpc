@@ -387,9 +387,6 @@ const getPromotionNameFromContentDescriptor = (descriptor, prefix) => {
 
 const promoteSchema = (location, property, title, document, destinationPath) => {
   const destination = getJsonPath(destinationPath, document)
-  if (destination[title]) {
-    console.log('Warning: Generated schema `' + title + '` already exists...')
-  }
   destination[title] = location[property]
   destination[title].title = title
   location[property] = {
