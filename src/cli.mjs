@@ -5,6 +5,7 @@ import sdk from './sdk/index.mjs'
 import docs from './docs/index.mjs'
 import openrpc from './openrpc/index.mjs'
 import validate from './validate/index.mjs'
+import update from './update/index.mjs'
 
 import nopt from 'nopt'
 import path from 'path'
@@ -62,6 +63,10 @@ else if (task === 'validate') {
 }
 else if (task === 'openrpc') {
   openrpc(parsedArgs).then(signOff)
-} else {
+}
+else if (task === 'update') {
+  update(parsedArgs).then(signOff)
+}
+else {
   console.log("Invalid build type")
 }

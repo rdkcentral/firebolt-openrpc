@@ -22,17 +22,18 @@ const readJson = ref => readFile(ref)
 const writeJson = (ref, json) => writeText(ref, JSON.stringify(json, null, '\t'))
 
 const readDir = async (ref, options) => {
-    let i = 0
-    const isJustAFile = lstatSync(ref).isFile()
-    const files = isJustAFile ? [ { name:'', isDirectory: _ => false } ] : await readdir(ref, { withFileTypes: true })
-    const results = files.filter(file => !file.isDirectory()).map(file => path.join(ref, file.name))
-
+    
     if (!options.base) {
         options.base = path.join(ref, '..')
     }
+
+    let i = 0
+    const isJustAFile = lstatSync(ref).isFile()
+    const files = isJustAFile ? [ { name:'', isDirectory: _ => false } ] : await readdir(ref, { withFileTypes: true })
+    const results = files.filter(file => !file.isDirectory()).map(file => path.relative(options.base, path.join(ref, file.name)))
+
     if (options.recursive) {
         for (var index=files.length-1; index>=0; index--) {
-
             if (files[index].isDirectory()) {
                 results.push(...((await readDir(path.join(ref, files[index].name), options))))
             }

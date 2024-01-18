@@ -29,8 +29,8 @@ const run = async ({
 }) => {
 
   let openrpc = await readJson(template)
-  const sharedSchemaList = schemas ? (await Promise.all(schemas.map(d => readDir(d, { recursive: true })))).flat() : []
-  const sharedSchemas = await readFiles(sharedSchemaList)
+  const sharedSchemaList = schemas ? (await Promise.all(schemas.map(d => readDir(d, { recursive: true, base: path.resolve('.') })))).flat() : []
+  const sharedSchemas = await readFiles(sharedSchemaList, path.resolve('.'))
 
   try {
     const packageJson = await readJson(path.join(input, '..', 'package.json'))
@@ -54,10 +54,10 @@ const run = async ({
     }
   })
 
-  const moduleList = input ? await readDir(path.join(input, 'openrpc'), { recursive: true }) : []
+  const moduleList = input ? await readDir(path.join(input, 'openrpc'), { recursive: true, base: path.resolve('.') }) : []
   const modules = await readFiles(moduleList, path.resolve('..'))
 
-  const descriptionsList = input ? await readDir(path.join(input, 'descriptions'), { recursive: true }) : []
+  const descriptionsList = input ? await readDir(path.join(input, 'descriptions'), { recursive: true, base: path.resolve('.') }) : []
   const markdown = await readFiles(descriptionsList, path.join(input, 'descriptions'))
 
   Object.keys(modules).forEach(key => {
