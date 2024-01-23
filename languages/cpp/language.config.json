@@ -25,5 +25,10 @@
     "primitives": {},
     "langVersion" : "c++17",
     "additionalSchemaTemplates": [ "json-types" ],
-    "additionalMethodTemplates": [ "declarations", "declarations-override" ]
+    "additionalMethodTemplates": [ "declarations", "declarations-override" ],
+    "templateExtensionMap": {
+        "methods": [ "impl.cpp", "cpp" ],
+        "declarations": ["h"],
+        "declarations-override": ["impl.h"]
+    }
 }

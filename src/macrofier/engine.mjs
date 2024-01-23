@@ -644,16 +644,24 @@ const insertMacros = (fContents = '', macros = {}) => {
   fContents = fContents.replace(/\$\{if\.enums\}(.*?)\$\{end\.if\.enums\}/gms, macros.enums.types.trim() ? '$1' : '')
   fContents = fContents.replace(/\$\{if\.declarations\}(.*?)\$\{end\.if\.declarations\}/gms, (macros.methods.declarations && macros.methods.declarations.trim() || macros.enums.types.trim()) || macros.types.types.trim()? '$1' : '')
 
-  fContents = fContents.replace(/\$\{if\.methods\}(.*?)\$\{end\.if\.methods\}/gms, macros.methods.methods.trim() || macros.events.methods.trim() ? '$1' : '')
-  fContents = fContents.replace(/\$\{if\.providers\}(.*?)\$\{end\.if\.providers\}/gms, macros.providerInterfaces.trim() ? '$1' : '')
-  fContents = fContents.replace(/\$\{if\.implementations\}(.*?)\$\{end\.if\.implementations\}/gms, (macros.methods.methods.trim() || macros.events.methods.trim() || macros.schemas.types.trim()) ? '$1' : '')
-
   fContents = fContents.replace(/\$\{module\.list\}/g, macros.module)
   fContents = fContents.replace(/\$\{module\.includes\}/g, macros.moduleInclude)
   fContents = fContents.replace(/\$\{module\.includes\.private\}/g, macros.moduleIncludePrivate)
   fContents = fContents.replace(/\$\{module\.init\}/g, macros.moduleInit)
 
-  fContents = fContents.replace(/\$\{if\.modules\}(.*?)\$\{end\.if\.modules\}/gms, (macros.methods.methods.trim() || macros.events.methods.trim()) ? '$1' : '')
+  let methods = ''
+  Array.from(new Set(['methods'].concat(config.additionalMethodTemplates))).filter(dir => dir).every(dir => {
+    if (macros.methods[dir]) {
+      methods = macros.methods[dir]
+      return false
+    }
+    return true
+  })
+  fContents = fContents.replace(/\$\{if\.methods\}(.*?)\$\{end\.if\.methods\}/gms, methods.trim() || macros.events.methods.trim() ? '$1' : '')
+  fContents = fContents.replace(/\$\{if\.implementations\}(.*?)\$\{end\.if\.implementations\}/gms, (methods.trim() || macros.events.methods.trim() || macros.schemas.types.trim()) ? '$1' : '')
+  fContents = fContents.replace(/\$\{if\.modules\}(.*?)\$\{end\.if\.modules\}/gms, (methods.trim() || macros.events.methods.trim()) ? '$1' : '')
+
+  fContents = fContents.replace(/\$\{if\.providers\}(.*?)\$\{end\.if\.providers\}/gms, macros.providerInterfaces.trim() ? '$1' : '')
 
   // Output the originally supported non-configurable methods & events macros
   fContents = fContents.replace(/[ \t]*\/\* \$\{METHODS\} \*\/[ \t]*\n/, macros.methods.methods)
@@ -1177,15 +1185,17 @@ function generateMethods(json = {}, examples = {}, templates = {}) {
       event: isEventMethod(methodObj)
     }
 
+    const suffix = state.destination && config.templateExtensionMap ? state.destination.split(state.destination.includes('_') ? '_' : '.').pop() : ''
+
     // Generate implementation of methods/events for both dynamic and static configured templates
     Array.from(new Set(['methods'].concat(config.additionalMethodTemplates))).filter(dir => dir).forEach(dir => {
-      if (dir.includes('declarations')) {
+      if (dir.includes('declarations') && (suffix && config.templateExtensionMap[dir] ? config.templateExtensionMap[dir].includes(suffix) : true)) {
         const template = getTemplateForDeclaration(methodObj, templates, dir)
         if (template && template.length) {
           result.declaration[dir] = insertMethodMacros(template, methodObj, json, templates, examples)
         }
       }
-      else if (dir.includes('methods')) {
+      else if (dir.includes('methods') && (suffix && config.templateExtensionMap[dir] ? config.templateExtensionMap[dir].includes(suffix) : true)) {
         const template = getTemplateForMethod(methodObj, templates, dir)
         if (template && template.length) {
           result.body[dir] = insertMethodMacros(template, methodObj, json, templates, examples)
