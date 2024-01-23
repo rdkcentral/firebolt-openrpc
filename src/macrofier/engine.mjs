@@ -363,9 +363,22 @@ const makeProviderMethod = x => x.name["onRequest".length].toLowerCase() + x.nam
 //import { default as platform } from '../Platform/defaults'
 const generateAggregateMacros = (openrpc, modules, templates, library) => Object.values(modules)
   .reduce((acc, module) => {
-    acc.exports += insertMacros(getTemplate('/codeblocks/export', templates) + '\n', generateMacros(module, templates))
-    acc.mockImports += insertMacros(getTemplate('/codeblocks/mock-import', templates) + '\n', generateMacros(module, templates))
-    acc.mockObjects += insertMacros(getTemplate('/codeblocks/mock-parameter', templates) + '\n', generateMacros(module, templates))
+
+    let template = getTemplate('/codeblocks/export', templates)
+    if (template) {
+      acc.exports += insertMacros(template + '\n', generateMacros(module, templates))
+    }
+
+    template = getTemplate('/codeblocks/mock-import', templates)
+    if (template) {
+      acc.mockImports += insertMacros(template + '\n', generateMacros(module, templates))
+    }
+
+    template = getTemplate('/codeblocks/mock-parameter', templates)
+    if (template) {
+      acc.mockObjects += insertMacros(template + '\n', generateMacros(module, templates))
+    }
+
     return acc
   }, {
     exports: '',
