@@ -28,7 +28,7 @@
     "additionalMethodTemplates": [ "declarations", "declarations-override" ],
     "templateExtensionMap": {
         "methods": [ "impl.cpp", "cpp" ],
-        "declarations": ["h"],
-        "declarations-override": ["impl.h"]
+        "declarations": [ "h" ],
+        "declarations-override": [ "impl.h" ]
     }
 }

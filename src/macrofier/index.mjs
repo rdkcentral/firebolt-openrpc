@@ -183,7 +183,7 @@ const macrofy = async (
 
             // Pick the index and defaults templates for each module.
             templatesPerModule.forEach(t => {
-                const macros = engine.generateMacros(module, templates, exampleTemplates, {hideExcluded: hideExcluded, copySchemasIntoModules: copySchemasIntoModules, createPolymorphicMethods: createPolymorphicMethods, destination: t})
+                const macros = engine.generateMacros(module, templates, exampleTemplates, {hideExcluded: hideExcluded, copySchemasIntoModules: copySchemasIntoModules, createPolymorphicMethods: createPolymorphicMethods, destination: t, type: 'methods'})
                 let content = getTemplateForModule(module.info.title, t, templates)
 
                 // NOTE: whichever insert is called first also needs to be called again last, so each phase can insert recursive macros from the other

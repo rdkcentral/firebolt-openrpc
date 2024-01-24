@@ -560,7 +560,7 @@ const generateMacros = (obj, templates, languages, options = {}) => {
   const eventsEnum = generateEvents(obj, templates)
 
   const examples = generateExamples(obj, templates, languages)
-  const allMethodsArray = generateMethods(obj, examples, templates)
+  const allMethodsArray = generateMethods(obj, examples, templates, options.type)
 
   Array.from(new Set(['methods'].concat(config.additionalMethodTemplates))).filter(dir => dir).forEach(dir => {
 
@@ -1169,7 +1169,7 @@ function generateMethodResult(type, templates) {
   return result
 }
 
-function generateMethods(json = {}, examples = {}, templates = {}) {
+function generateMethods(json = {}, examples = {}, templates = {}, type = '') {
   const methods = compose(
     option([]),
     getMethods
@@ -1192,13 +1192,13 @@ function generateMethods(json = {}, examples = {}, templates = {}) {
       if (dir.includes('declarations') && (suffix && config.templateExtensionMap[dir] ? config.templateExtensionMap[dir].includes(suffix) : true)) {
         const template = getTemplateForDeclaration(methodObj, templates, dir)
         if (template && template.length) {
-          result.declaration[dir] = insertMethodMacros(template, methodObj, json, templates, 'declarations', examples)
+          result.declaration[dir] = insertMethodMacros(template, methodObj, json, templates, '', examples)
         }
       }
       else if (dir.includes('methods') && (suffix && config.templateExtensionMap[dir] ? config.templateExtensionMap[dir].includes(suffix) : true)) {
         const template = getTemplateForMethod(methodObj, templates, dir)
         if (template && template.length) {
-          result.body[dir] = insertMethodMacros(template, methodObj, json, templates, 'methods', examples)
+          result.body[dir] = insertMethodMacros(template, methodObj, json, templates, type, examples)
         }
       }
     })
