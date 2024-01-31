@@ -573,7 +573,7 @@ const generateMacros = (obj, templates, languages, options = {}) => {
   const eventsEnum = generateEvents(obj, templates)
 
   const examples = generateExamples(obj, templates, languages)
-  const allMethodsArray = generateMethods(obj, examples, templates)
+  const allMethodsArray = generateMethods(obj, examples, templates, options.type)
 
   Array.from(new Set(['methods'].concat(config.additionalMethodTemplates))).filter(dir => dir).forEach(dir => {
 
@@ -657,16 +657,24 @@ const insertMacros = (fContents = '', macros = {}) => {
   fContents = fContents.replace(/\$\{if\.enums\}(.*?)\$\{end\.if\.enums\}/gms, macros.enums.types.trim() ? '$1' : '')
   fContents = fContents.replace(/\$\{if\.declarations\}(.*?)\$\{end\.if\.declarations\}/gms, (macros.methods.declarations && macros.methods.declarations.trim() || macros.enums.types.trim()) || macros.types.types.trim()? '$1' : '')
 
-  fContents = fContents.replace(/\$\{if\.methods\}(.*?)\$\{end\.if\.methods\}/gms, macros.methods.methods.trim() || macros.events.methods.trim() ? '$1' : '')
-  fContents = fContents.replace(/\$\{if\.providers\}(.*?)\$\{end\.if\.providers\}/gms, macros.providerInterfaces.trim() ? '$1' : '')
-  fContents = fContents.replace(/\$\{if\.implementations\}(.*?)\$\{end\.if\.implementations\}/gms, (macros.methods.methods.trim() || macros.events.methods.trim() || macros.schemas.types.trim()) ? '$1' : '')
-
   fContents = fContents.replace(/\$\{module\.list\}/g, macros.module)
   fContents = fContents.replace(/\$\{module\.includes\}/g, macros.moduleInclude)
   fContents = fContents.replace(/\$\{module\.includes\.private\}/g, macros.moduleIncludePrivate)
   fContents = fContents.replace(/\$\{module\.init\}/g, macros.moduleInit)
 
-  fContents = fContents.replace(/\$\{if\.modules\}(.*?)\$\{end\.if\.modules\}/gms, (macros.methods.methods.trim() || macros.events.methods.trim()) ? '$1' : '')
+  let methods = ''
+  Array.from(new Set(['methods'].concat(config.additionalMethodTemplates))).filter(dir => dir).every(dir => {
+    if (macros.methods[dir]) {
+      methods = macros.methods[dir]
+      return false
+    }
+    return true
+  })
+  fContents = fContents.replace(/\$\{if\.methods\}(.*?)\$\{end\.if\.methods\}/gms, methods.trim() || macros.events.methods.trim() ? '$1' : '')
+  fContents = fContents.replace(/\$\{if\.implementations\}(.*?)\$\{end\.if\.implementations\}/gms, (methods.trim() || macros.events.methods.trim() || macros.schemas.types.trim()) ? '$1' : '')
+  fContents = fContents.replace(/\$\{if\.modules\}(.*?)\$\{end\.if\.modules\}/gms, (methods.trim() || macros.events.methods.trim()) ? '$1' : '')
+
+  fContents = fContents.replace(/\$\{if\.providers\}(.*?)\$\{end\.if\.providers\}/gms, macros.providerInterfaces.trim() ? '$1' : '')
 
   // Output the originally supported non-configurable methods & events macros
   fContents = fContents.replace(/[ \t]*\/\* \$\{METHODS\} \*\/[ \t]*\n/, macros.methods.methods)
@@ -1174,7 +1182,7 @@ function generateMethodResult(type, templates) {
   return result
 }
 
-function generateMethods(json = {}, examples = {}, templates = {}) {
+function generateMethods(json = {}, examples = {}, templates = {}, type = '') {
   const methods = compose(
     option([]),
     getMethods
@@ -1190,18 +1198,20 @@ function generateMethods(json = {}, examples = {}, templates = {}) {
       event: isEventMethod(methodObj)
     }
 
+    const suffix = state.destination && config.templateExtensionMap ? state.destination.split(state.destination.includes('_') ? '_' : '.').pop() : ''
+
     // Generate implementation of methods/events for both dynamic and static configured templates
     Array.from(new Set(['methods'].concat(config.additionalMethodTemplates))).filter(dir => dir).forEach(dir => {
-      if (dir.includes('declarations')) {
+      if (dir.includes('declarations') && (suffix && config.templateExtensionMap[dir] ? config.templateExtensionMap[dir].includes(suffix) : true)) {
         const template = getTemplateForDeclaration(methodObj, templates, dir)
         if (template && template.length) {
-          result.declaration[dir] = insertMethodMacros(template, methodObj, json, templates, examples)
+          result.declaration[dir] = insertMethodMacros(template, methodObj, json, templates, '', examples)
         }
       }
-      else if (dir.includes('methods')) {
+      else if (dir.includes('methods') && (suffix && config.templateExtensionMap[dir] ? config.templateExtensionMap[dir].includes(suffix) : true)) {
         const template = getTemplateForMethod(methodObj, templates, dir)
         if (template && template.length) {
-          result.body[dir] = insertMethodMacros(template, methodObj, json, templates, examples)
+          result.body[dir] = insertMethodMacros(template, methodObj, json, templates, type, examples)
         }
       }
     })
@@ -1228,7 +1238,7 @@ function generateMethods(json = {}, examples = {}, templates = {}) {
 }
 
 // TODO: this is called too many places... let's reduce that to just generateMethods
-function insertMethodMacros(template, methodObj, json, templates, examples = {}) {
+function insertMethodMacros(template, methodObj, json, templates, type = '', examples = {}) {
   const moduleName = getModuleName(json)
 
   const info = {
@@ -1292,49 +1302,49 @@ function insertMethodMacros(template, methodObj, json, templates, examples = {})
   // grab some related methdos in case they are output together in a single template file
   const puller = json.methods.find(method => method.tags.find(tag => tag['x-pulls-for'] === methodObj.name))
   const pullsFor = methodObj.tags.find(t => t['x-pulls-for']) && json.methods.find(method => method.name === methodObj.tags.find(t => t['x-pulls-for'])['x-pulls-for'])
-  const pullerTemplate = (puller ? insertMethodMacros(getTemplate('/codeblocks/puller', templates), puller, json, templates, examples) : '')
+  const pullerTemplate = (puller ? insertMethodMacros(getTemplate('/codeblocks/puller', templates), puller, json, templates, type, examples) : '')
   const setter = getSetterFor(methodObj.name, json)
-  const setterTemplate = (setter ? insertMethodMacros(getTemplate('/codeblocks/setter', templates), setter, json, templates, examples) : '')
+  const setterTemplate = (setter ? insertMethodMacros(getTemplate('/codeblocks/setter', templates), setter, json, templates, type, examples) : '')
   const subscriber = json.methods.find(method => method.tags.find(tag => tag['x-alternative'] === methodObj.name))
-  const subscriberTemplate = (subscriber ? insertMethodMacros(getTemplate('/codeblocks/subscriber', templates), subscriber, json, templates, examples) : '')
+  const subscriberTemplate = (subscriber ? insertMethodMacros(getTemplate('/codeblocks/subscriber', templates), subscriber, json, templates, type, examples) : '')
   const setterFor = methodObj.tags.find(t => t.name === 'setter') && methodObj.tags.find(t => t.name === 'setter')['x-setter-for'] || ''
   const pullsResult = (puller || pullsFor) ? localizeDependencies(pullsFor || methodObj, json).params[1].schema : null
   const pullsParams = (puller || pullsFor) ? localizeDependencies(getPayloadFromEvent(puller || methodObj), json, null, { mergeAllOfs: true }).properties.parameters : null
 
-  const pullsResultType = pullsResult && types.getSchemaShape(pullsResult, json, { destination: state.destination, templateDir: state.typeTemplateDir, section: state.section })
+  const pullsResultType = (pullsResult && (type === 'methods')) ? types.getSchemaShape(pullsResult, json, { destination: state.destination, templateDir: state.typeTemplateDir, section: state.section }) : ''
   const pullsForType = pullsResult && types.getSchemaType(pullsResult, json, { destination: state.destination, templateDir: state.typeTemplateDir, section: state.section })
-  const pullsParamsType = pullsParams ? types.getSchemaShape(pullsParams, json, { destination: state.destination, templateDir: state.typeTemplateDir, section: state.section }) : ''
+  const pullsParamsType = (pullsParams && (type === 'methods')) ? types.getSchemaShape(pullsParams, json, { destination: state.destination, templateDir: state.typeTemplateDir, section: state.section }) : ''
   const pullsForParamTitle = pullsParams ? pullsParams.title.charAt(0).toLowerCase() + pullsParams.title.substring(1) : ''
   const pullsForResultTitle = pullsResult ? pullsResult.title.charAt(0).toLowerCase() + pullsResult.title.substring(1) : ''
-  const pullsResponseInit = pullsParams ? types.getSchemaShape(pullsParams, json, { templateDir: 'result-initialization', property: pullsForParamTitle, required: pullsParams.required, destination: state.destination, section: state.section, primitive: true, skipTitleOnce: true }) : ''
-  const pullsResponseInst = pullsParams ? types.getSchemaShape(pullsParams, json, { templateDir: 'result-instantiation', property: pullsForParamTitle, required: pullsParams.required, destination: state.destination, section: state.section, primitive: true, skipTitleOnce: true }) : ''
-  const pullsResultSerialize = pullsResult ? types.getSchemaShape(pullsResult, json, { templateDir: 'parameter-serialization/sub-property', property: pullsForResultTitle, required: pullsResult.required, destination: state.destination, section: state.section, primitive: true, skipTitleOnce: true }) : ''
+  const pullsResponseInit = (pullsParams && (type === 'methods')) ? types.getSchemaShape(pullsParams, json, { templateDir: 'result-initialization', property: pullsForParamTitle, required: pullsParams.required, destination: state.destination, section: state.section, primitive: true, skipTitleOnce: true }) : ''
+  const pullsResponseInst = (pullsParams && (type === 'methods')) ? types.getSchemaShape(pullsParams, json, { templateDir: 'result-instantiation', property: pullsForParamTitle, required: pullsParams.required, destination: state.destination, section: state.section, primitive: true, skipTitleOnce: true }) : ''
+  const pullsResultSerialize = (pullsResult && (type === 'methods')) ? types.getSchemaShape(pullsResult, json, { templateDir: 'parameter-serialization/sub-property', property: pullsForResultTitle, required: pullsResult.required, destination: state.destination, section: state.section, primitive: true, skipTitleOnce: true }) : ''
 
-  const serializedParams = flattenedMethod.params.map(param => types.getSchemaShape(param.schema, json, { templateDir: 'parameter-serialization', property: param.name, required: param.required, destination: state.destination, section: state.section, primitive: true, skipTitleOnce: true })).join('\n')
-  const resultInst = types.getSchemaShape(flattenedMethod.result.schema, json, { templateDir: 'result-instantiation', property: flattenedMethod.result.name, required: flattenedMethod.result.required, destination: state.destination, section: state.section, primitive: true, skipTitleOnce: true }) // w/out primitive: true, getSchemaShape skips anonymous types, like primitives
-  const resultInit = types.getSchemaShape(flattenedMethod.result.schema, json, { templateDir: 'result-initialization', property: flattenedMethod.result.name, destination: state.destination, section: state.section, primitive: true, skipTitleOnce: true }) // w/out primitive: true, getSchemaShape skips anonymous types, like primitives
-  const serializedEventParams = event ? flattenedMethod.params.filter(p => p.name !== 'listen').map(param => types.getSchemaShape(param.schema, json, {templateDir: 'parameter-serialization', property: param.name, required: param.required, destination: state.destination, section: state.section, primitive: true, skipTitleOnce: true })).join('\n') : ''
+  const serializedParams = (type === 'methods') ? flattenedMethod.params.map(param => types.getSchemaShape(param.schema, json, { templateDir: 'parameter-serialization', property: param.name, required: param.required, destination: state.destination, section: state.section, primitive: true, skipTitleOnce: true })).join('\n') : ''
+  const resultInst = (type === 'methods') ? types.getSchemaShape(flattenedMethod.result.schema, json, { templateDir: 'result-instantiation', property: flattenedMethod.result.name, required: flattenedMethod.result.required, destination: state.destination, section: state.section, primitive: true, skipTitleOnce: true }) : '' // w/out primitive: true, getSchemaShape skips anonymous types, like primitives
+  const resultInit = (type === 'methods') ? types.getSchemaShape(flattenedMethod.result.schema, json, { templateDir: 'result-initialization', property: flattenedMethod.result.name, destination: state.destination, section: state.section, primitive: true, skipTitleOnce: true }) : '' // w/out primitive: true, getSchemaShape skips anonymous types, like primitives
+  const serializedEventParams = event && (type === 'methods') ? flattenedMethod.params.filter(p => p.name !== 'listen').map(param => types.getSchemaShape(param.schema, json, {templateDir: 'parameter-serialization', property: param.name, required: param.required, destination: state.destination, section: state.section, primitive: true, skipTitleOnce: true })).join('\n') : ''
   // this was wrong... check when we merge if it was fixed
-  const callbackSerializedList = event ? types.getSchemaShape(event.result.schema, json, { templateDir: eventHasOptionalParam(event) && !event.tags.find(t => t.name === 'provider') ? 'callback-serialization' : 'callback-result-serialization', property: result.name, required: event.result.schema.required, destination: state.destination, section: state.section, primitive: true, skipTitleOnce: true }) : ''
-  const callbackInitialization = event ? (eventHasOptionalParam(event) && !event.tags.find(t => t.name === 'provider') ? (event.params.map(param => isOptionalParam(param) ? types.getSchemaShape(param.schema, json, { templateDir: 'callback-initialization-optional', property: param.name, required: param.required, destination: state.destination, section: state.section, primitive: true, skipTitleOnce: true }) : '').filter(param => param).join('\n') + '\n') : '' ) + (types.getSchemaShape(event.result.schema, json, { templateDir: 'callback-initialization', property: result.name, destination: state.destination, section: state.section, primitive: true, skipTitleOnce: true })) : ''
+  const callbackSerializedList = event && (type === 'methods') ? types.getSchemaShape(event.result.schema, json, { templateDir: eventHasOptionalParam(event) && !event.tags.find(t => t.name === 'provider') ? 'callback-serialization' : 'callback-result-serialization', property: result.name, required: event.result.schema.required, destination: state.destination, section: state.section, primitive: true, skipTitleOnce: true }) : ''
+  const callbackInitialization = event && (type === 'methods') ? (eventHasOptionalParam(event) && !event.tags.find(t => t.name === 'provider') ? (event.params.map(param => isOptionalParam(param) ? types.getSchemaShape(param.schema, json, { templateDir: 'callback-initialization-optional', property: param.name, required: param.required, destination: state.destination, section: state.section, primitive: true, skipTitleOnce: true }) : '').filter(param => param).join('\n') + '\n') : '' ) + (types.getSchemaShape(event.result.schema, json, { templateDir: 'callback-initialization', property: result.name, destination: state.destination, section: state.section, primitive: true, skipTitleOnce: true })) : ''
   let callbackInstantiation = ''
   if (event) {
     if (eventHasOptionalParam(event) && !event.tags.find(t => t.name === 'provider'))  {
-      callbackInstantiation = types.getSchemaShape(event.result.schema, json, { templateDir: 'callback-instantiation', property: result.name, destination: state.destination, section: state.section, primitive: true, skipTitleOnce: true })
-      let paramInstantiation = event.params.map(param => isOptionalParam(param) ? types.getSchemaShape(param.schema, json, { templateDir: 'callback-context-instantiation', property: param.name, required: param.required, destination: state.destination, section: state.section, primitive: true, skipTitleOnce: true }) : '').filter(param => param).join('\n')
-      let resultInitialization = types.getSchemaShape(event.result.schema, json, { templateDir: 'callback-value-initialization', property: result.name, destination: state.destination, section: state.section, primitive: true, skipTitleOnce: true })
-      let resultInstantiation = types.getSchemaShape(event.result.schema, json, { templateDir: 'callback-value-instantiation', property: result.name, destination: state.destination, section: state.section, primitive: true, skipTitleOnce: true })
+      callbackInstantiation = (type === 'methods') ? types.getSchemaShape(event.result.schema, json, { templateDir: 'callback-instantiation', property: result.name, destination: state.destination, section: state.section, primitive: true, skipTitleOnce: true }) : ''
+      let paramInstantiation = (type === 'methods') ? event.params.map(param => isOptionalParam(param) ? types.getSchemaShape(param.schema, json, { templateDir: 'callback-context-instantiation', property: param.name, required: param.required, destination: state.destination, section: state.section, primitive: true, skipTitleOnce: true }) : '').filter(param => param).join('\n') : ''
+      let resultInitialization = (type === 'methods') ? types.getSchemaShape(event.result.schema, json, { templateDir: 'callback-value-initialization', property: result.name, destination: state.destination, section: state.section, primitive: true, skipTitleOnce: true }) : ''
+      let resultInstantiation = (type === 'methods') ? types.getSchemaShape(event.result.schema, json, { templateDir: 'callback-value-instantiation', property: result.name, destination: state.destination, section: state.section, primitive: true, skipTitleOnce: true }) : ''
       callbackInstantiation = callbackInstantiation
         .replace(/\$\{callback\.param\.instantiation\.with\.indent\}/g, indent(paramInstantiation, '    ', 3))
         .replace(/\$\{callback\.result\.initialization\.with\.indent\}/g, indent(resultInitialization, '    ', 1))
         .replace(/\$\{callback\.result\.instantiation\}/g, resultInstantiation)
     }
     else {
-      callbackInstantiation = types.getSchemaShape(event.result.schema, json, { templateDir: 'callback-result-instantiation', property: result.name, destination: state.destination, section: state.section, primitive: true, skipTitleOnce: true })
+      callbackInstantiation = (type === 'methods') ? types.getSchemaShape(event.result.schema, json, { templateDir: 'callback-result-instantiation', property: result.name, destination: state.destination, section: state.section, primitive: true, skipTitleOnce: true }) : ''
     }
   }
   // hmm... how is this different from callbackSerializedList? i guess they get merged?
-  const callbackResponseInst = event ? (eventHasOptionalParam(event) ? (event.params.map(param => isOptionalParam(param) ? types.getSchemaShape(param.schema, json, { templateDir: 'callback-response-instantiation', property: param.name, required: param.required, destination: state.destination, section: state.section, primitive: true, skipTitleOnce: true }) : '').filter(param => param).join(', ') + ', ') : '' ) + (types.getSchemaShape(event.result.schema, json, { templateDir: 'callback-response-instantiation', property: result.name, destination: state.destination, section: state.section, primitive: true, skipTitleOnce: true })) : ''
+  const callbackResponseInst = event && (type === 'methods') ? (eventHasOptionalParam(event) ? (event.params.map(param => isOptionalParam(param) ? types.getSchemaShape(param.schema, json, { templateDir: 'callback-response-instantiation', property: param.name, required: param.required, destination: state.destination, section: state.section, primitive: true, skipTitleOnce: true }) : '').filter(param => param).join(', ') + ', ') : '' ) + (types.getSchemaShape(event.result.schema, json, { templateDir: 'callback-response-instantiation', property: result.name, destination: state.destination, section: state.section, primitive: true, skipTitleOnce: true })) : ''
   const resultType = result.schema ? types.getSchemaType(result.schema, json, { templateDir: state.typeTemplateDir }) : ''
   const resultSchemaType = result.schema.type
   const resultJsonType = result.schema ? types.getSchemaType(result.schema, json, { templateDir: 'json-types' }) : ''
@@ -1785,7 +1795,7 @@ function insertProviderSubscribeMacros(template, capability, moduleJson = {}, te
 
   const suffix = state.destination ? state.destination.split('.').pop() : ''
   template = template.replace(/\$\{subscribe\}/gms, iface.map(method => {
-      return insertMethodMacros(getTemplate(suffix ? `/codeblocks/subscribe.${suffix}` : '/codeblocks/subscribe', templates), method, moduleJson, { destination: state.destination, section: state.section })
+      return insertMethodMacros(getTemplate(suffix ? `/codeblocks/subscribe.${suffix}` : '/codeblocks/subscribe', templates), method, moduleJson, templates)
     }).join('\n') + '\n')
   return template
 }
@@ -1810,7 +1820,9 @@ function insertProviderInterfaceMacros(template, capability, moduleJson = {}, te
       method.tags.unshift({
         name: 'provider'
       })
-      return insertMethodMacros(interfaceDeclaration, method, moduleJson, { destination: state.destination, section: state.section, isInterface: true })
+
+      let type = config.templateExtensionMap && config.templateExtensionMap['methods'] && config.templateExtensionMap['methods'].includes(suffix) ? 'methods' : 'declarations'
+      return insertMethodMacros(interfaceDeclaration, method, moduleJson, templates, type)
     }).join('') + '\n')
 
   if (iface.length === 0) {
