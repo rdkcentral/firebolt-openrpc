@@ -1,3 +1,16 @@
+# [2.3.0-next.1](https://github.com/rdkcentral/firebolt-openrpc/compare/v2.2.0...v2.3.0-next.1) (2024-01-12)
+
+
+### Bug Fixes
+
+* Insert 'v' in front of version enum names ([d8b9ada](https://github.com/rdkcentral/firebolt-openrpc/commit/d8b9ada1b624df29821b74679291d36167208470))
+* Proper param handling for x-subscriber-type: global ([02204e5](https://github.com/rdkcentral/firebolt-openrpc/commit/02204e5f93d27a21086b4a9bbe5f586f969354f8))
+
+
+### Features
+
+* Support for context-free property subscribers ([9809273](https://github.com/rdkcentral/firebolt-openrpc/commit/980927309fa6efc7b03a490aa5fd7909f39ff4de))
+
 # [2.2.0](https://github.com/rdkcentral/firebolt-openrpc/compare/v2.1.2...v2.2.0) (2023-11-30)
 
 
