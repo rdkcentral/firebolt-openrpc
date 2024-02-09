@@ -40,18 +40,18 @@ ReleasePath=${InstallPath}/${ReleaseName}
 
 rm -rf ${ReleasePath}
 mkdir -p ${ReleasePath}
-cp -ar ${SdkPath}/src ${ReleasePath}
-cp -ar ${SdkPath}/include ${ReleasePath}
-cp -ar ${SdkPath}/cmake ${ReleasePath}
-cp -ar ${SdkPath}/scripts/build.sh ${ReleasePath}
-cp -ar ${SdkPath}/CMakeLists.txt ${ReleasePath}
-cp -ar ${SdkPath}/cpptest ${ReleasePath}/test
+cp -aR ${SdkPath}/src ${ReleasePath}
+cp -aR ${SdkPath}/include ${ReleasePath}
+cp -aR ${SdkPath}/cmake ${ReleasePath}
+cp -aR ${SdkPath}/scripts/build.sh ${ReleasePath}
+cp -aR ${SdkPath}/CMakeLists.txt ${ReleasePath}
+cp -aR ${SdkPath}/cpptest ${ReleasePath}/test
 
-sed -i '/EnableTest="ON";;/d' ${ReleasePath}/build.sh
-sed -i 's/getopts p:s:tch/getopts p:s:ch/g' ${ReleasePath}/build.sh
-sed -i '/enable test/d' ${ReleasePath}/build.sh
-sed -i '/EnableTest="OFF"/d' ${ReleasePath}/build.sh
-sed -i 's/ -DENABLE_TESTS=${EnableTest}//g' ${ReleasePath}/build.sh
+sed -i'' -e '/EnableTest="ON";;/d' ${ReleasePath}/build.sh
+sed -i'' -e 's/getopts p:s:tch/getopts p:s:ch/g' ${ReleasePath}/build.sh
+sed -i'' -e '/enable test/d' ${ReleasePath}/build.sh
+sed -i'' -e '/EnableTest="OFF"/d' ${ReleasePath}/build.sh
+sed -i'' -e 's/ -DENABLE_TESTS=${EnableTest}//g' ${ReleasePath}/build.sh
 
 cd ${ReleasePath}/../
 tar -cvzf ${ReleaseName}.tgz ${ReleaseName}/*
