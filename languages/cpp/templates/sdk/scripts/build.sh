@@ -35,6 +35,10 @@ then
     rm -rf ${SdkPath}/build
 fi
 
+rm -rf ${SdkPath}/build/src/libFireboltSDK.so
 cmake -B${SdkPath}/build -S${SdkPath} -DSYSROOT_PATH=${SysrootPath} -DENABLE_TESTS=${EnableTest} -DHIDE_NON_EXTERNAL_SYMBOLS=OFF -DFIREBOLT_ENABLE_STATIC_LIB=${EnableStaticLib}
 cmake --build ${SdkPath}/build
-cmake --install ${SdkPath}/build --prefix=${SdkPath}/build/Firebolt/usr
+if [ -f "${SdkPath}/build/src/libFireboltSDK.so" ];
+then
+    cmake --install ${SdkPath}/build --prefix=${SdkPath}/build/Firebolt/usr
+fi
