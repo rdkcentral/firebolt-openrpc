@@ -99,7 +99,7 @@ jobs:
   process_push_failure:
     needs: process_merge_on_success
     runs-on: ubuntu-latest
-    if: ${{ failure() }}
+    if: ${{ failure() && needs.process_merge_on_success.result != 'skipped' }}
 
     steps:
       - name: Post push error message
