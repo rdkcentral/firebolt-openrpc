@@ -1,0 +1,88 @@
+name: Attempt to merge next to next-major
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - "next"
+
+jobs:
+  # Always run. Check to see if we can merge "next" into "next-major"
+  check_merge:
+    name: check-merge
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+          repo-token: ${{ secrets.SEMANTIC_RELEASE_BOT_PAT }}
+          persist-credentials: true
+
+      # Attempt a dry-run merge
+      - name: Attempt merge
+        run: |
+          git checkout "next-major"
+          git merge --no-commit --no-ff origin/${{github.ref_name}}
+
+      # Check the status and pass it off to process_merge_status
+      - name: Check merge status
+        run: |
+          if [ $? -eq 0 ]; then
+            echo "Able to successfully merge next into next-major"
+            exit 0
+          else
+            echo "Not able to merge next into next-major"
+            exit 1
+          fi
+
+  # Run if we are able to perform a merge from next to next-major
+  process_merge_on_success:
+    name: process_merge_on_success
+    needs: check_merge
+    runs-on: ubuntu-latest
+    if: ${{ success() }}
+
+    steps:
+      - name: Perform Merge
+        run: |
+          git checkout "next-major"
+          checkout_status=$?
+
+          git merge origin/next
+          merge_status=$?
+
+          git push origin "next-major"
+          push_status=$?
+
+          if [ "$checkout_status" -eq 0 ] && [ "$merge_status" -eq 0 ] && [ "$push_status" -eq 0 ]; then
+            echo "Push to next-major succeeded"
+          else
+            exit 1
+          fi
+
+  # Run if we detected we could not perform a merge due to a conflict
+  process_merge_on_failure:
+    name: process_merge_on_failure
+    needs: check_merge
+    runs-on: ubuntu-latest
+    if: ${{ failure() }}
+
+    steps:
+      - name: Post error message
+        run:
+          echo "I'm gonna say I couldn't merge to next-major due to a conflict"
+          #curl -X POST -H 'Content-type: application/json' --data '{"text":"Merge from next to next-major contains conflicts!"}' |
+          #${{ secrets.SLACK_WEBHOOK_URL_NEXT_MAJOR_MERGE }}
+
+  # Run if we attempted to merge/push to next-main but were unable to do so
+  process_push_failure:
+    needs: process_merge_on_success
+    runs-on: ubuntu-latest
+    if: ${{ failure() }}
+
+    steps:
+      - name: Post push error message
+        run:
+          echo "I'm gonna say I tried and failed to merge next to next-major"
+          #curl -X POST -H 'Content-type: application/json' --data '{"text":"Push to next-major was unsuccessful!"}' |
+          #${{ secrets.SLACK_WEBHOOK_URL_NEXT_MAJOR_MERGE }}
