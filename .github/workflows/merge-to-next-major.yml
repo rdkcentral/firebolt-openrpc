@@ -6,7 +6,7 @@ on:
       - "next"
 
 jobs:
-  # Always run. Check to see if we can merge "next" into "next-major"
+  # Always run. Check to see if we can merge "next" into "next-major "
   check_merge:
     name: check-merge
     runs-on: ubuntu-latest
