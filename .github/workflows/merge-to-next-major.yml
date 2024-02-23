@@ -21,6 +21,8 @@ jobs:
       # Attempt a dry-run merge
       - name: Attempt merge
         run: |
+          ls -l
+          git branch
           git checkout "next-major"
           git merge --no-commit --no-ff origin/${{github.ref_name}}
 
