@@ -51,6 +51,19 @@ jobs:
     if: ${{ success() }}
 
     steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+          repo-token: ${{ secrets.SEMANTIC_RELEASE_BOT_PAT }}
+          persist-credentials: true
+
+      # Set user identity
+      - name: Set-Identity
+        run: |
+          git config --global user.email "kschriefer91@gmail.com"
+          git config --global user.name "kschrief"
+
       - name: Perform Merge
         run: |
           git checkout "next-major"
