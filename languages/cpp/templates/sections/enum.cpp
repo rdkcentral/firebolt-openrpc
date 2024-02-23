@@ -1,5 +1,0 @@
-namespace WPEFramework {
-
-${schema.list}
-
-}
