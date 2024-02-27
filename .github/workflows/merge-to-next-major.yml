@@ -102,6 +102,7 @@ jobs:
 
           if [ "$merge_status" -eq 0 ] && [ "$push_status" -eq 0 ]; then
             echo "Push to next-major succeeded"
+            exit 0
           else
             exit 1
           fi
