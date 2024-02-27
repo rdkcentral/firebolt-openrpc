@@ -34,10 +34,10 @@ jobs:
         run: git checkout "next-major"
 
       # Update package.json version
-      #- name: Update next-major package.json
-      #  run: |
-      #    jq '.version = "${{ steps.extract_version.outputs.version }}"' package.json > temp.json
-      #    mv temp.json package.json
+      - name: Update next-major package.json
+        run: |
+          jq '.version = "${{ steps.extract_version.outputs.version }}"' package.json > temp.json
+          mv temp.json package.json
 
       # Attempt a dry-run merge
       - name: Attempt merge
@@ -89,6 +89,7 @@ jobs:
         run: |
           jq '.version = "${{ steps.extract_version.outputs.version }}"' package.json > temp.json
           mv temp.json package.json
+          git add package.json
           git commit -m "Sync next->next-major package.json"
 
       - name: Perform Merge
