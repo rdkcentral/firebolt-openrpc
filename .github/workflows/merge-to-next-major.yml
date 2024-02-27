@@ -29,15 +29,23 @@ jobs:
         id: extract_version
         run: echo "::set-output name=version::$(node -e 'console.log(require("./package.json").version)')"
 
-      - name: Display version number
-        run: echo "Version is ${{ steps.extract_version.outputs.version }}"
+      # Checkout "next-major"
+      - name: Checkout next-major
+        run: git checkout "next-major"
+
+      # Update package.json version
+      - name: Update next-major package.json
+        run: |
+          jq '.version = "${{ steps.extract_version.outputs.version }}"' package.json > temp.json
+          mv temp.json package.json
+
+      # Temp - Print package.json
+      - name: Temp - Print package.json
+        run: cat package.json
 
       # Attempt a dry-run merge
       - name: Attempt merge
         run: |
-          ls -l
-          git branch
-          git checkout "next-major"
           git merge --no-commit --no-ff origin/${{github.ref_name}}
 
       # Check the status and pass it off to process_merge_status
