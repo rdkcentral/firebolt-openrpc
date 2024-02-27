@@ -39,10 +39,6 @@ jobs:
           jq '.version = "${{ steps.extract_version.outputs.version }}"' package.json > temp.json
           mv temp.json package.json
 
-      # Temp - Print package.json
-      - name: Temp - Print package.json
-        run: cat package.json
-
       # Attempt a dry-run merge
       - name: Attempt merge
         run: |
@@ -80,18 +76,30 @@ jobs:
           git config --global user.email "kschriefer91@gmail.com"
           git config --global user.name "kschrief"
 
+      # Get the "next" version number
+      - name: Extract next version
+        id: extract_version
+        run: echo "::set-output name=version::$(node -e 'console.log(require("./package.json").version)')"
+
+      - name: Checkout next-major
+        run: git checkout "next-major"
+
+      # Update package.json version
+      - name: Update next-major package.json
+        run: |
+          jq '.version = "${{ steps.extract_version.outputs.version }}"' package.json > temp.json
+          mv temp.json package.json
+          git commit -m "Sync next->next-major package.json"
+
       - name: Perform Merge
         run: |
-          git checkout "next-major"
-          checkout_status=$?
-
           git merge origin/next
           merge_status=$?
 
           git push origin "next-major"
           push_status=$?
 
-          if [ "$checkout_status" -eq 0 ] && [ "$merge_status" -eq 0 ] && [ "$push_status" -eq 0 ]; then
+          if [ "$merge_status" -eq 0 ] && [ "$push_status" -eq 0 ]; then
             echo "Push to next-major succeeded"
           else
             exit 1
