@@ -27,7 +27,7 @@ jobs:
       # Get the "next" version number
       - name: Extract next version
         id: extract_version
-        run: echo "::set-output name=version::$(node -e 'console.log(require(./package.json).version)')"
+        run: echo "::set-output name=version::$(node -e 'console.log(require("./package.json").version)')"
 
       - name: Display version number
         run: echo "Version is ${{ steps.extract_version.outputs.version }}"
