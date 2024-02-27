@@ -88,9 +88,16 @@ jobs:
       - name: Update next-major package.json
         run: |
           jq '.version = "${{ steps.extract_version.outputs.version }}"' package.json > temp.json
-          mv temp.json package.json
-          git add package.json
-          git commit -m "Sync next->next-major package.json"
+
+          #Commit if there was a difference
+          if diff -q "package.json" "temp.json" > /dev/null; then
+            mv temp.json package.json
+            git add package.json
+            git commit -m "Sync next->next-major package.json"
+          else
+            echo "Versions are identical. No update required."
+            rm temp.json
+          fi
 
       - name: Perform Merge
         run: |
