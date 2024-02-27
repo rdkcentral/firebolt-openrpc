@@ -24,6 +24,14 @@ jobs:
           git config --global user.email "kschriefer91@gmail.com"
           git config --global user.name "kschrief"
 
+      # Get the "next" version number
+      - name: Extract next version
+        id: extract_version
+        run: echo "::set-output name=version::$(node -e 'console.log(require(./package.json).version)')"
+
+      - name: Display version number
+        run: echo "Version is ${{ steps.extract_version.outputs.version }}"
+
       # Attempt a dry-run merge
       - name: Attempt merge
         run: |
