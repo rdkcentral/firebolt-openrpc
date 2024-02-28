@@ -8,7 +8,7 @@ on:
 jobs:
   # Check if next can merge into next-major
   check_merge:
-    name: check-merge
+    name: Check if "next" can merge into "next-major"
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
