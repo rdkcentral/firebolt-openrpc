@@ -6,7 +6,7 @@ on:
       - "next"
 
 jobs:
-  # I too am a conflict
+  # Check if next can merge into next-major
   check_merge:
     name: check-merge
     runs-on: ubuntu-latest
@@ -21,8 +21,8 @@ jobs:
       # Set user identity
       - name: Set-Identity
         run: |
-          git config --global user.email "kschriefer91@gmail.com"
-          git config --global user.name "kschrief"
+          git config --global user.email "${{ secrets.GLOBAL_GITHUB_EMAIL }}"
+          git config --global user.name "${{ secrets.GLOBAL_GITHUB_USER }}"
 
       # Get the "next" version number
       - name: Extract next version
@@ -33,8 +33,8 @@ jobs:
       - name: Checkout next-major
         run: git checkout "next-major"
 
-      # Update package.json version
-      - name: Update next-major package.json
+      # Update "next-major" package.json to match "next"
+      - name: Update "next-major" package.json to match "next"
         run: |
           jq '.version = "${{ steps.extract_version.outputs.version }}"' package.json > temp.json
 
@@ -43,28 +43,18 @@ jobs:
             rm temp.json
           else
             mv temp.json package.json
-            git add package.json && git commit -m "Sync next->next-major package.json"
+            git add package.json && git commit -m "Sync version to ${{ steps.extract_version.outputs.version }}"
           fi
 
       # Attempt a dry-run merge
-      - name: Attempt merge
+      - name: Attempt a dry-run merge
         run: |
           git merge --no-commit --no-ff origin/${{github.ref_name}}
+          exit $?
 
-      # Check the status and pass it off to process_merge_status
-      - name: Check merge status
-        run: |
-          if [ $? -eq 0 ]; then
-            echo "Able to successfully merge next into next-major"
-            exit 0
-          else
-            echo "Not able to merge next into next-major"
-            exit 1
-          fi
-
-  # Run if we are able to perform a merge from next to next-major
+  # Attempt to merge to next-major if our dry-run succeeded
   process_merge_on_success:
-    name: process_merge_on_success
+    name: Perform merge from "next" to "next-major"
     needs: check_merge
     runs-on: ubuntu-latest
     if: ${{ success() }}
@@ -80,19 +70,20 @@ jobs:
       # Set user identity
       - name: Set-Identity
         run: |
-          git config --global user.email "kschriefer91@gmail.com"
-          git config --global user.name "kschrief"
+          git config --global user.email "${{ secrets.GLOBAL_GITHUB_EMAIL }}"
+          git config --global user.name "${{ secrets.GLOBAL_GITHUB_USER }}"
 
       # Get the "next" version number
       - name: Extract next version
         id: extract_version
         run: echo "::set-output name=version::$(node -e 'console.log(require("./package.json").version)')"
 
+      # Checkout "next-major"
       - name: Checkout next-major
         run: git checkout "next-major"
 
-      # Update package.json version
-      - name: Update next-major package.json
+      # Update "next-major" package.json to match "next"
+      - name: Update "next-major" package.json to match "next"
         run: |
           jq '.version = "${{ steps.extract_version.outputs.version }}"' package.json > temp.json
 
@@ -104,7 +95,7 @@ jobs:
             git add package.json && git commit -m "Sync next->next-major package.json"
           fi
 
-      - name: Perform Merge
+      - name: Perform the merge from next to next-major
         run: |
           git merge origin/next
           merge_status=$?
@@ -119,29 +110,24 @@ jobs:
             exit 1
           fi
 
-  # Run if we detected we could not perform a merge due to a conflict
+  # If the merge cannot be performed, let stakeholders know
   process_merge_on_failure:
-    name: process_merge_on_failure
+    name: Merge dry-run failure
     needs: check_merge
     runs-on: ubuntu-latest
     if: ${{ failure() }}
 
     steps:
-      - name: Post error message
-        run:
-          echo "I'm gonna say I couldn't merge to next-major due to a conflict"
-          #curl -X POST -H 'Content-type: application/json' --data '{"text":"Merge from next to next-major contains conflicts!"}' |
-          #${{ secrets.SLACK_WEBHOOK_URL_NEXT_MAJOR_MERGE }}
+      - name: Post error message (To-Do)
+        run: echo "Next cannot be merged into next-major cleanly"
 
-  # Run if we attempted to merge/push to next-main but were unable to do so
+  # If we attempted to merge/push to next-main but there was a failure
   process_push_failure:
+    name: Merge failure
     needs: process_merge_on_success
     runs-on: ubuntu-latest
     if: ${{ failure() && needs.process_merge_on_success.result != 'skipped' }}
 
     steps:
-      - name: Post push error message
-        run:
-          echo "I'm gonna say I tried and failed to merge next to next-major"
-          #curl -X POST -H 'Content-type: application/json' --data '{"text":"Push to next-major was unsuccessful!"}' |
-          #${{ secrets.SLACK_WEBHOOK_URL_NEXT_MAJOR_MERGE }}
+      - name: Post error message (To-Do)
+        run: echo "There was a failure when merging next into next-major"
