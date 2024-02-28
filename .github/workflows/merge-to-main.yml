@@ -1,9 +1,6 @@
 name: Attempt to merge next to main
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - "next"
 
 jobs:
   # Check if next can merge into main
