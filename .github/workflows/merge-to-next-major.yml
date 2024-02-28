@@ -33,8 +33,8 @@ jobs:
       - name: Checkout next-major
         run: git checkout "next-major"
 
-      # Update "next-major" package.json to match "next"
-      - name: Update "next-major" package.json to match "next"
+      # Update "next-major" version to match "next"
+      - name: Update "next-major" version to match "next"
         run: |
           jq '.version = "${{ steps.extract_version.outputs.version }}"' package.json > temp.json
 
@@ -82,8 +82,8 @@ jobs:
       - name: Checkout next-major
         run: git checkout "next-major"
 
-      # Update "next-major" package.json to match "next"
-      - name: Update "next-major" package.json to match "next"
+      # Update "next-major" version to match "next"
+      - name: Update "next-major" version to match "next"
         run: |
           jq '.version = "${{ steps.extract_version.outputs.version }}"' package.json > temp.json
 
@@ -92,7 +92,7 @@ jobs:
             rm temp.json
           else
             mv temp.json package.json
-            git add package.json && git commit -m "Sync next->next-major package.json"
+            git add package.json && git commit -m "Sync version to ${{ steps.extract_version.outputs.version }}"
           fi
 
       - name: Perform the merge from next to next-major

@@ -1,6 +1,9 @@
 name: Attempt to merge next to main
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - "next"
 
 jobs:
   # Check if next can merge into main
@@ -30,8 +33,8 @@ jobs:
       - name: Checkout main
         run: git checkout "main"
 
-      # Update "main" package.json to match "next"
-      - name: Update "main" package.json to match "next"
+      # Update "main" version to match "next"
+      - name: Update "main" version to match "next"
         run: |
           jq '.version = "${{ steps.extract_version.outputs.version }}"' package.json > temp.json
 
@@ -79,8 +82,8 @@ jobs:
       - name: Checkout main
         run: git checkout "main"
 
-      # Update "main" package.json to match "next"
-      - name: Update "main" package.json to match "next"
+      # Update "main" version to match "next"
+      - name: Update "main" version to match "next"
         run: |
           jq '.version = "${{ steps.extract_version.outputs.version }}"' package.json > temp.json
 
@@ -89,7 +92,7 @@ jobs:
             rm temp.json
           else
             mv temp.json package.json
-            git add package.json && git commit -m "Sync next->main package.json"
+            git add package.json && git commit -m "Sync version to ${{ steps.extract_version.outputs.version }}"
           fi
 
       - name: Perform the merge from next to main
