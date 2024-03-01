@@ -797,7 +797,7 @@ const convertEnumTemplate = (schema, templateName, templates) => {
   const template = getTemplate(templateName, templates).split('\n')
   for (var i = 0; i < template.length; i++) {
     if (template[i].indexOf('${key}') >= 0) {
-      template[i] = enumSchema.enum.map(value => {
+      template[i] = enumSchema.enum.map((value, id) => {
         const safeName = getSafeEnumKeyName(value)
         return template[i].replace(/\$\{key\}/g, safeName)
           .replace(/\$\{value\}/g, value)
@@ -823,8 +823,8 @@ const generateEventEnums = (json, templates, options = { destination: '' }) => {
   return compose(
     option(''),
     map(val => {
-      let template = getTemplate(`/sections/enum.${suffix}`, templates)
-      return template ? template.replace(/\$\{schema.list\}/g, val) : val
+      let template = val ? getTemplate(`/sections/enum.${suffix}`, templates) : val
+      return template ? template.replace(/\$\{schema.list\}/g, val.trimEnd()) : val
     }),
     map(reduce((acc, val) => acc.concat(val).concat('\n'), '')),
     map(map((schema) => convertEnumTemplate(schema, suffix ? `/types/enum.${suffix}` : '/types/enum', templates))),
@@ -1269,7 +1269,7 @@ function insertMethodMacros(template, methodObj, json, templates, type = '', exa
     }
   }
 
-  const paramDelimiter = config.operators ? config.operators.paramDelimiter : ', '
+  const paramDelimiter = config.operators ? config.operators.paramDelimiter : ''
 
   const temporalItemName = isTemporalSetMethod(methodObj) ? methodObj.result.schema.items && methodObj.result.schema.items.title || 'Item' : ''
   const temporalAddName = isTemporalSetMethod(methodObj) ? `on${temporalItemName}Available` : ''
