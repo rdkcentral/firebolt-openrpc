@@ -22,7 +22,7 @@ import safe from 'crocks/Maybe/safe.js'
 import pointfree from 'crocks/pointfree/index.js'
 const { chain, filter, reduce, option, map } = pointfree
 import predicates from 'crocks/predicates/index.js'
-import { getPath, getExternalSchemaPaths } from '../../../../src/shared/json-schema.mjs'
+import { getPath, getExternalSchemaPaths, getSafeEnumKeyName } from '../../../../src/shared/json-schema.mjs'
 import deepmerge from 'deepmerge'
 
 const { isObject, isArray, propEq, pathSatisfies, hasProp, propSatisfies } = predicates
@@ -126,7 +126,7 @@ const getArrayAccessors = (arrayName, propertyType, valueType) => {
 }
 
 const enumValue = (val,prefix) => {
-  const keyName = val.replace(/[\.\-:]/g, '_').replace(/\+/g, '_plus').replace(/([a-z])([A-Z0-9])/g, '$1_$2').toUpperCase()
+  const keyName = getSafeEnumKeyName(val)
   return `    ${prefix.toUpperCase()}_${keyName.toUpperCase()}`
 }
 

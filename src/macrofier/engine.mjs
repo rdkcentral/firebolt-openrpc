@@ -31,7 +31,7 @@ const { isObject, isArray, propEq, pathSatisfies, propSatisfies } = predicates
 
 import { isRPCOnlyMethod, isProviderInterfaceMethod, getProviderInterface, getPayloadFromEvent, providerHasNoParameters, isTemporalSetMethod, hasMethodAttributes, getMethodAttributes, isEventMethodWithContext, getSemanticVersion, getSetterFor, getProvidedCapabilities, isPolymorphicPullMethod, hasPublicAPIs, createPolymorphicMethods, isExcludedMethod, isCallsMetricsMethod } from '../shared/modules.mjs'
 import isEmpty from 'crocks/core/isEmpty.js'
-import { getPath as getJsonPath, getLinkedSchemaPaths, getSchemaConstraints, isSchema, localizeDependencies, isDefinitionReferencedBySchema, mergeAnyOf, mergeOneOf } from '../shared/json-schema.mjs'
+import { getPath as getJsonPath, getLinkedSchemaPaths, getSchemaConstraints, isSchema, localizeDependencies, isDefinitionReferencedBySchema, mergeAnyOf, mergeOneOf, getSafeEnumKeyName } from '../shared/json-schema.mjs'
 
 // util for visually debugging crocks ADTs
 const _inspector = obj => {
@@ -797,8 +797,8 @@ const convertEnumTemplate = (schema, templateName, templates) => {
   const template = getTemplate(templateName, templates).split('\n')
   for (var i = 0; i < template.length; i++) {
     if (template[i].indexOf('${key}') >= 0) {
-      template[i] = enumSchema.enum.map((value, id) => {
-        const safeName = value.split(':').pop().replace(/[\.\-]/g, '_').replace(/\+/g, '_plus').replace(/([a-z])([A-Z0-9])/g, '$1_$2').toUpperCase()
+      template[i] = enumSchema.enum.map(value => {
+        const safeName = getSafeEnumKeyName(value)
         return template[i].replace(/\$\{key\}/g, safeName)
           .replace(/\$\{value\}/g, value)
           .replace(/\$\{delimiter\}(.*?)\$\{end.delimiter\}/g, id === enumSchema.enum.length - 1 ? '' : '$1')

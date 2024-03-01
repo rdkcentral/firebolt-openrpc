@@ -17,7 +17,7 @@
  */
 
 import deepmerge from 'deepmerge'
-import { getPath, localizeDependencies } from './json-schema.mjs'
+import { getPath, getSafeEnumKeyName, localizeDependencies } from './json-schema.mjs'
 
 const isSynchronous = m => !m.tags ? false : m.tags.map(t => t.name).find(s => s === 'synchronous')
 
@@ -45,7 +45,7 @@ function getSchemaShape(schema = {}, module = {}, { name = '', level = 0, title,
     let theTitle = (level === 0 ? schema.title || name : name)
 
     if (enums && level === 0 && schema.type === "string" && Array.isArray(schema.enum)) {
-      return `enum ${schema.title || name} {\n\t` + schema.enum.map(value => value.split(':').pop().replace(/[\.\-]/g, '_').replace(/\+/g, '_plus').replace(/([a-z])([A-Z0-9])/g, '$1_$2').toUpperCase() + ` = '${value}'`).join(',\n\t') + '\n}\n'
+      return `enum ${schema.title || name} {\n\t` + schema.enum.map(value => getSafeEnumKeyName(value) + ` = '${value}'`).join(',\n\t') + '\n}\n'
     }
 
     if (!theTitle) {
@@ -340,7 +340,7 @@ function getSchemaShape(schema = {}, module = {}, { name = '', level = 0, title,
   }
 
   const enumReducer = (acc, val, i, arr) => {
-    const keyName = val.split(':').pop().replace(/[\.\-]/g, '_').replace(/\+/g, '_plus').replace(/([a-z])([A-Z0-9])/g, '$1_$2').toUpperCase()
+    const keyName = getSafeEnumKeyName(val)
     acc = acc + `    ${keyName} = '${val}'`
     if (i < arr.length-1) {
       acc = acc.concat(',\n')
