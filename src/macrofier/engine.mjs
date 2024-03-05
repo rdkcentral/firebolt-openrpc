@@ -818,7 +818,7 @@ const enumFinder = compose(
   filter(([_key, val]) => isObject(val))
 )
 
-const generateEventEnums = (json, templates, options = { destination: '' }) => {
+const generateEnums = (json, templates, options = { destination: '' }) => {
   const suffix = options.destination.split('.').pop()
   return compose(
     option(''),
@@ -855,7 +855,7 @@ const generateEvents = (json, templates) => {
     return acc
   }, null)
 
-  return generateEventEnums(obj, templates)
+  return generateEnums(obj, templates)
 }
 
 function generateDefaults(json = {}, templates) {
@@ -1732,7 +1732,11 @@ function generateProviderSubscribe(json, templates) {
 function generateProviderInterfaces(json, templates) {
   const interfaces = getProvidedCapabilities(json)
   const suffix = state.destination ? state.destination.split('.').pop() : ''
-  let template = getTemplate(suffix ? `/sections/provider-interfaces.${suffix}` : '/sections/provider-interfaces', templates)
+
+  let template
+  if (suffix) {
+    template = getTemplate(`/sections/provider-interfaces.${suffix}`, templates)
+  }
   if (!template) {
     template = getTemplate('/sections/provider-interfaces', templates)
   }
@@ -1814,8 +1818,14 @@ function insertProviderInterfaceMacros(template, capability, moduleJson = {}, te
     .replace(/\$\{capability\}/g, capability)
     .replace(/[ \t]*\$\{methods\}[ \t]*\n/g, iface.map(method => {
       const focusable = method.tags.find(t => t['x-allow-focus'])
+      let interfaceDeclaration;
       const interfaceTemplate = '/interfaces/' + (focusable ? 'focusable' : 'default')
-      const interfaceDeclaration = getTemplate(suffix ? `${interfaceTemplate}.${suffix}` : interfaceTemplate, templates)
+      if (suffix) {
+        interfaceDeclaration = getTemplate(`${interfaceTemplate}.${suffix}`, templates)
+      }
+      if (!interfaceDeclaration) {
+        interfaceDeclaration = getTemplate(interfaceTemplate, templates)
+      }
       xValues = getProviderXValues(method)
       method.tags.unshift({
         name: 'provider'
