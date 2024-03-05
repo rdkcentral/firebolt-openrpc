@@ -126,7 +126,7 @@ namespace FireboltSDK {
     {
         Firebolt::Error status = Firebolt::Error::None;
         _adminLock.Lock();
-        EventMap::iterator eventIndex = _eventMap.find(eventName);
+        EventMap::iterator eventIndex = _eventMap.begin();
         if (eventIndex != _eventMap.end()) {
             CallbackMap::iterator callbackIndex = eventIndex->second.find(usercb);
             if (callbackIndex->second.state != State::EXECUTING) {
@@ -146,4 +146,18 @@ namespace FireboltSDK {
 
         return status;
     }
+
+    void Event::Clear()
+    {
+        EventMap::iterator eventIndex = _eventMap.begin();
+        while (eventIndex != _eventMap.end()) {
+            CallbackMap::iterator callbackIndex = eventIndex->second.begin();
+            while (callbackIndex != eventIndex->second.end()) {
+                 callbackIndex = eventIndex->second.erase(callbackIndex);
+            }
+            eventIndex = _eventMap.erase(eventIndex);
+        }
+        _adminLock.Unlock();
+    }
+
 }

@@ -21,6 +21,7 @@
 #include "Transport/Transport.h"
 #include "Properties/Properties.h"
 #include "Accessor/Accessor.h"
+#include "Async/Async.h"
 #include "Logger/Logger.h"
 #include "TypesPriv.h"
 #include "types.h"
