@@ -17,7 +17,7 @@
  */
 
 import deepmerge from 'deepmerge'
-import { getPath, localizeDependencies } from '../shared/json-schema.mjs'
+import { getPath, localizeDependencies, getSafeEnumKeyName } from '../shared/json-schema.mjs'
 import path from "path"
 
 let convertTuplesToArraysOrObjects = false
@@ -68,8 +68,6 @@ const indent = (str, padding) => {
     }).join('\n')
   }
 }
-
-const safeName = value => value.split(':').pop().replace(/[\.\-]/g, '_').replace(/\+/g, '_plus').replace(/([a-z])([A-Z0-9])/g, '$1_$2').toUpperCase()
 
 // TODO: This is what's left of getMethodSignatureParams. We need to figure out / handle C's `FireboltTypes_StringHandle`
 function getMethodSignatureParams(method, module, { destination, callback }) {
@@ -215,7 +213,7 @@ const insertEnumMacros = (content, schema, module, name, suffix, templateDir = "
         if (!value) {
           value = getTemplate(path.join(templateDir, 'unset' + suffix))
 	}
-        value ? values.push(template[i].replace(/\$\{key\}/g, safeName(value))
+        value ? values.push(template[i].replace(/\$\{key\}/g, getSafeEnumKeyName(value))
                                        .replace(/\$\{value\}/g, value)) : ''
       })
       template[i] = values.map((value, id) => {
@@ -401,8 +399,8 @@ const insertObjectMacros = (content, schema, module, title, property, options) =
             options2.property = prop
             const schemaShape = getSchemaShape(type, module, options2)
             properties.push(template
-              .replace(/\$\{property\}/g, safeName(prop))
-              .replace(/\$\{Property\}/g, capitalize(safeName(prop)))
+              .replace(/\$\{property\}/g, getSafeEnumKeyName(prop))
+              .replace(/\$\{Property\}/g, capitalize(getSafeEnumKeyName(prop)))
               .replace(/\$\{parent\.title\}/g, title)
               .replace(/\$\{title\}/g, getSchemaType(type, module, options2))
               .replace(/\$\{shape\}/g, schemaShape)
