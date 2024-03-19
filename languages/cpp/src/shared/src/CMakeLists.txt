@@ -28,6 +28,7 @@ add_library(${TARGET} ${FIREBOLT_LIBRARY_TYPE}
     Transport/Transport.cpp
     Accessor/Accessor.cpp
     Event/Event.cpp
+    Async/Async.cpp
 )
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)

@@ -21,6 +21,7 @@
 #include "Module.h"
 #include "WorkerPool.h"
 #include "Transport/Transport.h"
+#include "Async/Async.h"
 #include "Event/Event.h"
 #include "Logger/Logger.h"
 
@@ -108,6 +109,7 @@ namespace FireboltSDK {
         {
             Firebolt::Error status = CreateTransport(_config.WsUrl.Value().c_str(), listener, _config.WaitTime.Value());
             if (status == Firebolt::Error::None) {
+                Async::Instance().Configure(_transport);
                 status = CreateEventHandler();
             }
             return status;
@@ -118,6 +120,7 @@ namespace FireboltSDK {
             Firebolt::Error status = Firebolt::Error::None;
             status = DestroyTransport();
             if (status == Firebolt::Error::None) {
+                Async::Dispose();
                 status = DestroyEventHandler();
             }
             return status;

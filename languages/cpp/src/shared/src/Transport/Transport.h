@@ -587,6 +587,58 @@ namespace FireboltSDK {
             return (result);
         }
 
+        template <typename PARAMETERS>
+        Firebolt::Error InvokeAsync(const string& method, const PARAMETERS& parameters, uint32_t& id)
+        {
+            Entry slot;
+            id = _channel->Sequence();
+            return Send(method, parameters, id);
+        }
+
+        template <typename RESPONSE>
+        Firebolt::Error WaitForResponse(const uint32_t& id, RESPONSE& response, const uint32_t waitTime)
+        {
+            int32_t result = WPEFramework::Core::ERROR_TIMEDOUT;
+            _adminLock.Lock();
+            typename PendingMap::iterator index = _pendingQueue.find(id);
+            Entry& slot(index->second);
+            _adminLock.Unlock();
+
+            if (slot.WaitForResponse(waitTime) == true) {
+                WPEFramework::Core::ProxyType<WPEFramework::Core::JSONRPC::Message> jsonResponse = slot.Response();
+
+                // See if we have a jsonResponse, maybe it was just the connection
+                // that closed?
+                if (jsonResponse.IsValid() == true) {
+                    if (jsonResponse->Error.IsSet() == true) {
+                        result = jsonResponse->Error.Code.Value();
+                    }
+                    else {
+                        result = WPEFramework::Core::ERROR_NONE;
+                        if ((jsonResponse->Result.IsSet() == true)
+                            && (jsonResponse->Result.Value().empty() == false)) {
+                            FromMessage((INTERFACE*)&response, *jsonResponse);
+                        }
+                    }
+                }
+            } else {
+                result = WPEFramework::Core::ERROR_TIMEDOUT;
+            }
+            _adminLock.Lock();
+            _pendingQueue.erase(id);
+            _adminLock.Unlock();
+            return FireboltErrorValue(result);
+        }
+
+        void Abort(uint32_t id)
+        {
+            _adminLock.Lock();
+            typename PendingMap::iterator index = _pendingQueue.find(id);
+            Entry& slot(index->second);
+            _adminLock.Unlock();
+            slot.Abort(id);
+        }
+
         template <typename RESPONSE>
         Firebolt::Error Subscribe(const string& eventName, const string& parameters, RESPONSE& response)
         {
@@ -787,41 +839,6 @@ namespace FireboltSDK {
                     result = WPEFramework::Core::ERROR_NONE;
                 }
             }
-            return FireboltErrorValue(result);
-        }
-
-        template <typename RESPONSE>
-        Firebolt::Error WaitForResponse(const uint32_t& id, RESPONSE& response, const uint32_t waitTime)
-        {
-            int32_t result = WPEFramework::Core::ERROR_TIMEDOUT;
-            _adminLock.Lock();
-            typename PendingMap::iterator index = _pendingQueue.find(id);
-            Entry& slot(index->second);
-            _adminLock.Unlock();
-
-            if (slot.WaitForResponse(waitTime) == true) {
-                WPEFramework::Core::ProxyType<WPEFramework::Core::JSONRPC::Message> jsonResponse = slot.Response();
-
-                // See if we have a jsonResponse, maybe it was just the connection
-                // that closed?
-                if (jsonResponse.IsValid() == true) {
-                    if (jsonResponse->Error.IsSet() == true) {
-                        result = jsonResponse->Error.Code.Value();
-                    }
-                    else {
-                        result = WPEFramework::Core::ERROR_NONE;
-                        if ((jsonResponse->Result.IsSet() == true)
-                            && (jsonResponse->Result.Value().empty() == false)) {
-                            FromMessage((INTERFACE*)&response, *jsonResponse);
-                        }
-                    }
-                }
-            } else {
-                result = WPEFramework::Core::ERROR_TIMEDOUT;
-            }
-            _adminLock.Lock();
-            _pendingQueue.erase(id);
-            _adminLock.Unlock();
             return FireboltErrorValue(result);
         }
 

@@ -29,7 +29,7 @@ import isString from 'crocks/core/isString.js'
 import predicates from 'crocks/predicates/index.js'
 const { isObject, isArray, propEq, pathSatisfies, propSatisfies } = predicates
 
-import { isRPCOnlyMethod, isProviderInterfaceMethod, getProviderInterface, getPayloadFromEvent, providerHasNoParameters, isTemporalSetMethod, hasMethodAttributes, getMethodAttributes, isEventMethodWithContext, getSemanticVersion, getSetterFor, getProvidedCapabilities, isPolymorphicPullMethod, hasPublicAPIs, createPolymorphicMethods, isExcludedMethod, isCallsMetricsMethod } from '../shared/modules.mjs'
+import { isRPCOnlyMethod, isProviderInterfaceMethod, getProviderInterface, getPayloadFromEvent, providerHasNoParameters, isTemporalSetMethod, hasMethodAttributes, getMethodAttributes, isEventMethodWithContext, getSemanticVersion, getSetterFor, getProvidedCapabilities, isPolymorphicPullMethod, hasPublicAPIs, isAllowFocusMethod, hasAllowFocusMethods, createPolymorphicMethods, isExcludedMethod, isCallsMetricsMethod } from '../shared/modules.mjs'
 import isEmpty from 'crocks/core/isEmpty.js'
 import { getPath as getJsonPath, getLinkedSchemaPaths, getSchemaConstraints, isSchema, localizeDependencies, isDefinitionReferencedBySchema, mergeAnyOf, mergeOneOf, getSafeEnumKeyName } from '../shared/json-schema.mjs'
 
@@ -108,7 +108,7 @@ const getTemplate = (name, templates) => {
 }
 
 const getTemplateTypeForMethod = (method, type, templates) => {
-  const name = method.tags && method.tags.map(tag => tag.name.split(":").shift()).find(tag => Object.keys(templates).find(name => name.startsWith(`/${type}/${tag}.`))) || 'default'
+  const name = method.tags ? (isAllowFocusMethod(method) && Object.keys(templates).find(name => name.startsWith(`/${type}/allowsFocus.`))) ? 'allowsFocus' : (method.tags.map(tag => tag.name.split(":").shift()).find(tag => Object.keys(templates).find(name => name.startsWith(`/${type}/${tag}.`)))) || 'default' : 'default'
   const path = `/${type}/${name}`
   return getTemplate(path, templates)
 }
@@ -595,6 +595,7 @@ const generateMacros = (obj, templates, languages, options = {}) => {
     }
   })
 
+  const xusesInterfaces = generateXUsesInterfaces(obj, templates)
   const providerSubscribe = generateProviderSubscribe(obj, templates)
   const providerInterfaces = generateProviderInterfaces(obj, templates)
   const defaults = generateDefaults(obj, templates)
@@ -611,6 +612,7 @@ const generateMacros = (obj, templates, languages, options = {}) => {
     eventsEnum,
     defaults,
     examples,
+    xusesInterfaces,
     providerInterfaces,
     providerSubscribe,
     version: getSemanticVersion(obj),
@@ -674,6 +676,7 @@ const insertMacros = (fContents = '', macros = {}) => {
   fContents = fContents.replace(/\$\{if\.implementations\}(.*?)\$\{end\.if\.implementations\}/gms, (methods.trim() || macros.events.methods.trim() || macros.schemas.types.trim()) ? '$1' : '')
   fContents = fContents.replace(/\$\{if\.modules\}(.*?)\$\{end\.if\.modules\}/gms, (methods.trim() || macros.events.methods.trim()) ? '$1' : '')
 
+  fContents = fContents.replace(/\$\{if\.xuses\}(.*?)\$\{end\.if\.xuses\}/gms, macros.xusesInterfaces.trim() ? '$1' : '')
   fContents = fContents.replace(/\$\{if\.providers\}(.*?)\$\{end\.if\.providers\}/gms, macros.providerInterfaces.trim() ? '$1' : '')
 
   // Output the originally supported non-configurable methods & events macros
@@ -705,6 +708,7 @@ const insertMacros = (fContents = '', macros = {}) => {
   })
 
   fContents = fContents.replace(/[ \t]*\/\* \$\{PROVIDERS\} \*\/[ \t]*\n/, macros.providerInterfaces)
+  fContents = fContents.replace(/[ \t]*\/\* \$\{XUSES\} \*\/[ \t]*\n/, macros.xusesInterfaces)
   fContents = fContents.replace(/[ \t]*\/\* \$\{PROVIDERS_SUBSCRIBE\} \*\/[ \t]*\n/, macros.providerSubscribe)
   fContents = fContents.replace(/[ \t]*\/\* \$\{IMPORTS\} \*\/[ \t]*\n/, macros.imports)
   fContents = fContents.replace(/[ \t]*\/\* \$\{INITIALIZATION\} \*\/[ \t]*\n/, macros.initialization)
@@ -1715,6 +1719,18 @@ function insertCapabilityMacros(template, capabilities, method, module) {
   }
 
   return content.join()
+}
+
+function generateXUsesInterfaces(json, templates) {
+  let template = ''
+  if (hasAllowFocusMethods(json)) {
+    const suffix = state.destination ? state.destination.split('.').pop() : ''
+    template = getTemplate(suffix ? `/sections/xuses-interfaces.${suffix}` : '/sections/xuses-interfaces', templates)
+    if (!template) {
+      template = getTemplate('/sections/xuses-interfaces', templates)
+    }
+  }
+  return template
 }
 
 function generateProviderSubscribe(json, templates) {

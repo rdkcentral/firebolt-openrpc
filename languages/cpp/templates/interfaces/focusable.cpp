@@ -13,11 +13,11 @@
         {
             ProviderFocusSession("${info.title.lowercase}.${method.name}Focus", _correlationId, err);
         }
-        void result( ${provider.xresponse.name} response,  Firebolt::Error *err = nullptr ) override
+        void result( ${provider.xresponse.name} response, Firebolt::Error *err = nullptr ) override
         {
             ProviderResultSession("${info.title.lowercase}.${method.name}Response", _correlationId, response, err);
         }
-        void error( ${provider.xerror.name} error,  Firebolt::Error *err = nullptr ) override
+        void error( ${provider.xerror.name} error, Firebolt::Error *err = nullptr ) override
         {
             ProviderErrorSession("${info.title.lowercase}.${method.name}Error", _correlationId, error, err);
         }

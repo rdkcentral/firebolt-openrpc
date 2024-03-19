@@ -30,7 +30,7 @@ ${if.enums}
 ${if.types}
 // Types
 /* ${TYPES} */${end.if.types}
-${if.providers}/* ${PROVIDERS} */${end.if.providers}
+${if.providers}/* ${PROVIDERS} */${end.if.providers}${if.xuses}/* ${XUSES} */${end.if.xuses}
 ${if.methods}struct I${info.Title} {
 
     virtual ~I${info.Title}() = default;

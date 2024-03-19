@@ -289,6 +289,16 @@ const isPolymorphicReducer = compose(
     getPath(['tags'])
 )
 
+const isAllowFocusMethod = compose(
+    option(false),
+    map(_ => true),
+    chain(find(and(
+        hasProp('x-uses'),
+        propSatisfies('x-allow-focus', focus => (focus === true))
+    ))),
+    getPath(['tags'])
+)
+
 const hasTitle = compose(
     option(false),
     map(isString),
@@ -358,6 +368,8 @@ const getPublicEvents = compose(
 
 const hasPublicInterfaces = json => json.methods && json.methods.filter(m => m.tags && m.tags.find(t=>t['x-provides'])).length > 0
 const hasPublicAPIs = json => hasPublicInterfaces(json) || (json.methods && json.methods.filter( method => !method.tags.find(tag => tag.name === 'rpc-only')).length > 0)
+
+const hasAllowFocusMethods = json => json.methods && json.methods.filter(m => isAllowFocusMethod(m)).length > 0
 
 const eventDefaults = event => {
 
@@ -1423,6 +1435,8 @@ export {
     isPublicEventMethod,
     hasPublicAPIs,
     hasPublicInterfaces,
+    isAllowFocusMethod,
+    hasAllowFocusMethods,
     isPolymorphicReducer,
     isPolymorphicPullMethod,
     isTemporalSetMethod,

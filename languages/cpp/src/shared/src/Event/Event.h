@@ -149,6 +149,7 @@ namespace FireboltSDK {
         Firebolt::Error Revoke(const string& eventName, void* usercb);
 
     private:
+        void Clear();
         Firebolt::Error ValidateResponse(const WPEFramework::Core::ProxyType<WPEFramework::Core::JSONRPC::Message>& jsonResponse, bool& enabled) override;
         Firebolt::Error Dispatch(const string& eventName, const WPEFramework::Core::ProxyType<WPEFramework::Core::JSONRPC::Message>& jsonResponse) override;
  
