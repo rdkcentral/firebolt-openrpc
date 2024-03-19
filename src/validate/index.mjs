@@ -49,6 +49,7 @@ const run = async ({
 
             result.errors.forEach(error => {
                 displayError(error)
+                // console.dir(error, { depth: 100 })
             })
         }
     }
@@ -185,7 +186,7 @@ const run = async ({
                         "methods": {
                             "type": "array",
                             "items": {
-                                "allOf": json.methods.map(method => ({
+                                "allOf": json.methods.filter(m => m.result).map(method => ({
                                     "if": {
                                         "type": "object",
                                         "properties": {
@@ -264,7 +265,6 @@ const run = async ({
                 "$ref": "#/definitions/Document"
             }
         ]
-
 
         const examples = ajv.compile(exampleSpec)
 

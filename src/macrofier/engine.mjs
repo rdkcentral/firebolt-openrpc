@@ -754,7 +754,7 @@ function generateSchemas(json, templates, options) {
   const schemas = JSON.parse(JSON.stringify(json.definitions || (json.components && json.components.schemas) || {}))
 
   const generate = (name, schema, uri, { prefix = '' } = {}) => {
-    // these are internal schemas used by the firebolt-openrpc tooling, and not meant to be used in code/doc generation
+    // these are internal schemas used by the fireboltize-openrpc tooling, and not meant to be used in code/doc generation
     if (['ListenResponse', 'ProviderRequest', 'ProviderResponse', 'FederatedResponse', 'FederatedRequest'].includes(name)) {
       return
     }
@@ -1132,7 +1132,7 @@ function insertMethodMacros(template, methodObj, json, templates, examples = {})
   const subscriber = json.methods.find(method => method.tags.find(tag => tag['x-alternative'] === methodObj.name))
   const subscriberTemplate = (subscriber ? insertMethodMacros(getTemplate('/codeblocks/subscriber', templates), subscriber, json, templates, examples) : '')
   const setterFor = methodObj.tags.find(t => t.name === 'setter') && methodObj.tags.find(t => t.name === 'setter')['x-setter-for'] || ''
-  const pullsResult = (puller || pullsFor) ? localizeDependencies(pullsFor || methodObj, json).params[1].schema : null
+  const pullsResult = (puller || pullsFor) ? localizeDependencies(pullsFor || methodObj, json).params.findLast(x=>true).schema : null
   const pullsParams = (puller || pullsFor) ? localizeDependencies(getPayloadFromEvent(puller || methodObj), json, null, { mergeAllOfs: true }).properties.parameters : null
   const pullsResultType = pullsResult && types.getSchemaShape(pullsResult, json, { destination: state.destination, section: state.section })
   const pullsForType = pullsResult && types.getSchemaType(pullsResult, json, { destination: state.destination, section: state.section  })
@@ -1467,7 +1467,7 @@ function generateProviderInterfaces(json, templates) {
 function insertProviderInterfaceMacros(template, capability, moduleJson = {}, templates) {
   const iface = getProviderInterface(capability, moduleJson, { destination: state.destination, section: state.section })//.map(method => { method.name = method.name.charAt(9).toLowerCase() + method.name.substr(10); return method } )
 
-  const uglyName = capability.split(":").slice(-2).map(capitalize).reverse().join('') + "Provider"
+  const uglyName = capability.split(':').slice(-2).map(capitalize).map(x => x.split('-').map(capitalize).join('')).reverse().join('') + "Provider"
   let name = iface.length === 1 ? iface[0].name.charAt(0).toUpperCase() + iface[0].name.substr(1) + "Provider" : uglyName
 
   if (moduleJson.info['x-interface-names']) {

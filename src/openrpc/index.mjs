@@ -65,7 +65,7 @@ const run = async ({
     json = addExternalMarkdown(json, markdown)
 
     // put module name in front of each method
-    json.methods.forEach(method => method.name = json.info.title + '.' + method.name)
+    json.methods.forEach(method => method.name = method.name.includes('\.') ? method.name : json.info.title + '.' + method.name)
 
     // merge any info['x-'] extension values (maps & arrays only..)
     Object.keys(json.info).filter(key => key.startsWith('x-')).forEach(extension => {
@@ -99,6 +99,19 @@ const run = async ({
     modules[key] = JSON.stringify(json, null, '\t')
 
     logSuccess(`Generated the ${json.info.title} module.`)
+  })
+
+  // make sure all provided-by APIs point to a real provider method
+  const appProvided = openrpc.methods.filter(m => m.tags.find(t=>t['x-provided-by'])) || []
+  appProvided.forEach(m => {
+      const providedBy = m.tags.find(t=>t['x-provided-by'])['x-provided-by']
+      const provider = openrpc.methods.find(m => m.name === providedBy)
+      if (!provider) {
+          throw `Method ${m.name} is provided by an undefined method (${providedBy})`
+      }
+      else {
+        console.log(`Method ${m.name} is provided by ${providedBy}`)
+      }
   })
 
   await writeJson(output, openrpc)
