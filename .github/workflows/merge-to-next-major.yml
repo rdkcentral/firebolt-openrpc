@@ -107,6 +107,10 @@ jobs:
             git add package.json && git commit -m "Sync version to ${{ steps.extract_version.outputs.version }}"
           fi
 
+      # Checkout "next-major"
+      - name: Checkout next-major
+        run: git checkout "next-major"
+
       - name: Perform the merge from next to next-major
         run: |
           git merge next
