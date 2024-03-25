@@ -71,7 +71,7 @@ jobs:
             exit 1
           fi
 
-  # If the merge cannot be performed, let stakeholders know
+  # If the merge cannot be performed, let stakeholders  know
   process_merge_on_failure:
     name: Merge dry-run failure
     needs: check_merge
