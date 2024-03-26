@@ -1,0 +1,3 @@
+            ${if.optional}if ((*proxyResponse)${Property.dependency}.${Property}.IsSet()) {
+                ${base.title}${property.dependency}${if.impl.optional}.value()${end.if.impl.optional}.${property} = (*proxyResponse)${Property.dependency}.${Property};
+            }${end.if.optional}${if.non.optional}${base.title}${property.dependency}${if.impl.optional}.value()${end.if.impl.optional}.${property} = (*proxyResponse)${Property.dependency}.${Property};${end.if.non.optional}

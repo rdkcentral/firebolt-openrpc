@@ -17,7 +17,7 @@
  */
 
 import { readJson, readFiles, readDir, writeJson } from "../shared/filesystem.mjs"
-import { addExternalMarkdown, addExternalSchemas, fireboltize } from "../shared/modules.mjs"
+import { addExternalMarkdown, addExternalSchemas, fireboltize, fireboltizeMerged } from "../shared/modules.mjs"
 import path from "path"
 import { logHeader, logSuccess } from "../shared/io.mjs"
 
@@ -100,6 +100,8 @@ const run = async ({
 
     logSuccess(`Generated the ${json.info.title} module.`)
   })
+
+  openrpc = fireboltizeMerged(openrpc)
 
   await writeJson(output, openrpc)
 

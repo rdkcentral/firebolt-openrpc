@@ -7,11 +7,21 @@
     ],
     "createModuleDirectories": true,
     "copySchemasIntoModules": true,
-    "aggregateFile": "/index.d.ts",
+    "aggregateFiles": [
+        "/index.d.ts"
+    ],
     "treeshakePattern": "(import|export).*?from\\s+['\"](.*?)['\"]",
     "treeshakeTypes": [".js", ".mjs"],
     "operators": {
         "or": " | ",
         "stringQuotation": "'"
-    }
+    },
+    "primitives": {
+        "boolean": "boolean",
+        "integer": "number",
+        "number": "number",
+        "string": "string",
+        "object": "object"
+    },
+    "additionalMethodTemplates": [ "declarations" ]
 }

@@ -1,0 +1,34 @@
+{
+    "name": "CPlusPlus",
+    "langcode": "cpp",
+    "createModuleDirectories": false,
+    "extractSubSchemas": true,
+    "unwrapResultObjects": false,
+    "createPolymorphicMethods": true,
+    "excludeDeclarations": true,
+    "extractProviderSchema": true,
+    "aggregateFiles": [
+        "/include/firebolt.h",
+        "/src/firebolt.cpp"
+    ],
+    "templatesPerModule": [
+        "/include/module.h",
+        "/src/module_impl.h",
+        "/src/module_impl.cpp"
+    ],
+    "templatesPerSchema": [
+        "/include/common/module.h",
+        "/src/module_common.cpp",
+        "/src/jsondata_module.h"
+    ],
+    "persistPermission": true,
+    "primitives": {},
+    "langVersion" : "c++17",
+    "additionalSchemaTemplates": [ "json-types" ],
+    "additionalMethodTemplates": [ "declarations", "declarations-override" ],
+    "templateExtensionMap": {
+        "methods": [ "impl.cpp", "cpp" ],
+        "declarations": [ "h" ],
+        "declarations-override": [ "impl.h" ]
+    }
+}
