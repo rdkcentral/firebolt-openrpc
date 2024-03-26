@@ -24,10 +24,27 @@ const isNull = schema => {
   return (schema.type === 'null' || schema.const === null)
 }
 
-const isSchema = element => element.$ref || element.type || element.const || element.oneOf || element.anyOf || element.allOf
+const isSchema = element => element.$ref || element.type || element.const || element.oneOf || element.anyOf || element.allOf || element.$id
 
-const refToPath = ref => {
-  let path = ref.split('#').pop().substr(1).split('/')
+const pathToArray = (ref, json) => {
+  //let path = ref.split('#').pop().substr(1).split('/')
+
+  const ids = []
+  if (json) {
+    ids.push(...getAllValuesForName("$id", json)) // add all $ids but the first one
+  }
+
+  const subschema = ids.find(id => ref.indexOf(id) >= 0)
+
+  let path = ref.split('#').pop().substring(1)
+
+  if (subschema) {
+    path = [].concat(...path.split('/'+subschema+'/').map(n => [n.split('/'), subschema])).slice(0, -1).flat()
+  }
+  else {
+    path = path.split('/')
+  }
+
   return path.map(x => x.match(/^[0-9]+$/) ? parseInt(x) : x)
 }
 
@@ -36,6 +53,9 @@ const objectPaths = obj => {
   const addDelimiter = (a, b) => a ? `${a}/${b}` : b;
 
   const paths = (obj = {}, head = '#') => {
+    if (obj && isObject(obj) && obj.$id && head !== '#') {
+      head = obj.$id
+    }
     return obj ? Object.entries(obj)
       .reduce((product, [key, value]) => {
         let fullPath = addDelimiter(head, key)
@@ -47,24 +67,49 @@ const objectPaths = obj => {
   return paths(obj);
 }
 
+const getAllValuesForName = (name, obj) => {
+  const isObject = val => typeof val === 'object'
+
+  const values = (name, obj = {}) => {
+    return obj ? Object.entries(obj)
+      .reduce((product, [key, value]) => {
+        if (isObject(value)) {
+          return product.concat(values(name, value))
+        }
+        else if (key === name) {
+          return product.concat(value)
+        }
+        else {
+          return product
+        }
+      }, []) : [] 
+  }
+  return [...new Set(values(name, obj))];
+}
+
 const getExternalSchemaPaths = obj => {
   return objectPaths(obj)
     .filter(x => /\/\$ref$/.test(x))
-    .map(refToPath)
+    .map(x => pathToArray(x, obj))
     .filter(x => !/^#/.test(getPathOr(null, x, obj)))
 }
 
 const getLocalSchemaPaths = obj => {
   return objectPaths(obj)
     .filter(x => /\/\$ref$/.test(x))
-    .map(refToPath)
+    .map(x => pathToArray(x, obj))
     .filter(x => /^#.+/.test(getPathOr(null, x, obj)))
 }
 
 const getLinkedSchemaPaths = obj => {
   return objectPaths(obj)
     .filter(x => /\/\$ref$/.test(x))
-    .map(refToPath)
+    .map(x => pathToArray(x, obj))
+}
+
+const getLinkedSchemaUris = obj => {
+  return objectPaths(obj)
+    .filter(x => /\/\$ref$/.test(x))
 }
 
 const updateRefUris = (schema, uri) => {
@@ -118,23 +163,23 @@ const replaceRef = (existing, replacement, schema) => {
   }
 }
 
-const getPath = (uri = '', moduleJson = {}) => {
+const getReferencedSchema = (uri = '', moduleJson = {}) => {
   const [mainPath, subPath] = (uri || '').split('#')
   let result
 
   if (!uri) {
-    throw "getPath requires a non-null uri parameter"
+    throw "getReferencedSchema requires a non-null uri parameter"
   }
 
   if (mainPath) {
-    throw `Cannot call getPath with a fully qualified URI: ${uri}`
+//    throw `Cannot call getReferencedSchema with a fully qualified URI: ${uri}`
+    result = getPathOr(null, ['components', 'schemas', mainPath, ...subPath.slice(1).split('/')], moduleJson)
   }
-
-  if (subPath) {
+  else if (subPath) {
     result = getPathOr(null, subPath.slice(1).split('/'), moduleJson)
   }
   if (!result) {
-    //throw `getPath: Path '${uri}' not found in ${moduleJson ? (moduleJson.title || moduleJson.info.title) : moduleJson}.`
+    //throw `getReferencedSchema: Path '${uri}' not found in ${moduleJson ? (moduleJson.title || moduleJson.info.title) : moduleJson}.`
     return null
   }
   else {
@@ -150,7 +195,7 @@ function getSchemaConstraints(schema, module, options = { delimiter: '\n' }) {
 
   if (schema['$ref']) {
     if (schema['$ref'][0] === '#') {
-      return getSchemaConstraints(getPath(schema['$ref'], module), module, options)
+      return getSchemaConstraints(getReferencedSchema(schema['$ref'], module), module, options)
     }
     else {
       return ''
@@ -231,10 +276,10 @@ const localizeDependencies = (json, document, schemas = {}, options = defaultLoc
         let path = refs[i]      
         const ref = getPathOr(null, path, definition)
         path.pop() // drop ref
-        if (refToPath(ref).length > 1) {
-          let resolvedSchema = JSON.parse(JSON.stringify(getPathOr(null, refToPath(ref), document)))
+        if (pathToArray(ref, document).length > 1) {
+          let resolvedSchema = JSON.parse(JSON.stringify(getPathOr(null, pathToArray(ref, document), document)))
         
-          if (schemaReferencesItself(resolvedSchema, refToPath(ref))) {
+          if (schemaReferencesItself(resolvedSchema, pathToArray(ref, document))) {
             resolvedSchema = null
           }
 
@@ -346,11 +391,17 @@ const getLocalSchemas = (json = {}) => {
 }
 
 const isDefinitionReferencedBySchema = (name = '', moduleJson = {}) => {
+  let subSchema = false
+  if (name.indexOf("/https://") >= 0) {
+    name = name.substring(name.indexOf('/https://')+1)
+    console.log('searching for subschema: ' + name)
+    subSchema = true
+  }
   const refs = objectPaths(moduleJson)
                 .filter(x => /\/\$ref$/.test(x))
-                .map(refToPath)
+                .map(x => pathToArray(x, moduleJson))
                 .map(x => getPathOr(null, x, moduleJson))
-                .filter(x => x === name)
+                .filter(x => subSchema ? x.startsWith(name) : x === name)
 
   return (refs.length > 0)
 }
@@ -369,7 +420,9 @@ export {
   getLocalSchemas,
   getLocalSchemaPaths,
   getLinkedSchemaPaths,
-  getPath,
+  getLinkedSchemaUris,
+  getAllValuesForName,
+  getReferencedSchema,
   isDefinitionReferencedBySchema,
   isNull,
   isSchema,

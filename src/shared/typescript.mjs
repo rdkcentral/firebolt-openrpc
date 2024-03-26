@@ -17,7 +17,7 @@
  */
 
 import deepmerge from 'deepmerge'
-import { getPath, getSafeEnumKeyName, localizeDependencies } from './json-schema.mjs'
+import { getReferencedSchema, getSafeEnumKeyName, localizeDependencies } from './json-schema.mjs'
 
 const isSynchronous = m => !m.tags ? false : m.tags.map(t => t.name).find(s => s === 'synchronous')
 
@@ -37,9 +37,8 @@ function getMethodSignatureParams(method, module, { destination }) {
 const safeName = prop => prop.match(/[.+]/) ? '"' + prop + '"' : prop
 
 function getSchemaShape(schema = {}, module = {}, { name = '', level = 0, title, summary, descriptions = true, destination, enums = true } = {}) {
-    schema = JSON.parse(JSON.stringify(schema))
+  schema = JSON.parse(JSON.stringify(schema))
     let structure = []
-
     let prefix = (level === 0 ? 'type ' : '')
     let operator = (level == 0 ? ' =' : ':')
     let theTitle = (level === 0 ? schema.title || name : name)
@@ -57,7 +56,7 @@ function getSchemaShape(schema = {}, module = {}, { name = '', level = 0, title,
         return `${prefix}${theTitle};`
       }
       else {
-        const someJson = getPath(schema['$ref'], module)
+        const someJson = getReferencedSchema(schema['$ref'], module)
         if (someJson) {
           return getSchemaShape(someJson, module, { name, level, title, summary, descriptions, destination, enums: false })
         }
@@ -139,7 +138,7 @@ function getSchemaShape(schema = {}, module = {}, { name = '', level = 0, title,
         }
       }
 
-      let union = deepmerge.all([...schema.allOf.map(x => x['$ref'] ? getPath(x['$ref'], module) || x : x).reverse()], {
+      let union = deepmerge.all([...schema.allOf.map(x => x['$ref'] ? getReferencedSchema(x['$ref'], module) || x : x).reverse()], {
         customMerge: merger
       })
 
@@ -203,7 +202,7 @@ function getSchemaShape(schema = {}, module = {}, { name = '', level = 0, title,
   
     if (schema['$ref']) {
       if (schema['$ref'][0] === '#') {
-        return getSchemaType(getPath(schema['$ref'], module), module, {title: true, link: link, code: code, destination})
+        return getSchemaType(getReferencedSchema(schema['$ref'], module), module, {title: true, link: link, code: code, destination})
       }
       else {
         // TODO: This never happens... but might be worth keeping in case we link to an opaque external schema at some point?
@@ -278,7 +277,7 @@ function getSchemaShape(schema = {}, module = {}, { name = '', level = 0, title,
       }
     }
     else if (schema.allOf) {
-      let union = deepmerge.all([...schema.allOf.map(x => x['$ref'] ? getPath(x['$ref'], module) || x : x)])
+      let union = deepmerge.all([...schema.allOf.map(x => x['$ref'] ? getReferencedSchema(x['$ref'], module) || x : x)])
       if (schema.title) {
         union.title = schema.title
       }
@@ -299,7 +298,7 @@ function getSchemaShape(schema = {}, module = {}, { name = '', level = 0, title,
     else if (schema.type === 'object' && schema.title) {
       const maybeGetPath = (path, json) => {
         try {
-          return getPath(path, json)
+          return getReferencedSchema(path, json)
         }
         catch (e) {
           return null

@@ -17,7 +17,8 @@
  */
 
 import { readJson, writeJson } from '../shared/filesystem.mjs'
-import { removeUnusedSchemas } from '../shared/modules.mjs'
+import { getAllValuesForName } from '../shared/json-schema.mjs'
+import { addExternalSchemas, removeUnusedBundles, removeUnusedSchemas } from '../shared/modules.mjs'
 
 // destructure well-known cli args and alias to variables expected by script
 const run = ({
@@ -76,6 +77,7 @@ const run = ({
 
       // Tree-shake unused schemas
       openrpc.components = removeUnusedSchemas(openrpc).components
+      openrpc.components.schemas = removeUnusedBundles(openrpc).components.schemas
       
       await writeJson(output, openrpc)
       resolve()

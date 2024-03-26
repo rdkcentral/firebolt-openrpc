@@ -28,8 +28,8 @@ import isEmpty from 'crocks/core/isEmpty.js'
 const { and, not } = logic
 import isString from 'crocks/core/isString.js'
 import predicates from 'crocks/predicates/index.js'
-import { getExternalSchemaPaths, isDefinitionReferencedBySchema, isNull, localizeDependencies, isSchema, getLocalSchemaPaths, replaceRef } from './json-schema.mjs'
-import { getPath as getRefDefinition } from './json-schema.mjs'
+import { getExternalSchemaPaths, isDefinitionReferencedBySchema, isNull, localizeDependencies, isSchema, getLocalSchemaPaths, replaceRef, getLinkedSchemaUris, getAllValuesForName, replaceUri } from './json-schema.mjs'
+import { getReferencedSchema } from './json-schema.mjs'
 const { isObject, isArray, propEq, pathSatisfies, hasProp, propSatisfies } = predicates
 
 // util for visually debugging crocks ADTs
@@ -911,7 +911,7 @@ const generateEventListenResponse = json => {
         // only want or and xor here (might even remove xor)
         const anyOf = event.result.schema.oneOf || event.result.schema.anyOf
         const ref = {
-            "$ref": "https://meta.comcast.com/firebolt/types#/definitions/ListenResponse"
+            "$ref": "https://meta.rdkcentral.com/firebolt/schemas/types#/definitions/ListenResponse"
         }
 
         if (anyOf) {
@@ -936,7 +936,7 @@ const getAnyOfSchema = (inType, json) => {
     if (outType.schema.anyOf) {
         let definition = ''
         if (inType.schema['$ref'] && (inType.schema['$ref'][0] === '#')) {
-            definition = getRefDefinition(inType.schema['$ref'], json, json['x-schemas'])
+            definition = getReferencedSchema(inType.schema['$ref'], json, json['x-schemas'])
         }
         else {
             definition = outType.schema
@@ -1173,55 +1173,50 @@ const getExternalSchemas = (json = {}, schemas = {}) => {
 
 const addExternalSchemas = (json, sharedSchemas) => {
     json = JSON.parse(JSON.stringify(json))
-
-    let searching = true
-
-    while (searching) {
-        searching = false
-        const externalSchemas = getExternalSchemas(json, sharedSchemas)
-        Object.entries(externalSchemas).forEach( ([name, schema]) => {
-            const group = sharedSchemas[name.split('#')[0]].title
-            const id = sharedSchemas[name.split('#')[0]].$id
-            const refs = getLocalSchemaPaths(schema)
-            refs.forEach(ref => {
-                ref.pop() // drop the actual '$ref' so we can modify it
-                getPathOr(null, ref, schema).$ref = id + getPathOr(null, ref, schema).$ref
-            })
-            // if this schema is a child of some other schema that will be copied in this batch, then skip it
-            if (Object.keys(externalSchemas).find(s => name.startsWith(s+'/') && s.length < name.length)) {
-                console.log('Skipping: ' + name)
-                console.log('Because of: ' + Object.keys(externalSchemas).find(s => name.startsWith(s) && s.length < name.length))
-                throw "Skipping sub schema"
-                return
-            }
-            searching = true
-            json['x-schemas'] = json['x-schemas'] || {}
-            json['x-schemas'][group] = json['x-schemas'][group] || { uri: name.split("#")[0]}
-            json['x-schemas'][group][name.split("/").pop()] = schema
-        })
+    json.components = json.components || {}
+    json.components.schemas = json.components.schemas || {}
     
-        //update references to external schemas to be local
-        Object.keys(externalSchemas).forEach(ref => {
-          const group = sharedSchemas[ref.split('#')[0]].title
-          replaceRef(ref, `#/x-schemas/${group}/${ref.split("#").pop().substring('/definitions/'.length)}`, json)
-        })    
+    console.dir(Object.keys(sharedSchemas))
+
+    let found = true
+    const added = []
+    while (found) {
+        const ids = getAllValuesForName('$ref', json)
+        console.dir(ids.filter(id => id.indexOf("/schemas/types") >= 0))
+        found = false
+        Object.entries(sharedSchemas).forEach( ([key, schema], i) => {
+            console.log(`- checking ${key}`)
+            console.dir(added)
+            if (!added.includes(key)) {
+                if (ids.find(id => id.startsWith(key))) {
+                    const bundle = JSON.parse(JSON.stringify(schema))
+                    replaceUri('', bundle.$id, bundle)
+                    json.components.schemas[key] = bundle
+                    console.log(`- adding ${key}`)
+                    added.push(key)
+                    found = true
+                }    
+            }
+        })
     }
 
+//    json = removeUnusedSchemas(json)
     return json
 }
 
 // TODO: make this recursive, and check for group vs schema
 const removeUnusedSchemas = (json) => {
     const schema = JSON.parse(JSON.stringify(json))
+    const refs = getAllValuesForName('$ref', schema)
 
     const recurse = (schema, path) => {
         let deleted = false
         Object.keys(schema).forEach(name => {
             if (isSchema(schema[name])) {
-                const used = isDefinitionReferencedBySchema(path + '/' + name, json)
-
+                const used = refs.includes(path + '/' + name) || ((name.startsWith('https://') && refs.find(ref => ref.startsWith(name)))) //isDefinitionReferencedBySchema(path + '/' + name, json)
                 if (!used) {
                     delete schema[name]
+                    console.log(`Deleting ${name}`)
                     deleted = true
                 }
                 else {
@@ -1235,7 +1230,10 @@ const removeUnusedSchemas = (json) => {
     }
 
     if (schema.components.schemas) {
-        while(recurse(schema.components.schemas, '#/components/schemas')) {}
+        while(recurse(schema.components.schemas, '#/components/schemas')) {
+            refs.length = 0
+            refs.push(...getAllValuesForName('$ref', schema))
+        }
     }
 
     if (schema['x-schemas']) {
@@ -1244,6 +1242,39 @@ const removeUnusedSchemas = (json) => {
 
     return schema
 }
+
+const removeUnusedBundles = (json) => {
+    json = JSON.parse(JSON.stringify(json))
+    // remove all the shared schemas
+    const sharedSchemas = {}
+    Object.keys(json.components.schemas).forEach (key => {
+        if (key.startsWith('https://')) {
+            sharedSchemas[key] = json.components.schemas[key]
+            console.log(`Removing ${key}`)
+            delete json.components.schemas[key]
+        }
+    })
+
+    console.dir(Object.keys(sharedSchemas))
+
+    // and only add back in the ones that are still referenced
+    let found = true
+    while(found) {
+        found = false
+        const ids = [ ...new Set(getAllValuesForName('$ref', json).map(ref => ref.split('#').shift()))]
+        console.dir(ids)
+        Object.keys(sharedSchemas).forEach(key => {
+            if (ids.includes(key)) {
+                json.components.schemas[key] = sharedSchemas[key]
+                console.log(`Including ${key}`)
+                delete sharedSchemas[key]
+                found = true
+            }
+        })  
+    }
+
+    return json
+}    
 
 const getModule = (name, json, copySchemas) => {
     let openrpc = JSON.parse(JSON.stringify(json))
@@ -1255,6 +1286,8 @@ const getModule = (name, json, copySchemas) => {
         openrpc.info.description = json.info['x-module-descriptions'][name]
     }
     delete openrpc.info['x-module-descriptions']
+    return removeUnusedBundles(removeUnusedSchemas(openrpc))
+    
     const copy = JSON.parse(JSON.stringify(openrpc))
 
     // zap all of the schemas
@@ -1379,6 +1412,7 @@ export {
     getPathFromModule,
     providerHasNoParameters,
     removeUnusedSchemas,
+    removeUnusedBundles,
     getModule,
     getSemanticVersion,
     addExternalMarkdown,

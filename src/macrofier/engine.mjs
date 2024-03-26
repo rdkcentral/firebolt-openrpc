@@ -31,7 +31,7 @@ const { isObject, isArray, propEq, pathSatisfies, propSatisfies } = predicates
 
 import { isRPCOnlyMethod, isProviderInterfaceMethod, getProviderInterface, getPayloadFromEvent, providerHasNoParameters, isTemporalSetMethod, isCallsMetricsMethod, isExcludedMethod, hasMethodAttributes, getMethodAttributes, isEventMethodWithContext, getSemanticVersion, getSetterFor, getProvidedCapabilities, isPolymorphicPullMethod, hasPublicAPIs, createPolymorphicMethods } from '../shared/modules.mjs'
 import isEmpty from 'crocks/core/isEmpty.js'
-import { getLinkedSchemaPaths, getSchemaConstraints, isSchema, localizeDependencies, isDefinitionReferencedBySchema, getSafeEnumKeyName } from '../shared/json-schema.mjs'
+import { getLinkedSchemaPaths, getSchemaConstraints, isSchema, localizeDependencies, isDefinitionReferencedBySchema, getSafeEnumKeyName, getAllValuesForName, getReferencedSchema } from '../shared/json-schema.mjs'
 
 // util for visually debugging crocks ADTs
 const _inspector = obj => {
@@ -130,7 +130,7 @@ const getLinkForSchema = (schema, json, { name = '' } = {}) => {
     return `#\$\{LINK:schema:${type}\}`
   }
   else {
-    const [group, schema] = Object.entries(json['x-schemas']).find(([key, value]) => json['x-schemas'][key] && json['x-schemas'][key][type]) || [null, null]
+    const [group, schema] = Object.entries(json.components.schemas).find(([key, value]) => json.components.schemas[key] && json.components.schemas[key][type]) || [null, null]
     if (group && schema) {
       if (copySchemasIntoModules) {
         return `#\$\{LINK:schema:${type}\}`
@@ -150,24 +150,24 @@ const getLinkForSchema = (schema, json, { name = '' } = {}) => {
   return '#'
 }
 
-const getComponentExternalSchema = (json) => {
-  let refSchemas = []
-  if (json.components && json.components.schemas) {
-    Object.entries(json.components.schemas).forEach(([name, schema]) => {
-      let refs = getLinkedSchemaPaths(schema).map(path => getPathOr(null, path, schema))
-      refs.map(ref => {
-        let title = ''
-        if (ref.includes('x-schemas')) {
-          if (ref.split('/')[2] !== json.info.title) {
-            title = ref.split('/')[2]
-          }
-        }
-        title && !refSchemas.includes(title) ? refSchemas.push(title) : null
-      })
-    })
-  }
-  return (refSchemas)
-}
+// const getComponentExternalSchema = (json) => {
+//   let refSchemas = []
+//   if (json.components && json.components.schemas) {
+//     Object.entries(json.components.schemas).forEach(([name, schema]) => {
+//       let refs = getLinkedSchemaPaths(schema).map(path => getPathOr(null, path, schema))
+//       refs.map(ref => {
+//         let title = ''
+//         if (ref.includes('x-schemas')) {
+//           if (ref.split('/')[2] !== json.info.title) {
+//             title = ref.split('/')[2]
+//           }
+//         }
+//         title && !refSchemas.includes(title) ? refSchemas.push(title) : null
+//       })
+//     })
+//   }
+//   return (refSchemas)
+// }
 
 // Maybe methods array of objects
 const getMethods = compose(
@@ -813,8 +813,13 @@ function generateSchemas(json, templates, options) {
 
   // schemas may be 1 or 2 levels deeps
   Object.entries(schemas).forEach(([name, schema]) => {
-    if (isSchema(schema)) {
+    if (isSchema(schema) && !schema.$id) {
       list.push([name, schema])
+    }
+    else if (isSchema(schema) && schema.$id && schema.definitions) {
+      Object.entries(schema.definitions).forEach( ([name, schema]) => {
+        list.push([name, schema])
+      })
     }
   })
 
@@ -831,11 +836,16 @@ function getRelatedSchemaLinks(schema = {}, json = {}, templates = {}, options =
   //  - dedupe them
   //  - convert them to the $ref value (which are paths to other schema files), instead of the path to the ref node itself
   //  - convert those into markdown links of the form [Schema](Schema#/link/to/element)
+
+  console.dir(getLinkedSchemaPaths(schema)
+  .map(path => getPathOr(null, path, schema))
+//  .map(ref => getReferencedSchema(ref, json))
+)
+
   let links = getLinkedSchemaPaths(schema)
     .map(path => getPathOr(null, path, schema))
     .filter(path => seen.hasOwnProperty(path) ? false : (seen[path] = true))
-    .map(path => path.substring(2).split('/'))
-    .map(path => getPathOr(null, path, json))
+    .map(ref => getReferencedSchema(ref, json))
     .filter(schema => schema.title)
     .map(schema => '[' + types.getSchemaType(schema, json, { name: schema.title, destination: state.destination, section: state.section }) + '](' + getLinkForSchema(schema, json, { name: schema.title }) + ')') // need full module here, not just the schema
     .filter(link => link)
@@ -886,14 +896,18 @@ const generateImports = (json, templates, options = { destination: '' }) => {
     template = getTemplate(suffix ? `/imports/default.${suffix}` : '/imports/default', templates)
   }
 
-  if (json['x-schemas'] && Object.keys(json['x-schemas']).length > 0 && !json.info['x-uri-titles']) {
-    imports += Object.keys(json['x-schemas']).map(shared => template.replace(/\$\{info.title.lowercase\}/g, shared.toLowerCase())).join('')
+  const subschemas = getAllValuesForName("$id", json)
+  subschemas.shift() // remove main $id
+
+  if (subschemas.length && !json.info['x-uri-titles']) {
+    imports += subschemas.map(id => json.components.schemas[id].title).map(shared => template.replace(/\$\{info.title.lowercase\}/g, shared.toLowerCase())).join('')
   }
 
-  let componentExternalSchema = getComponentExternalSchema(json)
-  if (componentExternalSchema.length && json.info['x-uri-titles']) {
-    imports += componentExternalSchema.map(shared => template.replace(/\$\{info.title.lowercase\}/g, shared.toLowerCase())).join('')
-  }
+  // TODO: this does the same as above? am i missing something?
+  // let componentExternalSchema = getComponentExternalSchema(json)
+  // if (componentExternalSchema.length && json.info['x-uri-titles']) {
+  //   imports += componentExternalSchema.map(shared => template.replace(/\$\{info.title.lowercase\}/g, shared.toLowerCase())).join('')
+  // }
   return imports
 }
 

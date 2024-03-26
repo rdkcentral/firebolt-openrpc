@@ -67,8 +67,15 @@ const run = async ({
     const moduleList = input ? await readDir(path.join(input), { recursive: true }) : []
     const modules = await readFiles(moduleList, path.join(input))
 
-    const descriptionsList = transformations ? await readDir(path.join(input, '..', 'descriptions'), { recursive: true }) : []
-    const markdown = await readFiles(descriptionsList, path.join(input, '..', 'descriptions'))
+    let descriptionsList, markdown
+
+    try {
+        descriptionsList = transformations ? await readDir(path.join(input, '..', 'descriptions'), { recursive: true }) : []
+        markdown = await readFiles(descriptionsList, path.join(input, '..', 'descriptions'))    
+    }
+    catch (error) {
+        markdown = {}
+    }
 
     const jsonSchemaSpec = await (await fetch('https://meta.json-schema.tools')).json()
 
@@ -98,18 +105,23 @@ const run = async ({
         schemas: [
             jsonSchemaSpec,
             openRpcSpec,
-            fireboltOpenRpcSpec,
-            ...Object.values(sharedSchemas)
+            fireboltOpenRpcSpec
         ]
     })
 
+//            ...( transformations ? Object.values(sharedSchemas) : [])
+
     addFormats(ajv)
+
     // explicitly add our custom extensions so we can keep strict mode on (TODO: put these in a JSON config?)
     ajv.addVocabulary(['x-method', 'x-this-param', 'x-additional-params', 'x-schemas', 'components'])
 
     const firebolt = ajv.compile(fireboltOpenRpcSpec)
     const jsonschema = ajv.compile(jsonSchemaSpec)
     const openrpc = ajv.compile(openRpcSpec)
+
+    // add the shared schemas so that each shared schema knows about the others
+    ajv.addSchema(Object.values(sharedSchemas))
 
     // Validate all shared schemas
     sharedSchemas && Object.keys(sharedSchemas).forEach(key => {
@@ -156,7 +168,7 @@ const run = async ({
         printResult(exampleResult, "JSON Schema")
     })
 
-    // Validate all modules
+    // Do Firebolt Transformations
     Object.keys(modules).forEach(key => {
         let json = JSON.parse(modules[key])
 
@@ -175,6 +187,12 @@ const run = async ({
             json = addExternalSchemas(json, sharedSchemas)
         }
 
+        modules[key] = json
+    })
+
+    // Validate all modules examples
+    Object.keys(modules).forEach(key => {
+        let json = modules[key]
         const exampleSpec = {
             "$id": "https://meta.rdkcentral.com/firebolt/dynamic/" + (json.info.title) +"/examples",
             "title": "FireboltOpenRPCExamples",
@@ -255,9 +273,20 @@ const run = async ({
                     }
                 }
             },
-            "x-schemas": json['x-schemas'],
-            "components": json.components
+            components: {
+                schemas: {}
+            }
         }
+
+        Object.entries(json.components.schemas).forEach( ([key, schema]) => {
+            if (key.startsWith("https://")) {
+                exampleSpec.definitions[key] = schema
+            }
+            else {
+                exampleSpec.components.schemas[key] = schema
+            }
+        })
+        Object.assign(exampleSpec.definitions, json.components.schemas)
 
         exampleSpec.oneOf = [
             {
@@ -265,25 +294,44 @@ const run = async ({
             }
         ]
 
-
         const examples = ajv.compile(exampleSpec)
+
+        try {
+            const exampleResult = validate(json, {}, ajv, examples)
+
+            if (exampleResult.valid) {
+                printResult(exampleResult, "Firebolt Examples")
+            }
+            else {
+                printResult(exampleResult, "Firebolt Examples")
+
+//                if (!exampleResult.valid) {
+//                    console.dir(exampleSpec, { depth: 100 })
+//                }
+            }
+        }
+        catch (error) {
+            throw error
+        }
+    })
+
+    // Remove the shared schemas, because they're bundled into the OpenRPC docs
+    Object.values(sharedSchemas).map(schema => schema.$id).map(x => ajv.removeSchema(x))
+
+    // Validate all modules
+    Object.keys(modules).forEach(key => {
+        let json = modules[key]
 
         try {
             const openrpcResult = validate(json, {}, ajv, openrpc)
             const fireboltResult = validate(json, {}, ajv, firebolt)
-            const exampleResult = validate(json, {}, ajv, examples)
 
-            if (openrpcResult.valid && fireboltResult.valid && exampleResult.valid) {
+            if (openrpcResult.valid && fireboltResult.valid) {
                 printResult(openrpcResult, "OpenRPC & Firebolt")
             }
             else {
                 printResult(openrpcResult, "OpenRPC")
                 printResult(fireboltResult, "Firebolt")
-                printResult(exampleResult, "Firebolt Examples")
-
-                if (!exampleResult.valid) {
-//                    console.dir(exampleSpec, { depth: 100 })
-                }
             }
         }
         catch (error) {
