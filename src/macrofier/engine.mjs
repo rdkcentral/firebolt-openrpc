@@ -29,7 +29,7 @@ import isString from 'crocks/core/isString.js'
 import predicates from 'crocks/predicates/index.js'
 const { isObject, isArray, propEq, pathSatisfies, propSatisfies } = predicates
 
-import { isRPCOnlyMethod, isProviderInterfaceMethod, getProviderInterface, getPayloadFromEvent, providerHasNoParameters, isTemporalSetMethod, hasMethodAttributes, getMethodAttributes, isEventMethodWithContext, getSemanticVersion, getSetterFor, getProvidedCapabilities, isPolymorphicPullMethod, hasPublicAPIs, isAllowFocusMethod, hasAllowFocusMethods, createPolymorphicMethods, isExcludedMethod, isCallsMetricsMethod } from '../shared/modules.mjs'
+import { isRPCOnlyMethod, isProviderInterfaceMethod, getProviderInterface, getPayloadFromEvent, providerHasNoParameters, isTemporalSetMethod, hasMethodAttributes, getMethodAttributes, isEventMethodWithContext, getSemanticVersion, getSetterFor, getProvidedCapabilities, isPolymorphicPullMethod, hasPublicAPIs, isAllowFocusMethod, hasAllowFocusMethods, createPolymorphicMethods, isExcludedMethod, isCallsMetricsMethod, isPolymorphicReducer } from '../shared/modules.mjs'
 import isEmpty from 'crocks/core/isEmpty.js'
 import { getPath as getJsonPath, getLinkedSchemaPaths, getSchemaConstraints, isSchema, localizeDependencies, isDefinitionReferencedBySchema, mergeAnyOf, mergeOneOf, getSafeEnumKeyName } from '../shared/json-schema.mjs'
 
@@ -410,8 +410,9 @@ const promoteSchema = (location, property, title, document, destinationPath) => 
 // only consider sub-objects and sub enums to be sub-schemas
 const isSubSchema = (schema) => schema.type === 'object' || (schema.type === 'string' && schema.enum)
 
+const isParamSubSchema = (schema) => (schema.type === 'array' && schema.items.type === 'object')
 // check schema is sub enum of array
-const isSubEnumOfArraySchema = (schema) => (schema.type === 'array' && schema.items.enum)
+const isSubSchemaOfArraySchema = (schema) => (schema.type === 'array' && (schema.items.enum || (schema.items.type === 'object')))
 
 const promoteAndNameSubSchemas = (obj) => {
   // make a copy so we don't polute our inputs
@@ -421,6 +422,14 @@ const promoteAndNameSubSchemas = (obj) => {
     method.params && method.params.forEach(param => {
       if (isSubSchema(param.schema)) {
         addContentDescriptorSubSchema(param, '', obj)
+      }
+      if (isSubSchemaOfArraySchema(param.schema)) {
+         const descriptor = {
+             name: param.schema.items.title,
+             schema: param.schema.items
+         }
+         addContentDescriptorSubSchema(descriptor, '', obj)
+         param.schema.items = descriptor.schema
       }
     })
     if (isSubSchema(method.result.schema)) {
@@ -462,7 +471,7 @@ const promoteAndNameSubSchemas = (obj) => {
                 addContentDescriptorSubSchema(descriptor, key, obj)
                 componentSchema.properties[name] = descriptor.schema
               }
-              if (isSubEnumOfArraySchema(propSchema)) {
+              if (isSubSchemaOfArraySchema(propSchema)) {
                 const descriptor = {
                   name: name,
                   schema: propSchema.items
