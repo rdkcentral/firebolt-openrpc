@@ -1251,23 +1251,17 @@ const addExternalSchemas = (json, sharedSchemas) => {
     json.components = json.components || {}
     json.components.schemas = json.components.schemas || {}
     
-    console.dir(Object.keys(sharedSchemas))
-
     let found = true
     const added = []
     while (found) {
         const ids = getAllValuesForName('$ref', json)
-        console.dir(ids.filter(id => id.indexOf("/schemas/types") >= 0))
         found = false
         Object.entries(sharedSchemas).forEach( ([key, schema], i) => {
-            console.log(`- checking ${key}`)
-            console.dir(added)
             if (!added.includes(key)) {
                 if (ids.find(id => id.startsWith(key))) {
                     const bundle = JSON.parse(JSON.stringify(schema))
                     replaceUri('', bundle.$id, bundle)
                     json.components.schemas[key] = bundle
-                    console.log(`- adding ${key}`)
                     added.push(key)
                     found = true
                 }    
@@ -1291,7 +1285,6 @@ const removeUnusedSchemas = (json) => {
                 const used = refs.includes(path + '/' + name) || ((name.startsWith('https://') && refs.find(ref => ref.startsWith(name)))) //isDefinitionReferencedBySchema(path + '/' + name, json)
                 if (!used) {
                     delete schema[name]
-                    console.log(`Deleting ${name}`)
                     deleted = true
                 }
                 else {
@@ -1325,23 +1318,18 @@ const removeUnusedBundles = (json) => {
     Object.keys(json.components.schemas).forEach (key => {
         if (key.startsWith('https://')) {
             sharedSchemas[key] = json.components.schemas[key]
-            console.log(`Removing ${key}`)
             delete json.components.schemas[key]
         }
     })
-
-    console.dir(Object.keys(sharedSchemas))
 
     // and only add back in the ones that are still referenced
     let found = true
     while(found) {
         found = false
         const ids = [ ...new Set(getAllValuesForName('$ref', json).map(ref => ref.split('#').shift()))]
-        console.dir(ids)
         Object.keys(sharedSchemas).forEach(key => {
             if (ids.includes(key)) {
                 json.components.schemas[key] = sharedSchemas[key]
-                console.log(`Including ${key}`)
                 delete sharedSchemas[key]
                 found = true
             }

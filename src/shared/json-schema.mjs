@@ -172,8 +172,9 @@ const getReferencedSchema = (uri = '', moduleJson = {}) => {
   }
 
   if (mainPath) {
-//    throw `Cannot call getReferencedSchema with a fully qualified URI: ${uri}`
+    // TODO... assuming that bundles are in one of these two places is dangerous, should write a quick method to "find" where they are
     result = getPathOr(null, ['components', 'schemas', mainPath, ...subPath.slice(1).split('/')], moduleJson)
+              || getPathOr(null, ['definitions', mainPath, ...subPath.slice(1).split('/')], moduleJson)
   }
   else if (subPath) {
     result = getPathOr(null, subPath.slice(1).split('/'), moduleJson)

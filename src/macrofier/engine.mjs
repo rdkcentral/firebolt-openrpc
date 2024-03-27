@@ -31,7 +31,7 @@ const { isObject, isArray, propEq, pathSatisfies, propSatisfies } = predicates
 
 import { isRPCOnlyMethod, isProviderInterfaceMethod, getProviderInterface, getPayloadFromEvent, providerHasNoParameters, isTemporalSetMethod, hasMethodAttributes, getMethodAttributes, isEventMethodWithContext, getSemanticVersion, getSetterFor, getProvidedCapabilities, isPolymorphicPullMethod, hasPublicAPIs, isAllowFocusMethod, hasAllowFocusMethods, createPolymorphicMethods, isExcludedMethod, isCallsMetricsMethod } from '../shared/modules.mjs'
 import isEmpty from 'crocks/core/isEmpty.js'
-import { getPath as getJsonPath, getLinkedSchemaPaths, getSchemaConstraints, isSchema, localizeDependencies, isDefinitionReferencedBySchema, mergeAnyOf, mergeOneOf, getSafeEnumKeyName, getAllValuesForName, getReferencedSchema } from '../shared/json-schema.mjs'
+import { getReferencedSchema, getLinkedSchemaPaths, getSchemaConstraints, isSchema, localizeDependencies, isDefinitionReferencedBySchema, mergeAnyOf, mergeOneOf, getSafeEnumKeyName, getAllValuesForName } from '../shared/json-schema.mjs'
 
 
 // util for visually debugging crocks ADTs
@@ -134,15 +134,16 @@ const getTemplateForExampleResult = (method, templates) => {
 const getLinkForSchema = (schema, json) => {
   const dirs = config.createModuleDirectories
   const copySchemasIntoModules = config.copySchemasIntoModules
+  const definitions = json.definitions || json.components.schemas
 
   const type = types.getSchemaType(schema, json, { templateDir: state.typeTemplateDir, destination: state.destination, section: state.section })
 
   // local - insert a bogus link, that we'll update later based on final table-of-contents
-  if (json.components.schemas[type]) {
+  if (definitions && definitions[type]) {
     return `#\$\{LINK:schema:${type}\}`
   }
   else {
-    const [group, schema] = Object.entries(json.components.schemas).find(([key, value]) => json.components.schemas[key] && json.components.schemas[key][type]) || [null, null]
+    const [group, schema] = Object.entries(definitions).find(([key, value]) => definitions[key] && definitions[key][type]) || [null, null]
     if (group && schema) {
       if (copySchemasIntoModules) {
         return `#\$\{LINK:schema:${type}\}`
@@ -371,12 +372,12 @@ const generateAggregateMacros = (openrpc, modules, templates, library) => Object
     }
 
     template = getTemplate('/codeblocks/mock-import', templates)
-    if (template) {
+    if (template && module.info) {
       acc.mockImports += insertMacros(template + '\n', generateMacros(module, templates))
     }
 
     template = getTemplate('/codeblocks/mock-parameter', templates)
-    if (template) {
+    if (template && module.info) {
       acc.mockObjects += insertMacros(template + '\n', generateMacros(module, templates))
     }
 
@@ -400,7 +401,7 @@ const getPromotionNameFromContentDescriptor = (descriptor, prefix) => {
 }
 
 const promoteSchema = (location, property, title, document, destinationPath) => {
-  const destination = getJsonPath(destinationPath, document)
+  const destination = getReferencedSchema(destinationPath, document)
   destination[title] = location[property]
   destination[title].title = title
   location[property] = {
@@ -415,6 +416,8 @@ const isSubSchema = (schema) => schema.type === 'object' || (schema.type === 'st
 const isSubEnumOfArraySchema = (schema) => (schema.type === 'array' && schema.items.enum)
 
 const promoteAndNameSubSchemas = (obj) => {
+  const moduleTitle = module.info ? module.info.title : module.title
+  
   // make a copy so we don't polute our inputs
   obj = JSON.parse(JSON.stringify(obj))
   // find anonymous method param or result schemas and name/promote them
@@ -435,7 +438,7 @@ const promoteAndNameSubSchemas = (obj) => {
       method.tags.forEach(tag => {
         if (tag['x-error']) {
           const descriptor = {
-              name: obj.info.title + 'Error',
+              name: moduleTitle + 'Error',
               schema: tag['x-error']
           }
           addContentDescriptorSubSchema(descriptor, '', obj)
@@ -606,6 +609,8 @@ const generateMacros = (obj, templates, languages, options = {}) => {
   const moduleInclude = getTemplate(suffix ? `/codeblocks/module-include.${suffix}` : '/codeblocks/module-include', templates)
   const moduleIncludePrivate = getTemplate(suffix ? `/codeblocks/module-include-private.${suffix}` : '/codeblocks/module-include-private', templates)
   const moduleInit = getTemplate(suffix ? `/codeblocks/module-init.${suffix}` : '/codeblocks/module-init', templates)
+  const moduleTitle = obj.info ? obj.info.title : obj.title
+  const moduleDescription = obj.info ? obj.info.description : obj.description
 
   Object.assign(macros, {
     imports,
@@ -617,8 +622,8 @@ const generateMacros = (obj, templates, languages, options = {}) => {
     providerInterfaces,
     providerSubscribe,
     version: getSemanticVersion(obj),
-    title: obj.info.title,
-    description: obj.info.description,
+    title: moduleTitle,
+    description: moduleDescription,
     module: module,
     moduleInclude: moduleInclude,
     moduleIncludePrivate: moduleIncludePrivate,
@@ -925,6 +930,11 @@ function generateSchemas(json, templates, options) {
     if (['ListenResponse', 'ProviderRequest', 'ProviderResponse', 'FederatedResponse', 'FederatedRequest'].includes(name)) {
       return
     }
+
+    if (!schema.title) {
+      return
+    }
+
     let content = getTemplate('/schemas/default', templates)
 
     if (!schema.examples || schema.examples.length === 0) {
@@ -973,7 +983,9 @@ function generateSchemas(json, templates, options) {
       enum: isEnum(schema)
     }
 
-    results.push(result)
+    if (result.name) {
+      results.push(result)
+    }
   }
 
   let list = []
@@ -983,10 +995,12 @@ function generateSchemas(json, templates, options) {
     if (isSchema(schema) && !schema.$id) {
       list.push([name, schema])
     }
-    else if (isSchema(schema) && schema.$id && schema.definitions) {
-      Object.entries(schema.definitions).forEach( ([name, schema]) => {
-        list.push([name, schema])
-      })
+    else if (json.info && isSchema(schema) && schema.$id && schema.definitions) {
+      if ( (config.mergeOnTitle && (schema.title === json.info.title)) || config.copySchemasIntoModules) {
+          Object.entries(schema.definitions).forEach( ([name, schema]) => {
+            list.push([name, schema])
+          })
+        }
     }
   })
 
@@ -1003,11 +1017,6 @@ function getRelatedSchemaLinks(schema = {}, json = {}, templates = {}, options =
   //  - dedupe them
   //  - convert them to the $ref value (which are paths to other schema files), instead of the path to the ref node itself
   //  - convert those into markdown links of the form [Schema](Schema#/link/to/element)
-
-  console.dir(getLinkedSchemaPaths(schema)
-  .map(path => getPathOr(null, path, schema))
-//  .map(ref => getReferencedSchema(ref, json))
-)
 
   let links = getLinkedSchemaPaths(schema)
     .map(path => getPathOr(null, path, schema))
@@ -1072,9 +1081,10 @@ const generateImports = (json, templates, options = { destination: '' }) => {
 
   let template = getTemplateFromDestination(options.destination, '/imports/default', templates)
   const subschemas = getAllValuesForName("$id", json)
+  const subschemaLocation = json.definitions || json.components && json.components.schemas || {}
   subschemas.shift() // remove main $id
-  if (subschemas.length && !json.info['x-uri-titles']) {
-    imports += subschemas.map(id => json.components.schemas[id].title).map(shared => template.replace(/\$\{info.title.lowercase\}/g, shared.toLowerCase())).join('')
+  if (subschemas.length) {
+    imports += subschemas.map(id => subschemaLocation[id].title).map(shared => template.replace(/\$\{info.title.lowercase\}/g, shared.toLowerCase())).join('')
   }
   // TODO: this does the same as above? am i missing something?
   // let componentExternalSchema = getComponentExternalSchema(json)
@@ -1332,7 +1342,7 @@ function insertMethodMacros(template, methodObj, json, templates, type = '', exa
   const pullsForType = pullsResult && types.getSchemaType(pullsResult, json, { destination: state.destination, templateDir: state.typeTemplateDir, section: state.section })
   const pullsParamsType = (pullsParams && (type === 'methods')) ? types.getSchemaShape(pullsParams, json, { destination: state.destination, templateDir: state.typeTemplateDir, section: state.section }) : ''
   const pullsForParamTitle = pullsParams ? pullsParams.title.charAt(0).toLowerCase() + pullsParams.title.substring(1) : ''
-  const pullsForResultTitle = pullsResult ? pullsResult.title.charAt(0).toLowerCase() + pullsResult.title.substring(1) : ''
+  const pullsForResultTitle = (pullsResult && pullsResult.title) ? pullsResult.title.charAt(0).toLowerCase() + pullsResult.title.substring(1) : ''
   const pullsResponseInit = (pullsParams && (type === 'methods')) ? types.getSchemaShape(pullsParams, json, { templateDir: 'result-initialization', property: pullsForParamTitle, required: pullsParams.required, destination: state.destination, section: state.section, primitive: true, skipTitleOnce: true }) : ''
   const pullsResponseInst = (pullsParams && (type === 'methods')) ? types.getSchemaShape(pullsParams, json, { templateDir: 'result-instantiation', property: pullsForParamTitle, required: pullsParams.required, destination: state.destination, section: state.section, primitive: true, skipTitleOnce: true }) : ''
   const pullsResultSerialize = (pullsResult && (type === 'methods')) ? types.getSchemaShape(pullsResult, json, { templateDir: 'parameter-serialization/sub-property', property: pullsForResultTitle, required: pullsResult.required, destination: state.destination, section: state.section, primitive: true, skipTitleOnce: true }) : ''
@@ -1644,7 +1654,7 @@ function generateResultParams(result, json, templates, { name = '' } = {}) {
     if (result.$ref.includes("/x-schemas/")) {
       moduleTitle = result.$ref.split("/")[2]
     }
-    result = getJsonPath(result.$ref, json)
+    result = getReferencedSchema(result.$ref, json)
   }
 
   // const results are almost certainly `"const": "null"` so there's no need to include it in the method signature
