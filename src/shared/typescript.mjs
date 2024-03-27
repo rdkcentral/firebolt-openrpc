@@ -53,6 +53,7 @@ function getSchemaShape(schema = {}, module = {}, { name = '', level = 0, title,
 
     if (schema['$ref']) {
       if (level === 0) {
+        throw "Ref at level 0!"
         return `${prefix}${theTitle};`
       }
       else {
@@ -61,6 +62,7 @@ function getSchemaShape(schema = {}, module = {}, { name = '', level = 0, title,
           return getSchemaShape(someJson, module, { name, level, title, summary, descriptions, destination, enums: false })
         }
         else {
+          throw "unknown $ref!!"
           '  '.repeat(level) + `${prefix}${theTitle}${operator}`
         }
       }
