@@ -1364,6 +1364,7 @@ const getModule = (name, json, copySchemas, extractSubSchemas) => {
         openrpc.info.description = json.info['x-module-descriptions'][name]
     }
     delete openrpc.info['x-module-descriptions']
+    openrpc = promoteAndNameXSchemas(openrpc)
     return removeUnusedBundles(removeUnusedSchemas(openrpc))
     
     const copy = JSON.parse(JSON.stringify(openrpc))
