@@ -70,14 +70,14 @@ const indent = (str, padding) => {
 }
 
 // TODO: This is what's left of getMethodSignatureParams. We need to figure out / handle C's `FireboltTypes_StringHandle`
-function getMethodSignatureParams(method, module, { destination, callback }) {
+function getMethodSignatureParams(method, module, { destination, callback, namespace }) {
   const paramOptional = getTemplate('/parameters/optional')
   let polymorphicPull = method.tags.find(t => t.name === 'polymorphic-pull')
   return method.params.map(param => {
     if (polymorphicPull && (param.name === 'correlationId')) {
       return
     }
-    let type = getSchemaType(param.schema, module, { destination, namespace : true })
+    let type = getSchemaType(param.schema, module, { destination, namespace })
     if (callback && allocatedPrimitiveProxies[type]) {
       type = allocatedPrimitiveProxies[type]
     }
@@ -103,8 +103,8 @@ function getMethodSignatureParams(method, module, { destination, callback }) {
   }).filter(param => param).join(', ')
 }
 
-function getMethodSignatureResult(method, module, { destination, callback }) {
-    let type = getSchemaType(method.result.schema, module, { destination, namespace : true })
+function getMethodSignatureResult(method, module, { destination, callback, namespace }) {
+    let type = getSchemaType(method.result.schema, module, { destination, namespace })
     let result = ''
 
     if (callback) {
@@ -365,7 +365,7 @@ const insertObjectMacros = (content, schema, module, title, property, options) =
           .replace(/\$\{if\.base\.optional\}(.*?)\$\{end\.if\.base\.optional\}/gms, options.required ? '' : '$1')
           .replace(/\$\{if\.non\.object\}(.*?)\$\{end\.if\.non\.object\}/gms, isObject(localizedProp) ? '' : '$1')
           .replace(/\$\{if\.non\.array\}(.*?)\$\{end\.if\.non\.array\}/gms, (localizedProp.type === 'array') ? '' : '$1')
-          .replace(/\$\{if\.non\.anyOf\}(.*?)\$\{end\.if\.non\.anyOf\}/gms, (localizedProp.anyOf || localizedProp.anyOneOf) ? '' : '$1')
+          .replace(/\$\{if\.non\.anyOf\}(.*?)\$\{end\.if\.non\.anyOf\}/gms, (localizedProp.anyOf || localizedProp.oneOf) ? '' : '$1')
           .replace(/\$\{if\.non\.const\}(.*?)\$\{end\.if\.non\.const\}/gms, (typeof localizedProp.const === 'string') ? '' : '$1')
           let baseTitle = options.property
 
@@ -509,11 +509,11 @@ const insertPrimitiveMacros = (content, schema, module, name, templateDir) => {
   return content
 }
 
-const insertAnyOfMacros = (content, schema, module, name) => {
+const insertAnyOfMacros = (content, schema, module, name, namespace) => {
   const itemTemplate = content
   if (content.split('\n').find(line => line.includes("${type}"))) {
     content = schema.anyOf.map((item, i) => itemTemplate
-      .replace(/\$\{type\}/g, getSchemaType(item, module))
+      .replace(/\$\{type\}/g, getSchemaType(item, module, { namespace }))
       .replace(/\$\{delimiter\}(.*?)\$\{end.delimiter\}/g, i === schema.anyOf.length - 1 ? '' : '$1')
     ).join('')
   }
@@ -537,7 +537,7 @@ const sanitize = (schema) => {
   return result
 }
 
-function getSchemaShape(schema = {}, module = {}, { templateDir = 'types', parent = '', property = '', required = false, parentLevel = 0, level = 0, summary, descriptions = true, destination, section, enums = true, skipTitleOnce = false, array = false, primitive = false, type = false } = {}) {
+function getSchemaShape(schema = {}, module = {}, { templateDir = 'types', parent = '', property = '', required = false, parentLevel = 0, level = 0, summary, descriptions = true, destination, section, enums = true, skipTitleOnce = false, array = false, primitive = false, type = false, namespace=true } = {}) {
   schema = sanitize(schema)
   state.destination = destination
   state.section = section
@@ -560,7 +560,7 @@ function getSchemaShape(schema = {}, module = {}, { templateDir = 'types', paren
   if (schema['$ref']) {
     const someJson = getReferencedSchema(schema['$ref'], module)
     if (someJson) {
-      return getSchemaShape(someJson, module, { templateDir, parent, property, required, parentLevel, level, summary, descriptions, destination, enums, array, primitive })
+      return getSchemaShape(someJson, module, { templateDir, parent, property, required, parentLevel, level, summary, descriptions, destination, enums, array, primitive, namespace })
     }
     throw "Unresolvable $ref: " + schema['$ref'] + ", in " + moduleTitle
   }
@@ -571,7 +571,7 @@ function getSchemaShape(schema = {}, module = {}, { templateDir = 'types', paren
   else if (!skipTitleOnce && (level > 0) && schema.title) {
     let enumType = (schema.type === 'string' && Array.isArray(schema.enum))
     // TODO: allow the 'ref' template to actually insert the shape using getSchemaShape
-    const innerShape = getSchemaShape(schema, module, { skipTitleOnce: true, templateDir, parent, property, required, parentLevel, level, summary, descriptions, destination, enums: enumType, array, primitive })
+    const innerShape = getSchemaShape(schema, module, { skipTitleOnce: true, templateDir, parent, property, required, parentLevel, level, summary, descriptions, destination, enums: enumType, array, primitive, namespace })
 
     const shape = getTemplate(path.join(templateDir, 'ref' + suffix))
       .replace(/\$\{shape\}/g, innerShape)
@@ -583,15 +583,15 @@ function getSchemaShape(schema = {}, module = {}, { templateDir = 'types', paren
     let shape
     const additionalPropertiesTemplate = getTemplate(path.join(templateDir, 'additionalProperties'))
     if (additionalPropertiesTemplate && schema.additionalProperties && (typeof schema.additionalProperties === 'object')) {
-      shape = insertObjectAdditionalPropertiesMacros(additionalPropertiesTemplate, schema, module, theTitle, { level, parent, templateDir, namespace: true, required })
+      shape = insertObjectAdditionalPropertiesMacros(additionalPropertiesTemplate, schema, module, theTitle, { level, parent, templateDir, namespace, required })
     }
     else {
       const patternPropertiesTemplate = getTemplate(path.join(templateDir, 'patternProperties'))
       if (patternPropertiesTemplate && schema.patternProperties) {
-        shape = insertObjectPatternPropertiesMacros(patternPropertiesTemplate, schema, module, theTitle, { level, parent, templateDir, namespace: true, required })
+        shape = insertObjectPatternPropertiesMacros(patternPropertiesTemplate, schema, module, theTitle, { level, parent, templateDir, namespace, required })
       } else {
         let objectLevel = array ? 0 : level
-        shape = insertObjectMacros(getTemplate(path.join(templateDir, 'object' + (array ? '-array' : '') + suffix)) || genericTemplate, schema, module, theTitle, property, { parentLevel, level: objectLevel, parent, property, required, templateDir, descriptions, destination, section, enums, namespace: true, primitive })
+        shape = insertObjectMacros(getTemplate(path.join(templateDir, 'object' + (array ? '-array' : '') + suffix)) || genericTemplate, schema, module, theTitle, property, { parentLevel, level: objectLevel, parent, property, required, templateDir, descriptions, destination, section, enums, namespace, primitive })
       }
     }
     result = result.replace(/\$\{shape\}/g, shape)
@@ -605,14 +605,14 @@ function getSchemaShape(schema = {}, module = {}, { templateDir = 'types', paren
     const template = getTemplate(path.join(templateDir, 'anyOfSchemaShape' + suffix))
     let shape
     if (template) {
-      shape = insertAnyOfMacros(template, schema, module, theTitle)
+      shape = insertAnyOfMacros(template, schema, module, theTitle, namespace)
     }
     else {
       // borrow anyOf logic, note that schema is a copy, so we're not breaking it.
       if (!schema.anyOf) {
         schema.anyOf = schema.oneOf
       }
-      shape = insertAnyOfMacros(getTemplate(path.join(templateDir, 'anyOf' + suffix)) || genericTemplate, schema, module, theTitle)
+      shape = insertAnyOfMacros(getTemplate(path.join(templateDir, 'anyOf' + suffix)) || genericTemplate, schema, module, theTitle, namespace)
     }
     if (shape) {
       result = result.replace(/\$\{shape\}/g, shape)
@@ -644,7 +644,7 @@ function getSchemaShape(schema = {}, module = {}, { templateDir = 'types', paren
     }
     delete union['$ref']
 
-    return getSchemaShape(union, module, { templateDir, parent, property, required, parentLevel, level, summary, descriptions, destination, enums: false, array, primitive })
+    return getSchemaShape(union, module, { templateDir, parent, property, required, parentLevel, level, summary, descriptions, destination, enums: false, array, primitive, namespace })
   }
   else if (schema.type === "array" && schema.items && isSupportedTuple(schema)) {
     // tuple
@@ -654,7 +654,7 @@ function getSchemaShape(schema = {}, module = {}, { templateDir = 'types', paren
   }
   else if (schema.type === "array" && schema.items && !Array.isArray(schema.items)) {
     // array
-    const items = getSchemaShape(schema.items, module, { templateDir, parent, property, required, parentLevel: parentLevel + 1, level, summary, descriptions, destination, enums: false, array: true, primitive })
+    const items = getSchemaShape(schema.items, module, { templateDir, parent, property, required, parentLevel: parentLevel + 1, level, summary, descriptions, destination, enums: false, array: true, primitive, namespace })
     const shape = insertArrayMacros(getTemplate(path.join(templateDir, 'array' + suffix)) || genericTemplate, schema, module, level, items, Array.isArray(required) ? required.includes(property) : required)
     result = result.replace(/\$\{shape\}/g, shape)
               .replace(/\$\{if\.object\}(.*?)\$\{end\.if\.object\}/gms, isObject(schema.items) ? '$1' : '')
@@ -720,7 +720,7 @@ const isSupportedTuple = schema => {
   }
 }
 
-function getSchemaType(schema, module, { destination, templateDir = 'types', link = false, code = false, asPath = false, event = false, result = false, expandEnums = true, baseUrl = '', namespace = false } = {}) {
+function getSchemaType(schema, module, { destination, templateDir = 'types', link = false, code = false, asPath = false, event = false, result = false, expandEnums = true, baseUrl = '', namespace = true } = {}) {
   const wrap = (str, wrapper) => wrapper + str + wrapper
 
   schema = sanitize(schema)
@@ -736,8 +736,7 @@ function getSchemaType(schema, module, { destination, templateDir = 'types', lin
   if (schema['$ref']) {
     const refSchema = getReferencedSchema(schema['$ref'], module)
     if (refSchema) {
-      const includeNamespace = (moduleTitle !== getXSchemaGroup(refSchema, module))
-      return getSchemaType(refSchema, module, {destination, templateDir, link, code, asPath, event, result, expandEnums, baseUrl, namespace:includeNamespace })// { link: link, code: code, destination })  
+      return getSchemaType(refSchema, module, {destination, templateDir, link, code, asPath, event, result, expandEnums, baseUrl, namespace })// { link: link, code: code, destination })  
     }
     else {
       // TODO: This never happens... but might be worth keeping in case we link to an opaque external schema at some point?
@@ -855,7 +854,7 @@ function getSchemaType(schema, module, { destination, templateDir = 'types', lin
       schema.anyOf = schema.oneOf
     }
     // todo... we probably shouldn't allow untitled anyOfs, at least not w/out a feature flag
-    const shape = insertAnyOfMacros(getTemplate(path.join(templateDir, 'anyOf' + suffix)), schema, module, theTitle)
+    const shape = insertAnyOfMacros(getTemplate(path.join(templateDir, 'anyOf' + suffix)), schema, module, theTitle, namespace)
     return insertSchemaMacros(shape, schema, module, { name: theTitle, recursive: false })
 
     

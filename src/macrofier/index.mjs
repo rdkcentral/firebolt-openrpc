@@ -153,7 +153,6 @@ const macrofy = async (
                     const id = schema.$id
                     externalSchemas[id] = JSON.parse(JSON.stringify(schema))
                     replaceUri(id, '', externalSchemas[id])
-                    console.dir(Object.keys(externalSchemas[id].definitions))
                     Object.values(openrpc.components.schemas).forEach(schema => {
                         if (schema.$id && schema.$id !== id) {
                             externalSchemas[id].definitions[schema.$id] = schema
@@ -161,7 +160,7 @@ const macrofy = async (
                     })
             })
 
-        const aggregateMacros = engine.generateAggregateMacros(openrpc, modules.concat(staticModules).concat(Object.values(externalSchemas)), templates, libraryName)
+        const aggregateMacros = engine.generateAggregateMacros(openrpc, modules.concat(staticModules).concat(copySchemasIntoModules ? [] : Object.values(externalSchemas)), templates, libraryName)
 
         const outputFiles = Object.fromEntries(Object.entries(await readFiles( staticCodeList, staticContent))
                                 .map( ([n, v]) => [path.join(output, n), v]))
@@ -259,13 +258,11 @@ const macrofy = async (
         }
                 
         // Output any schema templates for each bundled external schema document
-        Object.values(externalSchemas).forEach( document => {
+        !copySchemasIntoModules && Object.values(externalSchemas).forEach( document => {
             if (mergeOnTitle && modules.find(m => m.info.title === document.title)) {
-                console.log('Skipping: ' + document.title + ': ' + document.$id)
                 return // skip this one, it was already merged into the module w/ the same name
             }
 
-            console.log(document.title + ': ' + document.$id)
             if (templatesPerSchema || primaryOutput.length) {
                 templatesPerSchema && templatesPerSchema.forEach( t => {
                     const macros = engine.generateMacros(document, templates, exampleTemplates, {hideExcluded: hideExcluded, createPolymorphicMethods: createPolymorphicMethods, destination: t})
@@ -279,11 +276,6 @@ const macrofy = async (
                 })
 
                 primaryOutput && primaryOutput.forEach(output => {
-                    console.log(`appending ${document.title} schemas to ${output}`)
-                    console.dir(Object.keys(document.definitions), { depth: 100 })
-                    if (document.title === 'Entertainment') {
-                        console.dir(Object.keys(document.definitions['https://meta.rdkcentral.com/firebolt/schemas/types'].definitions))
-                    }
                     const macros = engine.generateMacros(document, templates, exampleTemplates, {hideExcluded: hideExcluded, copySchemasIntoModules: copySchemasIntoModules, createPolymorphicMethods: createPolymorphicMethods, destination: output})
                     macros.append = append
                     outputFiles[output] = engine.insertMacros(outputFiles[output], macros)
