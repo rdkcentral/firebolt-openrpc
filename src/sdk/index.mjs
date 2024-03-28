@@ -63,6 +63,7 @@ const run = async ({
     primitives: config.primitives,
     createModuleDirectories: config.createModuleDirectories,
     copySchemasIntoModules: config.copySchemasIntoModules,
+    mergeOnTitle: config.mergeOnTitle,
     extractSubSchemas: config.extractSubSchemas,
     convertTuplesToArraysOrObjects: config.convertTuplesToArraysOrObjects,
     unwrapResultObjects: config.unwrapResultObjects,

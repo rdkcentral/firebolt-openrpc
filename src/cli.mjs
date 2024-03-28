@@ -48,20 +48,29 @@ const parsedArgs = Object.assign({}, defaults, nopt(knownOpts, shortHands, proce
 const task = process.argv[2]
 const signOff = () => console.log('\nThis has been a presentation of \x1b[38;5;202mFirebolt\x1b[0m \u{1F525} \u{1F529}\n')
 
-if (task === 'slice') {
-  slice(parsedArgs).then(signOff)
+try {
+  if (task === 'slice') {
+    await slice(parsedArgs).then(signOff)
+  }
+  else if (task === 'sdk') {
+    await sdk(parsedArgs).then(signOff)
+  }
+  else if (task === 'docs') {
+    await docs(parsedArgs).then(signOff)
+  }
+  else if (task === 'validate') {
+    await validate(parsedArgs).then(signOff)
+  }
+  else if (task === 'openrpc') {
+    await openrpc(parsedArgs).then(signOff)
+  }
+  else if (task === 'update') {
+    await update(parsedArgs).then(signOff)
+  }
+  else {
+    console.log("Invalid build type")
+  }
 }
-else if (task === 'sdk') {
-  sdk(parsedArgs).then(signOff)
-}
-else if (task === 'docs') {
-  docs(parsedArgs).then(signOff)
-}
-else if (task === 'validate') {
-  validate(parsedArgs).then(signOff)
-}
-else if (task === 'openrpc') {
-  openrpc(parsedArgs).then(signOff)
-} else {
-  console.log("Invalid build type")
+catch (error) {
+  throw error
 }
