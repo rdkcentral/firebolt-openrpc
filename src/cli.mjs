@@ -17,6 +17,7 @@ const knownOpts = {
   'schemas': [path, Array],
   'template': [path],
   'static-module': [String, Array],
+  'copy-schemas': [Boolean],
   'language': [path],
   'examples': [path, Array],
   'as-path': [Boolean]
@@ -47,6 +48,8 @@ const defaults = {
 const parsedArgs = Object.assign({}, defaults, nopt(knownOpts, shortHands, process.argv, 3))
 const task = process.argv[2]
 const signOff = () => console.log('\nThis has been a presentation of \x1b[38;5;202mFirebolt\x1b[0m \u{1F525} \u{1F529}\n')
+
+console.dir(parsedArgs)
 
 try {
   if (task === 'slice') {

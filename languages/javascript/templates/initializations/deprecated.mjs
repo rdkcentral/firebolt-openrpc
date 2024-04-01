@@ -1,1 +1,1 @@
-Transport.registerDeprecatedMethod('${info.title}', '${method.name}', 'Use ${method.alternative} instead.')
+Gateway.deprecate('${info.title}.${method.name}', 'Use ${method.alternative} instead.')

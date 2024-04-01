@@ -16,7 +16,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { setMockResponses } from './Transport/MockTransport.mjs'
+//import { setMockResponses } from './Transport/MockTransport.mjs'
 
 /* ${MOCK_IMPORTS} */
 

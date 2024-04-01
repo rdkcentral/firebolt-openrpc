@@ -24,7 +24,6 @@ export const setMockListener = func => { listener = func }
 
 let mock
 const pending = []
-const eventMap = {}
 
 let callback
 let testHarness
@@ -33,10 +32,7 @@ if (win.__firebolt && win.__firebolt.testHarness) {
   testHarness = win.__firebolt.testHarness
 }
 
-function send(message) {
-  console.debug('Sending message to transport: ' + message)
-  let json = JSON.parse(message)
-
+function send(json) {
   // handle bulk sends
   if (Array.isArray(json)) {
     json.forEach(j => send(JSON.stringify(j)))
@@ -47,19 +43,6 @@ function send(message) {
 
   if (testHarness && testHarness.onSend) {
     testHarness.onSend(module, method, json.params, json.id)
-  }
-
-  // store the ID of the first listen for each event
-  if (method.match(/^on[A-Z]/)) {
-    if (json.params.listen) {
-      eventMap[json.id] = module.toLowerCase() + '.' + method[2].toLowerCase() + method.substr(3)
-    } else {
-      Object.keys(eventMap).forEach(key => {
-        if (eventMap[key] === module.toLowerCase() + '.' + method[2].toLowerCase() + method.substr(3)) {
-          delete eventMap[key]
-        }
-      })
-    }
   }
 
   if (mock)
@@ -74,21 +57,21 @@ function handle(json) {
     result = getResult(json.method, json.params)
   }
   catch (error) {
-    setTimeout(() => callback(JSON.stringify({ 
+    setTimeout(() => callback({ 
       jsonrpc: '2.0',
       error: {
         code: -32602,
         message: "Invalid params (this is a mock error from the mock transport layer)"
       },
       id: json.id
-    })))
+    }))
   }
 
-  setTimeout(() => callback(JSON.stringify({ 
+  setTimeout(() => callback({ 
     jsonrpc: '2.0',
     result: result,
     id: json.id
-  })))
+  }))
 }
 
 function receive(_callback) {
@@ -103,15 +86,16 @@ function receive(_callback) {
 }
 
 function event(module, event, value) {
- const listener = Object.entries(eventMap).find(([k, v]) => v.toLowerCase() === module.toLowerCase() + '.' + event.toLowerCase())
-  if (listener) {
-    let message = JSON.stringify({
-      jsonrpc: '2.0',
-      id: parseInt(listener[0]),
-      result: value
-    })
-    callback(message)
-  }
+  callback({
+    jsonrpc: '2.0',
+    method: `${module}.${event}`,
+    params: [
+      {
+        name: 'value',
+        value: value
+      }
+    ]
+  })
 }
 
 function dotGrab(obj = {}, key) {
@@ -134,7 +118,11 @@ function getResult(method, params) {
   }
 
   if (typeof api === 'function') {
-    return params == null ? api() : api(params)
+    let result = params == null ? api() : api(params)
+    if (result === undefined) {
+      result = null
+    }
+    return result
   } else return api
 }
 

@@ -1,20 +1,6 @@
-import Transport from "../Transport/index.mjs"
-import Events from "../Events/index.mjs"
+import Gateway from "../Gateway/index.mjs"
 
 const sessions = {}
-
-let eventEmitterInitialized = false
-const eventHandler = (module, event, value) => {
-    const session = getSession(module, method)
-    if (session) {
-        if (event === session.addName && session.add) {
-            session.add(value)
-        }
-        else if (event === session.removeName && session.remove) {
-            session.remove(value)
-        }
-    }
-}
 
 function getSession(module, method) {
     return sessions[module.toLowerCase() + '.' + method]
@@ -32,11 +18,6 @@ function stopSession(module, method) {
 function start(module, method, addName, removeName, params, add, remove, timeout, transforms) {
     let session = getSession(module, method)
 
-    if (!eventEmitterInitialized) {
-        Transport.addEventEmitter(eventHandler)
-        eventEmitterInitialized = true
-    }
-
     if (session) {
         throw `Error: only one ${module}.${method} operation may be in progress at a time. Call stop${method.charAt(0).toUpperCase() + method.substr(1)} on previous ${method} first.`
     }
@@ -50,37 +31,40 @@ function start(module, method, addName, removeName, params, add, remove, timeout
 
     const requests = [
         {
-            module: module,
-            method: method,
+            method: `${module}.${method}`,
             params: params,
             transforms: transforms
         }
     ]
 
     requests.push({
-        module: module,
-        method: addName,
+        method: `${module}.${addName}`,
         params: {
             listen: true
         },
         transforms: transforms
     })
 
+    Gateway.subscribe(`${module}.${addName}`, (item) => {
+        session.add(item)
+    })
+
     if (remove) {
         requests.push({
-            module: module,
-            method: removeName,
+            method: `${module}.${removeName}`,
             params: {
                 listen: true
             },
             transforms: transforms
         })
+        Gateway.subscribe(`${module}.${removeName}`, (item) => {
+            session.remove(item)
+        })    
     }
     
-    const results = Transport.send(requests)
+    const results = Gateway.request(requests)
 
     session.id = results[0].id
-    session.addRpcId = results[1].id
     session.add = add
     session.remove = remove
     session.addName = addName
@@ -90,59 +74,37 @@ function start(module, method, addName, removeName, params, add, remove, timeout
         add && items && items.forEach(item => add(item))
     })
 
-    results[1].promise.then( id => {
-        // clear it out if the session is already canceled
-        if (!session.id) {
-            Events.clear(id)
-        }
-        else {
-            session.addListenerId = id
-        }
-    })
-
-    if (remove) {
-        session.removeRpcId = results[2].id
-        results[2].promise.then( id => {
-            // clear it out if the session is already canceled
-            if (!session.id) {
-                Events.clear(id)
-            }
-            else {
-                session.removeListenerId = id
-            }
-        })
-    }
-
     if (add) {
         return {
             stop: () => {
                 const requests = [
                     {
-                        module: module,
-                        method: `stop${method.charAt(0).toUpperCase() + method.substr(1)}`,
+                        method: `${module}.stop${method.charAt(0).toUpperCase() + method.substr(1)}`,
                         params: {
                             correlationId: session.id
                         }
                     },
                     {
-                        module: module,
-                        method: addName,
+                        method: `${module}.${addName}`,
                         params: {
                             listen: false
                         }
                     }
                 ]
-    
+
+                Gateway.unsubscribe(`${module}.${addName}`)
+
                 if (remove) {
                     requests.push({
-                        module: module,
-                        method: removeName,
+                        method: `${module}.${removeName}`,
                         params: {
                             listen: false
                         }
                     })
                 }
-                Transport.send(requests)
+                
+                Gateway.unsubscribe(`${module}.${removeName}`)
+                Gateway.request(requests)
                 stopSession(module, method)
             }
         }

@@ -1,4 +1,4 @@
-import Mock from "../Transport/MockTransport.mjs"
+import Server from "../Gateway/Server.mjs"
 import router from "./Router.mjs"
 
 const mocks = {}
@@ -16,7 +16,8 @@ function mock(module, method, params, value, contextParameterCount, def) {
   }
   else if (type === "setter") {
     mocks[key] = value
-    Mock.event(module, `${method}Changed`, { value })
+    // notify the app's RPC server directly, w/out a real RPC call
+    Server.notify(module + `${method}Changed`, { value })
     return null
   }  
 }

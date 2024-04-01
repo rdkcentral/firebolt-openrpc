@@ -160,7 +160,9 @@ const macrofy = async (
                     })
             })
 
-        const aggregateMacros = engine.generateAggregateMacros(openrpc, modules.concat(staticModules).concat(copySchemasIntoModules ? [] : Object.values(externalSchemas)), templates, libraryName)
+        const aggregatedExternalSchemas = mergeOnTitle ? Object.values(externalSchemas).filter(s => !modules.find(m => m.info.title === s.title)) : Object.values(externalSchemas)
+
+        const aggregateMacros = engine.generateAggregateMacros(openrpc, modules.concat(staticModules).concat(copySchemasIntoModules ? [] : Object.values(aggregatedExternalSchemas)), templates, libraryName)
 
         const outputFiles = Object.fromEntries(Object.entries(await readFiles( staticCodeList, staticContent))
                                 .map( ([n, v]) => [path.join(output, n), v]))

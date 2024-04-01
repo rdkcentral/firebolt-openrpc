@@ -31,7 +31,8 @@ const run = async ({
   template: template,
   output: output,
   language: language,
-  'static-module': staticModuleNames
+  'static-module': staticModuleNames,
+  'copy-schemas': copySchemas
 }) => {
   
   let mainFilename
@@ -62,7 +63,7 @@ const run = async ({
     operators: config.operators,
     primitives: config.primitives,
     createModuleDirectories: config.createModuleDirectories,
-    copySchemasIntoModules: config.copySchemasIntoModules,
+    copySchemasIntoModules: copySchemas === undefined ? config.copySchemasIntoModules : copySchemas,
     mergeOnTitle: config.mergeOnTitle,
     extractSubSchemas: config.extractSubSchemas,
     convertTuplesToArraysOrObjects: config.convertTuplesToArraysOrObjects,

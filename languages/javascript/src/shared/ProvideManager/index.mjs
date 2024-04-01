@@ -16,23 +16,23 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import Transport from '../Transport/index.mjs'
 import Events from '../Events/index.mjs'
+import Gateway from '../Gateway/index.mjs'
 
 const providerInterfaces = {}
 
-export const registerProviderInterface = (capability, module, methods) => {
-  if (providerInterfaces[capability]) {
-    throw `Capability ${capability} has multiple provider interfaces registered.`
+export const registerProviderInterface = (interfaceName, module, methods) => {
+  if (providerInterfaces[interfaceName]) {
+    throw `Interface ${interfaceName} has multiple provider interfaces registered.`
   }
 
   methods.forEach(m => m.name = `${module}.${m.name}`)
-  providerInterfaces[capability] = methods.concat()
+  providerInterfaces[interfaceName] = methods.concat()
 }
 
-const provide = function(capability, provider) {
+const provide = function(interfaceName, provider) {
   const methods = []
-  const iface = providerInterfaces[capability]
+  const iface = providerInterfaces[interfaceName]
 
   if (provider.constructor.name !== 'Object') {
     methods.push(...Object.getOwnPropertyNames(Object.getPrototypeOf(provider)).filter(item => typeof provider[item] === 'function' && item !== 'constructor'))
@@ -42,15 +42,17 @@ const provide = function(capability, provider) {
   }
 
   if (!iface) {
-    throw "Ignoring unknown provider capability."
+    throw "Ignoring unknown provider interface."
   }
 
   // make sure every interfaced method exists in the providers methods list
   const valid = iface.every(method => methods.find(m => m === method.name.split('.').pop()))
 
   if (!valid) {
-    throw `Provider that does not fully implement ${capability}:\n\t${iface.map(m=>m.name.split('.').pop()).join('\n\t')}`
+    throw `Provider that does not fully implement ${interfaceName}:\n\t${iface.map(m=>m.name.split('.').pop()).join('\n\t')}`
   }
+
+  Gateway.provide(interfaceName, provider)
 
   iface.forEach(imethod => {
     const parts = imethod.name.split('.')
@@ -82,7 +84,7 @@ const provide = function(capability, provider) {
       // only pass in the focus handshake if needed
       if (imethod.focus) {
         session.focus = () => {
-          Transport.send(module, `${method}Focus`, {
+          Gateway.request(`${module}.${method}Focus`, {
             correlationId: request.correlationId
           })
         }
@@ -103,7 +105,7 @@ const provide = function(capability, provider) {
           response.error.data = JSON.parse(JSON.stringify(error.data))
         }
 
-        Transport.send(module, `${method}Error`, response)
+        Gateway.request(`${module}.${method}Error`, response)
       }
 
       try {
@@ -118,7 +120,7 @@ const provide = function(capability, provider) {
             response.result = result
           }
 
-          Transport.send(module, `${method}Response`, response)
+          Gateway.request(`${module}.${method}Response`, response)
         }).catch(err => handleError(err))
       }
       catch(error) {
