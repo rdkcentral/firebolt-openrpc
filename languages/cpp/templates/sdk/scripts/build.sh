@@ -40,5 +40,5 @@ cmake -B${SdkPath}/build -S${SdkPath} -DSYSROOT_PATH=${SysrootPath} -DENABLE_TES
 cmake --build ${SdkPath}/build
 if [ -f "${SdkPath}/build/src/libFireboltSDK.so" ];
 then
-    cmake --install ${SdkPath}/build --prefix=${SdkPath}/build/Firebolt/usr
+    cmake --install ${SdkPath}/build --prefix ${SdkPath}/build/Firebolt/usr
 fi
