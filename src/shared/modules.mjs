@@ -85,7 +85,7 @@ const getProviderInterfaceMethods = (capability, json) => {
 }
   
 
-function getProviderInterface(capability, module) {
+function getProviderInterface(capability, module, extractProviderSchema = false) {
     module = JSON.parse(JSON.stringify(module))
     const iface = getProviderInterfaceMethods(capability, module).map(method => localizeDependencies(method, module, null, { mergeAllOfs: true }))
   
@@ -95,68 +95,62 @@ function getProviderInterface(capability, module) {
   
       // remove `onRequest`
       method.name = method.name.charAt(9).toLowerCase() + method.name.substr(10)
-  
+
       method.params = [
         {
           "name": "parameters",
+          "required": true,
           "schema": payload.properties.parameters
-        },
-        {
-          "name": "session",
-          "schema": {
-            "type": focusable ? "FocusableProviderSession" : "ProviderSession"
-          }
         }
       ]
   
-      let exampleResult = null
+      if (!extractProviderSchema) {
+        let exampleResult = null
+
+        if (method.tags.find(tag => tag['x-response'])) {
+          const result = method.tags.find(tag => tag['x-response'])['x-response']
   
-      if (method.tags.find(tag => tag['x-response'])) {
-        const result = method.tags.find(tag => tag['x-response'])['x-response']
+          method.result = {
+            "name": "result",
+            "schema": result
+          }
   
-        method.result = {
-          "name": "result",
-          "schema": result
-        }
-  
-        if (result.examples && result.examples[0]) {
-          exampleResult = result.examples[0]
-        }
-      }
-      else {
-        method.result = {
-          "name": "result",
-          "schema": {
-            "const": null
+          if (result.examples && result.examples[0]) {
+            exampleResult = result.examples[0]
           }
         }
-      }
-  
-      method.examples = method.examples.map( example => (
-        {
-          params: [
-            {
-              name: "parameters",
-              value: example.result.value.parameters
-            },
-            {
-              name: "session",
-              value: {
-                correlationId: example.result.value.correlationId
-              }
+        else {
+          method.result = {
+            "name": "result",
+            "schema": {
+              "const": null
             }
-          ],
-          result: {
-            name: "result",
-            value: exampleResult
           }
         }
-      ))
   
-      // remove event tag
-      method.tags = method.tags.filter(tag => tag.name !== 'event')
+        method.examples = method.examples.map( example => (
+          {
+            params: [
+              {
+                name: "parameters",
+                value: example.result.value.parameters
+              },
+              {
+                  name: "correlationId",
+                  value: example.result.value.correlationId
+              }
+            ],
+            result: {
+              name: "result",
+              value: exampleResult
+            }
+          }
+        ))
+  
+        // remove event tag
+        method.tags = method.tags.filter(tag => tag.name !== 'event')
+      }
     })
-  
   
     return iface
   }
@@ -295,6 +289,16 @@ const isPolymorphicReducer = compose(
     getPath(['tags'])
 )
 
+const isAllowFocusMethod = compose(
+    option(false),
+    map(_ => true),
+    chain(find(and(
+        hasProp('x-uses'),
+        propSatisfies('x-allow-focus', focus => (focus === true))
+    ))),
+    getPath(['tags'])
+)
+
 const hasTitle = compose(
     option(false),
     map(isString),
@@ -364,6 +368,8 @@ const getPublicEvents = compose(
 
 const hasPublicInterfaces = json => json.methods && json.methods.filter(m => m.tags && m.tags.find(t=>t['x-provides'])).length > 0
 const hasPublicAPIs = json => hasPublicInterfaces(json) || (json.methods && json.methods.filter( method => !method.tags.find(tag => tag.name === 'rpc-only')).length > 0)
+
+const hasAllowFocusMethods = json => json.methods && json.methods.filter(m => isAllowFocusMethod(m)).length > 0
 
 const eventDefaults = event => {
 
@@ -805,6 +811,18 @@ const createResponseFromProvider = (provider, type, json) => {
     return response
 }
 
+const copyAllowFocusTags = (json) => {
+    // for each allow focus provider method, set the value on any `use` methods that share the same capability
+    json.methods.filter(m => m.tags.find(t => t['x-allow-focus'] && t['x-provides'])).forEach(method => {
+        const cap = method.tags.find(t => t.name === "capabilities")['x-provides']
+        json.methods.filter(m => m.tags.find(t => t['x-uses'] && t['x-uses'].includes(cap))).forEach(useMethod => {
+            useMethod.tags.find(t => t.name === "capabilities")['x-allow-focus'] = true
+        })
+    })
+
+    return json
+}
+
 const generatePropertyEvents = json => {
     const properties = json.methods.filter( m => m.tags && m.tags.find( t => t.name == 'property')) || []
     const readonlies = json.methods.filter( m => m.tags && m.tags.find( t => t.name == 'property:readonly')) || []
@@ -951,7 +969,7 @@ const getAnyOfSchema = (inType, json) => {
 
 const generateAnyOfSchema = (anyOf, name, summary) => {
     let anyOfType = {}
-    anyOfType["name"] = name[0].toLowerCase() + name.substr(1)
+    anyOfType["name"] = name;
     anyOfType["summary"] = summary
     anyOfType["schema"] = anyOf
     return anyOfType
@@ -961,7 +979,7 @@ const generateParamsAnyOfSchema = (methodParams, anyOf, anyOfTypes, title, summa
     let params = []
     methodParams.forEach(p => {
         if (p.schema.anyOf === anyOfTypes) {
-            let anyOfType = generateAnyOfSchema(anyOf, title, summary)
+            let anyOfType = generateAnyOfSchema(anyOf, p.name, summary)
             anyOfType.required = p.required
             params.push(anyOfType)
         }
@@ -1002,6 +1020,7 @@ const createPolymorphicMethods = (method, json) => {
     let anyOfTypes
     let methodParams = []
     let methodResult = Object.assign({}, method.result)
+
     method.params.forEach(p => {
         if (p.schema) {
             let param = getAnyOfSchema(p, json)
@@ -1044,12 +1063,12 @@ const createPolymorphicMethods = (method, json) => {
             let localized = localizeDependencies(anyOf, json)
             let title = localized.title || localized.name || ''
             let summary = localized.summary || localized.description || ''
-            polymorphicMethodSchema.title = method.name
-            polymorphicMethodSchema.name = foundAnyOfParams ? `${method.name}With${title}` : `${method.name}${title}`
+            polymorphicMethodSchema.rpc_name = method.name
+            polymorphicMethodSchema.name = foundAnyOfResult && isEventMethod(method) ? `${method.name}${title}` : method.name
             polymorphicMethodSchema.tags = method.tags
             polymorphicMethodSchema.params = foundAnyOfParams ? generateParamsAnyOfSchema(methodParams, anyOf, anyOfTypes, title, summary) : methodParams
             polymorphicMethodSchema.result = Object.assign({}, method.result)
-            polymorphicMethodSchema.result.schema = foundAnyOfResult ? generateResultAnyOfSchema(method, methodResult, anyOf, anyOfTypes, title, summary) : methodResult
+            polymorphicMethodSchema.result.schema = foundAnyOfResult ? generateResultAnyOfSchema(method, methodResult, anyOf, anyOfTypes, title, summary) : methodResult.schema
             polymorphicMethodSchema.examples = method.examples
             polymorphicMethodSchemas.push(Object.assign({}, polymorphicMethodSchema))
         })
@@ -1059,6 +1078,56 @@ const createPolymorphicMethods = (method, json) => {
     }
 
     return polymorphicMethodSchemas
+}
+
+const isSubSchema = (schema) => schema.type === 'object' || (schema.type === 'string' && schema.enum)
+const isSubEnumOfArraySchema = (schema) => (schema.type === 'array' && schema.items.enum)
+
+const addComponentSubSchemasNameForProperties = (key, schema) => {
+  if ((schema.type === "object") && schema.properties) {
+    Object.entries(schema.properties).forEach(([name, propSchema]) => {
+      if (isSubSchema(propSchema)) {
+        key = key + name.charAt(0).toUpperCase() + name.substring(1)
+        if (!propSchema.title) {
+          propSchema.title = key
+        }
+        propSchema = addComponentSubSchemasNameForProperties(key, propSchema)
+      }
+      else if (isSubEnumOfArraySchema(propSchema)) {
+        key = key + name.charAt(0).toUpperCase() + name.substring(1)
+        if (!propSchema.items.title) {
+          propSchema.items.title = key
+        }
+      }
+    })
+  }
+
+  return schema
+}
+
+const addComponentSubSchemasName = (obj, schemas) => {
+    Object.entries(schemas).forEach(([key, schema]) => {
+      let componentSchemaProperties = schema.allOf ? schema.allOf : [schema]
+      componentSchemaProperties.forEach((componentSchema) => {
+        key = key.charAt(0).toUpperCase() + key.substring(1)
+        componentSchema = addComponentSubSchemasNameForProperties(key, componentSchema)
+      })
+      if (!schema.title && !key) {
+         schema.title = capitalize(key)
+      }
+    })
+
+  return schemas
+}
+
+const promoteAndNameXSchemas = (obj) => {
+  obj = JSON.parse(JSON.stringify(obj))
+  if (obj['x-schemas']) {
+    Object.entries(obj['x-schemas']).forEach(([name, schemas]) => {
+      schemas = addComponentSubSchemasName(obj, schemas)
+    })
+  }
+  return obj
 }
 
 const getPathFromModule = (module, path) => {
@@ -1089,6 +1158,12 @@ const fireboltize = (json) => {
     json = generateEventListenerParameters(json)
     json = generateEventListenResponse(json)
     
+    return json
+}
+
+const fireboltizeMerged = (json) => {
+    json = copyAllowFocusTags(json)
+
     return json
 }
 
@@ -1245,7 +1320,7 @@ const removeUnusedSchemas = (json) => {
     return schema
 }
 
-const getModule = (name, json, copySchemas) => {
+const getModule = (name, json, copySchemas, extractSubSchemas) => {
     let openrpc = JSON.parse(JSON.stringify(json))
     openrpc.methods = openrpc.methods
                         .filter(method => method.name.toLowerCase().startsWith(name.toLowerCase() + '.'))
@@ -1299,7 +1374,15 @@ const getModule = (name, json, copySchemas) => {
                         ...(openrpc[destination[0]][destination[1]][destination[2]] || {})
                     }    
                 }
+                const capitalize = str => str[0].toUpperCase() + str.substr(1)
+                if (!schema.title) {
+                    schema.title = capitalize(parts.pop())
+                }
+
                 openrpc = setPath(destination, schema, openrpc)
+                if (extractSubSchemas) {
+                    openrpc = promoteAndNameXSchemas(openrpc)
+                }
             }
         })
     }
@@ -1352,6 +1435,8 @@ export {
     isPublicEventMethod,
     hasPublicAPIs,
     hasPublicInterfaces,
+    isAllowFocusMethod,
+    hasAllowFocusMethods,
     isPolymorphicReducer,
     isPolymorphicPullMethod,
     isTemporalSetMethod,
@@ -1375,6 +1460,7 @@ export {
     getSchemas,
     getParamsFromMethod,
     fireboltize,
+    fireboltizeMerged,
     getPayloadFromEvent,
     getPathFromModule,
     providerHasNoParameters,

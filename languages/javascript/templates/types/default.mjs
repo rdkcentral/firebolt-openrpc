@@ -1,0 +1,1 @@
+type ${title} = ${shape}

@@ -1,1 +1,1 @@
-${method.params.list}
+${method.param.name}: ${method.param.type}
