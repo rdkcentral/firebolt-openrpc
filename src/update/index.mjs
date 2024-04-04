@@ -136,6 +136,8 @@ function update(json) {
         return method
     })
 
+    json.methods = json.methods.filter(m => !m.tags.find(t => t.name === 'polymorphic-push'))
+
     // look for pass-through providers w/ same name as use method
     json.methods.filter(m => json.methods.filter(x => x.name === m.name).length > 1)
                 .filter(m => m.tags.find(t => t.name === 'capabilities')['x-provides'])

@@ -5,6 +5,7 @@ import sdk from './sdk/index.mjs'
 import docs from './docs/index.mjs'
 import openrpc from './openrpc/index.mjs'
 import validate from './validate/index.mjs'
+import update from './update/index.mjs'
 
 import nopt from 'nopt'
 import path from 'path'
@@ -13,6 +14,8 @@ import url from 'url'
 const knownOpts = {
   'input': [path],
   'output': [path],
+  'client': [path],
+  'server': [path],
   'sdk': [path],
   'schemas': [path, Array],
   'template': [path],

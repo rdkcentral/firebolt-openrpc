@@ -16,10 +16,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-const getFilename = (json, asPath) => (json ? json.info ? json.info.title : (asPath ? json.title : json.title + 'Schema'): '')
-const getDirectory = (json, asPath) => asPath ? json.info ? '' : 'schemas' : ''
-
-export {
-    getFilename,
-    getDirectory
-}
+const tag = (method, name) => method.tags.find(tag => tag.name === name)
+export const capabilities = method => tag(method, 'capabilities')
+export const provides = method => capabilities(method)['x-provides']
+export const pusher = method => capabilities(method)['x-push']
+export const notifier = method => method.tags.find(t => t.name === 'notifier')
+export const event = method => tag(method, 'event')

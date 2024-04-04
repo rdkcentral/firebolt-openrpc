@@ -23,6 +23,7 @@ import { emptyDir, readDir, readFiles, readFilesPermissions, readJson,
 import { getTemplate, getTemplateForModule } from '../shared/template.mjs'
 import { getModule, hasPublicAPIs } from '../shared/modules.mjs'
 import { logHeader, logSuccess } from '../shared/io.mjs'
+import Types from './types.mjs'
 import path from 'path'
 import engine from './engine.mjs'
 import { getLocalSchemas, replaceRef, replaceUri } from '../shared/json-schema.mjs'
@@ -31,7 +32,8 @@ import { getLocalSchemas, replaceRef, replaceUri } from '../shared/json-schema.m
 /******************************************** MAIN **********************************************/
 /************************************************************************************************/
 const macrofy = async (
-  input,
+  server,
+  client,
   template,
   output,
   options
@@ -73,23 +75,11 @@ const macrofy = async (
     } = options
 
     return new Promise( async (resolve, reject) => {
-        const openrpc = await readJson(input)
+        const serverRpc = await readJson(server)
+        const clientRpc = await readJson(client)
 
-        logHeader(`Generating ${headline} for version ${openrpc.info.title} ${openrpc.info.version}`)
+        logHeader(`Generating ${headline} for version ${serverRpc.info.title} ${serverRpc.info.version}`)
 
-        let typer
-
-        try {
-//            const typerModule = await import(path.join(sharedTemplates, '..', 'Types.mjs'))
-//            typer = typerModule.default
-        }
-        catch (_) {
-//            typer = (await import('../shared/typescript.mjs')).default
-        }
-
-        typer = (await import('./types.mjs')).default
-
-        engine.setTyper(typer)
         engine.setConfig({
             copySchemasIntoModules,
             mergeOnTitle,
@@ -106,16 +96,16 @@ const macrofy = async (
             operators
         })
 
-        const moduleList = [...(new Set(openrpc.methods.map(method => method.name.split('.').shift())))]
+        const moduleList = [...(new Set(serverRpc.methods.map(method => method.name.split('.').shift())))]
         const sdkTemplateList = template ? await readDir(template, { recursive: true }) : []
         const sharedTemplateList = await readDir(sharedTemplates, { recursive: true })
         const templates = Object.assign(await readFiles(sharedTemplateList, sharedTemplates),
                                         await readFiles(sdkTemplateList, template)) // sdkTemplates are second so they win ties
 
-        typer.setTemplates && typer.setTemplates(templates)
-        typer.setPrimitives(primitives)
-        typer.setAllocatedPrimitiveProxies(allocatedPrimitiveProxies)
-        typer.setConvertTuples(convertTuplesToArraysOrObjects)
+        Types.setTemplates && Types.setTemplates(templates)
+        Types.setPrimitives(primitives)
+        Types.setAllocatedPrimitiveProxies(allocatedPrimitiveProxies)
+        Types.setConvertTuples(convertTuplesToArraysOrObjects)
 
         let templatesPermission = {}
         if (persistPermission) {
@@ -140,20 +130,20 @@ const macrofy = async (
 
         let modules
         if (hidePrivate) {
-            modules = moduleList.map(name => getModule(name, openrpc, copySchemasIntoModules, extractSubSchemas)).filter(hasPublicAPIs)
+            modules = moduleList.map(name => getModule(name, serverRpc, copySchemasIntoModules, extractSubSchemas)).filter(hasPublicAPIs)
         }
         else {
-            modules = moduleList.map(name => getModule(name, openrpc, copySchemasIntoModules, extractSubSchemas))
+            modules = moduleList.map(name => getModule(name, serverRpc, copySchemasIntoModules, extractSubSchemas))
         }
 
         // Grab all schema groups w/ a URI string. These came from some external json-schema that was bundled into the OpenRPC
         const externalSchemas = {}
-        openrpc.components && openrpc.components.schemas
-            && Object.entries(openrpc.components.schemas).filter(([_, schema]) => schema.$id).forEach(([name, schema]) => {
+        serverRpc.components && serverRpc.components.schemas
+            && Object.entries(serverRpc.components.schemas).filter(([_, schema]) => schema.$id).forEach(([name, schema]) => {
                     const id = schema.$id
                     externalSchemas[id] = JSON.parse(JSON.stringify(schema))
                     replaceUri(id, '', externalSchemas[id])
-                    Object.values(openrpc.components.schemas).forEach(schema => {
+                    Object.values(serverRpc.components.schemas).forEach(schema => {
                         if (schema.$id && schema.$id !== id) {
                             externalSchemas[id].definitions[schema.$id] = schema
                         }
@@ -162,7 +152,7 @@ const macrofy = async (
 
         const aggregatedExternalSchemas = mergeOnTitle ? Object.values(externalSchemas).filter(s => !modules.find(m => m.info.title === s.title)) : Object.values(externalSchemas)
 
-        const aggregateMacros = engine.generateAggregateMacros(openrpc, modules.concat(staticModules).concat(copySchemasIntoModules ? [] : Object.values(aggregatedExternalSchemas)), templates, libraryName)
+        const aggregateMacros = engine.generateAggregateMacros(serverRpc, modules.concat(staticModules).concat(copySchemasIntoModules ? [] : Object.values(aggregatedExternalSchemas)), templates, libraryName)
 
         const outputFiles = Object.fromEntries(Object.entries(await readFiles( staticCodeList, staticContent))
                                 .map( ([n, v]) => [path.join(output, n), v]))
@@ -201,7 +191,7 @@ const macrofy = async (
 
             // Pick the index and defaults templates for each module.
             templatesPerModule.forEach(t => {
-                const macros = engine.generateMacros(module, templates, exampleTemplates, {hideExcluded: hideExcluded, copySchemasIntoModules: copySchemasIntoModules, createPolymorphicMethods: createPolymorphicMethods, destination: t, type: 'methods'})
+                const macros = engine.generateMacros(module, clientRpc, templates, exampleTemplates, {hideExcluded: hideExcluded, copySchemasIntoModules: copySchemasIntoModules, createPolymorphicMethods: createPolymorphicMethods, destination: t, type: 'methods'})
                 let content = getTemplateForModule(module.info.title, t, templates)
 
                 // NOTE: whichever insert is called first also needs to be called again last, so each phase can insert recursive macros from the other
@@ -216,7 +206,7 @@ const macrofy = async (
             })
 
             primaryOutput.forEach(output => {
-                const macros = engine.generateMacros(module, templates, exampleTemplates, {hideExcluded: hideExcluded, copySchemasIntoModules: copySchemasIntoModules, createPolymorphicMethods: createPolymorphicMethods, destination: output})
+                const macros = engine.generateMacros(module, clientRpc, templates, exampleTemplates, {hideExcluded: hideExcluded, copySchemasIntoModules: copySchemasIntoModules, createPolymorphicMethods: createPolymorphicMethods, destination: output})
                 macros.append = append
                 outputFiles[output] = engine.insertMacros(outputFiles[output], macros)
             })
@@ -227,7 +217,7 @@ const macrofy = async (
             outputFiles[output] = engine.clearMacros(outputFiles[output]);
         })
 
-        if (treeshakePattern && treeshakeEntry) {
+        if (false && treeshakePattern && treeshakeEntry) {
             const importedFiles = (code, base) => Array.from(new Set([...code.matchAll(treeshakePattern)].map(arr => arr[2]))).map(i => path.join(output, base, i))
 
             const treeShake = (entry, base='', checked = []) => {
@@ -267,7 +257,7 @@ const macrofy = async (
 
             if (templatesPerSchema || primaryOutput.length) {
                 templatesPerSchema && templatesPerSchema.forEach( t => {
-                    const macros = engine.generateMacros(document, templates, exampleTemplates, {hideExcluded: hideExcluded, createPolymorphicMethods: createPolymorphicMethods, destination: t})
+                    const macros = engine.generateMacros(document, null, templates, exampleTemplates, {hideExcluded: hideExcluded, createPolymorphicMethods: createPolymorphicMethods, destination: t})
                     let content = getTemplate('/schemas', t, templates)
                     content = engine.insertMacros(content, macros)
         
@@ -278,7 +268,7 @@ const macrofy = async (
                 })
 
                 primaryOutput && primaryOutput.forEach(output => {
-                    const macros = engine.generateMacros(document, templates, exampleTemplates, {hideExcluded: hideExcluded, copySchemasIntoModules: copySchemasIntoModules, createPolymorphicMethods: createPolymorphicMethods, destination: output})
+                    const macros = engine.generateMacros(document, null, templates, exampleTemplates, {hideExcluded: hideExcluded, copySchemasIntoModules: copySchemasIntoModules, createPolymorphicMethods: createPolymorphicMethods, destination: output})
                     macros.append = append
                     outputFiles[output] = engine.insertMacros(outputFiles[output], macros)
                 })

@@ -27,7 +27,8 @@ import macrofy from '../macrofier/index.mjs'
 /************************************************************************************************/
 // destructure well-known cli args and alias to variables expected by script
 const run = async ({
-  input: input,
+  server: server,
+  client: client,
   template: template,
   output: output,
   language: language,
@@ -40,7 +41,7 @@ const run = async ({
   
   try {
     // Important file/directory locations
-    const packageJsonFile = path.join(path.dirname(input), '..', 'package.json')
+    const packageJsonFile = path.join(path.dirname(server), '..', 'package.json')
     const packageJson = await readJson(packageJsonFile)
     mainFilename = path.basename(packageJson.main)
     declarationsFilename = path.basename(packageJson.types)
@@ -51,7 +52,7 @@ const run = async ({
   
   const config = await readJson(path.join(language, 'language.config.json'))
 
-  return macrofy(input, template, output, {
+  return macrofy(server, client, template, output, {
     headline: 'SDK code',
     outputDirectory:    'sdk',
     sharedTemplates:    path.join(language, 'templates'),
