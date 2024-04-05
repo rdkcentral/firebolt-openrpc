@@ -1,4 +1,4 @@
-name: Attempt to merge next to next-major
+name: Attempt to merge next to main
 on:
   workflow_dispatch:
 
