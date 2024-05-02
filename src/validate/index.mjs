@@ -148,7 +148,7 @@ const run = async ({
             }
         })
 
-        const examples = ajv.compile(exampleSpec)        
+        const examples = ajv.compile(exampleSpec)
 
         let result = validate(json, {}, ajv, jsonschema)
         let exampleResult = validate(json, {}, ajv, examples)
@@ -158,117 +158,116 @@ const run = async ({
 
     // Validate all modules
     Object.keys(modules).forEach(key => {
-        let json = JSON.parse(modules[key])
+        try {
+            let json = JSON.parse(modules[key])
 
-        if (transformations) {
-            // Do the firebolt API magic
-            json = fireboltize(json)
+            if (transformations) {
+                // Do the firebolt API magic
+                json = fireboltize(json)
 
-            // pull in external markdown files for descriptions
-            json = addExternalMarkdown(json, markdown)
+                // pull in external markdown files for descriptions
+                json = addExternalMarkdown(json, markdown)
 
-            // Make sure we have a place to drop shared schemas
-            json.components = json.components || {}
-            json.components.schemas = json.components.schemas || {}
+                // Make sure we have a place to drop shared schemas
+                json.components = json.components || {}
+                json.components.schemas = json.components.schemas || {}
 
-            // add externally referenced schemas that are in our shared schemas path
-            json = addExternalSchemas(json, sharedSchemas)
-        }
+                // add externally referenced schemas that are in our shared schemas path
+                json = addExternalSchemas(json, sharedSchemas)
+            }
 
-        const exampleSpec = {
-            "$id": "https://meta.rdkcentral.com/firebolt/dynamic/" + (json.info.title) +"/examples",
-            "title": "FireboltOpenRPCExamples",
-            "definitions": {
-                "Document": {
-                    "type": "object",
-                    "properties": {
-                        "methods": {
-                            "type": "array",
-                            "items": {
-                                "allOf": json.methods.map(method => ({
-                                    "if": {
-                                        "type": "object",
-                                        "properties": {
-                                            "name": {
-                                                "const": method.name
+            const exampleSpec = {
+                "$id": "https://meta.rdkcentral.com/firebolt/dynamic/" + (json.info.title) +"/examples",
+                "title": "FireboltOpenRPCExamples",
+                "definitions": {
+                    "Document": {
+                        "type": "object",
+                        "properties": {
+                            "methods": {
+                                "type": "array",
+                                "items": {
+                                    "allOf": json.methods.map(method => ({
+                                        "if": {
+                                            "type": "object",
+                                            "properties": {
+                                                "name": {
+                                                    "const": method.name
+                                                }
                                             }
-                                        }
-                                    },
-                                    "then": {
-                                        "type": "object",
-                                        "properties": {
-                                            "examples": {
-                                                "type": "array",
-                                                "items": {
-                                                    "type": "object",
-                                                    "properties": {
-                                                        "result": {
-                                                            "type": "object",
-                                                            "properties": {
-                                                                "value": method.result.schema
-                                                            }
-                                                        },
-                                                        "params": method.params.length ? {
-                                                            "type": "array",
-                                                            "items": {
-                                                                "allOf": method.params.map(param => ({
-                                                                    "if": {
-                                                                        "type": "object",
-                                                                        "properties": {
-                                                                            "name": {
-                                                                                "const": param.name
+                                        },
+                                        "then": {
+                                            "type": "object",
+                                            "properties": {
+                                                "examples": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "result": {
+                                                                "type": "object",
+                                                                "properties": {
+                                                                    "value": method.result.schema
+                                                                }
+                                                            },
+                                                            "params": method.params.length ? {
+                                                                "type": "array",
+                                                                "items": {
+                                                                    "allOf": method.params.map(param => ({
+                                                                        "if": {
+                                                                            "type": "object",
+                                                                            "properties": {
+                                                                                "name": {
+                                                                                    "const": param.name
+                                                                                }
+                                                                            }
+                                                                        },
+                                                                        "then": {
+                                                                            "type": "object",
+                                                                            "properties": {
+                                                                                "value": param.schema
                                                                             }
                                                                         }
-                                                                    },
-                                                                    "then": {
-                                                                        "type": "object",
-                                                                        "properties": {
-                                                                            "value": param.schema
-                                                                        }
-                                                                    }
-                                                                }))
-                                                            },
-                                                            "if": {
-                                                                "type": "array" // always true, but avoids an empty allOf below
-                                                            },
-                                                            "then": method.params.filter(p => p.required).length ? {
-                                                                "allOf": method.params.filter(p => p.required).map(param => ({
-                                                                    "contains": {
-                                                                        "type": "object",
-                                                                        "properties": {
-                                                                            "name": {
-                                                                                "const": param.name
+                                                                    }))
+                                                                },
+                                                                "if": {
+                                                                    "type": "array" // always true, but avoids an empty allOf below
+                                                                },
+                                                                "then": method.params.filter(p => p.required).length ? {
+                                                                    "allOf": method.params.filter(p => p.required).map(param => ({
+                                                                        "contains": {
+                                                                            "type": "object",
+                                                                            "properties": {
+                                                                                "name": {
+                                                                                    "const": param.name
+                                                                                }
                                                                             }
                                                                         }
-                                                                    }
-                                                                }))
+                                                                    }))
+                                                                } : {}
                                                             } : {}
-                                                        } : {}
+                                                        }
                                                     }
                                                 }
                                             }
                                         }
-                                    }
-                                }))
+                                    }))
+                                }
                             }
                         }
                     }
-                }
-            },
-            "x-schemas": json['x-schemas'],
-            "components": json.components
-        }
-
-        exampleSpec.oneOf = [
-            {
-                "$ref": "#/definitions/Document"
+                },
+                "x-schemas": json['x-schemas'],
+                "components": json.components
             }
-        ]
 
+            exampleSpec.oneOf = [
+                {
+                    "$ref": "#/definitions/Document"
+                }
+            ]
 
-        const examples = ajv.compile(exampleSpec)
+            const examples = ajv.compile(exampleSpec)
 
-        try {
             const openrpcResult = validate(json, {}, ajv, openrpc)
             const fireboltResult = validate(json, {}, ajv, firebolt)
             const exampleResult = validate(json, {}, ajv, examples)
@@ -285,8 +284,8 @@ const run = async ({
 //                    console.dir(exampleSpec, { depth: 100 })
                 }
             }
-        }
-        catch (error) {
+        } catch (error) {
+            logError(`Error parsing ${key}\n`)
             throw error
         }
     })
