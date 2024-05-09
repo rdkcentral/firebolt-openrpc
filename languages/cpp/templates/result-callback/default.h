@@ -1,0 +1,1 @@
+const ${method.result.type}
