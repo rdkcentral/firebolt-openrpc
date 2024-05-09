@@ -1,3 +1,10 @@
+# [3.0.0-next.3](https://github.com/rdkcentral/firebolt-openrpc/compare/v3.0.0-next.2...v3.0.0-next.3) (2024-05-09)
+
+
+### Bug Fixes
+
+* Account for new OpenRPC spec URL contents ([#186](https://github.com/rdkcentral/firebolt-openrpc/issues/186)) ([66bd6ac](https://github.com/rdkcentral/firebolt-openrpc/commit/66bd6acc1ffdaefadcb46d78864d615a116b5a85))
+
 # [3.0.0-next.2](https://github.com/rdkcentral/firebolt-openrpc/compare/v3.0.0-next.1...v3.0.0-next.2) (2024-04-08)
 
 
