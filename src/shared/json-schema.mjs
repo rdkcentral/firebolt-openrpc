@@ -163,6 +163,22 @@ const replaceRef = (existing, replacement, schema) => {
   }
 }
 
+const namespaceRefs = (uri, namespace, schema) => {
+  if (schema) {
+    if (schema.hasOwnProperty('$ref') && (typeof schema['$ref'] === 'string')) {
+      const parts = schema.$ref.split('#')
+      if (parts[0] === uri && parts[1].indexOf('.') === -1) {
+        schema['$ref'] = schema['$ref'].split('#').map( x => x === uri ? uri : x.split('/').map((y, i, arr) => i===arr.length-1 ? namespace + '.' + y : y).join('/')).join('#')
+      }
+    }
+    else if (typeof schema === 'object') {
+      Object.keys(schema).forEach(key => {
+        namespaceRefs(uri, namespace, schema[key])
+      })
+    }
+  }
+}
+
 const getReferencedSchema = (uri = '', moduleJson = {}) => {
   const [mainPath, subPath] = (uri || '').split('#')
   let result
@@ -293,7 +309,9 @@ const localizeDependencies = (json, document, schemas = {}, options = defaultLoc
             // don't loose examples from original object w/ $ref
             // todo: should we preserve other things, like title?
             const examples = getPathOr(null, [...path, 'examples'], definition)
-            resolvedSchema.examples = examples || resolvedSchema.examples
+            if (examples || resolvedSchema.examples) {
+              resolvedSchema.examples = examples || resolvedSchema.examples
+            }
             definition = setPath(path, resolvedSchema, definition)
           }
           else {
@@ -502,6 +520,7 @@ export {
   localizeDependencies,
   replaceUri,
   replaceRef,
+  namespaceRefs,
   removeIgnoredAdditionalItems,
   mergeAnyOf,
   mergeOneOf

@@ -17,9 +17,10 @@
  */
 
 import { readJson, readFiles, readDir, writeJson } from "../shared/filesystem.mjs"
-import { addExternalMarkdown, addExternalSchemas, fireboltize, fireboltizeMerged } from "../shared/modules.mjs"
+import { addExternalMarkdown, addExternalSchemas, fireboltize } from "../shared/modules.mjs"
 import path from "path"
 import { logHeader, logSuccess } from "../shared/io.mjs"
+import { namespaceRefs } from "../shared/json-schema.mjs"
 
 const run = async ({
   input: input,
@@ -30,14 +31,16 @@ const run = async ({
 }) => {
 
   let serverOpenRPC = await readJson(template)
-  let clientOpenRPC = await readJson(template)
+  let clientOpenRPC = client && await readJson(template)
+  let mergedOpenRpc = await readJson(template)
+
   const sharedSchemaList = schemas ? (await Promise.all(schemas.map(d => readDir(d, { recursive: true })))).flat() : []
   const sharedSchemas = await readFiles(sharedSchemaList)
 
   try {
     const packageJson = await readJson(path.join(input, '..', 'package.json'))
     serverOpenRPC.info.version = packageJson.version
-    clientOpenRPC.info.version = packageJson.version
+    clientOpenRPC && (clientOpenRPC.info.version = packageJson.version)
   }
   catch (error) {
     // fail silently
@@ -59,68 +62,77 @@ const run = async ({
   const markdown = await readFiles(descriptionsList, path.join(input, 'descriptions'))
 
   const isNotifier = method => method.tags.find(t => t.name === 'notifier')
-  const isProvider = method => method.tags.find(t => t.name === 'capabilities')['x-provides']
-  const isClientAPI = method => isNotifier(method) || isProvider(method)
+  const isProvider = method => method.tags.find(t => t.name === 'capabilities')['x-provides'] && !method.tags.find(t => t.name === 'event')
+  const isClientAPI = method => client && (isNotifier(method) || isProvider(method))
   const isServerAPI = method => !isClientAPI(method)
 
   Object.keys(modules).forEach(key => {
     let json = JSON.parse(modules[key])
 
-    // Do the firebolt API magic
-    json = fireboltize(json)
-
     // pull in external markdown files for descriptions
     json = addExternalMarkdown(json, markdown)
 
     // put module name in front of each method
-    json.methods.forEach(method => method.name = json.info.title + '.' + method.name)
+    json.methods.filter(method => method.name.indexOf('.') === -1).forEach(method => method.name = json.info.title + '.' + method.name)
 
     // merge any info['x-'] extension values (maps & arrays only..)
     Object.keys(json.info).filter(key => key.startsWith('x-')).forEach(extension => {
       if (Array.isArray(json.info[extension])) {
-        serverOpenRPC.info[extension] = serverOpenRPC.info[extension] || []
-        serverOpenRPC.info[extension].push(...json.info[extension])
+        mergedOpenRpc.info[extension] = mergedOpenRpc.info[extension] || []
+        mergedOpenRpc.info[extension].push(...json.info[extension])
       }
       else if (typeof json.info[extension] === 'object') {
-        serverOpenRPC.info[extension] = serverOpenRPC.info[extension] || {}
+        mergedOpenRpc.info[extension] = mergedOpenRpc.info[extension] || {}
         Object.keys(json.info[extension]).forEach(k => {
-          serverOpenRPC.info[extension][k] = json.info[extension][k]
+          mergedOpenRpc.info[extension][k] = json.info[extension][k]
         })
       }
     })
 
     if (json.info.description) {
-      serverOpenRPC.info['x-module-descriptions'] = serverOpenRPC.info['x-module-descriptions'] || {}
-      serverOpenRPC.info['x-module-descriptions'][json.info.title] = json.info.description
+      mergedOpenRpc.info['x-module-descriptions'] = mergedOpenRpc.info['x-module-descriptions'] || {}
+      mergedOpenRpc.info['x-module-descriptions'][json.info.title] = json.info.description
     }
 
-
     // add methods from this module
-    serverOpenRPC.methods.push(...json.methods.filter(isServerAPI))
-    clientOpenRPC.methods.push(...json.methods.filter(isClientAPI))
+    mergedOpenRpc.methods.push(...json.methods)
 
     // add schemas from this module
-    json.components && Object.assign(serverOpenRPC.components.schemas, json.components.schemas)
+//    json.components && Object.assign(mergedOpenRpc.components.schemas, json.components.schemas)
+
+    json.components && json.components.schemas && Object.assign(mergedOpenRpc.components.schemas, Object.fromEntries(Object.entries(json.components.schemas).map( ([key, schema]) => ([json.info.title + '.' + key, schema]) )))
+    namespaceRefs('', json.info.title, mergedOpenRpc)
 
     // add externally referenced schemas that are in our shared schemas path
-    serverOpenRPC = addExternalSchemas(serverOpenRPC, sharedSchemas)
+    mergedOpenRpc = addExternalSchemas(mergedOpenRpc, sharedSchemas)
 
-    // add externally referenced schemas that are in our shared schemas path
-    clientOpenRPC = addExternalSchemas(clientOpenRPC, sharedSchemas)
-
-    modules[key] = JSON.stringify(json, null, '\t')
-
-    logSuccess(`Generated the ${json.info.title} module.`)
+    logSuccess(`Merged the ${json.info.title} module.`)
   })
 
-  serverOpenRPC = fireboltizeMerged(serverOpenRPC)
+  // Fireboltize!
+  mergedOpenRpc = fireboltize(mergedOpenRpc, !!client)
+
+  Object.assign(serverOpenRPC.info, mergedOpenRpc.info)
+
+  // split into client & server APIs
+  serverOpenRPC.methods.push(...mergedOpenRpc.methods.filter(isServerAPI))
+  clientOpenRPC && clientOpenRPC.methods.push(...mergedOpenRpc.methods.filter(isClientAPI))
+
+  // add schemas - TODO: this just blindly copies them all
+  mergedOpenRpc.components && Object.assign(serverOpenRPC.components.schemas, mergedOpenRpc.components.schemas)
+  clientOpenRPC && mergedOpenRpc.components && Object.assign(clientOpenRPC.components.schemas, mergedOpenRpc.components.schemas)
+
+  // add externally referenced schemas that are in our shared schemas path
+  serverOpenRPC = addExternalSchemas(serverOpenRPC, sharedSchemas)
+
+  // add externally referenced schemas that are in our shared schemas path
+  clientOpenRPC && (clientOpenRPC = addExternalSchemas(clientOpenRPC, sharedSchemas))
 
   await writeJson(server, serverOpenRPC)
-  await writeJson(client, clientOpenRPC)
+  clientOpenRPC && await writeJson(client, clientOpenRPC)
 
-  console.log()
   logSuccess(`Wrote file ${path.relative('.', server)}`)
-  logSuccess(`Wrote file ${path.relative('.', client)}`)
+  client && logSuccess(`Wrote file ${path.relative('.', client)}`)
 
   return Promise.resolve()
 }

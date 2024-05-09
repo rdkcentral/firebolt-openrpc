@@ -18,7 +18,13 @@
 
 const tag = (method, name) => method.tags.find(tag => tag.name === name)
 export const capabilities = method => tag(method, 'capabilities')
-export const provides = method => capabilities(method)['x-provides']
-export const pusher = method => capabilities(method)['x-push']
-export const notifier = method => method.tags.find(t => t.name === 'notifier')
-export const event = method => tag(method, 'event')
+export const isProvider = method => capabilities(method)['x-provides']
+export const isPusher = method => capabilities(method)['x-push']
+export const isNotifier = method => method.tags.find(t => t.name === 'notifier')
+export const isEvent = method => tag(method, 'event')
+
+export const name = method => method.name.split('.').pop()
+export const rename = (method, renamer) => method.name.split('.').map((x, i, arr) => i === (arr.length-1) ? renamer(x) : x).join('.')
+
+export const getNotifier = (method, client) => client.methods.find(m => m.name === method.tags.find(t => t.name === "event")['x-notifier'])
+export const getEvent = (method, server) => server.methods.find(m => m.name === method.tags.find(t => t.name === "notifier")['x-event'])

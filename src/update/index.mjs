@@ -80,7 +80,7 @@ function update(json) {
                     method.params.push({
                         name: p,
                          required: false,
-                         schema: params[p]
+                         schema: params.properties[p]
                      })
                      delete params.properties[p] 
                 })

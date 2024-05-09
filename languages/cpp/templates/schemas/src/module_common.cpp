@@ -17,11 +17,11 @@
  */
 
 #include "FireboltSDK.h"
-/* ${IMPORTS} */
+/* ${IMPORTS:cpp} */
 #include "jsondata_${info.title.lowercase}.h"
 ${if.enums}
 
 namespace WPEFramework {
 
-/* ${ENUMS} */
+/* ${ENUM_IMPLEMENTATIONS} */
 }${end.if.enums}

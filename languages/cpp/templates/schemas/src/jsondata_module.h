@@ -18,7 +18,7 @@
 
 #pragma once
 
-/* ${IMPORTS} */
+/* ${IMPORTS:jsondata} */
 #include "common/${info.title.lowercase}.h"
 
 ${if.schemas}namespace Firebolt {

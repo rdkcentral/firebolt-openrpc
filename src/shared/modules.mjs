@@ -31,6 +31,7 @@ import predicates from 'crocks/predicates/index.js'
 import { getExternalSchemaPaths, isDefinitionReferencedBySchema, isNull, localizeDependencies, isSchema, getLocalSchemaPaths, replaceRef, getLinkedSchemaUris, getAllValuesForName, replaceUri } from './json-schema.mjs'
 import { getReferencedSchema } from './json-schema.mjs'
 const { isObject, isArray, propEq, pathSatisfies, hasProp, propSatisfies } = predicates
+import { name as methodName, rename as methodRename } from './methods.mjs'
 
 // util for visually debugging crocks ADTs
 const inspector = obj => {
@@ -55,112 +56,125 @@ const getMethods = compose(
     getPath(['methods'])
 )
 
-const isProviderInterfaceMethod = compose(
-    and(
-        compose(
-            propSatisfies('name', name => name.startsWith('onRequest'))
-        ),
-        compose(
-            option(false),
-            map(_ => true),
-            chain(
-              find(
-                and(
-                  propEq('name', 'capabilities'),
-                  propSatisfies('x-provides', not(isEmpty))
-                )
-              )
-            ),
-            getPath(['tags'])        
-        )
-    )
-  )
+const isProviderInterfaceMethod = method => {
+    let tag = method.tags.find(t => t.name === 'capabilities')
+    const isProvider = tag['x-provides'] && !tag['x-allow-focus-for'] && !tag['x-response-for'] && !tag['x-error-for']
+
+    tag = method.tags.find(t => t.name.startsWith('polymorphic-pull'))
+    const isPuller = !!tag
+    return isProvider && !isPuller //(!method.tags.find(t => t.name.startsWith('polymorphic-pull')))
+}
+
+// const isProviderInterfaceMethod = compose(
+//         compose(
+//             option(false),
+//             map(_ => true),
+//             chain(
+//               find(
+//                 and(
+//                   propEq('name', 'capabilities'),
+//                   and(
+//                     propSatisfies('x-provides', not(isEmpty)),
+//                     and(
+//                         propSatisfies('x-allow-focus-for', isEmpty),
+//                         and(
+//                             propSatisfies('x-response-for', isEmpty),
+//                             propSatisfies('x-error-for', isEmpty)
+//                         )
+//                     )
+//                   )
+//                 )
+//               )
+//             ),
+//             getPath(['tags'])        
+//         )
+//   )
 
 const getProvidedCapabilities = (json) => {
     return Array.from(new Set([...getMethods(json).filter(isProviderInterfaceMethod).map(method => method.tags.find(tag => tag['x-provides'])['x-provides'])]))
 }
 
-const getProviderInterfaceMethods = (capability, json) => {
-    return getMethods(json).filter(method => method.name.startsWith("onRequest") && method.tags && method.tags.find(tag => tag['x-provides'] === capability))
+const getProviderInterfaceMethods = (capability, json, prefix) => {
+    return getMethods(json).filter(method => methodName(method).startsWith(prefix) && method.tags && method.tags.find(tag => tag['x-provides'] === capability))
 }
   
 
-function getProviderInterface(capability, module, extractProviderSchema = false) {
+function getProviderInterface(capability, module, bidirectional = false) {
     module = JSON.parse(JSON.stringify(module))
-    const iface = getProviderInterfaceMethods(capability, module).map(method => localizeDependencies(method, module, null, { mergeAllOfs: true }))
-  
-    iface.forEach(method => {
-      const payload = localizeDependencies(getPayloadFromEvent(method), module)
-      const focusable = method.tags.find(t => t['x-allow-focus'])
-  
-      // remove `onRequest`
-      method.name = method.name.charAt(9).toLowerCase() + method.name.substr(10)
+    const iface = getProviderInterfaceMethods(capability, module, bidirectional ? '' : 'onRequest').map(method => localizeDependencies(method, module, null, { mergeAllOfs: true }))
 
-      method.params = [
-        {
-          "name": "parameters",
-          "required": true,
-          "schema": payload.properties.parameters
-        }
-      ]
-  
-      if (!extractProviderSchema) {
-        let exampleResult = null
+    console.dir(iface.map(m => m.name))
 
-        if (method.tags.find(tag => tag['x-response'])) {
-          const result = method.tags.find(tag => tag['x-response'])['x-response']
-  
-          method.result = {
-            "name": "result",
-            "schema": result
-          }
-  
-          if (result.examples && result.examples[0]) {
-            exampleResult = result.examples[0]
-          }
-        }
-        else {
-          method.result = {
-            "name": "result",
-            "schema": {
-              "const": null
-            }
-          }
-        }
-  
-        method.examples = method.examples.map( example => (
-          {
-            params: [
-              {
-                name: "parameters",
-                value: example.result.value.parameters
-              },
-              {
-                  name: "correlationId",
-                  value: example.result.value.correlationId
-              }
-            ],
-            result: {
-              name: "result",
-              value: exampleResult
-            }
-          }
-        ))
-  
-        // remove event tag
-        method.tags = method.tags.filter(tag => tag.name !== 'event')
-      }
-    })
-  
-    return iface
-  }
-  
-
-const addMissingTitles = ([k, v]) => {
-    if (v && !v.hasOwnProperty('title')) {
-        v.title = k
+    if (iface.every(method => methodName(method).startsWith('onRequest'))) {
+        console.log(`Transforming legacy provider interface ${capability}`)
+        updateUnidirectionalProviderInterface(iface, module)
     }
-    return v
+    
+    return iface
+}
+
+function updateUnidirectionalProviderInterface(iface, module) {
+    iface.forEach(method => {
+        const payload = localizeDependencies(getPayloadFromEvent(method), module)
+        const focusable = method.tags.find(t => t['x-allow-focus'])
+
+        // remove `onRequest`
+        method.name = methodRename(method, name => name.charAt(9).toLowerCase() + name.substr(10))
+
+        method.params = [
+            {
+            "name": "parameters",
+            "required": true,
+            "schema": payload.properties.parameters
+            }
+        ]
+
+        if (!false) { // extractProviderSchema?
+            let exampleResult = null
+
+            if (method.tags.find(tag => tag['x-response'])) {
+                const result = method.tags.find(tag => tag['x-response'])['x-response']
+
+                method.result = {
+                    "name": "result",
+                    "schema": result
+                }
+
+                if (result.examples && result.examples[0]) {
+                    exampleResult = result.examples[0]
+                }
+            }
+            else {
+                method.result = {
+                    "name": "result",
+                    "schema": {
+                    "const": null
+                    }
+                }
+            }
+
+            method.examples = method.examples.map( example => (
+            {
+                params: [
+                {
+                    name: "parameters",
+                    value: example.result.value.parameters
+                },
+                {
+                    name: "correlationId",
+                    value: example.result.value.correlationId
+                }
+                ],
+                result: {
+                name: "result",
+                value: exampleResult
+                }
+            }))
+
+            // remove event tag
+            method.tags = method.tags.filter(tag => tag.name !== 'event')
+        }
+    })    
 }
 
 // Maybe an array of <key, value> from the schema
@@ -317,9 +331,13 @@ const getParamsFromMethod = compose(
 )
 
 const getPayloadFromEvent = (event) => {
-    const choices = (event.result.schema.oneOf || event.result.schema.anyOf)
-    const choice = choices.find(schema => schema.title !== 'ListenResponse' && !(schema['$ref'] || '').endsWith('/ListenResponse'))
-    return choice
+    if (event.result) {
+        const choices = (event.result.schema.oneOf || event.result.schema.anyOf)
+        const choice = choices.find(schema => schema.title !== 'ListenResponse' && !(schema['$ref'] || '').endsWith('/ListenResponse'))
+        return choice    
+    } else {
+        return notifier.params[notifier.params.length-1].schema
+    }
 }
 
 const getSetterFor = (property, json) => json.methods && json.methods.find(m => m.tags && m.tags.find(t => t['x-setter-for'] === property))
@@ -330,18 +348,18 @@ const providerHasNoParameters = (schema) => {
     if (schema.allOf || schema.oneOf) {
         return !!(schema.allOf || schema.oneOf).find(schema => providerHasNoParameters(schema))
     }
-    else if (schema.properties && schema.properties.parameters) {
-        return isNull(schema.properties.parameters)
+    else if (schema.properties && schema.properties.params) {
+        return isNull(schema.properties.params)
     }
     else {
         console.dir(schema, {depth: 10})
-        throw "Invalid ProviderRequest"
+        console.log("Invalid ProviderRequest")
     }
 }
 
 const validEvent = and(
     pathSatisfies(['name'], isString),
-    pathSatisfies(['name'], x => x.match(/on[A-Z]/))
+    pathSatisfies(['name'], x => x.split('.').pop().match(/on[A-Z]/))
 )
 
 // Pick events out of the methods array
@@ -350,7 +368,7 @@ const getEvents = compose(
     map(filter(validEvent)),
     // Maintain the side effect of process.exit here if someone is violating the rules
     map(map(e => {
-        if (!e.name.match(/on[A-Z]/)) {
+        if (!methodName(e).match(/on[A-Z]/)) {
             console.error(`ERROR: ${e.name} method is tagged as an event, but does not match the pattern "on[A-Z]"`)
             process.exit(1) // Non-zero exit since we don't want to continue. Useful for CI/CD pipelines.
         }
@@ -375,7 +393,7 @@ const eventDefaults = event => {
 
     event.tags = [
         {
-            'name': 'event'
+            'name': 'notifier'
         }
     ]    
 
@@ -388,7 +406,7 @@ const createEventResultSchemaFromProperty = property => {
     if (property.tags.find(t => (t.name == 'property' || t.name.startsWith('property:')) && (subscriberType === 'global'))) { 
         // wrap the existing result and the params in a new result object
         const schema = {
-            title: property.name.charAt(0).toUpperCase() + property.name.substring(1) + 'ChangedInfo',
+            title: methodRename(property, name => name.charAt(0).toUpperCase() + name.substring(1) + 'ChangedInfo').split('.').pop(),
             type: "object",
             properties: {
 
@@ -406,14 +424,13 @@ const createEventResultSchemaFromProperty = property => {
         schema.properties[property.result.name] = property.result.schema
         !schema.required.includes(property.result.name) && schema.required.push(property.result.name)
 
-
         return schema
     }
 }
 
 const createEventFromProperty = property => {
     const event = eventDefaults(JSON.parse(JSON.stringify(property)))
-    event.name = 'on' + event.name.charAt(0).toUpperCase() + event.name.substr(1) + 'Changed'
+    event.name = methodRename(event, name => name + 'Changed')
     const old_tags = property.tags.concat()
 
     event.tags[0]['x-alternative'] = property.name
@@ -432,7 +449,7 @@ const createEventFromProperty = property => {
         const result = {
             name: "data",
             schema: {
-                $ref: "#/components/schemas/" + event.name.substring(2) + 'Info'
+                $ref: "#/components/schemas/" + methodRename(event, name => name.substring(2) + 'Info').split('.').pop()
             }
         }
 
@@ -466,7 +483,7 @@ const createEventFromProperty = property => {
 const createPullEventFromPush = (pusher, json) => {
     const event = eventDefaults(JSON.parse(JSON.stringify(pusher)))
     event.params = []
-    event.name = 'onPull' + event.name.charAt(0).toUpperCase() + event.name.substr(1)
+    event.name = methodRename(event, name => 'onPull' + name.charAt(0).toUpperCase() + name.substr(1))
     const old_tags = pusher.tags.concat()
 
     event.tags[0]['x-pulls-for'] = pusher.name
@@ -474,7 +491,7 @@ const createPullEventFromPush = (pusher, json) => {
         name: 'polymorphic-pull-event'
     })
 
-    const requestType = (pusher.name.charAt(0).toUpperCase() + pusher.name.substr(1)) + "FederatedRequest"
+    const requestType = methodRename(pusher, name => name.charAt(0).toUpperCase() + name.substr(1) + "FederatedRequest").split('.').pop()
     event.result.name = "request"
     event.result.summary = "A " + requestType + " object."
 
@@ -531,7 +548,7 @@ const createTemporalEventMethod = (method, json, name) => {
 
 const createEventFromMethod = (method, json, name, correlationExtension, tagsToRemove = []) => {
     const event = eventDefaults(JSON.parse(JSON.stringify(method)))
-    event.name = 'on' + name
+    event.name = methodRename(event, _ => 'on' + name)
     const old_tags = method.tags.concat()
 
     event.tags[0][correlationExtension] = method.name
@@ -552,7 +569,7 @@ const createEventFromMethod = (method, json, name, correlationExtension, tagsToR
 const createTemporalStopMethod = (method, jsoname) => {
     const stop = JSON.parse(JSON.stringify(method))
 
-    stop.name = 'stop' + method.name.charAt(0).toUpperCase() + method.name.substr(1)
+    stop.name = methodRename(stop, name => 'stop' + name.charAt(0).toUpperCase() + name.substr(1))
 
     stop.tags = stop.tags.filter(tag => tag.name !== 'temporal-set')
     stop.tags.unshift({
@@ -590,7 +607,7 @@ const createTemporalStopMethod = (method, jsoname) => {
 
 const createSetterFromProperty = property => {
     const setter = JSON.parse(JSON.stringify(property))
-    setter.name = 'set' + setter.name.charAt(0).toUpperCase() + setter.name.substr(1)
+    setter.name = methodRename(setter, name => 'set' + name.charAt(0).toUpperCase() + name.substr(1))
     const old_tags = setter.tags
     setter.tags = [
         {
@@ -638,14 +655,10 @@ const createSetterFromProperty = property => {
 }
 
 const createFocusFromProvider = provider => {
-
-    if (!provider.name.startsWith('onRequest')) {
-        throw "Methods with the `x-provider` tag extension MUST start with 'onRequest'."
-    }
     
     const ready = JSON.parse(JSON.stringify(provider))
-    ready.name = ready.name.charAt(9).toLowerCase() + ready.name.substr(10) + 'Focus'
-    ready.summary = `Internal API for ${provider.name.substr(9)} Provider to request focus for UX purposes.`
+    ready.name = methodRename(ready, name => name.charAt(9).toLowerCase() + name.substr(10) + 'Focus')
+    ready.summary = `Internal API for ${methodName(provider).substr(9)} Provider to request focus for UX purposes.`
     ready.tags = ready.tags.filter(t => t.name !== 'event')
     ready.tags.find(t => t.name === 'capabilities')['x-allow-focus-for'] = provider.name
 
@@ -674,13 +687,9 @@ const createFocusFromProvider = provider => {
 // type = Response | Error
 const createResponseFromProvider = (provider, type, json) => {
 
-    if (!provider.name.startsWith('onRequest')) {
-        throw "Methods with the `x-provider` tag extension MUST start with 'onRequest'."
-    }
-
     const response = JSON.parse(JSON.stringify(provider))
-    response.name = response.name.charAt(9).toLowerCase() + response.name.substr(10) + type
-    response.summary = `Internal API for ${provider.name.substr(9)} Provider to send back ${type.toLowerCase()}.`
+    response.name = methodRename(response, name => name.charAt(9).toLowerCase() + name.substr(10) + type)
+    response.summary = `Internal API for ${methodName(provider).substr(9)} Provider to send back ${type.toLowerCase()}.`
 
     response.tags = response.tags.filter(t => t.name !== 'event')
     response.tags.find(t => t.name === 'capabilities')[`x-${type.toLowerCase()}-for`] = provider.name
@@ -872,10 +881,100 @@ const generateTemporalSetMethods = json => {
 }
 
 
-const generateProviderMethods = json => {
-    const providers = json.methods.filter( m => m.name.startsWith('onRequest') && m.tags && m.tags.find( t => t.name == 'capabilities' && t['x-provides'])) || []
+const generateUnidirectionalProviderMethods = json => {
+    const providers = json.methods.filter(isProviderInterfaceMethod)// m => m.tags && m.tags.find( t => t.name == 'capabilities' && t['x-provides'] && !t['x-push'])) || []
 
-    providers.forEach(provider => {
+    console.dir(providers.map(m => m.name))
+
+    // Transform providers to legacy events
+    providers.forEach(p => {
+        const name = methodRename(p, name => 'onRequest' + name.charAt(0).toUpperCase() + name.substring(1))
+        json.methods.filter(m => m.tags && m.tags.find( t=> t.name === 'capabilities')['x-provided-by'] === p.name).forEach(m => {
+            m.tags.find(t => t.name === 'capabilities')['x-provided-by'] = name
+        })
+        p.name = name
+        p.tags.push({
+            name: 'event',
+            'x-response': p.result.schema
+            // todo: add examples
+        })
+
+        // Need to calculate if the module name ends with the same word as the method starts with, and dedupe
+        // This is here because we're generating names that used to be editorial. These don't match exactly,
+        // but they're good enough and "PinChallengeRequest" is way better than "PinChallengeChallengeRequest"
+        let overlap = 0
+        const module = p.name.split('.')[0]
+        const method = methodName(p).substring(9)
+
+        for (let i=0; i<Math.min(module.length, method.length); i++) {
+            if (module.substring(module.length-i-1) === method.substring(0, i+1)) {
+                overlap = i
+            }
+        }
+
+        const prefix = module.substring(0, module.length - 1 - overlap) + method
+
+        // Build the parameters wrapper
+        const parameters = {
+            title: prefix + 'Parameters',
+            type: "object",
+            properties: {
+                // actual params                
+            },
+            required: []
+        }
+
+        // add each param
+        p.params.forEach(param => {
+            parameters.properties[param.name] = param.schema
+            if (param.required) {
+                parameters.required.push(param.name)
+            }
+        })
+
+        // remove them from the method
+        p.params = []
+
+        // build the request wrapper
+        const request = {
+            title: prefix + 'Request',
+            type: "object",
+            properties: {
+                parameters: {
+                    $ref: `#/components/schemas/${parameters.title}`
+                },
+                correlationId: {
+                    type: "string"
+                }
+            },
+            additionalProperties: false    
+        }
+
+        json.components.schemas[request.title] = request
+        json.components.schemas[parameters.title] = parameters
+
+        // Put the request into the new event's result
+        p.result = {
+            name: 'result',
+            schema: {
+                $ref: `#/components/schemas/${request.title}`
+            }
+        }
+
+
+
+        p.examples.forEach(example => {
+            // transform examples
+        })
+    })
+
+    return json
+}
+
+const generateProviderMethods = (json) => {
+    const providers = json.methods.filter(isProviderInterfaceMethod) || []
+
+    providers.filter(p => methodName(p).startsWith('onRequest') && p.tags.find(t => t.name === 'event')).forEach(provider => {
         if (! isRPCOnlyMethod(provider)) {
             provider.tags.unshift({
                 "name": "rpc-only"
@@ -890,6 +989,60 @@ const generateProviderMethods = json => {
     providers.forEach(provider => {
         json.methods.push(createResponseFromProvider(provider, 'Response', json))
         json.methods.push(createResponseFromProvider(provider, 'Error', json))
+    })
+
+    return json
+}
+
+const generateEventSubscribers = json => {
+    const notifiers = json.methods.filter( m => m.tags && m.tags.find(t => t.name == 'notifier')) || []
+
+    notifiers.forEach(notifier => {
+        const tag = notifier.tags.find(tag => tag.name === 'notifier')
+        // if there's an x-event extension, this denotes an editorially created subscriber
+        if (!tag['x-event']) {
+            tag['x-event'] = methodRename(notifier, name => 'on' + name.charAt(0).toUpperCase() +! name.substring(1))
+        }
+        const subscriber = json.methods.find(method => method.name === tag['x-event'])
+
+        if (!subscriber) {
+            const subscriber = JSON.parse(JSON.stringify(notifier))
+            subscriber.name = methodRename(subscriber, name => 'on' + name.charAt(0).toUpperCase() + name.substring(1))
+            subscriber.params.pop()
+            subscriber.params.push({
+                name: 'listen',
+                schema: {
+                    type: 'boolean'
+                }
+            })
+            subscriber.tags.find(t => t.name === 'notifier')['x-notifier'] = notifier.name
+            subscriber.tags.find(t => t.name === 'notifier').name = 'event'
+            subscriber.result = {
+                name: "result",
+                schema: {
+                    "type": "null"
+                }
+            }
+            json.methods.push(subscriber)
+        }
+    })
+
+    return json
+}
+
+const generateUnidirectionalEventMethods = json => {
+    const events = json.methods.filter( m => m.tags && m.tags.find(t => t.name == 'notifier')) || []
+
+    events.forEach(event => {
+        const tag = event.tags.find(t => t.name === 'notifier')
+        event.name = tag['x-event']
+        delete tag['x-event']
+        tag.name = 'event'
+        tag['x-notifier'] = event.name
+        event.result = event.params.pop()
+        event.examples.forEach(example => {
+            example.result = example.params.pop()
+        })
     })
 
     return json
@@ -1149,21 +1302,28 @@ const getPathFromModule = (module, path) => {
     return item    
 }
 
-const fireboltize = (json) => {
+const fireboltize = (json, bidirectional) => {
     json = generatePropertyEvents(json)
     json = generatePropertySetters(json)
     json = generatePolymorphicPullEvents(json)
-    json = generateProviderMethods(json)
+
+    if (bidirectional) {
+        console.log('Creating bidirectional APIs')
+        json = generateEventSubscribers(json)
+        // generateInterfaceProviders
+    }
+    else {
+        console.log('Creating uni-directional provider and event APIs')
+        json = generateUnidirectionalProviderMethods(json)
+        json = generateUnidirectionalEventMethods(json)
+        json = generateProviderMethods(json)
+        json = generateEventListenerParameters(json)
+        json = generateEventListenResponse(json)
+    }
+
     json = generateTemporalSetMethods(json)
-    json = generateEventListenerParameters(json)
-    json = generateEventListenResponse(json)
-    
-    return json
-}
-
-const fireboltizeMerged = (json) => {
     json = copyAllowFocusTags(json)
-
+    
     return json
 }
 
@@ -1346,12 +1506,14 @@ const getModule = (name, json, copySchemas, extractSubSchemas) => {
     let openrpc = JSON.parse(JSON.stringify(json))
     openrpc.methods = openrpc.methods
                         .filter(method => method.name.toLowerCase().startsWith(name.toLowerCase() + '.'))
-                        .map(method => Object.assign(method, { name: method.name.split('.').pop() }))
+//                        .map(method => Object.assign(method, { name: method.name.split('.').pop() }))
     openrpc.info.title = name
+    openrpc.components.schemas = Object.fromEntries(Object.entries(openrpc.components.schemas).filter( ([key, schema]) => key.startsWith('http') || key.split('.')[0] === name))
     if (json.info['x-module-descriptions'] && json.info['x-module-descriptions'][name]) {
         openrpc.info.description = json.info['x-module-descriptions'][name]
     }
     delete openrpc.info['x-module-descriptions']
+
     openrpc = promoteAndNameXSchemas(openrpc)
     return removeUnusedBundles(removeUnusedSchemas(openrpc))
     
@@ -1485,7 +1647,6 @@ export {
     getSchemas,
     getParamsFromMethod,
     fireboltize,
-    fireboltizeMerged,
     getPayloadFromEvent,
     getPathFromModule,
     providerHasNoParameters,
