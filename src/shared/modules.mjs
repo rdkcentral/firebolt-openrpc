@@ -28,7 +28,7 @@ import isEmpty from 'crocks/core/isEmpty.js'
 const { and, not } = logic
 import isString from 'crocks/core/isString.js'
 import predicates from 'crocks/predicates/index.js'
-import { getExternalSchemaPaths, isDefinitionReferencedBySchema, isNull, localizeDependencies, isSchema, getLocalSchemaPaths, replaceRef } from './json-schema.mjs'
+import { getExternalSchemaPaths, isDefinitionReferencedBySchema, isNull, localizeDependencies, isSchema, getLocalSchemaPaths, replaceRef, getPropertySchema } from './json-schema.mjs'
 import { getPath as getRefDefinition } from './json-schema.mjs'
 const { isObject, isArray, propEq, pathSatisfies, hasProp, propSatisfies } = predicates
 
@@ -87,20 +87,22 @@ const getProviderInterfaceMethods = (capability, json) => {
 
 function getProviderInterface(capability, module, extractProviderSchema = false) {
     module = JSON.parse(JSON.stringify(module))
-    const iface = getProviderInterfaceMethods(capability, module).map(method => localizeDependencies(method, module, null, { mergeAllOfs: true }))
+    const iface = getProviderInterfaceMethods(capability, module)//.map(method => localizeDependencies(method, module, null, { mergeAllOfs: true }))
   
     iface.forEach(method => {
-      const payload = localizeDependencies(getPayloadFromEvent(method), module)
+      const payload = getPayloadFromEvent(method)
       const focusable = method.tags.find(t => t['x-allow-focus'])
   
       // remove `onRequest`
       method.name = method.name.charAt(9).toLowerCase() + method.name.substr(10)
 
+      const schema = getPropertySchema(payload, 'properties.parameters', module)
+      
       method.params = [
         {
           "name": "parameters",
           "required": true,
-          "schema": payload.properties.parameters
+          "schema": schema// payload.properties.parameters
         }
       ]
   
@@ -557,7 +559,7 @@ const createPullEventFromPush = (pusher, json) => {
     return event
 }
 
-const createPullProvider = (pusher, json) => {
+const createPullProvider = (pusher, params) => {
     const event = eventDefaults(JSON.parse(JSON.stringify(pusher)))
     // insert the method prefix on the last particle of the method name
     event.name = event.name.split('.').map((x, i, arr) => (i === arr.length-1) ? 'onRequest' + x.charAt(0).toUpperCase() + x.substr(1) : x).join('.')
@@ -579,22 +581,12 @@ const createPullProvider = (pusher, json) => {
                     "type": "string",
                 },
                 "parameters": {
-                    "type": "object",
-                    "required": [],
-                    "properties": {
-                    }
+                    "$ref": "#/components/schemas/" + params
                 }
             },
             "additionalProperties": false
         }
     }
-
-    event.params.forEach(p => {
-        event.result.schema.properties.parameters.properties[p.name] = p.schema
-        if (p.required) {
-            event.result.schema.properties.parameters.required.push(p.name)
-        }
-    })
 
     event.params = []
 
@@ -621,6 +613,32 @@ const createPullProvider = (pusher, json) => {
     })
 
     return event
+}
+
+const createPullProviderParams = (pusher) => {
+    const copy = JSON.parse(JSON.stringify(pusher))
+
+    // drop the last param (it's the value)
+    copy.params.pop()
+
+    const name = copy.name.split('.').pop()
+    const paramsSchema = {
+        "title": name.charAt(0).toUpperCase() + name.substr(1) + "ProviderParameters",
+        "type": "object",
+        "required": [],
+        "properties": {
+        },
+        "additionalProperties": false
+    }
+
+    copy.params.forEach(p => {
+        paramsSchema.properties[p.name] = p.schema
+        if (p.required) {
+            paramsSchema.required.push(p.name)
+        }
+    })
+
+    return paramsSchema    
 }
 
 const createPullRequestor = (pusher, json) => {
@@ -1015,7 +1033,14 @@ const generatePushPullMethods = json => {
     const pushers = requestors.map(m => createPushFromRequestor(m, json))
     pushers.forEach(m => json.methods.push(m))
 
-    pushers.forEach(pusher => json.methods.push(createPullProvider(pusher)))
+    pushers.forEach(pusher => {
+        const schema = createPullProviderParams(pusher)
+        json.methods.push(createPullProvider(pusher, schema.title))
+
+        json.components = json.components || {}
+        json.components.schemas = json.components.schemas || {}
+        json.components.schemas[schema.title] = schema
+    })
     requestors.forEach(requestor => json.methods.push(createPushEvent(requestor, json)))
 
 //    pushers.forEach(property => json.methods.push(createPullRequestor(property, json)))

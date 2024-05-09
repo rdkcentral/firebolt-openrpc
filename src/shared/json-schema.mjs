@@ -142,6 +142,48 @@ const getPath = (uri = '', moduleJson = {}) => {
   }
 }
 
+const getPropertySchema = (json, dotPath, document) => {
+  const path = dotPath.split('.')
+  let node = json
+
+  for (var i=0; i<path.length; i++) {
+    const property = path[i]
+    const remainingPath = path.filter((x, j) => j >= i ).join('.')
+    if (node.type === 'object') {
+      if (node.properties && node.properties[property]) {
+        node = node.properties[property]
+      }
+      // todo: need to escape the regex?
+      else if (node.patternProperties && property.match(node.patternProperties)) {
+        node = node.patternProperties[property]
+      }
+      else if (node.additionalProperties && typeof node.additionalProperties === 'object') {
+        node = node.additionalProperties
+      }
+    }
+    else if (node.$ref) {
+      node = getPropertySchema(getPath(node.$ref, document), remainingPath, document)
+    }
+    else if (Array.isArray(node.allOf)) {
+      node = node.allOf.find(s => {
+        let schema
+        try {
+          schema = getPropertySchema(s, remainingPath, document)
+        }
+        catch (error) {
+
+        }
+        return schema
+      })
+    }
+    else {
+      throw `Cannot get property '${dotPath}' of non-object.`
+    }
+  }
+
+  return node
+}
+
 function getSchemaConstraints(schema, module, options = { delimiter: '\n' }) {
   if (schema.schema) {
     schema = schema.schema
@@ -441,6 +483,7 @@ export {
   getLocalSchemaPaths,
   getLinkedSchemaPaths,
   getPath,
+  getPropertySchema,
   isDefinitionReferencedBySchema,
   isNull,
   isSchema,
