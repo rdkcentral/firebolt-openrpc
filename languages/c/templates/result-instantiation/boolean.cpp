@@ -1,0 +1,2 @@
+                *${property} = jsonResult.Value();
+                

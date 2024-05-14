@@ -1,16 +1,73 @@
-# [2.2.0-next.1](https://github.com/rdkcentral/firebolt-openrpc/compare/v2.1.1-next.3...v2.2.0-next.1) (2023-11-30)
+# [3.0.0-next.3](https://github.com/rdkcentral/firebolt-openrpc/compare/v3.0.0-next.2...v3.0.0-next.3) (2024-05-09)
+
+
+### Bug Fixes
+
+* Account for new OpenRPC spec URL contents ([#186](https://github.com/rdkcentral/firebolt-openrpc/issues/186)) ([66bd6ac](https://github.com/rdkcentral/firebolt-openrpc/commit/66bd6acc1ffdaefadcb46d78864d615a116b5a85))
+
+# [3.0.0-next.2](https://github.com/rdkcentral/firebolt-openrpc/compare/v3.0.0-next.1...v3.0.0-next.2) (2024-04-08)
+
+
+### Features
+
+* CI/CD Merging from next ([#183](https://github.com/rdkcentral/firebolt-openrpc/issues/183)) ([14476a9](https://github.com/rdkcentral/firebolt-openrpc/commit/14476a908f2c10d907417187c41ce255ac2ea6a6))
+
+# [3.0.0-next.1](https://github.com/rdkcentral/firebolt-openrpc/compare/v2.3.0-next.1...v3.0.0-next.1) (2024-03-26)
+
+
+* Integration of CPPSDK support (#176) ([89294cc](https://github.com/rdkcentral/firebolt-openrpc/commit/89294cc37f23a94012621130858e01c946a3a9a6)), closes [#176](https://github.com/rdkcentral/firebolt-openrpc/issues/176) [#90](https://github.com/rdkcentral/firebolt-openrpc/issues/90) [#93](https://github.com/rdkcentral/firebolt-openrpc/issues/93) [#94](https://github.com/rdkcentral/firebolt-openrpc/issues/94) [#96](https://github.com/rdkcentral/firebolt-openrpc/issues/96) [#97](https://github.com/rdkcentral/firebolt-openrpc/issues/97) [#100](https://github.com/rdkcentral/firebolt-openrpc/issues/100) [#99](https://github.com/rdkcentral/firebolt-openrpc/issues/99) [#101](https://github.com/rdkcentral/firebolt-openrpc/issues/101) [#102](https://github.com/rdkcentral/firebolt-openrpc/issues/102) [#107](https://github.com/rdkcentral/firebolt-openrpc/issues/107) [#106](https://github.com/rdkcentral/firebolt-openrpc/issues/106) [#105](https://github.com/rdkcentral/firebolt-openrpc/issues/105) [#103](https://github.com/rdkcentral/firebolt-openrpc/issues/103) [#109](https://github.com/rdkcentral/firebolt-openrpc/issues/109) [#112](https://github.com/rdkcentral/firebolt-openrpc/issues/112) [#111](https://github.com/rdkcentral/firebolt-openrpc/issues/111) [#113](https://github.com/rdkcentral/firebolt-openrpc/issues/113) [#114](https://github.com/rdkcentral/firebolt-openrpc/issues/114) [#115](https://github.com/rdkcentral/firebolt-openrpc/issues/115) [#110](https://github.com/rdkcentral/firebolt-openrpc/issues/110) [#90](https://github.com/rdkcentral/firebolt-openrpc/issues/90) [#93](https://github.com/rdkcentral/firebolt-openrpc/issues/93) [#94](https://github.com/rdkcentral/firebolt-openrpc/issues/94) [#96](https://github.com/rdkcentral/firebolt-openrpc/issues/96) [#97](https://github.com/rdkcentral/firebolt-openrpc/issues/97) [#100](https://github.com/rdkcentral/firebolt-openrpc/issues/100) [#99](https://github.com/rdkcentral/firebolt-openrpc/issues/99) [#101](https://github.com/rdkcentral/firebolt-openrpc/issues/101) [#102](https://github.com/rdkcentral/firebolt-openrpc/issues/102) [#107](https://github.com/rdkcentral/firebolt-openrpc/issues/107) [#106](https://github.com/rdkcentral/firebolt-openrpc/issues/106) [#105](https://github.com/rdkcentral/firebolt-openrpc/issues/105) [#103](https://github.com/rdkcentral/firebolt-openrpc/issues/103) [#109](https://github.com/rdkcentral/firebolt-openrpc/issues/109) [#112](https://github.com/rdkcentral/firebolt-openrpc/issues/112) [#111](https://github.com/rdkcentral/firebolt-openrpc/issues/111) [#113](https://github.com/rdkcentral/firebolt-openrpc/issues/113) [#114](https://github.com/rdkcentral/firebolt-openrpc/issues/114) [#115](https://github.com/rdkcentral/firebolt-openrpc/issues/115) [#110](https://github.com/rdkcentral/firebolt-openrpc/issues/110) [#117](https://github.com/rdkcentral/firebolt-openrpc/issues/117) [#116](https://github.com/rdkcentral/firebolt-openrpc/issues/116) [#118](https://github.com/rdkcentral/firebolt-openrpc/issues/118) [#121](https://github.com/rdkcentral/firebolt-openrpc/issues/121) [#119](https://github.com/rdkcentral/firebolt-openrpc/issues/119) [#90](https://github.com/rdkcentral/firebolt-openrpc/issues/90) [#93](https://github.com/rdkcentral/firebolt-openrpc/issues/93) [#94](https://github.com/rdkcentral/firebolt-openrpc/issues/94) [#96](https://github.com/rdkcentral/firebolt-openrpc/issues/96) [#97](https://github.com/rdkcentral/firebolt-openrpc/issues/97) [#100](https://github.com/rdkcentral/firebolt-openrpc/issues/100) [#99](https://github.com/rdkcentral/firebolt-openrpc/issues/99) [#101](https://github.com/rdkcentral/firebolt-openrpc/issues/101) [#102](https://github.com/rdkcentral/firebolt-openrpc/issues/102) [#107](https://github.com/rdkcentral/firebolt-openrpc/issues/107) [#106](https://github.com/rdkcentral/firebolt-openrpc/issues/106) [#105](https://github.com/rdkcentral/firebolt-openrpc/issues/105) [#103](https://github.com/rdkcentral/firebolt-openrpc/issues/103) [#109](https://github.com/rdkcentral/firebolt-openrpc/issues/109) [#112](https://github.com/rdkcentral/firebolt-openrpc/issues/112) [#111](https://github.com/rdkcentral/firebolt-openrpc/issues/111) [#113](https://github.com/rdkcentral/firebolt-openrpc/issues/113) [#114](https://github.com/rdkcentral/firebolt-openrpc/issues/114) [#115](https://github.com/rdkcentral/firebolt-openrpc/issues/115) [#110](https://github.com/rdkcentral/firebolt-openrpc/issues/110) [#117](https://github.com/rdkcentral/firebolt-openrpc/issues/117) [#116](https://github.com/rdkcentral/firebolt-openrpc/issues/116) [#118](https://github.com/rdkcentral/firebolt-openrpc/issues/118) [#121](https://github.com/rdkcentral/firebolt-openrpc/issues/121) [#119](https://github.com/rdkcentral/firebolt-openrpc/issues/119) [#127](https://github.com/rdkcentral/firebolt-openrpc/issues/127) [#137](https://github.com/rdkcentral/firebolt-openrpc/issues/137) [#135](https://github.com/rdkcentral/firebolt-openrpc/issues/135) [#134](https://github.com/rdkcentral/firebolt-openrpc/issues/134) [#136](https://github.com/rdkcentral/firebolt-openrpc/issues/136) [#139](https://github.com/rdkcentral/firebolt-openrpc/issues/139) [#138](https://github.com/rdkcentral/firebolt-openrpc/issues/138) [#140](https://github.com/rdkcentral/firebolt-openrpc/issues/140) [#142](https://github.com/rdkcentral/firebolt-openrpc/issues/142) [#144](https://github.com/rdkcentral/firebolt-openrpc/issues/144) [#145](https://github.com/rdkcentral/firebolt-openrpc/issues/145) [#141](https://github.com/rdkcentral/firebolt-openrpc/issues/141) [#149](https://github.com/rdkcentral/firebolt-openrpc/issues/149) [#150](https://github.com/rdkcentral/firebolt-openrpc/issues/150) [#152](https://github.com/rdkcentral/firebolt-openrpc/issues/152) [#151](https://github.com/rdkcentral/firebolt-openrpc/issues/151) [#153](https://github.com/rdkcentral/firebolt-openrpc/issues/153) [#154](https://github.com/rdkcentral/firebolt-openrpc/issues/154) [#156](https://github.com/rdkcentral/firebolt-openrpc/issues/156) [#157](https://github.com/rdkcentral/firebolt-openrpc/issues/157) [#158](https://github.com/rdkcentral/firebolt-openrpc/issues/158) [#160](https://github.com/rdkcentral/firebolt-openrpc/issues/160) [#159](https://github.com/rdkcentral/firebolt-openrpc/issues/159) [#161](https://github.com/rdkcentral/firebolt-openrpc/issues/161) [#163](https://github.com/rdkcentral/firebolt-openrpc/issues/163) [#164](https://github.com/rdkcentral/firebolt-openrpc/issues/164) [#165](https://github.com/rdkcentral/firebolt-openrpc/issues/165) [#167](https://github.com/rdkcentral/firebolt-openrpc/issues/167) [#169](https://github.com/rdkcentral/firebolt-openrpc/issues/169) [#171](https://github.com/rdkcentral/firebolt-openrpc/issues/171) [#173](https://github.com/rdkcentral/firebolt-openrpc/issues/173) [#172](https://github.com/rdkcentral/firebolt-openrpc/issues/172) [#170](https://github.com/rdkcentral/firebolt-openrpc/issues/170)
+
+
+### BREAKING CHANGES
+
+* Generalized templating engine to support both JavaScript and CPP (and other languages).
+
+* chore: Copy JS templates to C and create language.config.json
+
+* feat(languages): Add support for a distinct JSON-type for each schema
+
+Also started tweaking C templates and adding a few useful macros.
+
+* chore: Dropped debug logs
+
+* fix: Stop passing non-schemas in to getSchemaType
+
+* feat(accessors): New macro section for schema property accessors
+
+# [2.3.0-next.1](https://github.com/rdkcentral/firebolt-openrpc/compare/v2.2.0...v2.3.0-next.1) (2024-01-12)
+
+
+### Bug Fixes
+
+* Insert 'v' in front of version enum names ([d8b9ada](https://github.com/rdkcentral/firebolt-openrpc/commit/d8b9ada1b624df29821b74679291d36167208470))
+* Proper param handling for x-subscriber-type: global ([02204e5](https://github.com/rdkcentral/firebolt-openrpc/commit/02204e5f93d27a21086b4a9bbe5f586f969354f8))
+
+
+### Features
+
+* Support for context-free property subscribers ([9809273](https://github.com/rdkcentral/firebolt-openrpc/commit/980927309fa6efc7b03a490aa5fd7909f39ff4de))
+
+# [2.2.0](https://github.com/rdkcentral/firebolt-openrpc/compare/v2.1.2...v2.2.0) (2023-11-30)
 
 
 ### Features
 
 * Improve generated doc formatting ([#155](https://github.com/rdkcentral/firebolt-openrpc/issues/155)) ([4613281](https://github.com/rdkcentral/firebolt-openrpc/commit/46132810ac5e5b0a8b9baa22903cb8a367b46f63))
 
-## [2.1.1-next.3](https://github.com/rdkcentral/firebolt-openrpc/compare/v2.1.1-next.2...v2.1.1-next.3) (2023-11-09)
+## [2.1.2](https://github.com/rdkcentral/firebolt-openrpc/compare/v2.1.1...v2.1.2) (2023-11-09)
 
 
 ### Bug Fixes
 
 * Provider openrpc response and error methods have a wrapper object ([#148](https://github.com/rdkcentral/firebolt-openrpc/issues/148)) ([373626e](https://github.com/rdkcentral/firebolt-openrpc/commit/373626ed598447bb670ac67e97ca8ed1bf32f28f))
+
+## [2.1.1](https://github.com/rdkcentral/firebolt-openrpc/compare/v2.1.0...v2.1.1) (2023-11-01)
+
+
+### Bug Fixes
+
+* Errors thrown in async provider methods do not send the JSONRPC error response ([#143](https://github.com/rdkcentral/firebolt-openrpc/issues/143)) ([ec8e259](https://github.com/rdkcentral/firebolt-openrpc/commit/ec8e2599d530f9d2bd38fbb53b36e13c038edf2a))
+* Macro not replaced for provider docs ([ef1aecd](https://github.com/rdkcentral/firebolt-openrpc/commit/ef1aecd0092a8652bc7b936604f9478b7b55df27))
 
 ## [2.1.1-next.2](https://github.com/rdkcentral/firebolt-openrpc/compare/v2.1.1-next.1...v2.1.1-next.2) (2023-11-01)
 

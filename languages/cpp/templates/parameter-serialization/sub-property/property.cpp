@@ -1,0 +1,3 @@
+${shape}            ${if.non.const}${if.non.anyOf}${if.non.array}${if.non.object}${if.optional}if (element${property.dependency}${if.impl.optional}.value()${end.if.impl.optional}.${property}.has_value()) {
+                ${base.title}Container${Property.dependency}.${Property} = element${property.dependency}${if.impl.optional}.value()${end.if.impl.optional}.${property}.value();
+            }${end.if.optional}${if.non.optional}${base.title}Container${Property.dependency}.${Property} = element${property.dependency}${if.impl.optional}.value()${end.if.impl.optional}.${property};${end.if.non.optional}${end.if.non.object}${end.if.non.array}${end.if.non.anyOf}${end.if.non.const}

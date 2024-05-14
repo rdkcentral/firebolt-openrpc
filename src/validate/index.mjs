@@ -73,10 +73,13 @@ const run = async ({
     const jsonSchemaSpec = await (await fetch('https://meta.json-schema.tools')).json()
 
     //  - OpenRPC uses `additionalItems` when `items` is not an array of schemas. This fails strict validate, so we remove it
-    //  - OpenRPC uses raw.githubusercontent.com URLs for the json-schema spec, we replace this with the up to date spec on meta.json-schema.tools
     const openRpcSpec = await (await fetch('https://meta.open-rpc.org')).json()
+
     removeIgnoredAdditionalItems(openRpcSpec)
-    replaceUri('https://raw.githubusercontent.com/json-schema-tools/meta-schema/1.5.9/src/schema.json', 'https://meta.json-schema.tools/', openRpcSpec)
+
+    //AJV doesn't like not having a slash at the end of the URL
+    replaceUri('https://meta.json-schema.tools', 'https://meta.json-schema.tools/', openRpcSpec)
+
 
     Object.values(sharedSchemas).forEach(schema => {
         try {
@@ -105,7 +108,7 @@ const run = async ({
 
     addFormats(ajv)
     // explicitly add our custom extensions so we can keep strict mode on (TODO: put these in a JSON config?)
-    ajv.addVocabulary(['x-method', 'x-this-param', 'x-additional-params', 'x-schemas', 'components'])
+    ajv.addVocabulary(['x-method', 'x-this-param', 'x-additional-params', 'x-schemas', 'components', 'x-property'])
 
     const firebolt = ajv.compile(fireboltOpenRpcSpec)
     const jsonschema = ajv.compile(jsonSchemaSpec)
