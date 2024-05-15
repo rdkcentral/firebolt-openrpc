@@ -29,6 +29,11 @@ let moduleInstance = null
 const isEventSuccess = x => x && (typeof x.event === 'string') && (typeof x.listening === 'boolean')
 
 const win = typeof window !== 'undefined' ? window : {}
+let initMessage
+
+export function initialize(module, method, params) {
+  initMessage = { module, method, params }
+}
 
 export default class Transport {
   constructor () {
@@ -147,6 +152,12 @@ export default class Transport {
 
   _processRequest (module, method, params, transforms) {
 
+    if (initMessage) {
+      const init = initMessage
+      initMessage = null
+      Transport.send(init.module, init.method, init.params)
+    }
+
     const p = this._addPromiseToQueue(module, method, params, transforms)
     const json = this._createRequestJSON(module, method, params)
 
@@ -162,7 +173,8 @@ export default class Transport {
   }
 
   _createRequestJSON (module, method, params) {
-    return { jsonrpc: '2.0', method: module.toLowerCase() + '.' + method, params: params, id: this._id }
+    const rpcMethod = module ? module.toLowerCase() + '.' + method : method
+    return { jsonrpc: '2.0', method: rpcMethod, params: params, id: this._id }
   }
 
   _addPromiseToQueue (module, method, params, transforms) {

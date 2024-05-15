@@ -45,6 +45,10 @@ function send(message) {
 
   let [module, method] = json.method.split('.')
 
+  if (!method) {
+    [method, module] = [module, method]
+  }
+
   if (testHarness && testHarness.onSend) {
     testHarness.onSend(module, method, json.params, json.id)
   }

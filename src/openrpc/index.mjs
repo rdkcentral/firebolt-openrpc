@@ -65,7 +65,7 @@ const run = async ({
     json = addExternalMarkdown(json, markdown)
 
     // put module name in front of each method
-    json.methods.forEach(method => method.name = json.info.title + '.' + method.name)
+    json.methods.forEach(method => json.info.title && (method.name = json.info.title + '.' + method.name))
 
     // merge any info['x-'] extension values (maps & arrays only..)
     Object.keys(json.info).filter(key => key.startsWith('x-')).forEach(extension => {
