@@ -20,7 +20,7 @@ import { readJson, readFiles, readDir, writeJson, writeFiles } from "../shared/f
 import { addExternalMarkdown, addExternalSchemas, fireboltize } from "../shared/modules.mjs"
 import path from "path"
 import { logHeader, logSuccess } from "../shared/io.mjs"
-import { capabilities, event, provides, pusher } from "../shared/methods.mjs"
+import { isEvent, isProvider } from "../shared/methods.mjs"
 import { getReferencedSchema } from '../shared/json-schema.mjs'
 
 const run = async ({
@@ -54,7 +54,7 @@ const run = async ({
 function update(json) {
     json.methods = json.methods.map(method => {
         // update providers
-        if (provides(method)) {
+        if (isProvider(method)) {
             // handle Provider Interfaces
             if (method.name.startsWith('onRequest')) {
                 // simplify name
@@ -89,7 +89,7 @@ function update(json) {
                 // move result out of custom extension
                 method.result = {
                     name: 'result',
-                    schema: event(method)['x-response']
+                    schema: isEvent(method)['x-response']
                 }
                 
                 // fix example pairings
@@ -118,9 +118,9 @@ function update(json) {
                 method.tags = method.tags.filter(tag => (tag.name !== "event" && tag.name !== "rpc-only"))
             }
         }
-        else if (event(method)) {
+        else if (isEvent(method)) {
             // store the subscriber name in the x-event extension
-            event(method)['x-event'] = json.info.title + '.' + method.name
+            isEvent(method)['x-event'] = json.info.title + '.' + method.name
 
             // simplify name
             method.name = method.name.charAt(2).toLowerCase() + method.name.substr(3)
@@ -128,7 +128,7 @@ function update(json) {
             method.params.push(method.result)
 
             // rename the event tag to notifier
-            event(method).name = "notifier"
+            isEvent(method).name = "notifier"
 
             // remove the result, since this is a notification
             delete method.result

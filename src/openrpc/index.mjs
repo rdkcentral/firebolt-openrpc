@@ -62,7 +62,7 @@ const run = async ({
   const markdown = await readFiles(descriptionsList, path.join(input, 'descriptions'))
 
   const isNotifier = method => method.tags.find(t => t.name === 'notifier')
-  const isProvider = method => method.tags.find(t => t.name === 'capabilities')['x-provides'] && !method.tags.find(t => t.name === 'event')
+  const isProvider = method => method.tags.find(t => t.name === 'capabilities')['x-provides'] && !method.tags.find(t => t.name === 'event') && !method.tags.find(t => t.name === 'polymorphic-pull')
   const isClientAPI = method => client && (isNotifier(method) || isProvider(method))
   const isServerAPI = method => !isClientAPI(method)
 

@@ -31,7 +31,7 @@ import predicates from 'crocks/predicates/index.js'
 import { getExternalSchemaPaths, isDefinitionReferencedBySchema, isNull, localizeDependencies, isSchema, getLocalSchemaPaths, replaceRef, getLinkedSchemaUris, getAllValuesForName, replaceUri } from './json-schema.mjs'
 import { getReferencedSchema } from './json-schema.mjs'
 const { isObject, isArray, propEq, pathSatisfies, hasProp, propSatisfies } = predicates
-import { name as methodName, rename as methodRename } from './methods.mjs'
+import { getNotifier, name as methodName, rename as methodRename } from './methods.mjs'
 
 // util for visually debugging crocks ADTs
 const inspector = obj => {
@@ -97,13 +97,10 @@ const getProvidedCapabilities = (json) => {
 const getProviderInterfaceMethods = (capability, json, prefix) => {
     return getMethods(json).filter(method => methodName(method).startsWith(prefix) && method.tags && method.tags.find(tag => tag['x-provides'] === capability))
 }
-  
 
 function getProviderInterface(capability, module, bidirectional = false) {
     module = JSON.parse(JSON.stringify(module))
     const iface = getProviderInterfaceMethods(capability, module, bidirectional ? '' : 'onRequest').map(method => localizeDependencies(method, module, null, { mergeAllOfs: true }))
-
-    console.dir(iface.map(m => m.name))
 
     if (iface.every(method => methodName(method).startsWith('onRequest'))) {
         console.log(`Transforming legacy provider interface ${capability}`)
@@ -330,13 +327,24 @@ const getParamsFromMethod = compose(
     getPath(['params'])
 )
 
-const getPayloadFromEvent = (event) => {
-    if (event.result) {
-        const choices = (event.result.schema.oneOf || event.result.schema.anyOf)
-        const choice = choices.find(schema => schema.title !== 'ListenResponse' && !(schema['$ref'] || '').endsWith('/ListenResponse'))
-        return choice    
-    } else {
-        return notifier.params[notifier.params.length-1].schema
+const getPayloadFromEvent = (event, client) => {
+    try {
+        if (event.result) {
+            const choices = (event.result.schema.oneOf || event.result.schema.anyOf)
+            if (choices) {
+                const choice = choices.find(schema => schema.title !== 'ListenResponse' && !(schema['$ref'] || '').endsWith('/ListenResponse'))
+                return choice        
+            }
+            else {
+                return getNotifier(event, client).params.slice(-1)[0].schema
+            }
+        } else {
+            return notifier.params[notifier.params.length-1].schema
+        }    
+    }
+    catch (error) {
+        console.dir(event)
+        throw error
     }
 }
 
@@ -428,63 +436,33 @@ const createEventResultSchemaFromProperty = property => {
     }
 }
 
-const createEventFromProperty = property => {
-    const event = eventDefaults(JSON.parse(JSON.stringify(property)))
-    event.name = methodRename(event, name => name + 'Changed')
-    const old_tags = property.tags.concat()
+const createNotifierFromProperty = property => {
+    const notifier = JSON.parse(JSON.stringify(property))
+    notifier.name = methodRename(notifier, name => name + 'Changed')
 
-    event.tags[0]['x-alternative'] = property.name
-
-    event.tags.unshift({
-        name: "subscriber",
-        'x-subscriber-for': property.name
+    Object.assign(notifier.tags.find(t => t.name.startsWith('property')), {
+        name: 'notifier',
+        'x-notifier-for': property.name,
+        'x-event': methodRename(notifier, name => 'on' + name.charAt(0).toUpperCase() + name.substring(1))
     })
 
-    const subscriberType = property.tags.map(t => t['x-subscriber-type']).find(t => typeof t === 'string') || 'context'
-    
-    // if the subscriber type is global, zap all of the parameters and change the result type to the schema that includes them
-    if (old_tags.find(t => (t.name == 'property' || t.name.startsWith('property:')) && (subscriberType === 'global'))) {
-        
-        // wrap the existing result and the params in a new result object
-        const result = {
-            name: "data",
-            schema: {
-                $ref: "#/components/schemas/" + methodRename(event, name => name.substring(2) + 'Info').split('.').pop()
-            }
-        }
+    notifier.params.push(notifier.result)
+    delete notifier.result
 
-        event.examples.map(example => {
-            const result = {}
-            example.params.filter(p => p.name !== 'listen').forEach(p => {
-                result[p.name] = p.value
-            })
-            result[example.result.name] = example.result.value
-            example.params = example.params.filter(p => p.name === 'listen')
-            example.result.name = "data"
-            example.result.value = result
-        })
-
-        event.result = result
-        
-        // remove the params
-        event.params = event.params.filter(p => p.name === 'listen')
-    }
-
-    old_tags.forEach(t => {
-        if (t.name !== 'property' && !t.name.startsWith('property:'))
-        {
-            event.tags.push(t)
-        }
-    })
-
-    return event
+    return notifier
 }
 
 const createPullEventFromPush = (pusher, json) => {
-    const event = eventDefaults(JSON.parse(JSON.stringify(pusher)))
+    const event = JSON.parse(JSON.stringify(pusher))
     event.params = []
-    event.name = methodRename(event, name => 'onPull' + name.charAt(0).toUpperCase() + name.substr(1))
+    event.name = methodRename(event, name => 'pull' + name.charAt(0).toUpperCase() + name.substr(1))
     const old_tags = pusher.tags.concat()
+    event.tags = [
+        {
+            name: "notifier",
+            'x-event': methodRename(pusher, name => 'onPull' + name.charAt(0).toUpperCase() + name.substr(1))
+        }
+    ]
 
     event.tags[0]['x-pulls-for'] = pusher.name
     event.tags.unshift({
@@ -492,21 +470,26 @@ const createPullEventFromPush = (pusher, json) => {
     })
 
     const requestType = methodRename(pusher, name => name.charAt(0).toUpperCase() + name.substr(1) + "FederatedRequest").split('.').pop()
-    event.result.name = "request"
-    event.result.summary = "A " + requestType + " object."
+    event.params.push({
+        name: "request",
+        summary: "A " + requestType + " object.",
+        schema: {
+            "$ref": "#/components/schemas/" + requestType
+        }
+    })
 
-    event.result.schema = {
-        "$ref": "#/components/schemas/" + requestType
-    }
+    delete event.result
 
     const exampleResult = {
-        name: "result",
+        name: "request",
         value: JSON.parse(JSON.stringify(getPathOr(null, ['components', 'schemas', requestType, 'examples', 0], json)))
     }
 
     event.examples && event.examples.forEach(example => {
-        example.result = exampleResult
-        example.params = []
+        delete example.result
+        example.params = [
+            exampleResult
+        ]
     })
 
     old_tags.forEach(t => {
@@ -837,14 +820,14 @@ const generatePropertyEvents = json => {
     const readonlies = json.methods.filter( m => m.tags && m.tags.find( t => t.name == 'property:readonly')) || []
 
     properties.forEach(property => {
-        json.methods.push(createEventFromProperty(property))
+        json.methods.push(createNotifierFromProperty(property))
         const schema = createEventResultSchemaFromProperty(property)
         if (schema) {
             json.components.schemas[schema.title] = schema
         }
     })
     readonlies.forEach(property => {
-        json.methods.push(createEventFromProperty(property))
+        json.methods.push(createNotifierFromProperty(property))
         const schema = createEventResultSchemaFromProperty(property)
         if (schema) {
             json.components.schemas[schema.title] = schema
@@ -883,8 +866,6 @@ const generateTemporalSetMethods = json => {
 
 const generateUnidirectionalProviderMethods = json => {
     const providers = json.methods.filter(isProviderInterfaceMethod)// m => m.tags && m.tags.find( t => t.name == 'capabilities' && t['x-provides'] && !t['x-push'])) || []
-
-    console.dir(providers.map(m => m.name))
 
     // Transform providers to legacy events
     providers.forEach(p => {
