@@ -32,6 +32,10 @@ import { getExternalSchemaPaths, isDefinitionReferencedBySchema, isNull, localiz
 import { getPath as getRefDefinition } from './json-schema.mjs'
 const { isObject, isArray, propEq, pathSatisfies, hasProp, propSatisfies } = predicates
 
+// TODO remove these when major/rpc branch is merged
+const name = method => method.name.split('.').pop()
+const rename = (method, renamer) => method.name.split('.').map((x, i, arr) => i === (arr.length-1) ? renamer(x) : x).join('.')
+
 // util for visually debugging crocks ADTs
 const inspector = obj => {
     if (obj.inspect) {
@@ -391,7 +395,6 @@ const createEventResultSchemaFromProperty = (property, type='') => {
     let name = caps['x-provided-by'] ? caps['x-provided-by'].split('.').pop().replace('onRequest', '') : property.name
     name = name.charAt(0).toUpperCase() + name.substring(1)
 
-
     if ( subscriberType === 'global') { 
         // wrap the existing result and the params in a new result object
         const schema = {
@@ -426,7 +429,7 @@ const createEventFromProperty = (property, type='', alternative, json) => {
     event.name = event.name.split('.').map((x, i, arr) => (i === arr.length-1) ? 'on' + x.charAt(0).toUpperCase() + x.substr(1) : x).join('.')
     const subscriberFor = pusher || (json.info.title + '.' + property.name)
     
-    const old_tags = property.tags.concat()
+    const old_tags = JSON.parse(JSON.stringify(property.tags))
 
     alternative && (event.tags[0]['x-alternative'] = alternative)
 
@@ -524,7 +527,7 @@ const createPullEventFromPush = (pusher, json) => {
     const event = eventDefaults(JSON.parse(JSON.stringify(pusher)))
     event.params = []
     event.name = 'onPull' + event.name.charAt(0).toUpperCase() + event.name.substr(1)
-    const old_tags = pusher.tags.concat()
+    const old_tags = JSON.parse(JSON.stringify(pusher.tags))
 
     event.tags[0]['x-pulls-for'] = pusher.name
     event.tags.unshift({
@@ -563,7 +566,7 @@ const createPullProvider = (pusher, params) => {
     const event = eventDefaults(JSON.parse(JSON.stringify(pusher)))
     // insert the method prefix on the last particle of the method name
     event.name = event.name.split('.').map((x, i, arr) => (i === arr.length-1) ? 'onRequest' + x.charAt(0).toUpperCase() + x.substr(1) : x).join('.')
-    const old_tags = pusher.tags.concat()
+    const old_tags = JSON.parse(JSON.stringify(pusher.tags))
 
     const value = event.params.pop()
 
@@ -699,7 +702,7 @@ const createTemporalEventMethod = (method, json, name) => {
 const createEventFromMethod = (method, json, name, correlationExtension, tagsToRemove = []) => {
     const event = eventDefaults(JSON.parse(JSON.stringify(method)))
     event.name = 'on' + name
-    const old_tags = method.tags.concat()
+    const old_tags = JSON.parse(JSON.stringify(method.tags))
 
     event.tags[0][correlationExtension] = method.name
     event.tags.unshift({
@@ -806,13 +809,13 @@ const createSetterFromProperty = property => {
 
 const createFocusFromProvider = provider => {
 
-    if (!provider.name.startsWith('onRequest')) {
+    if (!name(provider).startsWith('onRequest')) {
         throw "Methods with the `x-provider` tag extension MUST start with 'onRequest'."
     }
     
     const ready = JSON.parse(JSON.stringify(provider))
-    ready.name = ready.name.charAt(9).toLowerCase() + ready.name.substr(10) + 'Focus'
-    ready.summary = `Internal API for ${provider.name.substr(9)} Provider to request focus for UX purposes.`
+    ready.name = rename(ready, n => n.charAt(9).toLowerCase() + n.substr(10) + 'Focus')
+    ready.summary = `Internal API for ${name(provider).substr(9)} Provider to request focus for UX purposes.`
     ready.tags = ready.tags.filter(t => t.name !== 'event')
     ready.tags.find(t => t.name === 'capabilities')['x-allow-focus-for'] = provider.name
 
@@ -841,12 +844,12 @@ const createFocusFromProvider = provider => {
 // type = Response | Error
 const createResponseFromProvider = (provider, type, json) => {
 
-    if (!provider.name.startsWith('onRequest')) {
+    if (!name(provider).startsWith('onRequest')) {
         throw "Methods with the `x-provider` tag extension MUST start with 'onRequest'."
     }
 
     const response = JSON.parse(JSON.stringify(provider))
-    response.name = response.name.charAt(9).toLowerCase() + response.name.substr(10) + type
+    response.name = rename(response, n => n.charAt(9).toLowerCase() + n.substr(10) + type)
     response.summary = `Internal API for ${provider.name.substr(9)} Provider to send back ${type.toLowerCase()}.`
 
     response.tags = response.tags.filter(t => t.name !== 'event')
@@ -1068,7 +1071,7 @@ const generateTemporalSetMethods = json => {
 
 
 const generateProviderMethods = json => {
-    const providers = json.methods.filter( m => m.name.startsWith('onRequest') && m.tags && m.tags.find( t => t.name == 'capabilities' && t['x-provides'])) || []
+    const providers = json.methods.filter( m => name(m).startsWith('onRequest') && m.tags && m.tags.find( t => t.name == 'capabilities' && t['x-provides'])) || []
 
     providers.forEach(provider => {
         if (! isRPCOnlyMethod(provider)) {
