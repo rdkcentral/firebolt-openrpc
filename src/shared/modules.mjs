@@ -469,7 +469,7 @@ const createEventFromProperty = (property, type='', alternative, json) => {
     }
 
     old_tags.forEach(t => {
-        if (t.name !== 'property' && !t.name.startsWith('property:') && t.name !== 'push-pull' & t.name !== 'requestor')
+        if (t.name !== 'property' && !t.name.startsWith('property:') && t.name !== 'push-pull')
         {
             event.tags.push(t)
         }
@@ -480,23 +480,17 @@ const createEventFromProperty = (property, type='', alternative, json) => {
     return event
 }
 
-const createPushFromRequestor = (requestor, json) => {
-    const push = JSON.parse(JSON.stringify(requestor))
-
+// create foo() notifier from onFoo() event
+const createNotifierFromEvent = (event, json) => {
+    const push = JSON.parse(JSON.stringify(event))
     const caps = push.tags.find(t => t.name === 'capabilities')
-    push.name = caps['x-provided-by'].replace('onRequest', '')
+    push.name = caps['x-provided-by']
     delete caps['x-provided-by']
-    push.name = push.name.split('.').map( (x, i, arr) => (i === arr.length -1) ? x.charAt(0).toLowerCase() + x.substr(1) : x).join('.')
     
     caps['x-provides'] = caps['x-uses'].pop()
     delete caps['x-uses']
 
-    push.tags = push.tags.filter(t => t.name !== 'push-pull')
-    push.tags.push({
-        name: "push"
-    })
-
-    requestor.tags.find(t => t.name === 'push-pull').name = 'requestor'
+    push.tags = push.tags.filter(t => t.name !== 'event')
 
     push.result.required = true
     push.params.push(push.result)
@@ -562,17 +556,15 @@ const createPullEventFromPush = (pusher, json) => {
     return event
 }
 
-const createPullProvider = (pusher, params) => {
-    const event = eventDefaults(JSON.parse(JSON.stringify(pusher)))
-    // insert the method prefix on the last particle of the method name
-    event.name = event.name.split('.').map((x, i, arr) => (i === arr.length-1) ? 'onRequest' + x.charAt(0).toUpperCase() + x.substr(1) : x).join('.')
-    const old_tags = JSON.parse(JSON.stringify(pusher.tags))
+const createPullProvider = (requestor, params) => {
+    const event = eventDefaults(JSON.parse(JSON.stringify(requestor)))
+    event.name = requestor.tags.find(t => t['x-provided-by'])['x-provided-by']
+    const old_tags = JSON.parse(JSON.stringify(requestor.tags))
 
-    const value = event.params.pop()
+    const value = event.result
 
-    event.tags[0]['x-pulls-for'] = pusher.name
     event.tags[0]['x-response'] = value.schema
-    event.tags[0]['x-response'].examples = event.examples.map(e => e.params.pop().value)
+    event.tags[0]['x-response'].examples = event.examples.map(e => e.result.value)
 
     event.result = {
         "name": "request",
@@ -615,16 +607,21 @@ const createPullProvider = (pusher, params) => {
         }
     })
 
+    const caps = event.tags.find(t => t.name === 'capabilities')
+    caps['x-provides'] = caps['x-uses'].pop() || caps['x-manages'].pop()
+    caps['x-requestor'] = requestor.name
+    delete caps['x-uses']
+    delete caps['x-manages']
+    delete caps['x-provided-by']    
+
     return event
 }
 
-const createPullProviderParams = (pusher) => {
-    const copy = JSON.parse(JSON.stringify(pusher))
+const createPullProviderParams = (requestor) => {
+    const copy = JSON.parse(JSON.stringify(requestor))
 
-    // drop the last param (it's the value)
-    copy.params.pop()
-
-    const name = copy.name.split('.').pop()
+    // grab onRequest<foo> and turn into <foo>
+    const name = copy.tags.find(t => t['x-provided-by'])['x-provided-by'].split('.').pop().substring(9)
     const paramsSchema = {
         "title": name.charAt(0).toUpperCase() + name.substr(1) + "ProviderParameters",
         "type": "object",
@@ -1033,27 +1030,36 @@ const generatePolymorphicPullEvents = json => {
 
 const generatePushPullMethods = json => {
     const requestors = json.methods.filter( m => m.tags && m.tags.find( t => t.name == 'push-pull')) || []
-    const pushers = requestors.map(m => createPushFromRequestor(m, json))
-    pushers.forEach(m => json.methods.push(m))
-
-    pushers.forEach(pusher => {
-        const schema = createPullProviderParams(pusher)
-        json.methods.push(createPullProvider(pusher, schema.title))
-
-        json.components = json.components || {}
-        json.components.schemas = json.components.schemas || {}
-        json.components.schemas[schema.title] = schema
-    })
-    requestors.forEach(requestor => json.methods.push(createPushEvent(requestor, json)))
-
-//    pushers.forEach(property => json.methods.push(createPullRequestor(property, json)))
     requestors.forEach(requestor => {
+        json.methods.push(createPushEvent(requestor, json))
+        
         const schema = createEventResultSchemaFromProperty(requestor)
         if (schema) {
             json.components = json.components || {}
             json.components.schemas = json.components.schemas || {}
             json.components.schemas[schema.title] = schema
-        }
+        }        
+    })
+
+    return json
+}
+
+const generateProvidedByMethods = json => {
+    const requestors = json.methods.filter(m => !m.tags.find(t => t.name === 'event')).filter( m => m.tags && m.tags.find( t => t['x-provided-by'])) || []
+    const events = json.methods .filter(m => m.tags.find(t => t.name === 'event'))
+                                .filter( m => m.tags && m.tags.find( t => t['x-provided-by']))
+                                .filter(e => !json.methods.find(m => m.name === e.tags.find(t => t['x-provided-by'])['x-provided-by']))
+
+    const pushers = events.map(m => createNotifierFromEvent(m, json))
+    pushers.forEach(m => json.methods.push(m))
+
+    requestors.forEach(requestor => {
+        const schema = createPullProviderParams(requestor)
+        json.methods.push(createPullProvider(requestor, schema.title))
+
+        json.components = json.components || {}
+        json.components.schemas = json.components.schemas || {}
+        json.components.schemas[schema.title] = schema
     })
 
     return json
@@ -1350,7 +1356,9 @@ const getPathFromModule = (module, path) => {
 const fireboltize = (json) => {
     json = generatePropertyEvents(json)
     json = generatePropertySetters(json)
-    json = generatePushPullMethods(json)
+    //  TODO: we don't use this yet... consider removing?
+    //    json = generatePushPullMethods(json)
+    //    json = generateProvidedByMethods(json)
     json = generatePolymorphicPullEvents(json)
     json = generateProviderMethods(json)
     json = generateTemporalSetMethods(json)
