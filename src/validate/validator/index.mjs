@@ -17,6 +17,8 @@
  */
 import groupBy from 'array.prototype.groupby'
 import util from 'util'
+import { getPayloadFromEvent } from '../../shared/modules.mjs'
+import { getPropertiesInSchema, getPropertySchema } from '../../shared/json-schema.mjs'
 
 const addPrettyPath = (error, json) => {
   const path = []
@@ -164,4 +166,103 @@ export const validate = (json = {}, schemas = {}, ajv, validator, additionalPack
   } 
 
   return { valid: valid, title: json.title || json.info.title, errors: errors }
+}
+
+const schemasMatch = (a, b) => {
+  const aKeys = Object.keys(a)
+  const bKeys = Object.keys(b)
+  const keysMatch = (aKeys.length == bKeys.length) && aKeys.every(key => bKeys.includes(key))
+  if (keysMatch) {
+    const typesMatch = aKeys.every(key => typeof a[key] === typeof b[key])
+    if (typesMatch) {
+      const valuesMatch = aKeys.every(key => typeof a[key] === 'object' || (a[key] === b[key]))
+      if (valuesMatch) {
+        const objectsMatch = aKeys.every(key => typeof a[key] !== 'object' || schemasMatch(a[key], b[key]))
+        if (objectsMatch) {
+          return true
+        }
+      }
+    }
+  }
+
+  return false
+}
+
+export const validatePasshtroughs = (json) => {
+  const providees = json.methods.filter(m => m.tags.find(t => t['x-provided-by']))
+
+  const result = {
+    valid: true,
+    title: 'Mapping of all x-provided-by methods',
+    errors: []
+  }
+
+  providees.forEach(method => {
+    const providerName = method.tags.find(t => t['x-provided-by'])['x-provided-by']
+    const provider = json.methods.find(m => m.name === providerName)
+    let destination, examples1
+    let source, examples2
+
+    if (!provider) {
+      result.errors.push({
+        message: `The x-provided-by method '${providerName}' does not exist`,
+        instancePath: `/methods/${json.methods.indexOf(method)}`
+      })
+      return
+    }
+    else if (method.tags.find(t => t.name === 'event')) {
+      destination = getPayloadFromEvent(method)
+      examples1 = method.examples.map(e => e.result.value)
+      source = provider.params[provider.params.length-1].schema
+      examples2 = provider.examples.map(e => e.params[e.params.length-1].value)
+    }
+    else {
+      destination = method.result.schema
+      examples1 = method.examples.map(e => e.result.value)
+      source = JSON.parse(JSON.stringify(provider.tags.find(t => t['x-response'])['x-response']))
+      examples2 = provider.tags.find(t => t['x-response'])['x-response'].examples
+      delete source.examples
+    }
+
+    if (!schemasMatch(source, destination)) {
+      const properties = getPropertiesInSchema(destination, json)
+      
+      // follow $refs so we can see the schemas
+      source = getPropertySchema(source, '.', json)
+      destination = getPropertySchema(destination, '.', json)
+
+      if (properties && properties.length) {
+        const destinationProperty = properties.find(property => {
+          let candidate = getPropertySchema(destination, `properties.${property}`, json)
+          
+          candidate && (candidate = getPropertySchema(candidate, '.', json)) // follow $refs
+
+          if (schemasMatch(candidate, source)) {
+            return true
+          }
+        })
+        
+        if (!destinationProperty) {
+          result.errors.push({
+            message: `The x-provided-by method '${providerName}' does not have a matching schema or sub-schema`,
+            instancePath: `/methods/${json.methods.indexOf(method)}`
+            })
+          result.title = `Mismatched x-provided-by schemas in ${result.errors.length} methods.`
+        }          
+      }
+      else {
+        result.errors.push({
+          message: `The x-provided-by method '${providerName}' does not have a matching schema and has not candidate sub-schemas`,
+          instancePath: `/methods/${json.methods.indexOf(method)}`
+        })
+      }
+    }
+  })
+  if (result.errors.length) {
+    result.valid = false
+    result.errors.forEach(error => addPrettyPath(error, json))
+  }
+
+  return result
+
 }

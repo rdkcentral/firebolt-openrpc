@@ -149,7 +149,13 @@ const getPropertySchema = (json, dotPath, document) => {
   for (var i=0; i<path.length; i++) {
     const property = path[i]
     const remainingPath = path.filter((x, j) => j >= i ).join('.')
-    if (node.type === 'object') {
+    if (node.$ref) {
+      node = getPropertySchema(getPath(node.$ref, document), remainingPath, document)
+    }
+    else if (property === '') {
+      return node
+    }
+    else if (node.type === 'object') {
       if (node.properties && node.properties[property]) {
         node = node.properties[property]
       }
@@ -160,9 +166,6 @@ const getPropertySchema = (json, dotPath, document) => {
       else if (node.additionalProperties && typeof node.additionalProperties === 'object') {
         node = node.additionalProperties
       }
-    }
-    else if (node.$ref) {
-      node = getPropertySchema(getPath(node.$ref, document), remainingPath, document)
     }
     else if (Array.isArray(node.allOf)) {
       node = node.allOf.find(s => {
@@ -182,6 +185,29 @@ const getPropertySchema = (json, dotPath, document) => {
   }
 
   return node
+}
+
+const getPropertiesInSchema = (json, document) => {
+  let node = json
+
+  while (node.$ref) {
+    node = getPath(node.$ref, document)
+  }
+
+  if (node.type === 'object') {
+    const props = []
+    if (node.properties) {
+      props.push(...Object.keys(node.properties))
+    }
+
+    if (node.propertyNames) {
+      props.push(...node.propertyNames)
+    }
+
+    return props
+  }
+  
+  return null
 }
 
 function getSchemaConstraints(schema, module, options = { delimiter: '\n' }) {
@@ -484,6 +510,7 @@ export {
   getLinkedSchemaPaths,
   getPath,
   getPropertySchema,
+  getPropertiesInSchema,
   isDefinitionReferencedBySchema,
   isNull,
   isSchema,
