@@ -110,11 +110,6 @@ const macrofy = async (
         const templates = Object.assign(await readFiles(sharedTemplateList, sharedTemplates),
                                         await readFiles(sdkTemplateList, template)) // sdkTemplates are second so they win ties
 
-        typer.setTemplates && typer.setTemplates(templates)
-        typer.setPrimitives(primitives)
-        typer.setAllocatedPrimitiveProxies(allocatedPrimitiveProxies)
-        typer.setConvertTuples(convertTuplesToArraysOrObjects)
-
         let templatesPermission = {}
         if (persistPermission) {
             templatesPermission = Object.assign(await readFilesPermissions(sharedTemplateList, sharedTemplates),
@@ -132,6 +127,22 @@ const macrofy = async (
             )
             exampleTemplates[config.name]['__config'] = config
         }
+
+        // check if this is a "real" language or just documentation broiler-plate, e.g. markdown
+        if (Object.keys(templates).find(key => key.startsWith('/types/primitive'))) {
+            typer.setTemplates && typer.setTemplates(templates)
+            typer.setPrimitives(primitives)
+        }
+        else {
+            const lang = Object.entries(exampleTemplates)[0][1]
+            const prims = Object.entries(exampleTemplates)[0][1]['__config'].primitives
+            // add the templates from the first example language and the wrapper langauage
+            typer.setTemplates && typer.setTemplates(lang)
+            typer.setTemplates && typer.setTemplates(templates)
+            typer.setPrimitives(prims)
+        }
+        typer.setAllocatedPrimitiveProxies(allocatedPrimitiveProxies)
+        typer.setConvertTuples(convertTuplesToArraysOrObjects)
 
         const staticCodeList = staticContent ? await readDir(staticContent, { recursive: true }) : []
         const staticModules = staticModuleNames.map(name => ( { info: { title: name } } ))
