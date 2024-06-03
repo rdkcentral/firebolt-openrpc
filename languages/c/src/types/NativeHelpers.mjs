@@ -60,7 +60,7 @@ const getNativeType = (json, fireboltString = false) => {
   }
   else if (jsonType === 'null' ) {
     type = 'void'
-  } 
+  }
   return type
 }
 
@@ -125,18 +125,13 @@ const getArrayAccessors = (arrayName, propertyType, valueType) => {
   return res
 }
 
-const enumValue = (val,prefix) => {
-  const keyName = getSafeEnumKeyName(val)
-  return `    ${prefix.toUpperCase()}_${keyName.toUpperCase()}`
-}
-
 const generateEnum = (schema, prefix)=> {
   if (!schema.enum) {
     return ''
   }
   else {
     let str = `typedef enum {\n`
-    str += schema.enum.map(e => enumValue(e, prefix)).join(',\n')
+    str += schema.enum.map(e => getSafeEnumKeyName(val, prefix)).join(',\n')
     str += `\n} ${prefix};\n`
     return str
   }

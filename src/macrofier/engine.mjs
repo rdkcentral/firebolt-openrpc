@@ -618,7 +618,7 @@ const insertAggregateMacros = (fContents = '', aggregateMacros = {}) => {
   fContents = fContents.replace(/[ \t]*\/\* \$\{MOCK_OBJECTS\} \*\/[ \t]*\n/, aggregateMacros.mockObjects)
   fContents = fContents.replace(/\$\{readable\}/g, aggregateMacros.version.readable)
   fContents = fContents.replace(/\$\{package.name\}/g, aggregateMacros.library)
-  
+
   return fContents
 }
 
@@ -1319,7 +1319,7 @@ function insertMethodMacros(template, methodObj, json, templates, type = '', exa
       const subscriberName = subscriber.name.toLowerCase();
       return subscriberName && strippedEventName === subscriberName;
     })
-    
+
     result.schema = JSON.parse(JSON.stringify(getPayloadFromEvent(methodObj)))
     event.result.schema = getPayloadFromEvent(event)
     event.params = event.params.filter(p => p.name !== 'listen')
@@ -1407,7 +1407,7 @@ function insertMethodMacros(template, methodObj, json, templates, type = '', exa
   }
 
   let signature
-  
+
   if (Object.keys(languages).length && template.indexOf('${method.signature}') >= 0) {
     const lang = languages[Object.keys(languages)[0]]
     signature = getTemplateForDeclaration(methodObj, templates, 'declarations')
@@ -1749,7 +1749,7 @@ function insertParameterMacros(template, param, method, module) {
     .replace(/\$\{method.param.constraints\}/g, constraints) //getType(param))
 
     return template
-  
+
   }
 
 function insertCapabilityMacros(template, capabilities, method, module) {
@@ -1883,9 +1883,9 @@ function insertProviderInterfaceMacros(template, capability, moduleJson = {}, te
   let name = getProviderInterfaceName(iface, capability, moduleJson)
   let xValues
   const suffix = state.destination ? state.destination.split('.').pop() : ''
-  
+
   // Determine if any method has the 'x-allow-focus' tag set to true
-  const hasFocusableMethods = iface.some(method => 
+  const hasFocusableMethods = iface.some(method =>
     method.tags.some(tag => tag['x-allow-focus'] === true)
   )
 
