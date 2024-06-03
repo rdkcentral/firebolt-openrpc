@@ -148,7 +148,7 @@ const macrofy = async (
 
         const outputFiles = Object.fromEntries(Object.entries(await readFiles( staticCodeList, staticContent))
                                 .map( ([n, v]) => [path.join(output, n), v]))
-        
+
         let primaryOutput = []
 
         Object.keys(templates).forEach(file => {
@@ -220,7 +220,7 @@ const macrofy = async (
 
                     if (!checked.includes(entry)) {
                         imports = importedFiles(code, base)
-                        checked.push(entry)    
+                        checked.push(entry)
                     }
 
                     imports = imports.map(imp => Array.from(new Set([imp, ...treeShake(imp, path.dirname(imp).substring(output.length), checked)]))).flat()
@@ -244,7 +244,7 @@ const macrofy = async (
         // Grab all schema groups w/ a URI string. These came from some external json-schema that was bundled into the OpenRPC
         const externalSchemas = {}
         openrpc['x-schemas']
-            && Object.entries(openrpc['x-schemas']).forEach(([name, schema]) => {                
+            && Object.entries(openrpc['x-schemas']).forEach(([name, schema]) => {
                 if (schema.uri) {
                     const id = schema.uri
                     externalSchemas[id] = externalSchemas[id] || { $id: id, info: {title: name }, methods: []}
@@ -278,19 +278,19 @@ const macrofy = async (
                 }
             })
         })
-                
+
         // Output any schema templates for each bundled external schema document
         Object.values(externalSchemas).forEach( document => {
             if (templatesPerSchema) {
                 templatesPerSchema.forEach( t => {
                     const macros = engine.generateMacros(document, templates, exampleTemplates, {hideExcluded: hideExcluded, createPolymorphicMethods: createPolymorphicMethods, destination: t})
                     let content = getTemplate('/schemas', t, templates)
-        
+
                     // NOTE: whichever insert is called first also needs to be called again last, so each phase can insert recursive macros from the other
                     content = engine.insertMacros(content, macros)
-        
+
                     const location = createModuleDirectories ? path.join(output, document.info.title, t) : path.join(output, t.replace(/module/, document.info.title.toLowerCase()).replace(/index/, document.info.title))
-        
+
                     outputFiles[location] = content
                     logSuccess(`Generated macros for schema ${path.relative(output, location)}`)
                 })
