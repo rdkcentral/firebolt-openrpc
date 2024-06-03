@@ -168,6 +168,7 @@ const namespaceRefs = (uri, namespace, schema) => {
     if (schema.hasOwnProperty('$ref') && (typeof schema['$ref'] === 'string')) {
       const parts = schema.$ref.split('#')
       if (parts[0] === uri && parts[1].indexOf('.') === -1) {
+        const old = schema.$ref
         schema['$ref'] = schema['$ref'].split('#').map( x => x === uri ? uri : x.split('/').map((y, i, arr) => i===arr.length-1 ? namespace + '.' + y : y).join('/')).join('#')
       }
     }

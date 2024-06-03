@@ -57,8 +57,8 @@ export function unsubscribe(event) {
     Server.subscribe(event)
 }
 
-export function provide(interfaceName, provider, methods) {
-    Server.provide(interfaceName, provider, methods)
+export function provide(interfaceName, provider) {
+    Server.provide(interfaceName, provider)
 }
 
 export function deprecate (method, alternative) {

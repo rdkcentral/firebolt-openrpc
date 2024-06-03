@@ -52,8 +52,6 @@ const parsedArgs = Object.assign({}, defaults, nopt(knownOpts, shortHands, proce
 const task = process.argv[2]
 const signOff = () => console.log('\nThis has been a presentation of \x1b[38;5;202mFirebolt\x1b[0m \u{1F525} \u{1F529}\n')
 
-console.dir(parsedArgs)
-
 try {
   if (task === 'slice') {
     await slice(parsedArgs).then(signOff)

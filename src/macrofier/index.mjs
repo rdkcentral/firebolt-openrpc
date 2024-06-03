@@ -21,7 +21,7 @@
 import { emptyDir, readDir, readFiles, readFilesPermissions, readJson,
          writeFiles, writeFilesPermissions, writeText } from '../shared/filesystem.mjs'
 import { getTemplate, getTemplateForModule } from '../shared/template.mjs'
-import { getModule, hasPublicAPIs } from '../shared/modules.mjs'
+import { getClientModule, getModule, hasPublicAPIs } from '../shared/modules.mjs'
 import { logHeader, logSuccess } from '../shared/io.mjs'
 import Types from './types.mjs'
 import path from 'path'
@@ -129,12 +129,15 @@ const macrofy = async (
         const staticModules = staticModuleNames.map(name => ( { info: { title: name } } ))
 
         let modules
+        const time = Date.now()
         if (hidePrivate) {
             modules = moduleList.map(name => getModule(name, serverRpc, copySchemasIntoModules, extractSubSchemas)).filter(hasPublicAPIs)
         }
         else {
             modules = moduleList.map(name => getModule(name, serverRpc, copySchemasIntoModules, extractSubSchemas))
         }
+        logSuccess(`Separated modules (${Date.now() - time}ms)`)
+
 
         // Grab all schema groups w/ a URI string. These came from some external json-schema that was bundled into the OpenRPC
         const externalSchemas = {}
@@ -191,8 +194,10 @@ const macrofy = async (
         let append = false
 
         modules.forEach(module => {
+            console.log(`Generating ${module.info.title}...`)
             start = Date.now()
-            const macros = engine.generateMacros(module, clientRpc, templates, exampleTemplates, {hideExcluded: hideExcluded, copySchemasIntoModules: copySchemasIntoModules, createPolymorphicMethods: createPolymorphicMethods, type: 'methods'})
+            const clientRpc2 = clientRpc && getClientModule(module.info.title, clientRpc, module)
+            const macros = engine.generateMacros(module, clientRpc2, templates, exampleTemplates, {hideExcluded: hideExcluded, copySchemasIntoModules: copySchemasIntoModules, createPolymorphicMethods: createPolymorphicMethods, type: 'methods'})
             logSuccess(`Generated macros for module ${module.info.title} (${Date.now() - start}ms)`)
 
             // Pick the index and defaults templates for each module.

@@ -52,9 +52,8 @@ export async function notify(method, params) {
 }
 
 // Register a provider implementation with an interface name
-export function provide(interfaceName, provider, methods) {
+export function provide(interfaceName, provider) {
     providers[interfaceName] = provider
-    interfaces[interfaceName] = methods
 }
 
 // Register a notification listener with an event name
@@ -66,6 +65,22 @@ export function unsubscribe(event) {
     delete listeners[event]
 }
 
+export function registerProviderInterface(capability, _interface, method, parameters, response, focusable) {
+    interfaces[_interface] = interfaces[_interface] || {
+        capability, 
+        name: _interface,
+        methods: [],
+    }
+
+    interfaces[_interface].methods.push({
+        name: method,
+        parameters,
+        response,
+        focusable
+    })
+}
+
+
 async function getProviderResult(method, params) {
     const split = method.split('.')
     method = split.pop()
@@ -74,7 +89,7 @@ async function getProviderResult(method, params) {
     if (providers[interfaceName]) {
         if (providers[interfaceName][method]) {
             // sort the params into an array based on the interface parameter order
-            const parameters = interfaces[interfaceName].find(m => m.name === method).parameters.map(p => params[p]).filter(p => p !== undefined)
+            const parameters = interfaces[interfaceName].methods.find(m => m.name === method).parameters.map(p => params[p]).filter(p => p !== undefined)
             return await providers[interfaceName][method](...parameters)
         }
         throw `Method not implemented: ${method}`

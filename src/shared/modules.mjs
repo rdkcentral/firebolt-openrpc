@@ -31,7 +31,7 @@ import predicates from 'crocks/predicates/index.js'
 import { getExternalSchemaPaths, isDefinitionReferencedBySchema, isNull, localizeDependencies, isSchema, getLocalSchemaPaths, replaceRef, getLinkedSchemaUris, getAllValuesForName, replaceUri } from './json-schema.mjs'
 import { getReferencedSchema } from './json-schema.mjs'
 const { isObject, isArray, propEq, pathSatisfies, hasProp, propSatisfies } = predicates
-import { getNotifier, name as methodName, rename as methodRename } from './methods.mjs'
+import { getNotifier, name as methodName, rename as methodRename, provides } from './methods.mjs'
 
 // util for visually debugging crocks ADTs
 const inspector = obj => {
@@ -93,17 +93,27 @@ const isProviderInterfaceMethod = method => {
 const getProvidedCapabilities = (json) => {
     return Array.from(new Set([...getMethods(json).filter(isProviderInterfaceMethod).map(method => method.tags.find(tag => tag['x-provides'])['x-provides'])]))
 }
-
-const getProviderInterfaceMethods = (capability, json, prefix) => {
-    return getMethods(json).filter(method => methodName(method).startsWith(prefix) && method.tags && method.tags.find(tag => tag['x-provides'] === capability))
+const getProvidedInterfaces = (json) => {
+    return Array.from(new Set(json.methods.filter(m => m.tags.find(t => t['x-provides']))
+                .filter(m => !m.tags.find(t => t.name.startsWith('polymorphic-pull')))
+                .map(m => m.name.split('.')[0])))
 }
 
-function getProviderInterface(capability, module, bidirectional = false) {
-    module = JSON.parse(JSON.stringify(module))
-    const iface = getProviderInterfaceMethods(capability, module, bidirectional ? '' : 'onRequest').map(method => localizeDependencies(method, module, null, { mergeAllOfs: true }))
+// TODO: this code is all based on capability, but we now support two interfaces in the same capability. need to refactor
 
-    if (iface.every(method => methodName(method).startsWith('onRequest'))) {
-        console.log(`Transforming legacy provider interface ${capability}`)
+const getProviderInterfaceMethods = (_interface, json, prefix) => {
+    return json.methods.filter(method => method.name.split('.')[0] === _interface).filter(isProviderInterfaceMethod)
+    //return getMethods(json).filter(method => methodName(method).startsWith(prefix) && method.tags && method.tags.find(tag => tag['x-provides'] === _interface))
+}
+
+function getProviderInterface(_interface, module) {
+    module = JSON.parse(JSON.stringify(module))
+
+    // TODO: localizeDependencies??
+    const iface = getProviderInterfaceMethods(_interface, module).map(method => localizeDependencies(method, module, null, { mergeAllOfs: true }))
+    
+    if (iface.length && iface.every(method => methodName(method).startsWith('onRequest'))) {
+        console.log(`Transforming legacy provider interface ${_interface}`)
         updateUnidirectionalProviderInterface(iface, module)
     }
     
@@ -335,12 +345,11 @@ const getPayloadFromEvent = (event, client) => {
                 const choice = choices.find(schema => schema.title !== 'ListenResponse' && !(schema['$ref'] || '').endsWith('/ListenResponse'))
                 return choice        
             }
-            else {
-                return getNotifier(event, client).params.slice(-1)[0].schema
+            else if (client) {
+                const payload = getNotifier(event, client).params.slice(-1)[0].schema
+                return payload
             }
-        } else {
-            return notifier.params[notifier.params.length-1].schema
-        }    
+        }
     }
     catch (error) {
         console.dir(event)
@@ -469,7 +478,7 @@ const createPullEventFromPush = (pusher, json) => {
         name: 'polymorphic-pull-event'
     })
 
-    const requestType = methodRename(pusher, name => name.charAt(0).toUpperCase() + name.substr(1) + "FederatedRequest").split('.').pop()
+    const requestType = methodRename(pusher, name => name.charAt(0).toUpperCase() + name.substr(1) + "FederatedRequest")
     event.params.push({
         name: "request",
         summary: "A " + requestType + " object.",
@@ -1011,6 +1020,93 @@ const generateEventSubscribers = json => {
     return json
 }
 
+const generateProviderRegistrars = json => {
+    const interfaces = getProvidedInterfaces(json)
+
+    interfaces.forEach(name => {
+        json.methods.push({
+            name: name + ".provide",
+            tags: [
+				{
+					"name": "registration",
+                    "x-interface": name
+				},
+				{
+					"name": "capabilities",
+                    "x-provides": json.methods.find(m => m.name.startsWith(name) && m.tags.find(t => t.name === 'capabilities')['x-provides']).tags.find(t => t.name === 'capabilities')['x-provides']
+				}
+
+            ],
+            params: [
+                {
+                    name: "enabled",
+                    schema: {
+                        type: "boolean"
+                    }
+                }
+            ],
+            result: {
+                name: "result",
+                schema: {
+                    type: "null"
+                }
+            },
+            examples: [
+                {
+                    name: "Default example",
+                    params: [
+                        {
+                            name: "enabled",
+                            value: true
+                        }
+                    ],
+                    result: {
+                        name: "result",
+                        value: null
+                    }
+                }
+            ]
+        })
+    })
+
+    console.dir(interfaces)
+
+    return json
+    const notifiers = json.methods.filter( m => m.tags && m.tags.find(t => t.name == 'notifier')) || []
+
+    notifiers.forEach(notifier => {
+        const tag = notifier.tags.find(tag => tag.name === 'notifier')
+        // if there's an x-event extension, this denotes an editorially created subscriber
+        if (!tag['x-event']) {
+            tag['x-event'] = methodRename(notifier, name => 'on' + name.charAt(0).toUpperCase() +! name.substring(1))
+        }
+        const subscriber = json.methods.find(method => method.name === tag['x-event'])
+
+        if (!subscriber) {
+            const subscriber = JSON.parse(JSON.stringify(notifier))
+            subscriber.name = methodRename(subscriber, name => 'on' + name.charAt(0).toUpperCase() + name.substring(1))
+            subscriber.params.pop()
+            subscriber.params.push({
+                name: 'listen',
+                schema: {
+                    type: 'boolean'
+                }
+            })
+            subscriber.tags.find(t => t.name === 'notifier')['x-notifier'] = notifier.name
+            subscriber.tags.find(t => t.name === 'notifier').name = 'event'
+            subscriber.result = {
+                name: "result",
+                schema: {
+                    "type": "null"
+                }
+            }
+            json.methods.push(subscriber)
+        }
+    })
+
+    return json
+}
+
 const generateUnidirectionalEventMethods = json => {
     const events = json.methods.filter( m => m.tags && m.tags.find(t => t.name == 'notifier')) || []
 
@@ -1291,6 +1387,7 @@ const fireboltize = (json, bidirectional) => {
     if (bidirectional) {
         console.log('Creating bidirectional APIs')
         json = generateEventSubscribers(json)
+        json = generateProviderRegistrars(json)
         // generateInterfaceProviders
     }
     else {
@@ -1558,6 +1655,29 @@ const getModule = (name, json, copySchemas, extractSubSchemas) => {
     return removeUnusedSchemas(openrpc)
 }
 
+const getClientModule = (name, client, server) => {
+
+    const notifierFor = m => (m.tags.find(t => t['x-event']) || {})['x-event']
+    const interfaces = server.methods.filter(m => m.tags.find(t => t['x-interface']))
+                                        .map(m => m.tags.find(t => t['x-interface'])['x-interface'])
+    //const 
+    console.dir(interfaces)
+
+    let openrpc = JSON.parse(JSON.stringify(client))
+    openrpc.methods = openrpc.methods
+                        .filter(method => notifierFor(method) && notifierFor(method).startsWith(name + '.') || interfaces.find(name => method.name.startsWith(name + '.')))
+    openrpc.info.title = name
+    openrpc.components.schemas = Object.fromEntries(Object.entries(openrpc.components.schemas).filter( ([key, schema]) => key.startsWith('http') || key.split('.')[0] === name))
+    console.dir(Object.keys(openrpc.components.schemas))
+    if (client.info['x-module-descriptions'] && client.info['x-module-descriptions'][name]) {
+        openrpc.info.description = client.info['x-module-descriptions'][name]
+    }
+    delete openrpc.info['x-module-descriptions']
+
+    openrpc = promoteAndNameXSchemas(openrpc)
+    return removeUnusedBundles(removeUnusedSchemas(openrpc))
+}
+
 const getSemanticVersion = json => {
     const str = json && json.info && json.info.version || '0.0.0-unknown.0'
     const version = {
@@ -1619,6 +1739,7 @@ export {
     getMethods,
     getProviderInterface,
     getProvidedCapabilities,
+    getProvidedInterfaces,
     getSetterFor,
     getSubscriberFor,
     getEnums,
@@ -1634,6 +1755,7 @@ export {
     removeUnusedSchemas,
     removeUnusedBundles,
     getModule,
+    getClientModule,
     getSemanticVersion,
     addExternalMarkdown,
     addExternalSchemas,

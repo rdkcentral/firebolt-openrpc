@@ -1,1 +1,1 @@
-    ${method.name}(${method.signature.params}, session: ProviderSession): Promise<${method.result.type}>
+    ${method.name}(${method.signature.params}): Promise<${method.result.type}>
