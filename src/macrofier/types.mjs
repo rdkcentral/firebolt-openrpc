@@ -226,8 +226,8 @@ const insertEnumMacros = (content, schema, module, name, suffix, templateDir = "
       schema.enum.map(value => {
         if (!value) {
           value = getTemplate(path.join(templateDir, 'unset' + suffix))
-	}
-        value ? values.push(template[i].replace(/\$\{key\}/g, getSafeEnumKeyName(value))
+	      }
+        value ? values.push(template[i].replace(/\$\{key\}/g, getSafeEnumKeyName(value, schema.enumKeyPrefix))
                                        .replace(/\$\{value\}/g, value)) : ''
       })
       template[i] = values.map((value, id) => {
@@ -543,7 +543,7 @@ function getSchemaShape(schema = {}, module = {}, { templateDir = 'types', paren
   const suffix = destination && ('.' + destination.split('.').pop()) || ''
   const theTitle = insertSchemaMacros(getTemplate(path.join(templateDir, 'title' + suffix)), schema, module, { name: schema.title, parent, property, required, recursive: false })
 
-  let result = getTemplate(path.join(templateDir, 'default' + suffix)) || '${shape}' 
+  let result = getTemplate(path.join(templateDir, 'default' + suffix)) || '${shape}'
 
   let genericTemplate = getTemplate(path.join(templateDir, 'generic' + suffix))
   if (enums && level === 0 && Array.isArray(schema.enum) && ((schema.type === "string") || (schema.type[0] === "string"))) {
@@ -852,7 +852,7 @@ function getSchemaType(schema, module, { destination, templateDir = 'types', lin
     const shape = insertAnyOfMacros(getTemplate(path.join(templateDir, 'anyOf' + suffix)), schema, module, theTitle)
     return insertSchemaMacros(shape, schema, module, { name: theTitle, recursive: false })
 
-    
+
     // if (event) {
     //   return getSchemaType((schema.oneOf || schema.anyOf)[0], module, { destination, link, title, code, asPath, baseUrl })
     // }

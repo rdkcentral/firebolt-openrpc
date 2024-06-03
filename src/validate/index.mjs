@@ -108,7 +108,7 @@ const run = async ({
 
     addFormats(ajv)
     // explicitly add our custom extensions so we can keep strict mode on (TODO: put these in a JSON config?)
-    ajv.addVocabulary(['x-method', 'x-this-param', 'x-additional-params', 'x-schemas', 'components', 'x-property'])
+    ajv.addVocabulary(['x-method', 'x-this-param', 'x-additional-params', 'x-schemas', 'components', 'x-property', 'enumKeyPrefix'])
 
     const firebolt = ajv.compile(fireboltOpenRpcSpec)
     const jsonschema = ajv.compile(jsonSchemaSpec)
@@ -151,7 +151,7 @@ const run = async ({
             }
         })
 
-        const examples = ajv.compile(exampleSpec)        
+        const examples = ajv.compile(exampleSpec)
 
         let result = validate(json, {}, ajv, jsonschema)
         let exampleResult = validate(json, {}, ajv, examples)
