@@ -26,7 +26,7 @@ function getMethodSignature(method, module, { destination, isInterface = false }
 
     typescript += getMethodSignatureParams(method, module, { destination })
     typescript += '): ' + (isSynchronous(method) ? getSchemaType(method.result.schema, module, {title: true}) : 'Promise<' + getSchemaType(method.result.schema, module, {title: true}) + '>')
-    
+
     return typescript
 }
 
@@ -80,9 +80,9 @@ function getSchemaShape(schema = {}, module = {}, { name = '', level = 0, title,
     }
     else if (schema.type === 'object') {
       let suffix = '{'
-  
+
       structure.push('  '.repeat(level) + `${prefix}${theTitle}${operator} ${suffix}`)
-  
+
       if (schema.properties) {
         Object.entries(schema.properties).forEach(([name, prop]) => {
           if (!schema.required || !schema.required.includes(name)) {
@@ -100,7 +100,7 @@ function getSchemaShape(schema = {}, module = {}, { name = '', level = 0, title,
 
             if (schema.additionalProperties && (typeof schema.additionalProperties === 'object')) {
               type = getSchemaType(schema.additionalProperties, module)
-            }          
+            }
 
             if (schema.patternProperties) {
               Object.entries(schema.patternProperties).forEach(([pattern, schema]) => {
@@ -110,7 +110,7 @@ function getSchemaShape(schema = {}, module = {}, { name = '', level = 0, title,
                 }
               })
             }
-    
+
             structure.push(getSchemaShape({type: type}, module, {name: safeName(prop), descriptions: descriptions, level: level+1}))
           })
         }
@@ -119,7 +119,7 @@ function getSchemaShape(schema = {}, module = {}, { name = '', level = 0, title,
         let type = getSchemaType(schema.additionalProperties, module, { destination })
         structure.push(getSchemaShape({type: type}, module, {name: '[property: string]', descriptions: descriptions, level: level+1}))
       }
-  
+
       structure.push('  '.repeat(level) + '}')
     }
     else if (schema.anyOf) {
@@ -155,11 +155,11 @@ function getSchemaShape(schema = {}, module = {}, { name = '', level = 0, title,
     else if (schema.type || schema.const) {
       const isArrayWithSchemaForItems = schema.type === 'array' && schema.items && !Array.isArray(schema.items)
       const isArrayWithSpecificItems = schema.type === 'array' && schema.items && Array.isArray(schema.items)
-      
+
       // TODO: deal with fixed sized arrays vs arbitrary arrays
       let suffix
       let summary = ''
-  
+
       if (schema.const) {
         suffix = JSON.stringify(schema.const)
       }
@@ -172,16 +172,16 @@ function getSchemaShape(schema = {}, module = {}, { name = '', level = 0, title,
       else {
         suffix = getSchemaType(schema, module, { title: level ? true : false }) // prefer schema title over robust descriptor
       }
-      
+
       // if there's a summary or description, append it as a comment (description only gets first line)
       if (level > 0 && (summary || schema.description)) {
         summary = `\t// ${summary || schema.description.split('\n')[0]}`
       }
-  
+
       if (suffix === 'array') {
         suffix = '[]'
       }
-  
+
       if (theTitle === suffix) {
         return '  '.repeat(level) + `${prefix}${theTitle}`
       }
@@ -189,9 +189,9 @@ function getSchemaShape(schema = {}, module = {}, { name = '', level = 0, title,
         return '  '.repeat(level) + `${prefix}${theTitle}${operator} ${suffix}${summary}`
       }
     }
-  
+
     structure = structure.join('\n').split('\n')
-  
+
     if (level === 0) {
       const length = str => str.length
       let max = Math.max(...structure.map(l => l.split('\t//')[0]).map(length)) + 2
@@ -202,7 +202,7 @@ function getSchemaShape(schema = {}, module = {}, { name = '', level = 0, title,
 
   function getSchemaType(schema, module, { destination, link = false, title = false, code = false, asPath = false, event = false, expandEnums = true, baseUrl = '' } = {}) {
     const wrap = (str, wrapper) => wrapper + str + wrapper
-  
+
     if (schema['$ref']) {
       if (schema['$ref'][0] === '#') {
         return getSchemaType(getPath(schema['$ref'], module), module, {title: true, link: link, code: code, destination})
@@ -259,11 +259,11 @@ function getSchemaShape(schema = {}, module = {}, { name = '', level = 0, title,
     else if (schema.type === 'array' && schema.items) {
       if (Array.isArray(schema.items)) {
         let type = '[' + schema.items.map(x => getSchemaType(x, module, { destination })).join(', ') + ']' // no links, no code
-  
+
         if (code) {
           type = wrap(type, '`')
         }
-  
+
         return type
       }
       else {
