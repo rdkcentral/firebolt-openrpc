@@ -1,4 +1,5 @@
 
 function ${method.name}(provider) {
-    return Gateway.provide('${info.title}', provider)
+    Gateway.provide('${info.title}', provider)
+    return Gateway.request('${method.rpc.name}', { enabled: true } )
   }

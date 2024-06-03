@@ -30,7 +30,7 @@ import predicates from 'crocks/predicates/index.js'
 const { isObject, isArray, propEq, pathSatisfies, propSatisfies } = predicates
 
 import { isRPCOnlyMethod, isProviderInterfaceMethod, getProviderInterface, getPayloadFromEvent, providerHasNoParameters, isTemporalSetMethod, hasMethodAttributes, getMethodAttributes, isEventMethodWithContext, getSemanticVersion, getSetterFor, getProvidedCapabilities, isPolymorphicPullMethod, hasPublicAPIs, isAllowFocusMethod, hasAllowFocusMethods, createPolymorphicMethods, isExcludedMethod, isCallsMetricsMethod, getProvidedInterfaces } from '../shared/modules.mjs'
-import { getNotifier, name as methodName, name, provides } from '../shared/methods.mjs'
+import { extension, getNotifier, name as methodName, name, provides } from '../shared/methods.mjs'
 import isEmpty from 'crocks/core/isEmpty.js'
 import { getReferencedSchema, getLinkedSchemaPaths, getSchemaConstraints, isSchema, localizeDependencies, isDefinitionReferencedBySchema, mergeAnyOf, mergeOneOf, getSafeEnumKeyName, getAllValuesForName } from '../shared/json-schema.mjs'
 
@@ -1315,8 +1315,9 @@ function generateMethods(server = {}, client = null, examples = {}, templates = 
   }, [], methods)
 
   // TODO: might be useful to pass in local macro for an array with all capability & provider interface names
+  // TODO: need a way to trigger generation of client-side provide method for uni-directional providers
   if (server.methods && server.methods.find(isProviderInterfaceMethod)) {
-      results.push(generateMethodResult('provide', templates))
+  //    results.push(generateMethodResult('provide', templates))
   }
 
   // TODO: might be useful to pass in local macro for an array with all event names
@@ -1583,6 +1584,7 @@ function insertMethodMacros(template, methodObj, server, client, templates, type
       .replace(/\$\{method\.pulls\.response\.instantiation}/g, pullsResponseInst)
       .replace(/\$\{method\.pulls\.result\.serialization\.with\.indent\}/g, indent(pullsResultSerialize, '    ', 3, 2))
       .replace(/\$\{method\.setter\.for\}/g, setterFor.split('.').pop())
+      .replace(/\$\{method\.interface\}/g, extension(methodObj, 'x-interface'))
       .replace(/\$\{method\.puller\}/g, pullerTemplate) // must be last!!
       .replace(/\$\{method\.setter\}/g, setterTemplate) // must be last!!
       .replace(/\$\{method\.subscriber\}/g, subscriberTemplate) // must be last!!

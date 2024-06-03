@@ -61,7 +61,7 @@ export function provide(interfaceName, provider) {
     Server.provide(interfaceName, provider)
 }
 
-export function deprecate (method, alternative) {
+export function deprecate(method, alternative) {
     Client.deprecate(method, alternative)
 }
 
