@@ -78,7 +78,7 @@ const run = async ({
     removeIgnoredAdditionalItems(openRpcSpec)
 
     //AJV doesn't like not having a slash at the end of the URL
-    replaceUri('https://meta.json-schema.tools/', 'https://meta.json-schema.tools/', openRpcSpec)
+    replaceUri('https://meta.json-schema.tools', 'https://meta.json-schema.tools/', openRpcSpec)
 
 
     Object.values(sharedSchemas).forEach(schema => {
