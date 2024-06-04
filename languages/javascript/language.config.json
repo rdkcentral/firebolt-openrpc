@@ -9,7 +9,7 @@
         "/index.mjs"
     ],
     "createModuleDirectories": true,
-    "copySchemasIntoModules": true,
+    "copySchemasIntoModules": false,
     "mergeOnTitle": true,
     "aggregateFiles": [
         "/index.d.ts"

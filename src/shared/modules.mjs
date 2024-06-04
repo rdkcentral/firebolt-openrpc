@@ -94,7 +94,7 @@ const getProvidedCapabilities = (json) => {
     return Array.from(new Set([...getMethods(json).filter(isProviderInterfaceMethod).map(method => method.tags.find(tag => tag['x-provides'])['x-provides'])]))
 }
 const getProvidedInterfaces = (json) => {
-    return Array.from(new Set(json.methods.filter(m => m.tags.find(t => t['x-provides']))
+    return Array.from(new Set((json.methods || []).filter(m => m.tags.find(t => t['x-provides']))
                 .filter(m => !m.tags.find(t => t.name.startsWith('polymorphic-pull')))
                 .map(m => m.name.split('.')[0])))
 }
@@ -446,6 +446,8 @@ const createEventResultSchemaFromProperty = property => {
 }
 
 const createNotifierFromProperty = property => {
+    const subscriberType = property.tags.map(t => t['x-subscriber-type']).find(t => typeof t === 'string') || 'context'
+
     const notifier = JSON.parse(JSON.stringify(property))
     notifier.name = methodRename(notifier, name => name + 'Changed')
 
@@ -454,6 +456,16 @@ const createNotifierFromProperty = property => {
         'x-notifier-for': property.name,
         'x-event': methodRename(notifier, name => 'on' + name.charAt(0).toUpperCase() + name.substring(1))
     })
+
+    if (property.tags.find(t => (t.name == 'property' || t.name.startsWith('property:')) && (subscriberType === 'global'))) { 
+        notifier.params = []
+        notifier.result = {
+            name: "info",
+            schema: {
+                "$ref": "#/components/schemas/" + methodRename(property, name => name.charAt(0).toUpperCase() + name.substring(1) + 'ChangedInfo'),
+            }
+        }
+    }
 
     notifier.params.push(notifier.result)
     delete notifier.result
@@ -832,14 +844,14 @@ const generatePropertyEvents = json => {
         json.methods.push(createNotifierFromProperty(property))
         const schema = createEventResultSchemaFromProperty(property)
         if (schema) {
-            json.components.schemas[schema.title] = schema
+            json.components.schemas[property.name.split('.').shift() + '.' + schema.title] = schema
         }
     })
     readonlies.forEach(property => {
         json.methods.push(createNotifierFromProperty(property))
         const schema = createEventResultSchemaFromProperty(property)
         if (schema) {
-            json.components.schemas[schema.title] = schema
+            json.components.schemas[property.name.split('.').shift() + '.' + schema.title] = schema
         }
     })
 
@@ -1005,8 +1017,15 @@ const generateEventSubscribers = json => {
                     type: 'boolean'
                 }
             })
-            subscriber.tags.find(t => t.name === 'notifier')['x-notifier'] = notifier.name
-            subscriber.tags.find(t => t.name === 'notifier').name = 'event'
+
+            const tag = subscriber.tags.find(tag => tag.name === 'notifier')
+
+            tag['x-notifier'] = notifier.name
+            tag['x-subscriber-for'] = tag['x-notifier-for']
+            tag.name = 'event'
+            delete tag['x-notifier-for']
+            delete tag['x-event']
+
             subscriber.result = {
                 name: "result",
                 schema: {
@@ -1068,8 +1087,6 @@ const generateProviderRegistrars = json => {
             ]
         })
     })
-
-    console.dir(interfaces)
 
     return json
     const notifiers = json.methods.filter( m => m.tags && m.tags.find(t => t.name == 'notifier')) || []
@@ -1660,15 +1677,12 @@ const getClientModule = (name, client, server) => {
     const notifierFor = m => (m.tags.find(t => t['x-event']) || {})['x-event']
     const interfaces = server.methods.filter(m => m.tags.find(t => t['x-interface']))
                                         .map(m => m.tags.find(t => t['x-interface'])['x-interface'])
-    //const 
-    console.dir(interfaces)
 
     let openrpc = JSON.parse(JSON.stringify(client))
     openrpc.methods = openrpc.methods
                         .filter(method => notifierFor(method) && notifierFor(method).startsWith(name + '.') || interfaces.find(name => method.name.startsWith(name + '.')))
     openrpc.info.title = name
     openrpc.components.schemas = Object.fromEntries(Object.entries(openrpc.components.schemas).filter( ([key, schema]) => key.startsWith('http') || key.split('.')[0] === name))
-    console.dir(Object.keys(openrpc.components.schemas))
     if (client.info['x-module-descriptions'] && client.info['x-module-descriptions'][name]) {
         openrpc.info.description = client.info['x-module-descriptions'][name]
     }

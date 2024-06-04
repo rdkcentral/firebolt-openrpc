@@ -161,11 +161,12 @@ const getXSchemaGroup = (schema, module) => {
             group = title
           } else {
             group = getXSchemaGroupFromProperties(schema, title, s.properties, group)
-	  }
+	        }
         })
       })
     })
   }
+
   return group
 }
 
@@ -879,7 +880,7 @@ function getSchemaType(schema, module, { templateDir = 'types', link = false, co
         const schemaType = !Array.isArray(schema.type) ? schema.type : schema.type.find(t => t !== 'null')
         const baseDir = (templateDir !== 'json-types' ? 'types': templateDir)
         let primitive = getPrimitiveType(schemaType, baseDir, schema.title ? true: false)
-        primitive = primitive ? primitive.replace(/\$\{title\}/g, schema.title) : primitive
+        primitive = primitive ? primitive.replace(/\$\{title\}/g, theTitle) : primitive
         const type = allocatedProxy ? allocatedPrimitiveProxies[schemaType] || primitive : primitive
 
         return wrap(type, code ? '`' : '')

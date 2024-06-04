@@ -1098,7 +1098,7 @@ const generateImports = (server, client, templates, options = { destination: '' 
     imports += getTemplate('/imports/context-event', templates)
   }
 
-  if (getProvidedInterfaces(server).length) {
+  if (getProvidedInterfaces(client || server).length) {
     if (client) {
       imports += getTemplate('/imports/provider', templates)
     }
@@ -1357,6 +1357,9 @@ function insertMethodMacros(template, methodObj, server, client, templates, type
     if (getAlternativeMethod(methodObj)) {
       method.alternative = getAlternativeMethod(methodObj)
     }
+    else if (extension(methodObj, 'x-subscriber-for')) {
+      method.alternative = extension(methodObj, 'x-subscriber-for')
+    }
 
     const flattenedMethod = localizeDependencies(methodObj, server)
 
@@ -1397,12 +1400,6 @@ function insertMethodMacros(template, methodObj, server, client, templates, type
       event.params = event.params.filter(p => p.name !== 'listen')
     }
 
-
-    if (methodObj.name === 'Discovery.onPullEntityInfo') {
-      console.dir(methodObj)
-      console.dir(event)
-    }
-
     const eventParams = event.params && event.params.length ? getTemplate('/sections/parameters', templates) + event.params.map(p => insertParameterMacros(getTemplate('/parameters/default', templates), p, event, document)).join('') : ''
     const eventParamsRows = event.params && event.params.length ? event.params.map(p => insertParameterMacros(getTemplate('/parameters/default', templates), p, event, document)).join('') : ''
 
@@ -1415,12 +1412,11 @@ function insertMethodMacros(template, methodObj, server, client, templates, type
     const pullerTemplate = (puller ? insertMethodMacros(getTemplate('/codeblocks/puller', templates), puller, server, client, templates, type, examples) : '')
     const setter = getSetterFor(methodObj.name, server)
     const setterTemplate = (setter ? insertMethodMacros(getTemplate('/codeblocks/setter', templates), setter, server, client, templates, type, examples) : '')
-    const subscriber = server.methods.find(method => method.tags.find(tag => tag['x-alternative'] === methodObj.name))
+    const subscriber = server.methods.find(method => method.tags.find(tag => tag['x-subscriber-for'] === methodObj.name))
     const subscriberTemplate = (subscriber ? insertMethodMacros(getTemplate('/codeblocks/subscriber', templates), subscriber, server, client, templates, type, examples) : '')
 
     const setterFor = methodObj.tags.find(t => t.name === 'setter') && methodObj.tags.find(t => t.name === 'setter')['x-setter-for'] || ''
     const pullsResult = (puller || pullsFor) ? localizeDependencies(pullsFor || methodObj, server).params[1].schema : null
-
 
     const pullsParams = (puller || pullsFor) ? localizeDependencies(getPayloadFromEvent(puller || methodObj, document), document, null, { mergeAllOfs: true }).properties.parameters : null
 
@@ -1438,7 +1434,7 @@ function insertMethodMacros(template, methodObj, server, client, templates, type
     const resultInit = result && (type === 'methods') ? Types.getSchemaShape(flattenedMethod.result.schema, server, { templateDir: 'result-initialization', property: flattenedMethod.result.name, primitive: true, skipTitleOnce: true, namespace: !config.copySchemasIntoModules }) : '' // w/out primitive: true, getSchemaShape skips anonymous types, like primitives
     const serializedEventParams = event && (type === 'methods') ? flattenedMethod.params.filter(p => p.name !== 'listen').map(param => Types.getSchemaShape(param.schema, document, {templateDir: 'parameter-serialization', property: param.name, required: param.required, primitive: true, skipTitleOnce: true, namespace: !config.copySchemasIntoModules })).join('\n') : ''
     // this was wrong... check when we merge if it was fixed
-    const callbackSerializedList = event && (type === 'methods') ? Types.getSchemaShape(event.result.schema, document, { templateDir: eventHasOptionalParam(event) && !event.tags.find(t => t.name === 'provider') ? 'callback-serialization' : 'callback-result-serialization', property: result.name, required: event.result.schema.required, primitive: true, skipTitleOnce: true, namespace: !config.copySchemasIntoModules }) : ''
+    const callbackSerializedList = event && (type === 'methods') ? Types.getSchemaShape(event.result.schema, document, { templateDir: eventHasOptionalParam(event) && !event.tags.find(t => t.name === 'provider') ? 'callback-serialization' : 'callback-result-serialization', property: result.name, primitive: true, skipTitleOnce: true, namespace: !config.copySchemasIntoModules }) : ''
     const callbackInitialization = event && (type === 'methods') ? (eventHasOptionalParam(event) && !event.tags.find(t => t.name === 'provider') ? (event.params.map(param => isOptionalParam(param) ? Types.getSchemaShape(param.schema, document, { templateDir: 'callback-initialization-optional', property: param.name, required: param.required, primitive: true, skipTitleOnce: true }) : '').filter(param => param).join('\n') + '\n') : '' ) + (Types.getSchemaShape(event.result.schema, document, { templateDir: 'callback-initialization', property: result.name, primitive: true, skipTitleOnce: true, namespace: !config.copySchemasIntoModules })) : ''
     let callbackInstantiation = ''
     if (event) {
@@ -1882,8 +1878,6 @@ function generateProviderSubscribe(server, client, templates, bidirectional) {
 function generateProviderInterfaces(server, client, templates, codeblock, directory, bidirectional) {
   const interfaces = getProvidedInterfaces(client || server)
   
-  console.dir(interfaces)
-
   let template = getTemplate('/sections/provider-interfaces', templates)
 
   const providers = reduce((acc, _interface) => {
