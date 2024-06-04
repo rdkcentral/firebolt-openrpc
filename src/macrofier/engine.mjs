@@ -470,45 +470,8 @@ const promoteAndNameSubSchemas = (server, client) => {
   return server
 }
 
-const skip = ['NavigationIntent']
-const findAll = (tag, obj, transform) => {
-  if (Array.isArray(obj)) {
-    obj.forEach(item => findAll(tag, item, transform))
-  }
-  else if (obj && (typeof obj === "object")) {
-    Object.keys(obj).forEach(key => {
-      if (!skip.includes(key)) {
-        if (key === tag) {
-          if (obj[key].find(schema => schema.$ref.endsWith('/ListenResponse'))) {
-
-          }
-          else {
-            Object.assign(obj, transform(obj))
-            delete obj[key]
-            console.dir(obj)
-            findAll(tag, obj, transform)  
-          }
-        }
-        else {
-          findAll(tag, obj[key], transform)
-        }
-      }
-    })
-  }
-}
-
-const mergeAnyOfs = (obj) => {
-  // make a copy so we don't polute our inputs
-  obj = JSON.parse(JSON.stringify(obj))
-
-  findAll('anyOf', obj, anyOf => mergeAnyOf(anyOf))
-
-return obj
-}
-
 const generateMacros = (server, client, templates, languages, options = {}) => {
   // TODO: figure out anyOfs/polymorphs on the client RPC. It can work for events, but not providers
-
   if (options.createPolymorphicMethods) {
     let methods = []
     server.methods && server.methods.forEach(method => {
@@ -531,11 +494,6 @@ const generateMacros = (server, client, templates, languages, options = {}) => {
       client = promoteAndNameSubSchemas(client)
     }
   }
-
-  // config.mergeAnyOfs = true
-  // if (config.mergeAnyOfs) {
-  //   obj = mergeAnyOfs(obj)
-  // }
 
   // grab the options so we don't have to pass them from method to method
   Object.assign(state, options)

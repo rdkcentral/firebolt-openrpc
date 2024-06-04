@@ -1,3 +1,17 @@
+# [3.0.0-next.3](https://github.com/rdkcentral/firebolt-openrpc/compare/v3.0.0-next.2...v3.0.0-next.3) (2024-05-09)
+
+
+### Bug Fixes
+
+* Account for new OpenRPC spec URL contents ([#186](https://github.com/rdkcentral/firebolt-openrpc/issues/186)) ([66bd6ac](https://github.com/rdkcentral/firebolt-openrpc/commit/66bd6acc1ffdaefadcb46d78864d615a116b5a85))
+
+# [3.0.0-next.2](https://github.com/rdkcentral/firebolt-openrpc/compare/v3.0.0-next.1...v3.0.0-next.2) (2024-04-08)
+
+
+### Features
+
+* CI/CD Merging from next ([#183](https://github.com/rdkcentral/firebolt-openrpc/issues/183)) ([14476a9](https://github.com/rdkcentral/firebolt-openrpc/commit/14476a908f2c10d907417187c41ce255ac2ea6a6))
+
 # [3.0.0-next.1](https://github.com/rdkcentral/firebolt-openrpc/compare/v2.3.0-next.1...v3.0.0-next.1) (2024-03-26)
 
 

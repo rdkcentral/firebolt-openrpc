@@ -1359,9 +1359,6 @@ const addComponentSubSchemasName = (obj, schemas) => {
         key = key.charAt(0).toUpperCase() + key.substring(1)
         componentSchema = addComponentSubSchemasNameForProperties(key, componentSchema)
       })
-      if (!schema.title && !key) {
-         schema.title = capitalize(key)
-      }
     })
 
   return schemas
