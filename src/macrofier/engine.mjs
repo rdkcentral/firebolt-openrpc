@@ -484,42 +484,6 @@ const promoteAndNameSubSchemas = (obj) => {
   return obj
 }
 
-const skip = ['NavigationIntent']
-const findAll = (tag, obj, transform) => {
-  if (Array.isArray(obj)) {
-    obj.forEach(item => findAll(tag, item, transform))
-  }
-  else if (obj && (typeof obj === "object")) {
-    Object.keys(obj).forEach(key => {
-      if (!skip.includes(key)) {
-        if (key === tag) {
-          if (obj[key].find(schema => schema.$ref.endsWith('/ListenResponse'))) {
-
-          }
-          else {
-            Object.assign(obj, transform(obj))
-            delete obj[key]
-            console.dir(obj)
-            findAll(tag, obj, transform)  
-          }
-        }
-        else {
-          findAll(tag, obj[key], transform)
-        }
-      }
-    })
-  }
-}
-
-const mergeAnyOfs = (obj) => {
-  // make a copy so we don't polute our inputs
-  obj = JSON.parse(JSON.stringify(obj))
-
-  findAll('anyOf', obj, anyOf => mergeAnyOf(anyOf))
-
-return obj
-}
-
 const generateMacros = (obj, templates, languages, options = {}) => {
   if (options.createPolymorphicMethods) {
     let methods = []
@@ -540,11 +504,6 @@ const generateMacros = (obj, templates, languages, options = {}) => {
   if (config.extractSubSchemas) {
     obj = promoteAndNameSubSchemas(obj)
   }
-
-  // config.mergeAnyOfs = true
-  // if (config.mergeAnyOfs) {
-  //   obj = mergeAnyOfs(obj)
-  // }
 
   // grab the options so we don't have to pass them from method to method
   Object.assign(state, options)

@@ -76,10 +76,12 @@ const run = async ({
 
     //  - OpenRPC uses `additionalItems` when `items` is not an array of schemas. This fails strict validate, so we remove it
     const openRpcSpec = await (await fetch('https://meta.open-rpc.org')).json()
+
     removeIgnoredAdditionalItems(openRpcSpec)
-    
+
     //AJV doesn't like not having a slash at the end of the URL
     replaceUri('https://meta.json-schema.tools', 'https://meta.json-schema.tools/', openRpcSpec)
+
 
     Object.values(sharedSchemas).forEach(schema => {
         try {
