@@ -37,6 +37,8 @@ win.__firebolt.idGenerator = idGenerator
 const promises = {}
 const deprecated = {}
 
+// consider renaming `batch`
+
 export async function bulk(requests) {
     if (Array.isArray(requests)) {
         const body = requests.map(req => processRequest(req.method, req.params))
@@ -65,6 +67,9 @@ export function response(id, result, error) {
     else if (error !== undefined) {
         promises[id].reject(error)
     }
+
+    // TODO make sure this works
+    delete promises[id]
 }
 
 export function deprecate(method, alternative) {

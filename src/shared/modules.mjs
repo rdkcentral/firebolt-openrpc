@@ -31,7 +31,7 @@ import predicates from 'crocks/predicates/index.js'
 import { getExternalSchemaPaths, isDefinitionReferencedBySchema, isNull, localizeDependencies, isSchema, getLocalSchemaPaths, replaceRef, getLinkedSchemaUris, getAllValuesForName, replaceUri } from './json-schema.mjs'
 import { getReferencedSchema } from './json-schema.mjs'
 const { isObject, isArray, propEq, pathSatisfies, hasProp, propSatisfies } = predicates
-import { getNotifier, name as methodName, rename as methodRename, provides } from './methods.mjs'
+import { extension, getNotifier, name as methodName, rename as methodRename, provides } from './methods.mjs'
 
 // util for visually debugging crocks ADTs
 const inspector = obj => {
@@ -94,9 +94,20 @@ const getProvidedCapabilities = (json) => {
     return Array.from(new Set([...getMethods(json).filter(isProviderInterfaceMethod).map(method => method.tags.find(tag => tag['x-provides'])['x-provides'])]))
 }
 const getProvidedInterfaces = (json) => {
-    return Array.from(new Set((json.methods || []).filter(m => m.tags.find(t => t['x-provides']))
-                .filter(m => !m.tags.find(t => t.name.startsWith('polymorphic-pull')))
-                .map(m => m.name.split('.')[0])))
+    const list = Array.from(new Set((json.methods || []).filter(m => m.tags.find(t => t['x-provides']))
+    .filter(m => !m.tags.find(t => t.name.startsWith('polymorphic-pull')))
+    .map(m => m.name.split('.')[0])))
+
+    return list
+}
+
+const getInterfaces = (json) => {
+    const list = Array.from(new Set((json.methods || []).filter(m => m.tags.find(t => t['x-provides']))
+    .filter(m => !m.tags.find(t => t.name.startsWith('registration')))
+    .filter(m => !m.tags.find(t => t.name.startsWith('polymorphic-pull')))
+    .map(m => m.name.split('.')[0])))
+
+    return list    
 }
 
 // TODO: this code is all based on capability, but we now support two interfaces in the same capability. need to refactor
@@ -1059,52 +1070,56 @@ const generateEventSubscribers = json => {
 }
 
 const generateProviderRegistrars = json => {
-    const interfaces = getProvidedInterfaces(json)
+    const interfaces = getInterfaces(json)
 
     interfaces.forEach(name => {
-        json.methods.push({
-            name: name + ".provide",
-            tags: [
-				{
-					"name": "registration",
-                    "x-interface": name
-				},
-				{
-					"name": "capabilities",
-                    "x-provides": json.methods.find(m => m.name.startsWith(name) && m.tags.find(t => t.name === 'capabilities')['x-provides']).tags.find(t => t.name === 'capabilities')['x-provides']
-				}
+        const registration = json.methods.find(m => m.tags.find(t => t.name === 'registration') && extension(m, 'x-interface') === name)
 
-            ],
-            params: [
-                {
-                    name: "enabled",
-                    schema: {
-                        type: "boolean"
+        if (!registration) {
+            json.methods.push({
+                name: name + ".provide",
+                tags: [
+                    {
+                        "name": "registration",
+                        "x-interface": name
+                    },
+                    {
+                        "name": "capabilities",
+                        "x-provides": json.methods.find(m => m.name.startsWith(name) && m.tags.find(t => t.name === 'capabilities')['x-provides']).tags.find(t => t.name === 'capabilities')['x-provides']
                     }
-                }
-            ],
-            result: {
-                name: "result",
-                schema: {
-                    type: "null"
-                }
-            },
-            examples: [
-                {
-                    name: "Default example",
-                    params: [
-                        {
-                            name: "enabled",
-                            value: true
+
+                ],
+                params: [
+                    {
+                        name: "enabled",
+                        schema: {
+                            type: "boolean"
                         }
-                    ],
-                    result: {
-                        name: "result",
-                        value: null
                     }
-                }
-            ]
-        })
+                ],
+                result: {
+                    name: "result",
+                    schema: {
+                        type: "null"
+                    }
+                },
+                examples: [
+                    {
+                        name: "Default example",
+                        params: [
+                            {
+                                name: "enabled",
+                                value: true
+                            }
+                        ],
+                        result: {
+                            name: "result",
+                            value: null
+                        }
+                    }
+                ]
+            })
+        }
     })
 
     return json
@@ -1626,6 +1641,7 @@ const getModule = (name, json, copySchemas, extractSubSchemas) => {
     delete openrpc.info['x-module-descriptions']
 
     openrpc = promoteAndNameXSchemas(openrpc)
+    return removeUnusedSchemas(openrpc)
     return removeUnusedBundles(removeUnusedSchemas(openrpc))
     
     const copy = JSON.parse(JSON.stringify(openrpc))
@@ -1695,6 +1711,7 @@ const getClientModule = (name, client, server) => {
                                         .map(m => m.tags.find(t => t['x-interface'])['x-interface'])
 
     let openrpc = JSON.parse(JSON.stringify(client))
+
     openrpc.methods = openrpc.methods
                         .filter(method => notifierFor(method) && notifierFor(method).startsWith(name + '.') || interfaces.find(name => method.name.startsWith(name + '.')))
     openrpc.info.title = name

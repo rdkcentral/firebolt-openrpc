@@ -19,8 +19,11 @@
 import Transport from "../Transport/index.mjs"
 
 const providers = {}
-const listeners = {}
 const interfaces = {}
+const listeners = {}
+
+// TODO: add support for batch requests on server
+// TODO: check JSON-RPC spec for batch behavior
 
 // Request that the app provide fulfillment of an method
 export async function request(id, method, params, transforms) {
@@ -37,9 +40,17 @@ export async function request(id, method, params, transforms) {
         id: id
     }
 
-    result && (response.result = result)
-    error && (response.error = error)
-
+    if (error) {
+        // todo: make sure this conforms to JSON-RPC schema for errors
+        response.error = error
+    }
+    else {
+        response.result = result
+        if (result === undefined) {
+            response.result = null
+        }
+    }
+    
     Transport.send(response)
 }
 
@@ -65,6 +76,7 @@ export function unsubscribe(event) {
     delete listeners[event]
 }
 
+// TODO: consider renaming
 export function registerProviderInterface(capability, _interface, method, parameters, response, focusable) {
     interfaces[_interface] = interfaces[_interface] || {
         capability, 

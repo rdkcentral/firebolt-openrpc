@@ -39,16 +39,28 @@ function send(json) {
     return
   }
 
-  let [module, method] = json.method.split('.')
+  if (json.method) {
+    let [module, method] = json.method.split('.')
 
-  if (testHarness && testHarness.onSend) {
-    testHarness.onSend(module, method, json.params, json.id)
+    if (testHarness && testHarness.onSend) {
+      testHarness.onSend(module, method, json.params, json.id)
+    }
+  
+    if (mock)
+      handle(json)
+    else
+      pending.push(json)  
+  }
+  else if (json.id !== undefined && requests[json.id]) {
+    const promise = requests[json.id]
+    if (json.result !== undefined) {
+      promise.resolve(json.result)
+    }
+    else {
+      promise.reject(json.error)
+    }
   }
 
-  if (mock)
-    handle(json)
-  else
-    pending.push(json)
 }
 
 function handle(json) {
@@ -98,6 +110,23 @@ function event(module, event, value) {
   })
 }
 
+let id = 0
+const requests = []
+
+function request(method, params) {
+  const promise = new Promise( (resolve, reject) => {
+    requests[id] = { resolve, reject }
+  })
+  callback({
+    jsonrpc: '2.0',
+    id: id,
+    method: `${method}`,
+    params: params
+  })
+
+  return promise
+}
+
 function dotGrab(obj = {}, key) {
   const keys = key.split('.')
   let ref = obj
@@ -136,6 +165,7 @@ export function setMockResponses(m) {
 export default {
   send: send,
   receive: receive,
-  event: event
+  event: event,
+  request: request
 }
 

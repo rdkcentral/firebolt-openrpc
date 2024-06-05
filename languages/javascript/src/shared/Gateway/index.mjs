@@ -27,15 +27,15 @@ Transport.receive(async (json) => {
         console.debug('Receiving message from transport: \n' + JSON.stringify(json, { indent: '\t'}))
     }
         
-    if (json.method) {
-        if (json.id) {
+    if (json.method !== undefined) {
+        if (json.id !== undefined) {
             Server.request(json.id, json.method, json.params)
         }
         else {
             Server.notify(json.method, json.params)
         }
     }
-    else if (json.id) {
+    else if (json.id !== undefined) {
         Client.response(json.id, json.result, json.error)
     }
 })
@@ -54,7 +54,7 @@ export function subscribe(event, callback) {
 }
 
 export function unsubscribe(event) {
-    Server.subscribe(event)
+    Server.unsubscribe(event)
 }
 
 export function provide(interfaceName, provider) {

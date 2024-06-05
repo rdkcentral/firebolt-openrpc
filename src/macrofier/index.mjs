@@ -71,7 +71,8 @@ const macrofy = async (
         libraryName,
         treeshakePattern = null,
         treeshakeEntry = null,
-        treeshakeTypes = []
+        treeshakeTypes = [],
+        moduleWhitelist
     } = options
 
     return new Promise( async (resolve, reject) => {
@@ -96,7 +97,7 @@ const macrofy = async (
             operators            
         })
 
-        const moduleList = [...(new Set(serverRpc.methods.map(method => method.name.split('.').shift())))]
+        const moduleList = moduleWhitelist.length ? moduleWhitelist : [...(new Set(serverRpc.methods.map(method => method.name.split('.').shift())))]
         const sdkTemplateList = template ? await readDir(template, { recursive: true }) : []
         const sharedTemplateList = await readDir(sharedTemplates, { recursive: true })
         const templates = Object.assign(await readFiles(sharedTemplateList, sharedTemplates),

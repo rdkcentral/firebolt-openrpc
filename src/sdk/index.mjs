@@ -33,7 +33,10 @@ const run = async ({
   output: output,
   language: language,
   'static-module': staticModuleNames,
-  'copy-schemas': copySchemas
+  'copy-schemas': copySchemas,
+  argv: {
+    remain: moduleWhitelist
+  }
 }) => {
   
   let mainFilename
@@ -77,6 +80,7 @@ const run = async ({
     extractProviderSchema: config.extractProviderSchema,
     staticModuleNames: staticModuleNames,
     hideExcluded: true,
+    moduleWhitelist: moduleWhitelist,
     aggregateFiles: config.aggregateFiles,
     rename: mainFilename ? { '/index.mjs': mainFilename, '/index.d.ts': declarationsFilename } : {},
     treeshakePattern: config.treeshakePattern ? new RegExp(config.treeshakePattern, "g") : undefined,
