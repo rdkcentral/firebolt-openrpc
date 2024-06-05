@@ -334,12 +334,7 @@ const makeProviderMethod = x => x.name["onRequest".length].toLowerCase() + x.nam
 //import { default as platform } from '../Platform/defaults'
 
 const generateAggregateMacros = (server, additional, templates, library) => {
-  return Array.from(
-    new Set(
-      additional.map(m => m.title || m.info.title)
-    )
-  ).map(title => ({ info: { title: title, description: server.info['x-module-descriptions'][title]}}))
-  .reduce((acc, module) => {
+  return additional.reduce((acc, module) => {
 
     const infoMacros = generateInfoMacros(module)
 
@@ -350,6 +345,8 @@ const generateAggregateMacros = (server, additional, templates, library) => {
 
     template = getTemplate('/codeblocks/mock-import', templates)
     if (template && module.info) {
+      console.log(`aggregate: ${module.info.title}`)
+      console.dir(module.info)
       acc.mockImports += insertInfoMacros(template + '\n', infoMacros)
     }
 

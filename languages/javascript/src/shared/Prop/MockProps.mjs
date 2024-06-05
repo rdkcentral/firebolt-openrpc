@@ -17,7 +17,7 @@ function mock(module, method, params, value, contextParameterCount, def) {
   else if (type === "setter") {
     mocks[key] = value
     // notify the app's RPC server directly, w/out a real RPC call
-    Server.notify(module + `${method}Changed`, { value })
+    Server.notify(module + `.${method}Changed`, { value })
     return null
   }  
 }

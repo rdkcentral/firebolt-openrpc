@@ -1018,6 +1018,25 @@ const generateEventSubscribers = json => {
                 }
             })
 
+            subscriber.result = {
+                name: "result",
+                schema: {
+                    type: "null"
+                }
+            }
+
+            subscriber.examples.forEach(example => {
+                example.params.pop()
+                example.params.push({
+                    name: "listen",
+                    value: true
+                })
+                example.result = {
+                    name: "result",
+                    value: null
+                }
+            })
+
             const tag = subscriber.tags.find(tag => tag.name === 'notifier')
 
             tag['x-notifier'] = notifier.name

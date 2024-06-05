@@ -177,7 +177,7 @@ const run = async ({
 
         if (transformations) {
             // Do the firebolt API magic
-            json = fireboltize(json)
+            json = fireboltize(json, true)
 
             // pull in external markdown files for descriptions
             json = addExternalMarkdown(json, markdown)
@@ -187,7 +187,7 @@ const run = async ({
             json.components.schemas = json.components.schemas || {}
 
             // add externally referenced schemas that are in our shared schemas path
-            json = addExternalSchemas(json, sharedSchemas)
+//            json = addExternalSchemas(json, sharedSchemas)
         }
 
         modules[key] = json
@@ -206,7 +206,7 @@ const run = async ({
                         "methods": {
                             "type": "array",
                             "items": {
-                                "allOf": json.methods.map(method => ({
+                                "allOf": json.methods.filter(method => method.result).map(method => ({
                                     "if": {
                                         "type": "object",
                                         "properties": {
