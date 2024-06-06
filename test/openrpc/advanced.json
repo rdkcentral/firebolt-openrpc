@@ -1,302 +1,309 @@
 {
-    "openrpc": "1.2.4",
-    "info": {
-        "title": "Advanced",
-        "description": "Module for testing advanced firebolt-openrpc features",
-        "version": "0.0.0"
-    },
-    "methods": [
-        {
-            "name": "onEventWithContext",
-            "tags": [
-                {
-                    "name": "event"
-                },
-                {
-                    "name": "capabilities",
-                    "x-uses": ["xrn:firebolt:capability:test:test"]
-                }
-            ],
-            "summary": "An event with one context parameter.",
-            "params": [
-                {
-                    "name": "appId",
-                    "required": true,
-                    "schema": {
-                        "type": "string"
-                    }
-                }
-            ],
-            "result": {
-                "name": "result",
-                "schema": {
-                    "type": "object",
-                    "properties": {
-                        "foo": {
-                            "type": "string"
-                        }
-                    }    
-                }
-            },
-            "examples": [
-                {
-                    "name": "Default Example",
-                    "params": [
-                        {
-                            "name": "appId",
-                            "value": "hulu"
-                        }
-                    ],
-                    "result": {
-                        "name": "result",
-                        "value": {
-                            "foo": "bar"
-                        }
-                    }
-                }
-            ]
-        },
-        {
-            "name": "onEventWithTwoContext",
-            "tags": [
-                {
-                    "name": "event"
-                },
-                {
-                    "name": "capabilities",
-                    "x-uses": ["xrn:firebolt:capability:test:test"]
-                }
-            ],
-            "summary": "An event with two context parameters.",
-            "params": [
-                {
-                    "name": "appId",
-                    "required": true,
-                    "schema": {
-                        "type": "string"
-                    }
-                },
-                {
-                    "name": "state",
-                    "required": true,
-                    "schema": {
-                        "type": "string"
-                    }
-                }
-            ],
-            "result": {
-                "name": "result",
-                "schema": {
-                    "type": "object",
-                    "properties": {
-                        "foo": {
-                            "type": "string"
-                        }
-                    }    
-                }
-            },
-            "examples": [
-                {
-                    "name": "Default Example",
-                    "params": [
-                        {
-                            "name": "appId",
-                            "value": "hulu"
-                        },
-                        {
-                            "name": "state",
-                            "value": "inactive"
-                        }
-                    ],
-                    "result": {
-                        "name": "result",
-                        "value": {
-                            "foo": "bar"
-                        }
-                    }
-                }
-            ]
-        },
-        {
-            "name": "propertyWithContext",
-            "summary":"",
-            "tags": [
-                {
-                    "name": "property"
-                },
-                {
-                    "name": "capabilities",
-                    "x-uses": [
-                        "xrn:firebolt:capability:test:test"
-                    ]
-                }
-            ],
-            "params": [
-                {
-                    "name": "appId",
-                    "required": true,
-                    "schema": {
-                        "type": "string"
-                    }
-                }
-            ],
-            "result": {
-                "name": "value",
-                "schema": {
-                    "type": "boolean"
-                }
-            },
-            "examples": [
-                {
-                    "name": "Get the property for hulu",
-                    "params": [
-                        {
-                            "name": "appId",
-                            "value": "hulu"
-                        }
-                    ],
-                    "result": {
-                        "name": "value",
-                        "value": false
-                    }
-                },
-                {
-                    "name": "Get the property for peacock",
-                    "params": [
-                        {
-                            "name": "appId",
-                            "value": "peacock"
-                        }
-                    ],
-                    "result": {
-                        "name": "value",
-                        "value": true
-                    }
-                }                
-            ]
-        },
-        {
-            "name": "list",
-            "tags": [
-                {
-                    "name": "temporal-set"
-                },
-                {
-                    "name": "capabilities",
-                    "x-uses": ["xrn:firebolt:capability:test:test"]
-                }
-            ],
-            "summary": "A temporal set method that lists Advanced objects.",
-            "params": [
-
-            ],
-            "result": {
-                "name": "items",
-                "schema": {
-                    "type": "array",
-                    "items": {
-                        "title": "Item",
-                        "$ref": "#/components/schemas/Advanced"
-                    }    
-                }
-            },
-            "examples": [
-                {
-                    "name": "Default Example",
-                    "params": [
-                    ],
-                    "result": {
-                        "name": "items",
-                        "value": [
-                            {
-                                "aString": "Here's a string",
-                                "aNumber": 123
-                            }
-                        ]
-                    }
-                }
-            ]
-        },
-        {
-            "name": "action",
-            "summary": "A method that takes an Advanced object.",
-            "tags": [
-                {
-                    "name": "capabilities",
-                    "x-uses": ["xrn:firebolt:capability:test:test"]
-                }
-            ],
-            "description": "A method for testing advanced method generation.",
-            "params": [
-                {
-                    "name": "advanced",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/components/schemas/Advanced"
-                    },
-                    "summary": "A test parameter."
-                }
-            ],
-            "result": {
-                "name": "result",
-                "summary": "A result for testing basic method generation.",
-                "schema": {
-                    "type": "object",
-                    "required": [
-                        "foo"
-                    ],
-                    "properties": {
-                        "foo": {
-                            "type": "string",
-                            "description": "A required field in the result."
-                        },
-                        "bar": {
-                            "type": "number",
-                            "description": "An optional field in the result."
-                        }
-                    },
-                    "additionalProperties": false
-                }
-            },
-            "examples": [
-                {
-                    "name": "Default Example",
-                    "params": [
-                        {
-                            "name": "advanced",
-                            "value": {
-                                "aString": "Here's a string",
-                                "aNumber": 123
-                            }
-                        }
-                    ],
-                    "result": {
-                        "name": "Default Result",
-                        "value": {
-                            "foo": "here's foo",
-                            "bar": 1
-                        }
-                    }
-                }
-            ]
-        }
-    ],
-    "components": {
-        "schemas": {
-            "Advanced": {
-                "title": "Advanced",
-                "type": "object",
-                "properties": {
-                    "aString": {
-                        "type": "string"
-                    },
-                    "aMethod": {
-                        "type": "null",
-                        "x-method": "Advanced.action",
-                        "x-this-param": "advanced"
-                    }
-                }
-            }
-        }
-    }
+	"openrpc": "1.2.4",
+	"info": {
+		"title": "Advanced",
+		"description": "Module for testing advanced firebolt-openrpc features",
+		"version": "0.0.0"
+	},
+	"methods": [
+		{
+			"name": "eventWithContext",
+			"tags": [
+				{
+					"name": "notifier",
+					"x-event": "Advanced.onEventWithContext"
+				},
+				{
+					"name": "capabilities",
+					"x-uses": [
+						"xrn:firebolt:capability:test:test"
+					]
+				}
+			],
+			"summary": "An event with one context parameter.",
+			"params": [
+				{
+					"name": "appId",
+					"required": true,
+					"schema": {
+						"type": "string"
+					}
+				},
+				{
+					"name": "result",
+					"schema": {
+						"type": "object",
+						"properties": {
+							"foo": {
+								"type": "string"
+							}
+						}
+					}
+				}
+			],
+			"examples": [
+				{
+					"name": "Default Example",
+					"params": [
+						{
+							"name": "appId",
+							"value": "hulu"
+						}
+					],
+					"result": {
+						"name": "result",
+						"value": {
+							"foo": "bar"
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "eventWithTwoContext",
+			"tags": [
+				{
+					"name": "notifier",
+					"x-event": "Advanced.onEventWithTwoContext"
+				},
+				{
+					"name": "capabilities",
+					"x-uses": [
+						"xrn:firebolt:capability:test:test"
+					]
+				}
+			],
+			"summary": "An event with two context parameters.",
+			"params": [
+				{
+					"name": "appId",
+					"required": true,
+					"schema": {
+						"type": "string"
+					}
+				},
+				{
+					"name": "state",
+					"required": true,
+					"schema": {
+						"type": "string"
+					}
+				},
+				{
+					"name": "result",
+					"schema": {
+						"type": "object",
+						"properties": {
+							"foo": {
+								"type": "string"
+							}
+						}
+					}
+				}
+			],
+			"examples": [
+				{
+					"name": "Default Example",
+					"params": [
+						{
+							"name": "appId",
+							"value": "hulu"
+						},
+						{
+							"name": "state",
+							"value": "inactive"
+						}
+					],
+					"result": {
+						"name": "result",
+						"value": {
+							"foo": "bar"
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "propertyWithContext",
+			"summary": "",
+			"tags": [
+				{
+					"name": "property"
+				},
+				{
+					"name": "capabilities",
+					"x-uses": [
+						"xrn:firebolt:capability:test:test"
+					]
+				}
+			],
+			"params": [
+				{
+					"name": "appId",
+					"required": true,
+					"schema": {
+						"type": "string"
+					}
+				}
+			],
+			"result": {
+				"name": "value",
+				"schema": {
+					"type": "boolean"
+				}
+			},
+			"examples": [
+				{
+					"name": "Get the property for hulu",
+					"params": [
+						{
+							"name": "appId",
+							"value": "hulu"
+						}
+					],
+					"result": {
+						"name": "value",
+						"value": false
+					}
+				},
+				{
+					"name": "Get the property for peacock",
+					"params": [
+						{
+							"name": "appId",
+							"value": "peacock"
+						}
+					],
+					"result": {
+						"name": "value",
+						"value": true
+					}
+				}
+			]
+		},
+		{
+			"name": "list",
+			"tags": [
+				{
+					"name": "temporal-set"
+				},
+				{
+					"name": "capabilities",
+					"x-uses": [
+						"xrn:firebolt:capability:test:test"
+					]
+				}
+			],
+			"summary": "A temporal set method that lists Advanced objects.",
+			"params": [],
+			"result": {
+				"name": "items",
+				"schema": {
+					"type": "array",
+					"items": {
+						"title": "Item",
+						"$ref": "#/components/schemas/Advanced"
+					}
+				}
+			},
+			"examples": [
+				{
+					"name": "Default Example",
+					"params": [],
+					"result": {
+						"name": "items",
+						"value": [
+							{
+								"aString": "Here's a string",
+								"aNumber": 123
+							}
+						]
+					}
+				}
+			]
+		},
+		{
+			"name": "action",
+			"summary": "A method that takes an Advanced object.",
+			"tags": [
+				{
+					"name": "capabilities",
+					"x-uses": [
+						"xrn:firebolt:capability:test:test"
+					]
+				}
+			],
+			"description": "A method for testing advanced method generation.",
+			"params": [
+				{
+					"name": "advanced",
+					"required": true,
+					"schema": {
+						"$ref": "#/components/schemas/Advanced"
+					},
+					"summary": "A test parameter."
+				}
+			],
+			"result": {
+				"name": "result",
+				"summary": "A result for testing basic method generation.",
+				"schema": {
+					"type": "object",
+					"required": [
+						"foo"
+					],
+					"properties": {
+						"foo": {
+							"type": "string",
+							"description": "A required field in the result."
+						},
+						"bar": {
+							"type": "number",
+							"description": "An optional field in the result."
+						}
+					},
+					"additionalProperties": false
+				}
+			},
+			"examples": [
+				{
+					"name": "Default Example",
+					"params": [
+						{
+							"name": "advanced",
+							"value": {
+								"aString": "Here's a string",
+								"aNumber": 123
+							}
+						}
+					],
+					"result": {
+						"name": "Default Result",
+						"value": {
+							"foo": "here's foo",
+							"bar": 1
+						}
+					}
+				}
+			]
+		}
+	],
+	"components": {
+		"schemas": {
+			"Advanced": {
+				"title": "Advanced",
+				"type": "object",
+				"properties": {
+					"aString": {
+						"type": "string"
+					},
+					"aMethod": {
+						"type": "null",
+						"x-method": "Advanced.action",
+						"x-this-param": "advanced"
+					}
+				}
+			}
+		}
+	}
 }

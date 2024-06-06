@@ -33,7 +33,8 @@ const __dirname = url.fileURLToPath(new URL('.', import.meta.url))
 const run = async ({
     input: input,
     schemas: schemas,
-    transformations = false
+    transformations = false,
+    bidirectional = false
 }) => {
 
     logHeader(`Validating ${path.relative('.', input)} with${transformations ? '' : 'out'} Firebolt transformations.`)
@@ -177,7 +178,7 @@ const run = async ({
 
         if (transformations) {
             // Do the firebolt API magic
-            json = fireboltize(json, true)
+            json = fireboltize(json, bidirectional)
 
             // pull in external markdown files for descriptions
             json = addExternalMarkdown(json, markdown)

@@ -1,281 +1,276 @@
 {
-    "openrpc": "1.2.4",
-    "info": {
-        "title": "Provider",
-        "description": "A module for testing Provider interfaces.",
-        "version": "0.0.0"
-    },
-    "methods": [
-        {
-            "name": "onRequestSimpleMethod",
-            "tags": [
-                {
-                    "name": "capabilities",
-                    "x-provides": "xrn:firebolt:capability:test:simple",
-                    "x-allow-focus": false
-                },
-                {
-                    "name": "event",
-                    "x-response": {
-                        "type": "string",
-                        "examples": [
-                            "a value!"
-                        ]
-                    }
-                }
-            ],
-            "summary": "Dispatches a request for the simple method to the simple provider.",
-            "params": [
-            ],
-            "result": {
-                "name": "result",
-                "schema": {
-                    "$ref": "#/components/schemas/SimpleProviderRequest"
-                }
-            },
-            "examples": [
-                {
-                    "name": "Get simple",
-                    "params": [],
-                    "result": {
-                        "name": "result",
-                        "value": {
-                            "correlationId": "123",
-                            "parameters": null
-                        }
-                    }
-                }
-            ]
-        },
-        {
-            "name": "onRequestHandshakeMethod",
-            "tags": [
-                {
-                    "name": "capabilities",
-                    "x-provides": "xrn:firebolt:capability:test:handshake",
-                    "x-allow-focus": true
-                },
-                {
-                    "name": "event",
-                    "x-response": {
-                        "type": "string",
-                        "examples": [
-                            "a value for handshake!"
-                        ]
-                    }
-                }
-            ],
-            "summary": "Dispatches a request for the simple method, with a handshake, to the simple provider.",
-            "params": [
-            ],
-            "result": {
-                "name": "result",
-                "schema": {
-                    "$ref": "#/components/schemas/SimpleProviderRequest"
-                }
-            },
-            "examples": [
-                {
-                    "name": "Get handshake",
-                    "params": [],
-                    "result": {
-                        "name": "result",
-                        "value": {
-                            "correlationId": "123",
-                            "parameters": null
-                        }
-                    }
-                }
-            ]
-        },
-        {
-            "name": "onRequestMultiMethodOne",
-            "tags": [
-                {
-                    "name": "capabilities",
-                    "x-provides": "xrn:firebolt:capability:test:multi",
-                    "x-allow-focus": false
-                },
-                {
-                    "name": "event",
-                    "x-response": {
-                        "type": "string",
-                        "examples": [
-                            "a first value!"
-                        ]
-                    }
-                }
-            ],
-            "summary": "Dispatches a request for the simple method one to the simple provider.",
-            "params": [
-            ],
-            "result": {
-                "name": "result",
-                "schema": {
-                    "$ref": "#/components/schemas/SimpleProviderRequest"
-                }
-            },
-            "examples": [
-                {
-                    "name": "Get simple",
-                    "params": [],
-                    "result": {
-                        "name": "result",
-                        "value": {
-                            "correlationId": "123",
-                            "parameters": null
-                        }
-                    }
-                }
-            ]
-        },
-        {
-            "name": "onRequestMultiMethodTwo",
-            "tags": [
-                {
-                    "name": "capabilities",
-                    "x-provides": "xrn:firebolt:capability:test:multi",
-                    "x-allow-focus": false
-                },
-                {
-                    "name": "event",
-                    "x-response": {
-                        "type": "string",
-                        "examples": [
-                            "a second value!"
-                        ]
-                    }
-                }
-            ],
-            "summary": "Dispatches a request for the simple method two to the simple provider.",
-            "params": [
-            ],
-            "result": {
-                "name": "result",
-                "schema": {
-                    "$ref": "#/components/schemas/SimpleProviderRequest"
-                }
-            },
-            "examples": [
-                {
-                    "name": "Get simple",
-                    "params": [],
-                    "result": {
-                        "name": "result",
-                        "value": {
-                            "correlationId": "456",
-                            "parameters": null
-                        }
-                    }
-                }
-            ]
-        },
-        {
-            "name": "onRequestNoResponseMethod",
-            "tags": [
-                {
-                    "name": "capabilities",
-                    "x-provides": "xrn:firebolt:capability:test:noresponse",
-                    "x-allow-focus": false
-                },
-                {
-                    "name": "event"
-                }
-            ],
-            "summary": "Dispatches a request for the simple method to the simple provider.",
-            "params": [
-            ],
-            "result": {
-                "name": "result",
-                "schema": {
-                    "$ref": "#/components/schemas/NoResponseProviderRequest"
-                }
-            },
-            "examples": [
-                {
-                    "name": "Get simple",
-                    "params": [],
-                    "result": {
-                        "name": "result",
-                        "value": {
-                            "correlationId": "123",
-                            "parameters": {
-                                "first": true,
-                                "second": [
-                                    1
-                                ],
-                                "last": "foo"
-                            }
-                        }
-                    }
-                }
-            ]
-        }
-    ],
-    "components": {
-        "schemas": {
-            "SimpleProviderRequest": {
-                "title": "SimpleProviderRequest",
-                "allOf": [
-                    {
-                        "$ref": "https://meta.comcast.com/firebolt/types#/definitions/ProviderRequest"
-                    },
-                    {
-                        "type": "object",
-                        "properties": {
-                            "parameters": {
-                                "title": "SimpleProviderParameters",
-                                "const": null
-                            }
-                        }
-                    }
-                ],
-                "examples": [
-                    {
-                        "correlationId": "abc"
-                    }
-                ]
-            },
-            "NoResponseProviderRequest": {
-                "title": "NoResponseProviderRequest",
-                "allOf": [
-                    {
-                        "$ref": "https://meta.comcast.com/firebolt/types#/definitions/ProviderRequest"
-                    },
-                    {
-                        "type": "object",
-                        "properties": {
-                            "parameters": {
-                                "title": "NoResponseParametes",
-                                "type": "object",
-                                "properties": {
-                                    "first": {
-                                        "type": "boolean"
-                                    },
-                                    "second": {
-                                        "type": "array",
-                                        "items": {
-                                            "type": "integer"
-                                        }
-                                    },
-                                    "last": {
-                                        "type": "string",
-                                        "enum": [
-                                            "foo",
-                                            "bar"
-                                        ]
-                                    }
-                                }
-                            }
-                        }
-                    }
-                ],
-                "examples": [
-                    {
-                        "correlationId": "abc"
-                    }
-                ]
-            }
-        }
-    }
+	"openrpc": "1.2.4",
+	"info": {
+		"title": "Provider",
+		"description": "A module for testing Provider interfaces.",
+		"version": "0.0.0"
+	},
+	"methods": [
+		{
+			"name": "simpleMethod",
+			"tags": [
+				{
+					"name": "capabilities",
+					"x-provides": "xrn:firebolt:capability:test:simple",
+					"x-allow-focus": false
+				},
+				{
+					"name": "event",
+					"x-response": {
+						"type": "string",
+						"examples": [
+							"a value!"
+						]
+					}
+				}
+			],
+			"summary": "Dispatches a request for the simple method to the simple provider.",
+			"params": [],
+			"result": {
+				"name": "result",
+				"schema": {
+					"$ref": "#/components/schemas/SimpleProviderRequest"
+				}
+			},
+			"examples": [
+				{
+					"name": "Get simple",
+					"params": [],
+					"result": {
+						"name": "result",
+						"value": {
+							"correlationId": "123",
+							"parameters": null
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "onRequestHandshakeMethod",
+			"tags": [
+				{
+					"name": "capabilities",
+					"x-provides": "xrn:firebolt:capability:test:handshake",
+					"x-allow-focus": true
+				},
+				{
+					"name": "event",
+					"x-response": {
+						"type": "string",
+						"examples": [
+							"a value for handshake!"
+						]
+					}
+				}
+			],
+			"summary": "Dispatches a request for the simple method, with a handshake, to the simple provider.",
+			"params": [],
+			"result": {
+				"name": "result",
+				"schema": {
+					"$ref": "#/components/schemas/SimpleProviderRequest"
+				}
+			},
+			"examples": [
+				{
+					"name": "Get handshake",
+					"params": [],
+					"result": {
+						"name": "result",
+						"value": {
+							"correlationId": "123",
+							"parameters": null
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "onRequestMultiMethodOne",
+			"tags": [
+				{
+					"name": "capabilities",
+					"x-provides": "xrn:firebolt:capability:test:multi",
+					"x-allow-focus": false
+				},
+				{
+					"name": "event",
+					"x-response": {
+						"type": "string",
+						"examples": [
+							"a first value!"
+						]
+					}
+				}
+			],
+			"summary": "Dispatches a request for the simple method one to the simple provider.",
+			"params": [],
+			"result": {
+				"name": "result",
+				"schema": {
+					"$ref": "#/components/schemas/SimpleProviderRequest"
+				}
+			},
+			"examples": [
+				{
+					"name": "Get simple",
+					"params": [],
+					"result": {
+						"name": "result",
+						"value": {
+							"correlationId": "123",
+							"parameters": null
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "onRequestMultiMethodTwo",
+			"tags": [
+				{
+					"name": "capabilities",
+					"x-provides": "xrn:firebolt:capability:test:multi",
+					"x-allow-focus": false
+				},
+				{
+					"name": "event",
+					"x-response": {
+						"type": "string",
+						"examples": [
+							"a second value!"
+						]
+					}
+				}
+			],
+			"summary": "Dispatches a request for the simple method two to the simple provider.",
+			"params": [],
+			"result": {
+				"name": "result",
+				"schema": {
+					"$ref": "#/components/schemas/SimpleProviderRequest"
+				}
+			},
+			"examples": [
+				{
+					"name": "Get simple",
+					"params": [],
+					"result": {
+						"name": "result",
+						"value": {
+							"correlationId": "456",
+							"parameters": null
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "onRequestNoResponseMethod",
+			"tags": [
+				{
+					"name": "capabilities",
+					"x-provides": "xrn:firebolt:capability:test:noresponse",
+					"x-allow-focus": false
+				},
+				{
+					"name": "event"
+				}
+			],
+			"summary": "Dispatches a request for the simple method to the simple provider.",
+			"params": [],
+			"result": {
+				"name": "result",
+				"schema": {
+					"$ref": "#/components/schemas/NoResponseProviderRequest"
+				}
+			},
+			"examples": [
+				{
+					"name": "Get simple",
+					"params": [],
+					"result": {
+						"name": "result",
+						"value": {
+							"correlationId": "123",
+							"parameters": {
+								"first": true,
+								"second": [
+									1
+								],
+								"last": "foo"
+							}
+						}
+					}
+				}
+			]
+		}
+	],
+	"components": {
+		"schemas": {
+			"SimpleProviderRequest": {
+				"title": "SimpleProviderRequest",
+				"allOf": [
+					{
+						"$ref": "https://meta.rdkcentral.com/firebolt/schemas/types#/definitions/ProviderRequest"
+					},
+					{
+						"type": "object",
+						"properties": {
+							"parameters": {
+								"title": "SimpleProviderParameters",
+								"const": null
+							}
+						}
+					}
+				],
+				"examples": [
+					{
+						"correlationId": "abc"
+					}
+				]
+			},
+			"NoResponseProviderRequest": {
+				"title": "NoResponseProviderRequest",
+				"allOf": [
+					{
+						"$ref": "https://meta.rdkcentral.com/firebolt/schemas/types#/definitions/ProviderRequest"
+					},
+					{
+						"type": "object",
+						"properties": {
+							"parameters": {
+								"title": "NoResponseParametes",
+								"type": "object",
+								"properties": {
+									"first": {
+										"type": "boolean"
+									},
+									"second": {
+										"type": "array",
+										"items": {
+											"type": "integer"
+										}
+									},
+									"last": {
+										"type": "string",
+										"enum": [
+											"foo",
+											"bar"
+										]
+									}
+								}
+							}
+						}
+					}
+				],
+				"examples": [
+					{
+						"correlationId": "abc"
+					}
+				]
+			}
+		}
+	}
 }

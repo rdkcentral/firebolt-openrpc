@@ -23,7 +23,8 @@ const knownOpts = {
   'copy-schemas': [Boolean],
   'language': [path],
   'examples': [path, Array],
-  'as-path': [Boolean]
+  'as-path': [Boolean],
+  'bidirectional': [Boolean]
 }
 
 const shortHands = {
