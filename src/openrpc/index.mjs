@@ -113,10 +113,10 @@ const run = async ({
   mergedOpenRpc = fireboltize(mergedOpenRpc, !!client)
 
   // make sure all provided-by APIs point to a real provider method
-  const appProvided = openrpc.methods.filter(m => m.tags.find(t=>t['x-provided-by'])) || []
+  const appProvided = mergedOpenRpc.methods.filter(m => m.tags.find(t=>t['x-provided-by'])) || []
   appProvided.forEach(m => {
       const providedBy = m.tags.find(t=>t['x-provided-by'])['x-provided-by']
-      const provider = openrpc.methods.find(m => m.name === providedBy)
+      const provider = mergedOpenRpc.methods.find(m => m.name === providedBy)
       if (!provider) {
           throw `Method ${m.name} is provided by an undefined method (${providedBy})`
       }
