@@ -528,7 +528,7 @@ const generateMacros = (server, client, templates, languages, options = {}) => {
   const eventsEnum = generateEvents(server, templates)
 
   const examples = Object.assign(generateExamples(server, templates, languages), generateExamples(client, templates, languages))
-  const allMethodsArray = generateMethods(server, client, examples, templates, options.type)
+  const allMethodsArray = generateMethods(server, client, examples, templates, languages, options.type)
 
   Array.from(new Set(['methods'].concat(config.additionalMethodTemplates))).filter(dir => dir).forEach(dir => {
 
@@ -912,7 +912,7 @@ function generateSchemas(server, templates, options) {
   const schemas = JSON.parse(JSON.stringify(server.definitions || (server.components && server.components.schemas) || {}))
 
   const generate = (name, schema, uri, { prefix = '' } = {}) => {
-    // these are internal schemas used by the firebolt-openrpc tooling, and not meant to be used in code/doc generation
+    // these are internal schemas used by the fireboltize-openrpc tooling, and not meant to be used in code/doc generation
     if (['ListenResponse', 'ProviderRequest', 'ProviderResponse', 'FederatedResponse', 'FederatedRequest'].includes(name)) {
       return
     }
@@ -1232,7 +1232,7 @@ function generateMethodResult(type, templates) {
   return result
 }
 
-function generateMethods(server = {}, client = null, examples = {}, templates = {}, type = '') {
+function generateMethods(server = {}, client = null, examples = {}, templates = {}, languages = [], type = '') {
   const methods = compose(
     option([]),
     getMethods
@@ -1259,7 +1259,7 @@ function generateMethods(server = {}, client = null, examples = {}, templates = 
       else if (dir.includes('methods')) {
         const template = getTemplateForMethod(methodObj, templates, dir)
         if (template && template.length) {
-          result.body[dir] = insertMethodMacros(template, methodObj, server, client, templates, type, examples)
+          result.body[dir] = insertMethodMacros(template, methodObj, server, client, templates, type, examples, languages)
         }
       }
     })
@@ -1287,12 +1287,11 @@ function generateMethods(server = {}, client = null, examples = {}, templates = 
 }
 
 // TODO: this is called too many places... let's reduce that to just generateMethods
-function insertMethodMacros(template, methodObj, server, client, templates, type = '', examples = {}) {
+function insertMethodMacros(template, methodObj, server, client, templates, type = '', examples = {}, languages = {}) {
   try {
     // need a guaranteed place to get client stuff from...
     const document = client || server
     const moduleName = getModuleName(server)
-
     const info = {
       title: moduleName
     }
@@ -1369,10 +1368,8 @@ function insertMethodMacros(template, methodObj, server, client, templates, type
     const setterTemplate = (setter ? insertMethodMacros(getTemplate('/codeblocks/setter', templates), setter, server, client, templates, type, examples) : '')
     const subscriber = server.methods.find(method => method.tags.find(tag => tag['x-subscriber-for'] === methodObj.name))
     const subscriberTemplate = (subscriber ? insertMethodMacros(getTemplate('/codeblocks/subscriber', templates), subscriber, server, client, templates, type, examples) : '')
-
     const setterFor = methodObj.tags.find(t => t.name === 'setter') && methodObj.tags.find(t => t.name === 'setter')['x-setter-for'] || ''
-    const pullsResult = (puller || pullsFor) ? localizeDependencies(pullsFor || methodObj, server).params[1].schema : null
-
+    const pullsResult = (puller || pullsFor) ? localizeDependencies(pullsFor || methodObj, server).params.findLast(x=>true).schema : null
     const pullsParams = (puller || pullsFor) ? localizeDependencies(getPayloadFromEvent(puller || methodObj, document), document, null, { mergeAllOfs: true }).properties.parameters : null
 
     const pullsResultType = (pullsResult && (type === 'methods')) ? Types.getSchemaShape(pullsResult, server, { templateDir: state.typeTemplateDir, namespace: !config.copySchemasIntoModules }) : ''
@@ -1445,6 +1442,23 @@ function insertMethodMacros(template, methodObj, server, client, templates, type
       itemType = Types.getSchemaType(result.schema.items, server, { templateDir: state.typeTemplateDir, namespace: !config.copySchemasIntoModules })
     }
 
+    let signature
+
+    if (Object.keys(languages).length && template.indexOf('${method.signature}') >= 0) {
+      const lang = languages[Object.keys(languages)[0]]
+      signature = getTemplateForDeclaration(methodObj, templates, 'declarations')
+      types.setTemplates(lang)
+      const currentConfig = JSON.parse(JSON.stringify(config))
+      config.operators = config.operators || {}
+      config.operators.paramDelimiter = ', '
+      signature = insertMethodMacros(signature, methodObj, json, lang, type)
+      config = currentConfig
+      types.setTemplates(templates)
+    }
+    else {
+      signature = ''
+    }
+
     template = insertExampleMacros(template, examples[methodObj.name] || [], methodObj, server, templates)
 
     template = template.replace(/\$\{method\.name\}/g, method.name)
@@ -1471,6 +1485,7 @@ function insertMethodMacros(template, methodObj, server, client, templates, type
       .replace(/\$\{method\.params\.serialization\}/g, serializedParams)
       .replace(/\$\{method\.params\.serialization\.with\.indent\}/g, indent(serializedParams, '    '))
       // Typed signature stuff
+      .replace(/\$\{method\.signature\}/g, signature)
       .replace(/\$\{method\.signature\.params\}/g, Types.getMethodSignatureParams(methodObj, server, { namespace: !config.copySchemasIntoModules }))
       .replace(/\$\{method\.signature\.result\}/g, Types.getMethodSignatureResult(methodObj, server, { namespace: !config.copySchemasIntoModules }))
       .replace(/\$\{method\.context\}/g, method.context.join(', '))

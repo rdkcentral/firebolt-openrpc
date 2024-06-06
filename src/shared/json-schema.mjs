@@ -205,6 +205,74 @@ const getReferencedSchema = (uri = '', moduleJson = {}) => {
   }
 }
 
+const getPropertySchema = (json, dotPath, document) => {
+  const path = dotPath.split('.')
+  let node = json
+
+  for (var i=0; i<path.length; i++) {
+    const property = path[i]
+    const remainingPath = path.filter((x, j) => j >= i ).join('.')
+    if (node.$ref) {
+      node = getPropertySchema(getPath(node.$ref, document), remainingPath, document)
+    }
+    else if (property === '') {
+      return node
+    }
+    else if (node.type === 'object' || (node.type && node.type.includes && node.type.includes('object'))) {
+      if (node.properties && node.properties[property]) {
+        node = node.properties[property]
+      }
+      // todo: need to escape the regex?
+      else if (node.patternProperties && property.match(node.patternProperties)) {
+        node = node.patternProperties[property]
+      }
+      else if (node.additionalProperties && typeof node.additionalProperties === 'object') {
+        node = node.additionalProperties
+      }
+    }
+    else if (Array.isArray(node.allOf)) {
+      node = node.allOf.find(s => {
+        let schema
+        try {
+          schema = getPropertySchema(s, remainingPath, document)
+        }
+        catch (error) {
+
+        }
+        return schema
+      })
+    }
+    else {
+      throw `Cannot get property '${dotPath}' of non-object.`
+    }
+  }
+
+  return node
+}
+
+const getPropertiesInSchema = (json, document) => {
+  let node = json
+
+  while (node.$ref) {
+    node = getPath(node.$ref, document)
+  }
+
+  if (node.type === 'object') {
+    const props = []
+    if (node.properties) {
+      props.push(...Object.keys(node.properties))
+    }
+
+    if (node.propertyNames) {
+      props.push(...node.propertyNames)
+    }
+
+    return props
+  }
+  
+  return null
+}
+
 function getSchemaConstraints(schema, module, options = { delimiter: '\n' }) {
   if (schema.schema) {
     schema = schema.schema
@@ -515,6 +583,8 @@ export {
   getLinkedSchemaUris,
   getAllValuesForName,
   getReferencedSchema,
+  getPropertySchema,
+  getPropertiesInSchema,
   isDefinitionReferencedBySchema,
   isNull,
   isSchema,

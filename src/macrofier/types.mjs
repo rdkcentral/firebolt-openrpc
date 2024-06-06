@@ -727,7 +727,7 @@ function getSchemaType(schema, module, { templateDir = 'types', link = false, co
   const theTitle = insertSchemaMacros(namespaceStr + getTemplate(path.join(templateDir, 'title')), schema, module, { name: schema.title, parent: getXSchemaGroup(schema, module), recursive: false })
   const allocatedProxy = event || result
 
-  const title = schema.type === "object" || Array.isArray(schema.type) && schema.type.includes("object") || schema.enum ? true : false
+  const title = schema.type === "object" || schema.anyOf || schema.oneOf || Array.isArray(schema.type) && schema.type.includes("object") || schema.enum ? true : false
 
   if (schema['$ref']) {
     const refSchema = getReferencedSchema(schema['$ref'], module)

@@ -1,3 +1,10 @@
+# [3.0.0-next.4](https://github.com/rdkcentral/firebolt-openrpc/compare/v3.0.0-next.3...v3.0.0-next.4) (2024-06-06)
+
+
+### Features
+
+* App Pass-through ([#188](https://github.com/rdkcentral/firebolt-openrpc/issues/188)) ([83fa0fc](https://github.com/rdkcentral/firebolt-openrpc/commit/83fa0fcb62cade7ed3b527de6b3fe1ebb42b54e0))
+
 # [3.0.0-next.3](https://github.com/rdkcentral/firebolt-openrpc/compare/v3.0.0-next.2...v3.0.0-next.3) (2024-05-09)
 
 

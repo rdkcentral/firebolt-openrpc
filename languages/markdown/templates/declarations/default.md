@@ -1,0 +1,1 @@
+function ${method.name}(${method.params}): Promise<${method.result.type}>

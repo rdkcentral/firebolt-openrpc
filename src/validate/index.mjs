@@ -19,7 +19,7 @@
 import { readJson, readFiles, readDir } from "../shared/filesystem.mjs"
 import { addExternalMarkdown, addExternalSchemas, fireboltize } from "../shared/modules.mjs"
 import { removeIgnoredAdditionalItems, replaceUri } from "../shared/json-schema.mjs"
-import { validate, displayError } from "./validator/index.mjs"
+import { validate, displayError, validatePasshtroughs } from "./validator/index.mjs"
 import { logHeader, logSuccess, logError } from "../shared/io.mjs"
 
 import Ajv from 'ajv'
@@ -34,7 +34,8 @@ const run = async ({
     input: input,
     schemas: schemas,
     transformations = false,
-    bidirectional = false
+    bidirectional = false,
+    'pass-throughs': passThroughs
 }) => {
 
     logHeader(`Validating ${path.relative('.', input)} with${transformations ? '' : 'out'} Firebolt transformations.`)
@@ -50,6 +51,7 @@ const run = async ({
 
             result.errors.forEach(error => {
                 displayError(error)
+                // console.dir(error, { depth: 100 })
             })
         }
     }
@@ -337,6 +339,11 @@ const run = async ({
                 printResult(openrpcResult, "OpenRPC")
                 printResult(fireboltResult, "Firebolt")
             }
+
+            if (passThroughs) {
+                const passthroughResult = validatePasshtroughs(json)
+                printResult(passthroughResult, "Firebolt App pass-through")
+            }    
         }
         catch (error) {
             throw error

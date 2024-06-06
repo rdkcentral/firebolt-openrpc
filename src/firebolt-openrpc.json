@@ -1007,7 +1007,44 @@
                         },
                         "x-error-for": {
                             "type": "string"
+                        },
+                        "x-provided-by": {
+                            "type": "string"
                         }
+                    },
+                    "if": {
+                        "required": [
+                            "x-provided-by"
+                        ]
+                    },
+                    "then": {
+                        "not": {
+                            "required": [
+                                "x-provides"
+                            ]
+                        },
+                        "oneOf": [
+                            {
+                                "required": [ "x-manages"],
+                                "properties": {
+                                    "x-manages": {
+                                        "type": "array",
+                                        "minItems": 1,
+                                        "maxItems": 1
+                                    }
+                                }
+                            },
+                            {
+                                "required": [ "x-uses"],
+                                "properties": {
+                                    "x-uses": {
+                                        "type": "array",
+                                        "minItems": 1,
+                                        "maxItems": 1
+                                    }
+                                }
+                            }
+                        ]
                     },
                     "anyOf": [
                         {

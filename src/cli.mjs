@@ -24,7 +24,8 @@ const knownOpts = {
   'language': [path],
   'examples': [path, Array],
   'as-path': [Boolean],
-  'bidirectional': [Boolean]
+  'bidirectional': [Boolean],
+  'pass-throughs': [Boolean]
 }
 
 const shortHands = {
