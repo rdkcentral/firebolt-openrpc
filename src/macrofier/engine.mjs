@@ -532,7 +532,7 @@ const generateMacros = (obj, templates, languages, options = {}) => {
   const eventsEnum = generateEvents(obj, templates)
 
   const examples = generateExamples(obj, templates, languages)
-  const allMethodsArray = generateMethods(obj, examples, templates, options.type)
+  const allMethodsArray = generateMethods(obj, examples, templates, languages, options.type)
 
   Array.from(new Set(['methods'].concat(config.additionalMethodTemplates))).filter(dir => dir).forEach(dir => {
 
@@ -879,7 +879,7 @@ function generateSchemas(json, templates, options) {
   const schemas = JSON.parse(JSON.stringify(json.definitions || (json.components && json.components.schemas) || {}))
 
   const generate = (name, schema, uri, { prefix = '' } = {}) => {
-    // these are internal schemas used by the firebolt-openrpc tooling, and not meant to be used in code/doc generation
+    // these are internal schemas used by the fireboltize-openrpc tooling, and not meant to be used in code/doc generation
     if (['ListenResponse', 'ProviderRequest', 'ProviderResponse', 'FederatedResponse', 'FederatedRequest'].includes(name)) {
       return
     }
@@ -1145,7 +1145,7 @@ function generateMethodResult(type, templates) {
   return result
 }
 
-function generateMethods(json = {}, examples = {}, templates = {}, type = '') {
+function generateMethods(json = {}, examples = {}, templates = {}, languages = [], type = '') {
   const methods = compose(
     option([]),
     getMethods
@@ -1174,7 +1174,7 @@ function generateMethods(json = {}, examples = {}, templates = {}, type = '') {
       else if (dir.includes('methods') && (suffix && config.templateExtensionMap[dir] ? config.templateExtensionMap[dir].includes(suffix) : true)) {
         const template = getTemplateForMethod(methodObj, templates, dir)
         if (template && template.length) {
-          result.body[dir] = insertMethodMacros(template, methodObj, json, templates, type, examples)
+          result.body[dir] = insertMethodMacros(template, methodObj, json, templates, type, examples, languages)
         }
       }
     })
@@ -1201,7 +1201,7 @@ function generateMethods(json = {}, examples = {}, templates = {}, type = '') {
 }
 
 // TODO: this is called too many places... let's reduce that to just generateMethods
-function insertMethodMacros(template, methodObj, json, templates, type = '', examples = {}) {
+function insertMethodMacros(template, methodObj, json, templates, type = '', examples = {}, languages = {}) {
   const moduleName = getModuleName(json)
 
   const info = {
@@ -1271,7 +1271,7 @@ function insertMethodMacros(template, methodObj, json, templates, type = '', exa
   const subscriber = json.methods.find(method => method.tags.find(tag => tag['x-alternative'] === methodObj.name))
   const subscriberTemplate = (subscriber ? insertMethodMacros(getTemplate('/codeblocks/subscriber', templates), subscriber, json, templates, type, examples) : '')
   const setterFor = methodObj.tags.find(t => t.name === 'setter') && methodObj.tags.find(t => t.name === 'setter')['x-setter-for'] || ''
-  const pullsResult = (puller || pullsFor) ? localizeDependencies(pullsFor || methodObj, json).params[1].schema : null
+  const pullsResult = (puller || pullsFor) ? localizeDependencies(pullsFor || methodObj, json).params.findLast(x=>true).schema : null
   const pullsParams = (puller || pullsFor) ? localizeDependencies(getPayloadFromEvent(puller || methodObj), json, null, { mergeAllOfs: true }).properties.parameters : null
 
   const pullsResultType = (pullsResult && (type === 'methods')) ? types.getSchemaShape(pullsResult, json, { destination: state.destination, templateDir: state.typeTemplateDir, section: state.section }) : ''
@@ -1337,6 +1337,23 @@ function insertMethodMacros(template, methodObj, json, templates, type = '', exa
     itemType = types.getSchemaType(result.schema.items, json, { destination: state.destination, templateDir: state.typeTemplateDir, section: state.section })
   }
 
+  let signature
+  
+  if (Object.keys(languages).length && template.indexOf('${method.signature}') >= 0) {
+    const lang = languages[Object.keys(languages)[0]]
+    signature = getTemplateForDeclaration(methodObj, templates, 'declarations')
+    types.setTemplates(lang)
+    const currentConfig = JSON.parse(JSON.stringify(config))
+    config.operators = config.operators || {}
+    config.operators.paramDelimiter = ', '
+    signature = insertMethodMacros(signature, methodObj, json, lang, type)
+    config = currentConfig
+    types.setTemplates(templates)
+  }
+  else {
+    signature = ''
+  }
+
   template = insertExampleMacros(template, examples[methodObj.name] || [], methodObj, json, templates)
   template = template.replace(/\$\{method\.name\}/g, method.name)
     .replace(/\$\{method\.rpc\.name\}/g, methodObj.rpc_name || methodObj.name)
@@ -1362,6 +1379,7 @@ function insertMethodMacros(template, methodObj, json, templates, type = '', exa
     .replace(/\$\{method\.params\.serialization\}/g, serializedParams)
     .replace(/\$\{method\.params\.serialization\.with\.indent\}/g, indent(serializedParams, '    '))
     // Typed signature stuff
+    .replace(/\$\{method\.signature\}/g, signature)
     .replace(/\$\{method\.signature\.params\}/g, types.getMethodSignatureParams(methodObj, json, { destination: state.destination, section: state.section }))
     .replace(/\$\{method\.signature\.result\}/g, types.getMethodSignatureResult(methodObj, json, { destination: state.destination, section: state.section }))
     .replace(/\$\{method\.context\}/g, method.context.join(', '))
@@ -1650,7 +1668,7 @@ function insertParameterMacros(template, param, method, module) {
     constraints = '<br/>' + constraints
   }
 
-  return template
+  template = template
     .replace(/\$\{method.param.name\}/g, param.name)
     .replace(/\$\{method.param.Name\}/g, param.name[0].toUpperCase() + param.name.substring(1))
     .replace(/\$\{method.param.summary\}/g, param.summary || '')
@@ -1659,7 +1677,10 @@ function insertParameterMacros(template, param, method, module) {
     .replace(/\$\{json.param.type\}/g, jsonType)
     .replace(/\$\{method.param.link\}/g, getLinkForSchema(param.schema, module)) //getType(param))
     .replace(/\$\{method.param.constraints\}/g, constraints) //getType(param))
-}
+
+    return template
+  
+  }
 
 function insertCapabilityMacros(template, capabilities, method, module) {
   const content = []
@@ -1730,7 +1751,7 @@ function generateProviderInterfaces(json, templates) {
 }
 
 function getProviderInterfaceName(iface, capability, moduleJson = {}) {
-  const uglyName = capability.split(":").slice(-2).map(capitalize).reverse().join('') + "Provider"
+  const uglyName = capability.split(':').slice(-2).map(capitalize).map(x => x.split('-').map(capitalize).join('')).reverse().join('') + "Provider"
   let name = iface.length === 1 ? iface[0].name.charAt(0).toUpperCase() + iface[0].name.substr(1) + "Provider" : uglyName
 
   if (moduleJson.info['x-interface-names']) {

@@ -19,7 +19,8 @@ const knownOpts = {
   'static-module': [String, Array],
   'language': [path],
   'examples': [path, Array],
-  'as-path': [Boolean]
+  'as-path': [Boolean],
+  'pass-throughs': [Boolean]
 }
 
 const shortHands = {

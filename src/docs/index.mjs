@@ -59,6 +59,7 @@ const run = async ({
     examples: examples,
     templatesPerModule: config.templatesPerModule,
     templatesPerSchema: config.templatesPerSchema,
+    operators: config.operators,
     libraryName: libraryName,
     hidePrivate: false
   })
