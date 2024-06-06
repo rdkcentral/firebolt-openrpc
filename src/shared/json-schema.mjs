@@ -155,7 +155,7 @@ const getPropertySchema = (json, dotPath, document) => {
     else if (property === '') {
       return node
     }
-    else if (node.type === 'object') {
+    else if (node.type === 'object' || (node.type && node.type.includes && node.type.includes('object'))) {
       if (node.properties && node.properties[property]) {
         node = node.properties[property]
       }

@@ -106,7 +106,7 @@ function getProviderInterface(capability, module, extractProviderSchema = false)
         {
           "name": "parameters",
           "required": true,
-          "schema": schema// payload.properties.parameters
+          "schema": schema
         }
       ]
   
