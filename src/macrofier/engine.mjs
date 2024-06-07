@@ -345,7 +345,6 @@ const generateAggregateMacros = (server, additional, templates, library) => {
 
     template = getTemplate('/codeblocks/mock-import', templates)
     if (template && module.info) {
-      console.log(`aggregate: ${module.info.title}`)
       console.dir(module.info)
       acc.mockImports += insertInfoMacros(template + '\n', infoMacros)
     }
@@ -1180,7 +1179,7 @@ function generateExamples(json = {}, mainTemplates = {}, languages = {}) {
         langcode: templates['__config'].langcode,
         code: getTemplateForExample(method, templates)
           .replace(/\$\{rpc\.example\.params\}/g, JSON.stringify(Object.fromEntries(example.params.map(param => [param.name, param.value])))),
-        result: getTemplateForExampleResult(method, templates)
+        result: method.result && getTemplateForExampleResult(method, templates)
           .replace(/\$\{example\.result\}/g, JSON.stringify(value, null, '\t'))
           .replace(/\$\{example\.result\.item\}/g, Array.isArray(value) ? JSON.stringify(value[0], null, '\t') : ''),
         template: lang === 'JSON-RPC' ? getTemplate('/examples/jsonrpc', mainTemplates) : getTemplateForExample(method, mainTemplates) // getTemplate('/examples/default', mainTemplates)
@@ -1447,13 +1446,13 @@ function insertMethodMacros(template, methodObj, server, client, templates, type
     if (Object.keys(languages).length && template.indexOf('${method.signature}') >= 0) {
       const lang = languages[Object.keys(languages)[0]]
       signature = getTemplateForDeclaration(methodObj, templates, 'declarations')
-      types.setTemplates(lang)
+      Types.setTemplates(lang)
       const currentConfig = JSON.parse(JSON.stringify(config))
       config.operators = config.operators || {}
       config.operators.paramDelimiter = ', '
-      signature = insertMethodMacros(signature, methodObj, json, lang, type)
+      signature = insertMethodMacros(signature, methodObj, server, client, lang, type)
       config = currentConfig
-      types.setTemplates(templates)
+      Types.setTemplates(templates)
     }
     else {
       signature = ''
@@ -1945,30 +1944,32 @@ function insertProviderInterfaceMacros(template, _interface, server = {}, client
     // insert the standard method templates for each provider
     if (match) {
       iface.forEach(method => {
-        // add a tag to pick the correct template
-        method.tags.unshift({
-          name: 'provider'
-        })
-        const parametersSchema = method.params[0].schema
-        const parametersShape = Types.getSchemaShape(parametersSchema, document, { templateDir: state.typeTemplateDir, namespace: !config.copySchemasIntoModules })
         let methodBlock = insertMethodMacros(getTemplateForMethod(method, templates), method, server, client, templates)
-        methodBlock = methodBlock.replace(/\${parameters\.shape\}/g, parametersShape)
-        const hasProviderParameters = parametersSchema && parametersSchema.properties && Object.keys(parametersSchema.properties).length > 0
-        if (hasProviderParameters) {
-          const lines = methodBlock.split('\n')
-          for (let i = lines.length - 1; i >= 0; i--) {
-            if (lines[i].match(/\$\{provider\.param\.[a-zA-Z]+\}/)) {
-              let line = lines[i]
-              lines.splice(i, 1)
-              line = insertProviderParameterMacros(line, method.params[0].schema, document)
-              lines.splice(i++, 0, line)
+
+        // uni-directional providers have all params composed into an object, these macros output them
+        if (!client) {
+          const parametersSchema = method.params[0].schema
+          const parametersShape = Types.getSchemaShape(parametersSchema, document, { templateDir: state.typeTemplateDir, namespace: !config.copySchemasIntoModules })
+          methodBlock = methodBlock.replace(/\${parameters\.shape\}/g, parametersShape)            
+
+          const hasProviderParameters = parametersSchema && parametersSchema.properties && Object.keys(parametersSchema.properties).length > 0
+          if (hasProviderParameters) {
+            const lines = methodBlock.split('\n')
+            for (let i = lines.length - 1; i >= 0; i--) {
+              if (lines[i].match(/\$\{provider\.param\.[a-zA-Z]+\}/)) {
+                let line = lines[i]
+                lines.splice(i, 1)
+                line = insertProviderParameterMacros(line, method.params[0].schema, document)
+                lines.splice(i++, 0, line)
+              }
             }
+            methodBlock = lines.join('\n')
           }
-          methodBlock = lines.join('\n')
+          else {
+            methodBlock = methodBlock.replace(/\$\{if\.provider\.params\}.*?\$\{end\.if\.provider\.params\}/gms, '')
+          }
         }
-        else {
-          methodBlock = methodBlock.replace(/\$\{if\.provider\.params\}.*?\$\{end\.if\.provider\.params\}/gms, '')
-        }
+
         methodsBlock += methodBlock
       })
 
@@ -1990,12 +1991,12 @@ function insertProviderInterfaceMacros(template, _interface, server = {}, client
 
           // first check for indented lines, and do the fancy indented replacement
           .replace(/^([ \t]+)(.*?)\$\{provider\.interface\.example\.result\}/gm, '$1$2' + indent(JSON.stringify(method.examples[0].result.value, null, '    '), '$1'))
-          .replace(/^([ \t]+)(.*?)\$\{provider\.interface\.example\.parameters\}/gm, '$1$2' + indent(JSON.stringify(method.examples[0].params[0].value, null, '    '), '$1'))
+          .replace(/^([ \t]+)(.*?)\$\{provider\.interface\.example\.parameters\}/gm, '$1$2' + indent(JSON.stringify(method.examples[0].params[0]?.value || '', null, '    '), '$1'))
           // okay now just do the basic replacement (a single regex for both was not fun)
           .replace(/\$\{provider\.interface\.example\.result\}/g, JSON.stringify(method.examples[0].result.value))
-          .replace(/\$\{provider\.interface\.example\.parameters\}/g, JSON.stringify(method.examples[0].params[0].value))
+          .replace(/\$\{provider\.interface\.example\.parameters\}/g, JSON.stringify(method.examples[0].params[0]?.value || ''))
 
-          .replace(/\$\{provider\.interface\.example\.correlationId\}/g, JSON.stringify(method.examples[0].params[1].value.correlationId))
+          .replace(/\$\{provider\.interface\.example\.correlationId\}/g, JSON.stringify(method.examples[0].params[1]?.value.correlationId || ''))
 
           // a set of up to three RPC "id" values for generating intersting examples with matching ids
           .replace(/\$\{provider\.interface\.i\}/g, i)

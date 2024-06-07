@@ -32,6 +32,10 @@ const run = async ({
   const moduleList = input ? await readDir(path.join(input, 'openrpc'), { recursive: true, base: path.resolve('.') }) : []
   const modules = await readFiles(moduleList, path.resolve('.') + '/.')
 
+  console.log(input)
+  console.log(path.resolve(input))
+  console.dir(moduleList)
+
   Object.keys(modules).forEach(key => {
     let json = JSON.parse(modules[key])
 
@@ -62,8 +66,15 @@ function update(json) {
 
                 // move params out of custom extension, and unwrap them into individual parameters
                 method.params.splice(0, method.params.length)
-                const request = getReferencedSchema(method.result.schema.$ref, json)
-                const params = getReferencedSchema((request.allOf ? request.allOf[1] : request).properties.parameters.$ref, json)
+                console.dir(method)
+                console.log(method.result.schema.$ref)
+                const request = method.result.schema.$ref ? getReferencedSchema(method.result.schema.$ref, json) : method.result.schema
+                console.dir(request, { depth: 10 })
+                console.log((request.allOf ? request.allOf[1] : request).properties.parameters)
+                let params = (request.allOf ? request.allOf[1] : request).properties.parameters
+                if (params.$ref) {
+                    params = getReferencedSchema(params.$ref, json)
+                }
 
                 // add required params first, in order listed
                 params.required && params.required.forEach(p => {
@@ -76,28 +87,32 @@ function update(json) {
                 })
 
                 // add unrequired params in arbitrary order... (there's currently no provider method method with more than one unrequired param)
-                Object.keys(params.properties).forEach(p => {
-                    method.params.push({
-                        name: p,
-                         required: false,
-                         schema: params.properties[p]
-                     })
-                     delete params.properties[p] 
-                })
-
+                if (params.type === "object" && params.properties) {
+                    Object.keys(params.properties).forEach(p => {
+                        method.params.push({
+                            name: p,
+                            required: false,
+                            schema: params.properties[p]
+                        })
+                        delete params.properties[p] 
+                    })
+                }
 
                 // move result out of custom extension
                 method.result = {
                     name: 'result',
-                    schema: isEvent(method)['x-response']
+                    schema: isEvent(method)['x-response'] || { type: "null", examples: [ null ] }
                 }
                 
                 // fix example pairings
                 method.examples.forEach((example, i) => {
-                    example.params = Object.entries(example.result.value.parameters).map(entry => ({
-                        name: entry[0],
-                        value: entry[1]
-                    }))
+                    if (example.result.value.parameters) {
+                        example.params = Object.entries(example.result.value.parameters).map(entry => ({
+                            name: entry[0],
+                            value: entry[1]
+                        }))
+                    }
+
                     const result = method.result.schema.examples ? method.result.schema.examples[Math.min(i, method.result.schema.examples.length-1)] : getReferencedSchema(method.result.schema.$ref, json).examples[0]
                     example.result = {
                         "name": "result",
@@ -132,6 +147,11 @@ function update(json) {
 
             // remove the result, since this is a notification
             delete method.result
+
+            method.examples.forEach(example => {
+                example.params.push(example.result)
+                delete example.result
+            })
         }
         return method
     })

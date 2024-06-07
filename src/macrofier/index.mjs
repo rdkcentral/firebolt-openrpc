@@ -72,7 +72,7 @@ const macrofy = async (
         treeshakePattern = null,
         treeshakeEntry = null,
         treeshakeTypes = [],
-        moduleWhitelist
+        moduleWhitelist = []
     } = options
 
     return new Promise( async (resolve, reject) => {

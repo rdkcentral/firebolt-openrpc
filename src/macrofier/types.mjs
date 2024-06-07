@@ -756,7 +756,7 @@ function getSchemaType(schema, module, { templateDir = 'types', link = false, co
     return insertConstMacros(getTemplate(path.join(templateDir, 'const')), schema, module)
   }
   else if (schema['x-method']) {
-    const target = JSON.parse(JSON.stringify(module.methods.find(m => m.name === schema['x-method'].split('.').pop())))
+    const target = JSON.parse(JSON.stringify(module.methods.find(m => m.name === schema['x-method'])))
 
     // transform the method copy params to be in the order of the x-additional-params array (and leave out any we don't want)
     if (schema['x-additional-params']) {

@@ -27,7 +27,8 @@ import { readJson } from '../shared/filesystem.mjs'
 /************************************************************************************************/
 // destructure well-known cli args and alias to variables expected by script
 const run = async ({
-  input: input,
+  server: server,
+  client: client,
   template: template,
   output: output,
   examples: examples,
@@ -39,7 +40,7 @@ const run = async ({
   // Important file/directory locations
   try {
     // Important file/directory locations
-    const packageJsonFile = path.join(path.dirname(input), '..', 'package.json')
+    const packageJsonFile = path.join(path.dirname(server), '..', 'package.json')
     const packageJson = await readJson(packageJsonFile)
     libraryName = packageJson.name || libraryName
   }
@@ -50,7 +51,7 @@ const run = async ({
 
   const config = await readJson(path.join(language, 'language.config.json'))
 
-  return macrofy(input, template, output, {
+  return macrofy(server, client, template, output, {
     headline: "documentation",
     outputDirectory:    'content',
     sharedTemplates:    path.join(language, 'templates'),

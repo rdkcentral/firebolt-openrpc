@@ -13,15 +13,6 @@
 					"name": "capabilities",
 					"x-provides": "xrn:firebolt:capability:test:simple",
 					"x-allow-focus": false
-				},
-				{
-					"name": "event",
-					"x-response": {
-						"type": "string",
-						"examples": [
-							"a value!"
-						]
-					}
 				}
 			],
 			"summary": "Dispatches a request for the simple method to the simple provider.",
@@ -29,7 +20,7 @@
 			"result": {
 				"name": "result",
 				"schema": {
-					"$ref": "#/components/schemas/SimpleProviderRequest"
+					"type": "string"
 				}
 			},
 			"examples": [
@@ -38,30 +29,18 @@
 					"params": [],
 					"result": {
 						"name": "result",
-						"value": {
-							"correlationId": "123",
-							"parameters": null
-						}
+						"value": "a value!"
 					}
 				}
 			]
 		},
 		{
-			"name": "onRequestHandshakeMethod",
+			"name": "handshakeMethod",
 			"tags": [
 				{
 					"name": "capabilities",
 					"x-provides": "xrn:firebolt:capability:test:handshake",
 					"x-allow-focus": true
-				},
-				{
-					"name": "event",
-					"x-response": {
-						"type": "string",
-						"examples": [
-							"a value for handshake!"
-						]
-					}
 				}
 			],
 			"summary": "Dispatches a request for the simple method, with a handshake, to the simple provider.",
@@ -69,7 +48,7 @@
 			"result": {
 				"name": "result",
 				"schema": {
-					"$ref": "#/components/schemas/SimpleProviderRequest"
+					"type": "string"
 				}
 			},
 			"examples": [
@@ -78,30 +57,18 @@
 					"params": [],
 					"result": {
 						"name": "result",
-						"value": {
-							"correlationId": "123",
-							"parameters": null
-						}
+						"value": "a value for handshake!"
 					}
 				}
 			]
 		},
 		{
-			"name": "onRequestMultiMethodOne",
+			"name": "multiMethodOne",
 			"tags": [
 				{
 					"name": "capabilities",
 					"x-provides": "xrn:firebolt:capability:test:multi",
 					"x-allow-focus": false
-				},
-				{
-					"name": "event",
-					"x-response": {
-						"type": "string",
-						"examples": [
-							"a first value!"
-						]
-					}
 				}
 			],
 			"summary": "Dispatches a request for the simple method one to the simple provider.",
@@ -109,7 +76,7 @@
 			"result": {
 				"name": "result",
 				"schema": {
-					"$ref": "#/components/schemas/SimpleProviderRequest"
+					"type": "string"
 				}
 			},
 			"examples": [
@@ -118,30 +85,18 @@
 					"params": [],
 					"result": {
 						"name": "result",
-						"value": {
-							"correlationId": "123",
-							"parameters": null
-						}
+						"value": "a first value!"
 					}
 				}
 			]
 		},
 		{
-			"name": "onRequestMultiMethodTwo",
+			"name": "multiMethodTwo",
 			"tags": [
 				{
 					"name": "capabilities",
 					"x-provides": "xrn:firebolt:capability:test:multi",
 					"x-allow-focus": false
-				},
-				{
-					"name": "event",
-					"x-response": {
-						"type": "string",
-						"examples": [
-							"a second value!"
-						]
-					}
 				}
 			],
 			"summary": "Dispatches a request for the simple method two to the simple provider.",
@@ -149,7 +104,7 @@
 			"result": {
 				"name": "result",
 				"schema": {
-					"$ref": "#/components/schemas/SimpleProviderRequest"
+					"type": "string"
 				}
 			},
 			"examples": [
@@ -158,50 +113,79 @@
 					"params": [],
 					"result": {
 						"name": "result",
-						"value": {
-							"correlationId": "456",
-							"parameters": null
-						}
+						"value": "a second value!"
 					}
 				}
 			]
 		},
 		{
-			"name": "onRequestNoResponseMethod",
+			"name": "noResponseMethod",
 			"tags": [
 				{
 					"name": "capabilities",
 					"x-provides": "xrn:firebolt:capability:test:noresponse",
 					"x-allow-focus": false
-				},
-				{
-					"name": "event"
 				}
 			],
 			"summary": "Dispatches a request for the simple method to the simple provider.",
-			"params": [],
+			"params": [
+				{
+					"name": "first",
+					"required": false,
+					"schema": {
+						"type": "boolean"
+					}
+				},
+				{
+					"name": "second",
+					"required": false,
+					"schema": {
+						"type": "array",
+						"items": {
+							"type": "integer"
+						}
+					}
+				},
+				{
+					"name": "last",
+					"required": false,
+					"schema": {
+						"type": "string",
+						"enum": [
+							"foo",
+							"bar"
+						]
+					}
+				}
+			],
 			"result": {
 				"name": "result",
 				"schema": {
-					"$ref": "#/components/schemas/NoResponseProviderRequest"
+					"type": "null"
 				}
 			},
 			"examples": [
 				{
 					"name": "Get simple",
-					"params": [],
+					"params": [
+						{
+							"name": "first",
+							"value": true
+						},
+						{
+							"name": "second",
+							"value": [
+								1
+							]
+						},
+						{
+							"name": "last",
+							"value": "foo"
+						}
+					],
 					"result": {
 						"name": "result",
-						"value": {
-							"correlationId": "123",
-							"parameters": {
-								"first": true,
-								"second": [
-									1
-								],
-								"last": "foo"
-							}
-						}
+						"value": null
 					}
 				}
 			]
@@ -243,24 +227,7 @@
 							"parameters": {
 								"title": "NoResponseParametes",
 								"type": "object",
-								"properties": {
-									"first": {
-										"type": "boolean"
-									},
-									"second": {
-										"type": "array",
-										"items": {
-											"type": "integer"
-										}
-									},
-									"last": {
-										"type": "string",
-										"enum": [
-											"foo",
-											"bar"
-										]
-									}
-								}
+								"properties": {}
 							}
 						}
 					}

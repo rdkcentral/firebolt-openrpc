@@ -48,14 +48,14 @@
 						{
 							"name": "appId",
 							"value": "hulu"
+						},
+						{
+							"name": "result",
+							"value": {
+								"foo": "bar"
+							}
 						}
-					],
-					"result": {
-						"name": "result",
-						"value": {
-							"foo": "bar"
-						}
-					}
+					]
 				}
 			]
 		},
@@ -112,14 +112,14 @@
 						{
 							"name": "state",
 							"value": "inactive"
+						},
+						{
+							"name": "result",
+							"value": {
+								"foo": "bar"
+							}
 						}
-					],
-					"result": {
-						"name": "result",
-						"value": {
-							"foo": "bar"
-						}
-					}
+					]
 				}
 			]
 		},

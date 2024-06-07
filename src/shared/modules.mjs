@@ -479,18 +479,13 @@ const createNotifierFromProperty = property => {
         'x-event': methodRename(notifier, name => 'on' + name.charAt(0).toUpperCase() + name.substring(1))
     })
 
-    if (property.tags.find(t => (t.name == 'property' || t.name.startsWith('property:')) && (subscriberType === 'global'))) { 
-        notifier.params = []
-        notifier.result = {
-            name: "info",
-            schema: {
-                "$ref": "#/components/schemas/" + methodRename(property, name => name.charAt(0).toUpperCase() + name.substring(1) + 'ChangedInfo'),
-            }
-        }
-    }
-
     notifier.params.push(notifier.result)
     delete notifier.result
+
+    notifier.examples.forEach(example => {
+        example.params.push(example.result)
+        delete example.result
+    })
 
     return notifier
 }
