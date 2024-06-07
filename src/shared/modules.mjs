@@ -1808,6 +1808,7 @@ const getModule = (name, json, copySchemas, extractSubSchemas) => {
     let openrpc = JSON.parse(JSON.stringify(json))
     openrpc.methods = openrpc.methods
                         .filter(method => method.name.toLowerCase().startsWith(name.toLowerCase() + '.'))
+                        .filter(method => method.name !== 'rpc.discover') 
 //                        .map(method => Object.assign(method, { name: method.name.split('.').pop() }))
     openrpc.info.title = name
     openrpc.components.schemas = Object.fromEntries(Object.entries(openrpc.components.schemas).filter( ([key, schema]) => key.startsWith('http') || key.split('.')[0] === name))

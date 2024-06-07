@@ -57,6 +57,6 @@
      }
  }
  
- win.__firebolt.setTransportLayer(transport)
+ win.__firebolt.transport = transport
 
  export default transport
