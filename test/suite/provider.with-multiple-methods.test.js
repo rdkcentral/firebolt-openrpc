@@ -16,7 +16,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { Provider } from '../../build/sdk/javascript/src/sdk.mjs'
+import { Settings, Provider } from '../../build/sdk/javascript/src/sdk.mjs'
 import Setup from '../Setup.js'
 import { transport } from '../TransportHarness.js'
 
@@ -24,7 +24,6 @@ let providerMethodOneNotificationRegistered = false
 let providerMethodOneRequestDispatched = false
 let providerMethodOneResultSent = false
 let numberOfArgsMethodOne = -1
-let methodOneParameters
 let methodOneSession
 let valueOne
 let responseCorrelationIdOne
@@ -41,70 +40,56 @@ let responseCorrelationIdTwo
 
 beforeAll( () => {
 
+    Settings.setLogLevel('DEBUG')
+
     class MultiProvider {
-        multiMethodOne(...args) {
-            numberOfArgsMethodOne = args.length
-            methodOneParameters = args[0]
-            methodOneSession = args[1]
+        multiMethodOne() {
+            numberOfArgsMethodOne = arguments.length
             return Promise.resolve('a value!')
         }
 
-        multiMethodTwo(...args) {
-            numberOfArgsMethodTwo = args.length
-            methodTwoParameters = args[0]
-            methodTwoSession = args[1]
+        multiMethodTwo() {
+            numberOfArgsMethodTwo = arguments.length
             return Promise.resolve('another value!')
         }
     }
     
     transport.onSend(json => {
-        if (json.method === 'provider.onRequestMultiMethodOne') {
-            providerMethodOneNotificationRegistered = true
+        if (json.method) {
+            if (json.method === 'Provider.provideMultipleMethods') {
+                providerMethodOneNotificationRegistered = true
+                providerMethodTwoNotificationRegistered = true
 
-            // Confirm the listener is on
-            transport.response(json.id, {
-                listening: true,
-                event: json.method
-            })
-
-            // send out a request event
-            setTimeout( _ => {
-                providerMethodOneRequestDispatched = true
-                transport.response(json.id, {
-                    correlationId: 123
+                // send out a request event
+                setTimeout( _ => {
+                    providerMethodOneRequestDispatched = true
+                    transport.request({
+                        id: 1,
+                        method: 'MultipleMethods.multiMethodOne'
+                    })
                 })
-            })
+                setTimeout( _ => {
+                    providerMethodTwoRequestDispatched = true
+                    transport.request({
+                        id: 2,
+                        method: "MultipleMethods.multiMethodTwo"
+                    })
+                })                
+            }
         }
-        else if (json.method === 'provider.multiMethodOneResponse') {
-            providerMethodOneResultSent = true
-            valueOne = json.params.result
-            responseCorrelationIdOne = json.params.correlationId
-        }
-        if (json.method === 'provider.onRequestMultiMethodTwo') {
-            providerMethodTwoNotificationRegistered = true
-
-            // Confirm the listener is on
-            transport.response(json.id, {
-                listening: true,
-                event: json.method
-            })
-
-            // send out a request event
-            setTimeout( _ => {
-                providerMethodTwoRequestDispatched = true
-                transport.response(json.id, {
-                    correlationId: 456
-                })
-            })
-        }
-        else if (json.method === 'provider.multiMethodTwoResponse') {
-            providerMethodTwoResultSent = true
-            valueTwo = json.params.result
-            responseCorrelationIdTwo = json.params.correlationId
+        else {
+            if (json.id === 1 && json.result) {
+                providerMethodOneResultSent = true
+                valueOne = json.result
+            }    
+            else if (json.id === 2 && json.result) {
+                providerMethodTwoResultSent = true
+                valueTwo = json.result
+            }
         }
     })
 
-    Provider.provide('xrn:firebolt:capability:test:multi', new MultiProvider())    
+    Provider.provideMultipleMethods(new MultiProvider()) 
 
     return new Promise( (resolve, reject) => {
         setTimeout(resolve, 100)
@@ -125,23 +110,7 @@ test('Provider method 1 request dispatched', () => {
 })
 
 test('Provide method 1 called with two args', () => {
-    expect(numberOfArgsMethodOne).toBe(2)
-})
-
-test('Provide method 1 parameters arg is null', () => {
-    expect(methodOneParameters).toBe(null)
-})
-
-test('Provide method 1 session arg has correlationId', () => {
-    expect(methodOneSession.correlationId()).toBe(123)
-})
-
-test('Provide method 1 session arg DOES NOT have focus', () => {
-    expect(methodOneSession.hasOwnProperty('focus')).toBe(false)
-})
-
-test('Provider response 1 used correct correlationId', () => {
-    expect(responseCorrelationIdOne).toBe(123)
+    expect(numberOfArgsMethodOne).toBe(0)
 })
 
 test('Provider method 1 result is correct', () => {
@@ -157,23 +126,7 @@ test('Provider method 2 request dispatched', () => {
 })
 
 test('Provide method 2 called with two args', () => {
-    expect(numberOfArgsMethodTwo).toBe(2)
-})
-
-test('Provide method 2 parameters arg is null', () => {
-    expect(methodTwoParameters).toBe(null)
-})
-
-test('Provide method 2 session arg has correlationId', () => {
-    expect(methodTwoSession.correlationId()).toBe(456)
-})
-
-test('Provide method 2 session arg DOES NOT have focus', () => {
-    expect(methodTwoSession.hasOwnProperty('focus')).toBe(false)
-})
-
-test('Provider response 2 used correct correlationId', () => {
-    expect(responseCorrelationIdTwo).toBe(456)
+    expect(numberOfArgsMethodTwo).toBe(0)
 })
 
 test('Provider method 2 result is correct', () => {

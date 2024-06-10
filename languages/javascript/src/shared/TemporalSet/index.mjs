@@ -15,7 +15,7 @@ function stopSession(module, method) {
     delete sessions[module.toLowerCase() + '.' + method]
 }
 
-function start(module, method, addName, removeName, params, add, remove, timeout, transforms) {
+async function start(module, method, addName, removeName, params, add, remove, timeout, transforms) {
     let session = getSession(module, method)
 
     if (session) {
@@ -62,27 +62,23 @@ function start(module, method, addName, removeName, params, add, remove, timeout
         })    
     }
     
-    const results = Gateway.request(requests)
+    const results = await Gateway.batch(requests)
 
-    session.id = results[0].id
     session.add = add
     session.remove = remove
     session.addName = addName
     session.removeName = removeName
 
-    results[0].promise.then( items => {
-        add && items && items.forEach(item => add(item))
-    })
 
     if (add) {
+        results[0] && results[0].forEach(item => add(item))
+
         return {
             stop: () => {
                 const requests = [
                     {
                         method: `${module}.stop${method.charAt(0).toUpperCase() + method.substr(1)}`,
-                        params: {
-                            correlationId: session.id
-                        }
+                        params: {}
                     },
                     {
                         method: `${module}.${addName}`,
@@ -104,22 +100,18 @@ function start(module, method, addName, removeName, params, add, remove, timeout
                 }
                 
                 Gateway.unsubscribe(`${module}.${removeName}`)
-                Gateway.request(requests)
+                Gateway.batch(requests)
                 stopSession(module, method)
             }
         }
     }
     else if (timeout) {
-        return results[0].promise.then(results => {
-            stopSession(module, method)
-            return results.shift()
-        })
+        stopSession(module, method)
+        return results[0].shift()
     }
     else {
-        return results[0].promise.then(results => {
-            stopSession(module, method)
-            return results
-        })
+        stopSession(module, method)
+        return Promise.resolve(results[0])
     }
 }
 

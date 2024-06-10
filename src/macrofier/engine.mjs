@@ -1847,6 +1847,8 @@ function generateProviderSubscribe(server, client, templates, bidirectional) {
 function generateProviderInterfaces(server, client, templates, codeblock, directory, bidirectional) {
   const interfaces = getProvidedInterfaces(client || server)
   
+  console.dir(interfaces)
+
   let template = getTemplate('/sections/provider-interfaces', templates)
 
   const providers = reduce((acc, _interface) => {

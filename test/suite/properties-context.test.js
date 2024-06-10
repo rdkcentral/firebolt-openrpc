@@ -33,13 +33,13 @@ beforeAll( () => {
 
     transport.onSend(json => {
         console.dir(json)
-        if (json.method === 'advanced.propertyWithContext') {
+        if (json.method === 'Advanced.propertyWithContext') {
             if (json.params.appId === 'some-app') {
                 contextSentToGetter = true
             }
             transport.response(json.id, true)            
         }
-        else if (json.method === 'advanced.onPropertyWithContextChanged') {
+        else if (json.method === 'Advanced.onPropertyWithContextChanged') {
             if (json.params.appId === 'some-app') {
                 contextSentToSubscriber = true
             }
@@ -55,7 +55,7 @@ beforeAll( () => {
                 transport.response(json.id, false)
             })
         }
-        else if (json.method === 'advanced.setPropertyWithContext') {
+        else if (json.method === 'Advanced.setPropertyWithContext') {
             if (json.params.appId === 'some-app') {
                 contextSentToSetter = true
             }
@@ -65,12 +65,12 @@ beforeAll( () => {
                 propertySetterWasTriggeredWithValue = true
             }
         }
-        else if (json.method === "advanced.onEventWithContext") {
+        else if (json.method === "Advanced.onEventWithContext") {
             if (json.params.appId === 'some-app') {
                 contextSentToEvent = true
             }
         }
-        else if (json.method === "advanced.onEventWithTwoContext") {
+        else if (json.method === "Advanced.onEventWithTwoContext") {
             if (json.params.appId === 'some-app' && json.params.state === 'inactive') {
                 bothContextSentToEvent = true
             }

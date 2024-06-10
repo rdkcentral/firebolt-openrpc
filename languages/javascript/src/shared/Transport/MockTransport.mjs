@@ -35,7 +35,7 @@ if (win.__firebolt && win.__firebolt.testHarness) {
 function send(json) {
   // handle bulk sends
   if (Array.isArray(json)) {
-    json.forEach(j => send(JSON.stringify(j)))
+    json.forEach(send)
     return
   }
 

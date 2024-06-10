@@ -16,7 +16,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { Provider } from '../../build/sdk/javascript/src/sdk.mjs'
+import { Settings, Provider } from '../../build/sdk/javascript/src/sdk.mjs'
 import Setup from '../Setup.js'
 import { transport } from '../TransportHarness.js'
 
@@ -25,10 +25,10 @@ let providerMethodRequestDispatched = false
 let providerMethodErrorSent = false
 let methodSession
 let value
-let responseCorrelationId
-
 
 beforeAll( () => {
+
+    Settings.setLogLevel('DEBUG')
 
     class SimpleProvider {
         simpleMethod(...args) {
@@ -45,31 +45,29 @@ beforeAll( () => {
     }
     
     transport.onSend(json => {
-        if (json.method === 'provider.onRequestSimpleMethod') {
-            providerMethodNotificationRegistered = true
+        if (json.method) {
+            if (json.method === 'Provider.provideSimple') {
+                providerMethodNotificationRegistered = true
 
-            // Confirm the listener is on
-            transport.response(json.id, {
-                listening: true,
-                event: json.method
-            })
-
-            // send out a request event
-            setTimeout( _ => {
-                providerMethodRequestDispatched = true
-                transport.response(json.id, {
-                    correlationId: 123
+                // send out a request event
+                setTimeout( _ => {
+                    providerMethodRequestDispatched = true
+                    transport.request({
+                        id: 1,
+                        method: 'Simple.simpleMethod'
+                    })
                 })
-            })
+            }
         }
-        else if (json.method === 'provider.simpleMethodError') {
-            providerMethodErrorSent = true
-            value = json.params.error
-            responseCorrelationId = json.params.correlationId
+        else {
+            if (json.id === 1 && json.error) {
+                providerMethodErrorSent = true
+                value = json.error
+            }    
         }
     })
 
-    Provider.provide('xrn:firebolt:capability:test:simple', new SimpleProvider())    
+    Provider.provideSimple(new SimpleProvider())    
 
     return new Promise( (resolve, reject) => {
         setTimeout(resolve, 100)
@@ -87,18 +85,6 @@ test('Provider method notification turned on', () => {
 
 test('Provider method request dispatched', () => {
     expect(providerMethodRequestDispatched).toBe(true)
-})
-
-test('Provide method session arg has correlationId', () => {
-    expect(methodSession.correlationId()).toBe(123)
-})
-
-test('Provide method session arg DOES NOT have focus', () => {
-    expect(methodSession.hasOwnProperty('focus')).toBe(false)
-})
-
-test('Provider response used correct correlationId', () => {
-    expect(responseCorrelationId).toBe(123)
 })
 
 test('Provider method error is correct', () => {

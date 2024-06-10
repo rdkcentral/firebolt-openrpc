@@ -37,52 +37,64 @@ win.__firebolt.idGenerator = idGenerator
 const promises = {}
 const deprecated = {}
 
-// consider renaming `batch`
-
-export async function bulk(requests) {
+// request = { method: string, params: object, id: boolean }[]
+// request with no `id` property are assumed to NOT be notifications, i.e. id must be set to false explicitly
+export async function batch(requests) {
     if (Array.isArray(requests)) {
-        const body = requests.map(req => processRequest(req.method, req.params))
-        Transport.send(body)
-        return await Promise.all(requests.map((req, i) => addPromiseToQueue(req.id, requests[i].transforms)))
+        const processed = requests.map(req => processRequest(req.method, req.params, req.id, req.id === false))
+
+        // filter requests exclude notifications, as they don't need promises
+        const promises = processed.filter(req => req.id).map(request => addPromiseToQueue(request.id))
+
+        Transport.send(processed)
+
+        // Using Promise.all get's us batch blocking for free
+        return Promise.all(promises)
     }
     throw `Bulk requests must be in an array`
 }
 
 // Request that the server provide fulfillment of an method
-export async function request(method, params, transforms) {
+export async function request(method, params) {
     const json = processRequest(method, params)
-    const promise = addPromiseToQueue(json.id, transforms)
+    const promise = addPromiseToQueue(json.id)
     Transport.send(json)
     return promise
 }
 
-export async function notify(method, params) {
+export function notify(method, params) {
     Transport.send(processRequest(method, params, true))
 }
 
 export function response(id, result, error) {
-    if (result !== undefined) {
-        promises[id].resolve(result)
-    }
-    else if (error !== undefined) {
-        promises[id].reject(error)
-    }
+    const promise = promises[id]
 
-    // TODO make sure this works
-    delete promises[id]
+    if (promise) {
+        if (result !== undefined) {
+            promises[id].resolve(result)
+        }
+        else if (error !== undefined) {
+            promises[id].reject(error)
+        }
+    
+        // TODO make sure this works
+        delete promises[id]    
+    }
+    else {
+        throw `Received a response for an unidentified request ${id}`
+    }
 }
 
 export function deprecate(method, alternative) {
     deprecated[method] = alternative    
 }
 
-function addPromiseToQueue (id, transforms) {
+function addPromiseToQueue (id) {
     return new Promise((resolve, reject) => {
       promises[id] = {}
       promises[id].promise = this
       promises[id].resolve = resolve
       promises[id].reject = reject
-      promises[id].transforms = transforms
     })
 }
 
@@ -103,7 +115,7 @@ function processRequest(method, params, notification=false) {
 
 export default {
     request,
-    bulk,
+    batch,
     response,
     deprecate
 }

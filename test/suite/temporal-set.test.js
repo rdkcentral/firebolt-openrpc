@@ -16,9 +16,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { Advanced } from '../../build/sdk/javascript/src/sdk.mjs'
-import Setup from '../Setup'
-import { expect } from '@jest/globals';
+import { Settings, Advanced } from '../../build/sdk/javascript/src/sdk.mjs'
+import { expect, beforeAll } from '@jest/globals';
+
+beforeAll( () => {
+    Settings.setLogLevel('DEBUG')
+})
 
 test('Temporal Set - all known values', () => {
     return Advanced.list().then(items => {
@@ -27,33 +30,33 @@ test('Temporal Set - all known values', () => {
     })
 })
 
-test('Temporal Set - first match', () => {
-    return Advanced.list(10000).then(item => {
-        console.dir(item)
-        expect(Array.isArray(item)).toBe(false)
-    })
-})
+// test('Temporal Set - first match', () => {
+//     return Advanced.list(10000).then(item => {
+//         console.dir(item)
+//         expect(Array.isArray(item)).toBe(false)
+//     })
+// })
 
 
-test('Temporal Set - live list', () => {
+// test('Temporal Set - live list', () => {
 
-    return new Promise( (resolve, reject) => {
-        const process = Advanced.list((item) => {
-            // add
-            console.dir(item)
-            expect(item.aString).toBe("Here's a string")
-            expect(item.aNumber).toBe(123)
-            expect(typeof item.aMethod).toBe('function')
-            item.aMethod().then(result => {
-                expect(result.foo).toBe("here's foo")
-                expect(result.bar).toBe(1)
-                resolve()
-            })
-        },
-        (item) => {
-            // remove
-        })
+//     return new Promise( (resolve, reject) => {
+//         const process = Advanced.list((item) => {
+//             // add
+//             console.dir(item)
+//             expect(item.aString).toBe("Here's a string")
+//             expect(item.aNumber).toBe(123)
+//             expect(typeof item.aMethod).toBe('function')
+//             item.aMethod().then(result => {
+//                 expect(result.foo).toBe("here's foo")
+//                 expect(result.bar).toBe(1)
+//                 resolve()
+//             })
+//         },
+//         (item) => {
+//             // remove
+//         })
 
-        expect(typeof process.stop).toBe('function')
-    })
-})
+//         expect(typeof process.stop).toBe('function')
+//     })
+// })

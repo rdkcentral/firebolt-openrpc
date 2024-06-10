@@ -22,7 +22,15 @@ import Transport from "../Transport/index.mjs"
 import Settings from "../Settings/index.mjs"
 
 Transport.receive(async (json) => {
-    // console.debug('Received message from transport: \n' + JSON.stringify(json, { indent: '\t'}))
+    if (Array.isArray(json)) {
+        json.forEach(message => processMessage(message))
+    }
+    else {
+        processMessage(json)
+    }
+})
+
+function processMessage(json) {
     if (Settings.getLogLevel() === 'DEBUG') {
         console.debug('Receiving message from transport: \n' + JSON.stringify(json, { indent: '\t'}))
     }
@@ -38,14 +46,32 @@ Transport.receive(async (json) => {
     else if (json.id !== undefined) {
         Client.response(json.id, json.result, json.error)
     }
-})
+}
+
+export async function batch(requests) {
+    if (Array.isArray(requests)) {
+        return await Client.batch(requests)
+    }
+    else {
+        throw "Gateway.batch() requires an array of requests: { method: String, params: Object, id: Boolean }"
+    }
+}
 
 export async function request(method, params) {
     if (Array.isArray(method)) {
-        return await Client.bulk(method)
+        throw "Use Gateway.batch() for batch requests."
     }
     else {
         return await Client.request(method, params)
+    }
+}
+
+export async function notify(method, params) {
+    if (Array.isArray(method)) {
+        throw "Use Gateway.batch() for batch requests."
+    }
+    else {
+        return await Client.notify(method, params)
     }
 }
 
@@ -65,9 +91,10 @@ export function deprecate(method, alternative) {
     Client.deprecate(method, alternative)
 }
 
-
 export default {
     request,
+    notify,
+    batch,
     subscribe,
     unsubscribe,
     provide,

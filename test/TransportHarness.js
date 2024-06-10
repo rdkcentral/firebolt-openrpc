@@ -36,8 +36,7 @@
  let receiver
  
  export const transport = {
-     send: function(message) {
-         const json = JSON.parse(message)
+     send: function(json) {
          sendListener && sendListener(json)
      },
      receive: function(callback) {
@@ -53,7 +52,10 @@
              id: id,
              result: result
          }
-         receiver && receiver(JSON.stringify(response))
+         receiver && receiver(response)
+     },
+     request: function(json) {
+        receiver && receiver(json)
      }
  }
  

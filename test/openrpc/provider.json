@@ -7,7 +7,133 @@
 	},
 	"methods": [
 		{
-			"name": "simpleMethod",
+			"name": "provideSimple",
+			"tags": [
+				{
+					"name": "registration",
+					"x-interface": "Simple"
+				},
+				{
+					"name": "capabilities",
+					"x-provides": "xrn:firebolt:capability:test:simple"
+				}
+			],
+			"params": [
+				{
+					"name": "enabled",
+					"schema": {
+						"type": "boolean"
+					}
+				}
+			],
+			"result": {
+				"name": "result",
+				"schema": {
+					"const": null
+				}
+			},
+			"examples": [
+				{
+					"name": "Default example",
+					"params": [
+						{
+							"name": "enabled",
+							"value": true
+						}
+					],
+					"result": {
+						"name": "result",
+						"value": null
+					}
+				}
+			]
+		},
+		{
+			"name": "provideMultipleMethods",
+			"tags": [
+				{
+					"name": "registration",
+					"x-interface": "MultipleMethods"
+				},
+				{
+					"name": "capabilities",
+					"x-provides": "xrn:firebolt:capability:test:multi"
+				}
+			],
+			"params": [
+				{
+					"name": "enabled",
+					"schema": {
+						"type": "boolean"
+					}
+				}
+			],
+			"result": {
+				"name": "result",
+				"schema": {
+					"const": null
+				}
+			},
+			"examples": [
+				{
+					"name": "Default example",
+					"params": [
+						{
+							"name": "enabled",
+							"value": true
+						}
+					],
+					"result": {
+						"name": "result",
+						"value": null
+					}
+				}
+			]
+		},		
+		{
+			"name": "provideNoResponseMethod",
+			"tags": [
+				{
+					"name": "registration",
+					"x-interface": "NoResponseMethod"
+				},
+				{
+					"name": "capabilities",
+					"x-provides": "xrn:firebolt:capability:test:noresponse"
+				}
+			],
+			"params": [
+				{
+					"name": "enabled",
+					"schema": {
+						"type": "boolean"
+					}
+				}
+			],
+			"result": {
+				"name": "result",
+				"schema": {
+					"const": null
+				}
+			},
+			"examples": [
+				{
+					"name": "Default example",
+					"params": [
+						{
+							"name": "enabled",
+							"value": true
+						}
+					],
+					"result": {
+						"name": "result",
+						"value": null
+					}
+				}
+			]
+		},
+		{
+			"name": "Simple.simpleMethod",
 			"tags": [
 				{
 					"name": "capabilities",
@@ -35,35 +161,7 @@
 			]
 		},
 		{
-			"name": "handshakeMethod",
-			"tags": [
-				{
-					"name": "capabilities",
-					"x-provides": "xrn:firebolt:capability:test:handshake",
-					"x-allow-focus": true
-				}
-			],
-			"summary": "Dispatches a request for the simple method, with a handshake, to the simple provider.",
-			"params": [],
-			"result": {
-				"name": "result",
-				"schema": {
-					"type": "string"
-				}
-			},
-			"examples": [
-				{
-					"name": "Get handshake",
-					"params": [],
-					"result": {
-						"name": "result",
-						"value": "a value for handshake!"
-					}
-				}
-			]
-		},
-		{
-			"name": "multiMethodOne",
+			"name": "MultipleMethods.multiMethodOne",
 			"tags": [
 				{
 					"name": "capabilities",
@@ -91,7 +189,7 @@
 			]
 		},
 		{
-			"name": "multiMethodTwo",
+			"name": "MultipleMethods.multiMethodTwo",
 			"tags": [
 				{
 					"name": "capabilities",
@@ -119,7 +217,7 @@
 			]
 		},
 		{
-			"name": "noResponseMethod",
+			"name": "NoResponseMethod.noResponseMethod",
 			"tags": [
 				{
 					"name": "capabilities",

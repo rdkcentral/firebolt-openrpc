@@ -93,7 +93,7 @@ export function registerProviderInterface(capability, _interface, method, parame
 }
 
 
-async function getProviderResult(method, params) {
+async function getProviderResult(method, params={}) {
     const split = method.split('.')
     method = split.pop()
     const interfaceName = split.join('.')
