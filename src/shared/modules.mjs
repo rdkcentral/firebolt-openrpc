@@ -502,6 +502,7 @@ const createNotifierFromProperty = (property, type='Changed') => {
 
     if (subscriberType === 'global') {
         notifier.examples = property.examples.map(example => ({
+            name: example.name,
             params: [
                 {
                     name: "info",

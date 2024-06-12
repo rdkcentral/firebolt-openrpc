@@ -18,7 +18,7 @@
 
 import { readJson, readFiles, readDir } from "../shared/filesystem.mjs"
 import { addExternalMarkdown, addExternalSchemas, fireboltize } from "../shared/modules.mjs"
-import { removeIgnoredAdditionalItems, replaceUri } from "../shared/json-schema.mjs"
+import { namespaceRefs, removeIgnoredAdditionalItems, replaceUri } from "../shared/json-schema.mjs"
 import { validate, displayError, validatePasshtroughs } from "./validator/index.mjs"
 import { logHeader, logSuccess, logError } from "../shared/io.mjs"
 
@@ -188,6 +188,12 @@ const run = async ({
         let json = JSON.parse(modules[key])
 
         if (transformations) {
+
+            // put module name in front of each method
+            json.methods.filter(method => method.name.indexOf('.') === -1).forEach(method => method.name = json.info.title + '.' + method.name)
+            json.components && json.components.schemas && (json.components.schemas = Object.fromEntries(Object.entries(json.components.schemas).map( ([key, schema]) => ([json.info.title + '.' + key, schema]) )))
+            namespaceRefs('', json.info.title, json)
+
             // Do the firebolt API magic
             json = fireboltize(json, bidirectional)
 
@@ -275,11 +281,6 @@ const run = async ({
                     }
                 }
             })
-
-            if (method.name === 'Device.distributor') {
-                console.dir(exampleSpec.oneOf, { depth: 100 })
-                console.dir(method.examples)
-            }
 
             const examples = ajv.compile(exampleSpec)
 
