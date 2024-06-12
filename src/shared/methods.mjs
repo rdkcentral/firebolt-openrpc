@@ -32,6 +32,8 @@ export const rename = (method, renamer) => method.name.split('.').map((x, i, arr
 
 export const getNotifier = (method, client) => client.methods.find(m => m.name === method.tags.find(t => t.name === "event")['x-notifier'])
 export const getEvent = (method, server) => server.methods.find(m => m.name === method.tags.find(t => t.name === "notifier")['x-event'])
+export const getCapability = (method) => Object.values(capabilities(method)).map(v => Array.isArray(v) ? v.shift() : v).filter(v => typeof v === 'string').find(x => (x.startsWith('xrn:firebolt:capability')))
+export const getRole = (method) => Object.keys(capabilities(method)).find(x => ['x-uses', 'x-provides', 'x-manages'].includes(x))
 
 export const provides = (method) => extension(method, 'x-provides')
 

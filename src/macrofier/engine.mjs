@@ -1298,6 +1298,7 @@ function insertMethodMacros(template, methodObj, server, client, templates, type
       name: methodObj.name.split('.').pop(),
       params: methodObj.params.map(p => p.name).join(', '),
       transforms: null,
+      transform: '',
       alternative: null,
       deprecated: isDeprecatedMethod(methodObj),
       context: []
@@ -1320,6 +1321,7 @@ function insertMethodMacros(template, methodObj, server, client, templates, type
       method.transforms = {
         methods: getMethodAttributes(flattenedMethod)
       }
+      method.transform = getTemplate('/codeblocks/transform', templates).replace(/\$\{transforms\}/g, JSON.stringify(method.transforms))
     }
 
     const paramDelimiter = config.operators ? config.operators.paramDelimiter : ''
@@ -1370,7 +1372,6 @@ function insertMethodMacros(template, methodObj, server, client, templates, type
     const setterFor = methodObj.tags.find(t => t.name === 'setter') && methodObj.tags.find(t => t.name === 'setter')['x-setter-for'] || ''
     const pullsResult = (puller || pullsFor) ? localizeDependencies(pullsFor || methodObj, server).params.findLast(x=>true).schema : null
     const pullsParams = (puller || pullsFor) ? localizeDependencies(getPayloadFromEvent(puller || methodObj, document), document, null, { mergeAllOfs: true }).properties.parameters : null
-
     const pullsResultType = (pullsResult && (type === 'methods')) ? Types.getSchemaShape(pullsResult, server, { templateDir: state.typeTemplateDir, namespace: !config.copySchemasIntoModules }) : ''
     const pullsForType = pullsResult && Types.getSchemaType(pullsResult, server, { templateDir: state.typeTemplateDir, namespace: !config.copySchemasIntoModules })
     const pullsParamsType = (pullsParams && (type === 'methods')) ? Types.getSchemaShape(pullsParams, server, { templateDir: state.typeTemplateDir, namespace: !config.copySchemasIntoModules }) : ''
@@ -1512,6 +1513,7 @@ function insertMethodMacros(template, methodObj, server, client, templates, type
       .replace(/\$\{method\.property\.readonly\}/g, !getSetterFor(methodObj.name, server))
       .replace(/\$\{method\.temporalset\.add\}/g, temporalAddName)
       .replace(/\$\{method\.temporalset\.remove\}/g, temporalRemoveName)
+      .replace(/\$\{method\.transform}/g, method.transform)
       .replace(/\$\{method\.transforms}/g, JSON.stringify(method.transforms))
       .replace(/\$\{method\.seeAlso\}/g, seeAlso)
       .replace(/\$\{method\.item\}/g, itemName)
@@ -1523,6 +1525,7 @@ function insertMethodMacros(template, methodObj, server, client, templates, type
       .replace(/\$\{method\.result\.type\}/g, Types.getSchemaType(result.schema, server, { templateDir: state.typeTemplateDir, title: true, asPath: false, result: true, namespace: !config.copySchemasIntoModules })) //, baseUrl: options.baseUrl
       .replace(/\$\{method\.result\.json\}/g, Types.getSchemaType(result.schema, server, { templateDir: 'json-types', title: true, code: false, link: false, asPath: false, expandEnums: false, namespace: !config.copySchemasIntoModules }))
       .replace(/\$\{event\.result\.type\}/g, isEventMethod(methodObj) ? Types.getSchemaType(event.result.schema, document, { templateDir: state.typeTemplateDir, title: true, asPath: false, result: true, namespace: !config.copySchemasIntoModules }) : '')
+      .replace(/\$\{event\.result\.name\}/g, isEventMethod(methodObj) ? event.result.name : '')
       .replace(/\$\{event\.result\.json\.type\}/g, resultJsonType)
       .replace(/\$\{event\.result\.json\.type\}/g, callbackResultJsonType)
       .replace(/\$\{event\.pulls\.param\.name\}/g, pullsEventParamName)

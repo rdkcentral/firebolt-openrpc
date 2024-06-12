@@ -10,8 +10,6 @@ function ${method.name}(...args) {
     else if (typeof args[args.length-1] === 'number') {
         timeout = args.pop()
     }
-
-    const transforms = ${method.transforms}
     
-    return TemporalSet.start('${info.title}', '${method.name}', '${method.temporalset.add}', '${method.temporalset.remove}', args, add, remove, timeout, transforms)
+    return TemporalSet.start('${info.title}', '${method.name}', '${method.temporalset.add}', '${method.temporalset.remove}', args, add, remove, timeout)
 }

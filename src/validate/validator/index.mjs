@@ -19,10 +19,11 @@ import groupBy from 'array.prototype.groupby'
 import util from 'util'
 import { getPayloadFromEvent } from '../../shared/modules.mjs'
 import { getPropertiesInSchema, getPropertySchema } from '../../shared/json-schema.mjs'
+import { getCapability, getRole } from '../../shared/methods.mjs'
 
-const addPrettyPath = (error, json) => {
+const addPrettyPath = (error, json, info) => {
   const path = []
-  const root = json.title || json.info.title
+  const root = json.title || json.info?.title || info?.title || `Unknown`
 
   let pointer = json
   error.instancePath.substr(1).split('/').forEach(x => {
@@ -35,6 +36,8 @@ const addPrettyPath = (error, json) => {
       pointer = pointer[x]
     }
   })
+
+  error.instancePath = (info.path ? info.path : '') + error.instancePath
   error.prettyPath = '/' + path.join('/')
   error.document = root
   error.node = pointer
@@ -127,6 +130,11 @@ export const displayError = (error) => {
   console.error(`\t\x1b[2m${pad('document:')}\x1b[0m\x1b[38;5;208m${error.document}\x1b[0m \x1b[2m(${errorFileType})\x1b[2m\x1b[0m`)
   console.error(`\t\x1b[2m${pad('source:')}\x1b[0m\x1b[38;5;208m${error.source}\x1b[0m`)
 
+  if (error.capability) {
+    console.error(`\t\x1b[2m${pad('capability:')}\x1b[0m\x1b[38;5;208m${error.capability}\x1b[0m`)
+    console.error(`\t\x1b[2m${pad('role:')}\x1b[0m\x1b[38;5;208m${error.role}\x1b[0m`)
+  }
+
   if (error.value) {
     console.error(`\t\x1b[2m${pad('value:')}\x1b[0m\n`)
     console.dir(error.value, {depth: null, colors: true})// + JSON.stringify(example, null, '  ') + '\n')
@@ -139,9 +147,8 @@ export const displayError = (error) => {
   console.error()
 }
 
-export const validate = (json = {}, schemas = {}, ajv, validator, additionalPackages = []) => {
+export const validate = (json = {}, info = {}, ajv, validator, additionalPackages = []) => {
   let valid = validator(json)
-  let root = json.title || json.info.title
   const errors = []
 
   if (valid) {
@@ -150,7 +157,7 @@ export const validate = (json = {}, schemas = {}, ajv, validator, additionalPack
         const additionalValid = addtnlValidator(json)
         if (!additionalValid) {
           valid = false
-          addtnlValidator.errors.forEach(error => addPrettyPath(error, json))
+          addtnlValidator.errors.forEach(error => addPrettyPath(error, json, info))
           addtnlValidator.errors.forEach(error => error.source = 'Firebolt OpenRPC')
           addtnlValidator.errors.forEach(error => addFailingMethodSchema(error, json, addtnlValidator.schema))
           errors.push(...pruneErrors(addtnlValidator.errors))
@@ -159,13 +166,21 @@ export const validate = (json = {}, schemas = {}, ajv, validator, additionalPack
     }
   }
   else {
-    validator.errors.forEach(error => addPrettyPath(error, json))
+    validator.errors.forEach(error => addPrettyPath(error, json, info))
     validator.errors.forEach(error => error.source = 'OpenRPC')
+
+    json.methods && validator.errors.forEach(error => {
+      if (error.instancePath.startsWith('/methods/')) {
+        const method = json.methods[parseInt(error.instancePath.split('/')[2])]
+        error.capability = getCapability(method)
+        error.role = getRole(method)
+      }
+  })
 
     errors.push(...pruneErrors(validator.errors))
   } 
 
-  return { valid: valid, title: json.title || json.info.title, errors: errors }
+  return { valid: valid, title: json.title || info?.title || json.info?.title, errors: errors }
 }
 
 const schemasMatch = (a, b) => {
@@ -219,12 +234,12 @@ export const validatePasshtroughs = (json) => {
       examples2 = provider.examples.map(e => e.params[e.params.length-1].value)
     }
     else {
-      destination = method.result.schema
-      examples1 = method.examples.map(e => e.result.value)
-      source = JSON.parse(JSON.stringify(provider.tags.find(t => t['x-response'])['x-response']))
-      sourceName = provider.tags.find(t => t['x-response'])['x-response-name']
-      examples2 = provider.tags.find(t => t['x-response'])['x-response'].examples
-      delete source.examples
+      // destination = method.result.schema
+      // examples1 = method.examples.map(e => e.result.value)
+      // source = JSON.parse(JSON.stringify(provider.tags.find(t => t['x-response'])['x-response']))
+      // sourceName = provider.tags.find(t => t['x-response'])['x-response-name']
+      // examples2 = provider.tags.find(t => t['x-response'])['x-response'].examples
+      // delete source.examples
     }
 
     if (!schemasMatch(source, destination)) {

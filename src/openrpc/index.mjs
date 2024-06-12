@@ -28,6 +28,9 @@ const run = async ({
   server: server,
   template: template,
   schemas: schemas,
+  argv: {
+    remain: moduleWhitelist
+  }  
 }) => {
 
   let serverOpenRPC = await readJson(template)
@@ -66,9 +69,7 @@ const run = async ({
   const isClientAPI = method => client && (isNotifier(method) || isProvider(method))
   const isServerAPI = method => !isClientAPI(method)
 
-  Object.keys(modules).forEach(key => {
-    let json = JSON.parse(modules[key])
-
+  Object.values(modules).map(JSON.parse).filter(m => moduleWhitelist.length ? moduleWhitelist.includes(m.info.title) : true).forEach(json => {
     // pull in external markdown files for descriptions
     json = addExternalMarkdown(json, markdown)
 
