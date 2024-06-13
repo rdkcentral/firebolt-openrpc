@@ -1,3 +1,10 @@
+# [3.0.0-next.5](https://github.com/rdkcentral/firebolt-openrpc/compare/v3.0.0-next.4...v3.0.0-next.5) (2024-06-13)
+
+
+### Bug Fixes
+
+* Resolve conflicts ([adf6762](https://github.com/rdkcentral/firebolt-openrpc/commit/adf6762c02e1ccd6e7cd708d5249630252bd7c44))
+
 # [3.0.0-next.4](https://github.com/rdkcentral/firebolt-openrpc/compare/v3.0.0-next.3...v3.0.0-next.4) (2024-06-06)
 
 
