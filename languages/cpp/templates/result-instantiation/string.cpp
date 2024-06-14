@@ -1,0 +1,1 @@
+            ${property} = jsonResult.Value().c_str();

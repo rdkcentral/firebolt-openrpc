@@ -142,6 +142,74 @@ const getPath = (uri = '', moduleJson = {}) => {
   }
 }
 
+const getPropertySchema = (json, dotPath, document) => {
+  const path = dotPath.split('.')
+  let node = json
+
+  for (var i=0; i<path.length; i++) {
+    const property = path[i]
+    const remainingPath = path.filter((x, j) => j >= i ).join('.')
+    if (node.$ref) {
+      node = getPropertySchema(getPath(node.$ref, document), remainingPath, document)
+    }
+    else if (property === '') {
+      return node
+    }
+    else if (node.type === 'object' || (node.type && node.type.includes && node.type.includes('object'))) {
+      if (node.properties && node.properties[property]) {
+        node = node.properties[property]
+      }
+      // todo: need to escape the regex?
+      else if (node.patternProperties && property.match(node.patternProperties)) {
+        node = node.patternProperties[property]
+      }
+      else if (node.additionalProperties && typeof node.additionalProperties === 'object') {
+        node = node.additionalProperties
+      }
+    }
+    else if (Array.isArray(node.allOf)) {
+      node = node.allOf.find(s => {
+        let schema
+        try {
+          schema = getPropertySchema(s, remainingPath, document)
+        }
+        catch (error) {
+
+        }
+        return schema
+      })
+    }
+    else {
+      throw `Cannot get property '${dotPath}' of non-object.`
+    }
+  }
+
+  return node
+}
+
+const getPropertiesInSchema = (json, document) => {
+  let node = json
+
+  while (node.$ref) {
+    node = getPath(node.$ref, document)
+  }
+
+  if (node.type === 'object') {
+    const props = []
+    if (node.properties) {
+      props.push(...Object.keys(node.properties))
+    }
+
+    if (node.propertyNames) {
+      props.push(...node.propertyNames)
+    }
+
+    return props
+  }
+  
+  return null
+}
+
 function getSchemaConstraints(schema, module, options = { delimiter: '\n' }) {
   if (schema.schema) {
     schema = schema.schema
@@ -233,7 +301,6 @@ const localizeDependencies = (json, document, schemas = {}, options = defaultLoc
         path.pop() // drop ref
         if (refToPath(ref).length > 1) {
           let resolvedSchema = JSON.parse(JSON.stringify(getPathOr(null, refToPath(ref), document)))
-        
           if (schemaReferencesItself(resolvedSchema, refToPath(ref))) {
             resolvedSchema = null
           }
@@ -355,6 +422,78 @@ const isDefinitionReferencedBySchema = (name = '', moduleJson = {}) => {
   return (refs.length > 0)
 }
 
+function union(schemas) {
+
+  const result = {};
+  for (const schema of schemas) {
+    for (const [key, value] of Object.entries(schema)) {
+      if (!result.hasOwnProperty(key)) {
+        // If the key does not already exist in the result schema, add it
+        if (value && value.anyOf) {
+          result[key] = union(value.anyOf)
+        } else if (key === 'title' || key === 'description' || key === 'required') {
+          //console.warn(`Ignoring "${key}"`)
+        } else {
+          result[key] = value;
+        }
+      } else if (key === '$ref') {
+        if (result[key].endsWith("/ListenResponse")) {
+
+        }
+        // If the key is '$ref' make sure it's the same
+        else if(result[key] === value) {
+          //console.warn(`Ignoring "${key}" that is already present and same`)
+        } else {
+          console.warn(`ERROR "${key}" is not same -${JSON.stringify(result, null, 4)} ${key} ${result[key]} - ${value}`);
+          throw "ERROR: $ref is not same"
+        }
+      } else if (key === 'type') {
+        // If the key is 'type', merge the types of the two schemas
+        if(result[key] === value) {
+          //console.warn(`Ignoring "${key}" that is already present and same`)
+        } else {
+          console.warn(`ERROR "${key}" is not same -${JSON.stringify(result, null, 4)} ${key} ${result[key]} - ${value}`);
+          throw "ERROR: type is not same"
+        }
+      } else {
+        //If the Key is a const then merge them into an enum
+        if(value && value.const) {
+          if(result[key].enum) {
+            result[key].enum = Array.from(new Set([...result[key].enum, value.const]))
+          }
+          else {
+            result[key].enum = Array.from(new Set([result[key].const, value.const]))
+            delete result[key].const
+          }
+        }
+        // If the key exists in both schemas and is not 'type', merge the values
+        else if (Array.isArray(result[key])) {
+          // If the value is an array, concatenate the arrays and remove duplicates
+          result[key] = Array.from(new Set([...result[key], ...value]))
+        } else if (result[key] && result[key].enum && value && value.enum) {
+          //If the value is an enum, merge the enums together and remove duplicates
+          result[key].enum = Array.from(new Set([...result[key].enum, ...value.enum]))
+        } else if (typeof result[key] === 'object' && typeof value === 'object') {
+          // If the value is an object, recursively merge the objects
+          result[key] = union([result[key], value]);
+        } else if (result[key] !== value) {
+          // If the value is a primitive and is not the same in both schemas, ignore it
+          //console.warn(`Ignoring conflicting value for key "${key}"`)
+        }
+      }
+    }
+  }
+  return result;
+}
+
+function mergeAnyOf(schema) {
+  return union(schema.anyOf)
+}
+
+function mergeOneOf(schema) {
+  return union(schema.oneOf)
+}
+
 const getSafeEnumKeyName = (value) => value.split(':').pop()                           // use last portion of urn:style:values
                                         .replace(/[\.\-]/g, '_')                       // replace dots and dashes
                                         .replace(/\+/g, '_plus')                       // change + to _plus
@@ -370,11 +509,15 @@ export {
   getLocalSchemaPaths,
   getLinkedSchemaPaths,
   getPath,
+  getPropertySchema,
+  getPropertiesInSchema,
   isDefinitionReferencedBySchema,
   isNull,
   isSchema,
   localizeDependencies,
   replaceUri,
   replaceRef,
-  removeIgnoredAdditionalItems
+  removeIgnoredAdditionalItems,
+  mergeAnyOf,
+  mergeOneOf
 } 

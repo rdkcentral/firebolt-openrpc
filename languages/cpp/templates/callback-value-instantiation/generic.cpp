@@ -1,0 +1,1 @@
+            ${property} = resultVariant.Value();

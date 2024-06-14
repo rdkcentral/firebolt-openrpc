@@ -1,0 +1,1 @@
+WPEFramework::Core::JSON::Boolean

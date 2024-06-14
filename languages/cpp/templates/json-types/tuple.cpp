@@ -1,0 +1,1 @@
+        using ${title} = WPEFramework::Core::JSON::ArrayType<${json.type}>;

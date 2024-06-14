@@ -3,6 +3,4 @@
    * 
 ${method.params.annotations}${if.deprecated}   * @deprecated ${method.deprecation}
 ${end.if.deprecated}  */
-${method.signature}
-
-// TODO: generate reducer signature
+function ${method.name}(${method.signature.params}): Promise<${method.result.type}>

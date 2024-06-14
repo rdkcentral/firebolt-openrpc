@@ -4,7 +4,7 @@ ${if.events}    type Event = ${events}
 ${end.if.events}
     /* ${SCHEMAS} */
 
-    /* ${DECLARATIONS} */
+    /* ${METHODS:declarations} */
 
     /* ${PROVIDERS} */
 
