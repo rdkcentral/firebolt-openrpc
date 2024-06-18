@@ -139,10 +139,10 @@ const doListen = function(module, event, callback, context, once, internal=false
         const subscriber = module + '.on' + event[0].toUpperCase() + event.substring(1)
         const notifier = module + '.' + event
 
-        const promise = Gateway.request(subscriber, args)
         Gateway.subscribe(notifier, (params) => {
-          callCallbacks(key, params[Object.keys(params).pop()])
+          callCallbacks(key, params)
         })
+        const promise = Gateway.request(subscriber, args)
         promises.push(promise)
       }
 

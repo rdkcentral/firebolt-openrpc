@@ -24,7 +24,7 @@ export const isProvider = method => capabilities(method)['x-provides']
 export const isPusher = method => capabilities(method)['x-push']
 export const isNotifier = method => method.tags.find(t => t.name === 'notifier')
 export const isEvent = method => tag(method, 'event')
-export const isRegistration = method => !tag(method, 'registration')
+export const isRegistration = method => tag(method, 'registration')
 export const isProviderInterface = method => isProvider(method) && !isRegistration(method) && !isPusher(method)
 
 export const name = method => method.name.split('.').pop()

@@ -20,7 +20,6 @@ const knownOpts = {
   'schemas': [path, Array],
   'template': [path],
   'static-module': [String, Array],
-  'copy-schemas': [Boolean],
   'language': [path],
   'examples': [path, Array],
   'as-path': [Boolean],
@@ -78,5 +77,6 @@ try {
   }
 }
 catch (error) {
+  console.dir(error)
   throw error
 }

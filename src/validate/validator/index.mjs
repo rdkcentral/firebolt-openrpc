@@ -38,7 +38,7 @@ const addPrettyPath = (error, json, info) => {
   })
 
   error.instancePath = (info.path ? info.path : '') + error.instancePath
-  error.prettyPath = '/' + path.join('/')
+  error.prettyPath = (info.path ? info.path : '') + '/' + path.join('/')
   error.document = root
   error.node = pointer
   return error

@@ -29,7 +29,7 @@ import isString from 'crocks/core/isString.js'
 import predicates from 'crocks/predicates/index.js'
 const { isObject, isArray, propEq, pathSatisfies, propSatisfies } = predicates
 
-import { isRPCOnlyMethod, isProviderInterfaceMethod, getProviderInterface, getPayloadFromEvent, providerHasNoParameters, isTemporalSetMethod, hasMethodAttributes, getMethodAttributes, isEventMethodWithContext, getSemanticVersion, getSetterFor, getProvidedCapabilities, isPolymorphicPullMethod, hasPublicAPIs, isAllowFocusMethod, hasAllowFocusMethods, createPolymorphicMethods, isExcludedMethod, isCallsMetricsMethod, getProvidedInterfaces } from '../shared/modules.mjs'
+import { isRPCOnlyMethod, isProviderInterfaceMethod, getProviderInterface, getPayloadFromEvent, providerHasNoParameters, isTemporalSetMethod, hasMethodAttributes, getMethodAttributes, isEventMethodWithContext, getSemanticVersion, getSetterFor, getProvidedCapabilities, isPolymorphicPullMethod, hasPublicAPIs, isAllowFocusMethod, hasAllowFocusMethods, createPolymorphicMethods, isExcludedMethod, isCallsMetricsMethod, getProvidedInterfaces, getUnidirectionalProviderInterfaceName } from '../shared/modules.mjs'
 import { extension, getNotifier, name as methodName, name, provides } from '../shared/methods.mjs'
 import isEmpty from 'crocks/core/isEmpty.js'
 import { getReferencedSchema, getLinkedSchemaPaths, getSchemaConstraints, isSchema, localizeDependencies, isDefinitionReferencedBySchema, mergeAnyOf, mergeOneOf, getSafeEnumKeyName, getAllValuesForName } from '../shared/json-schema.mjs'
@@ -114,7 +114,8 @@ const getTemplateForExample = (method, templates) => {
 
 const getTemplateForExampleResult = (method, templates) => {
   const template = getTemplateTypeForMethod(method, 'examples/results', templates)
-  return template || JSON.stringify(method.examples[0].result.value, null, '\t')
+  const value = method.examples[0].result ? method.examples[0].result.value : method.examples[0].params.slice(-1)[0]?.value
+  return template || JSON.stringify(value)
 }
 
 const getLinkForSchema = (schema, json) => {
@@ -333,7 +334,7 @@ const makeProviderMethod = x => x.name["onRequest".length].toLowerCase() + x.nam
 
 //import { default as platform } from '../Platform/defaults'
 
-const generateAggregateMacros = (server, additional, templates, library) => {
+const generateAggregateMacros = (server, client, additional, templates, library) => {
   return additional.reduce((acc, module) => {
 
     const infoMacros = generateInfoMacros(module)
@@ -360,7 +361,8 @@ const generateAggregateMacros = (server, additional, templates, library) => {
     mockImports: '',
     mockObjects: '',
     version: getSemanticVersion(server),
-    library: library
+    library: library,
+    unidirectional: !client
   })
 }
 
@@ -575,7 +577,8 @@ const generateMacros = (server, client, templates, languages, options = {}) => {
     moduleInclude: moduleInclude,
     moduleIncludePrivate: moduleIncludePrivate,
     moduleInit: moduleInit,
-    public: hasPublicAPIs(server)
+    public: hasPublicAPIs(server),
+    unidirectional: !client
   })
 
   Object.assign(macros, generateInfoMacros(server))
@@ -605,6 +608,8 @@ const insertAggregateMacros = (fContents = '', aggregateMacros = {}) => {
   fContents = fContents.replace(/[ \t]*\/\* \$\{MOCK_OBJECTS\} \*\/[ \t]*\n/, aggregateMacros.mockObjects)
   fContents = fContents.replace(/\$\{readable\}/g, aggregateMacros.version ? aggregateMacros.version.readable : '')
   fContents = fContents.replace(/\$\{package.name\}/g, aggregateMacros.library)
+  fContents = fContents.replace(/\$\{if\.unidirectional\}(.*?)\$\{end\.if\.unidirectional\}/gms, aggregateMacros.unidirectional ? '$1' : '')
+  fContents = fContents.replace(/\$\{if\.bidirectional\}(.*?)\$\{end\.if\.bidirectional\}/gms, !aggregateMacros.unidirectional ? '$1' : '')
 
   return fContents
 }
@@ -622,6 +627,8 @@ const insertMacros = (fContents = '', macros = {}) => {
   fContents = fContents.replace(/\$\{if\.enums\}(.*?)\$\{end\.if\.enums\}/gms, macros.enums.types.trim() ? '$1' : '')
   fContents = fContents.replace(/\$\{if\.declarations\}(.*?)\$\{end\.if\.declarations\}/gms, (macros.methods.declarations && macros.methods.declarations.trim() || macros.enums.types.trim()) || macros.types.types.trim()? '$1' : '')
   fContents = fContents.replace(/\$\{if\.callsmetrics\}(.*?)\$\{end\.if\.callsmetrics\}/gms, macros.callsMetrics ? '$1' : '')
+  fContents = fContents.replace(/\$\{if\.unidirectional\}(.*?)\$\{end\.if\.unidirectional\}/gms, macros.unidirectional ? '$1' : '')
+  fContents = fContents.replace(/\$\{if\.bidirectional\}(.*?)\$\{end\.if\.bidirectional\}/gms, !macros.unidirectional ? '$1' : '')
   
   fContents = fContents.replace(/\$\{module\.list\}/g, macros.module)
   fContents = fContents.replace(/\$\{module\.includes\}/g, macros.moduleInclude)
@@ -1041,7 +1048,12 @@ const generateImports = (server, client, templates, options = { destination: '' 
   let imports = ''
 
   if (rpcMethodsOrEmptyArray(server).length) {
-    imports += getTemplate('/imports/rpc', templates)
+    if (client) {
+      imports += getTemplate('/imports/rpc', templates)
+    }
+    else {
+      imports += getTemplate('/imports/unidirectional-rpc', templates)
+    }
   }
 
   if (eventsOrEmptyArray(server).length) {
@@ -1057,7 +1069,7 @@ const generateImports = (server, client, templates, options = { destination: '' 
       imports += getTemplate('/imports/provider', templates)
     }
     else {
-      imports += getTemplate('/imports/event-based-provider', templates)
+      imports += getTemplate('/imports/unidirectional-provider', templates)
     }
   }
 
@@ -1105,8 +1117,6 @@ const generateEventInitialization = (server, client, templates) => {
     return ''
   }
 }
-
-const getProviderInterfaceNameFromRPC = name => name.charAt(9).toLowerCase() + name.substr(10) // Drop onRequest prefix
 
 // TODO: this passes a JSON object to the template... might be hard to get working in non JavaScript languages.
 const generateProviderInitialization = (document, templates) => {
@@ -1268,18 +1278,18 @@ function generateMethods(server = {}, client = null, examples = {}, templates = 
     return acc
   }, [], methods)
 
-  // TODO: might be useful to pass in local macro for an array with all capability & provider interface names
-  // TODO: need a way to trigger generation of client-side provide method for uni-directional providers
-  if (server.methods && server.methods.find(isProviderInterfaceMethod)) {
-  //    results.push(generateMethodResult('provide', templates))
-  }
-
   // TODO: might be useful to pass in local macro for an array with all event names
   if (server.methods && server.methods.find(isPublicEventMethod)) {
     ['listen', 'once', 'clear'].forEach(type => {
       results.push(generateMethodResult(type, templates))
     })
   }
+
+  if (server.methods && server.methods.find(isProviderInterfaceMethod)) {
+    ['provide'].forEach(type => {
+      results.push(generateMethodResult(type, templates))
+    })
+  }  
 
   results.sort((a, b) => a.name.localeCompare(b.name))
   return results
@@ -1864,17 +1874,6 @@ function generateProviderInterfaces(server, client, templates, codeblock, direct
   return interfaces.length ? template.replace(/\$\{providers\.list\}/g, providers) : ''
 }
 
-function getProviderInterfaceName(iface, _interface, document = {}) {
-  const [ module, method ] = iface[0].name.split('.')
-  const uglyName = _interface.split(":").slice(-2).map(capitalize).reverse().join('') + "Provider"
-  let name = iface.length === 1 ? method.charAt(0).toUpperCase() + method.substr(1) + "Provider" : uglyName
-
-  if (document.info['x-interface-names']) {
-    name = document.info['x-interface-names'][_interface] || name
-  }
-  return name
-}
-
 function getProviderXValues(method) {
   let xValues = []
   if (method.tags.find(t => t['x-error']) || method.tags.find(t => t['x-response'])) {
@@ -1913,17 +1912,22 @@ function insertProviderSubscribeMacros(template, capability, server = {}, client
   return template
 }
 
-// TODO: split into /codeblocks/class & /codeblocks/interface (and /classes/* & /interaces/*)
 // TODO: ideally this method should be configurable with tag-names/template-names
 function insertProviderInterfaceMacros(template, _interface, server = {}, client = null, codeblock='interface', directory='interfaces', templates, bidirectional) {
   const document = client || server
   const iface = getProviderInterface(_interface, document, bidirectional)
-  let name = _interface //getProviderInterfaceName(iface, _interface, document)
+  console.dir(iface)
+  const capability = extension(iface[0], 'x-provides')
   let xValues
   let interfaceShape = getTemplate(`/codeblocks/${codeblock}`, templates)
 
-  interfaceShape = interfaceShape.replace(/\$\{name\}/g, name)
-    .replace(/\$\{capability\}/g, _interface)
+  if (!client) {
+    _interface = getUnidirectionalProviderInterfaceName(_interface, capability, server)
+  }
+  console.log(_interface + ": " + capability)
+
+  interfaceShape = interfaceShape.replace(/\$\{name\}/g, _interface)
+    .replace(/\$\{capability\}/g, capability)
     .replace(/[ \t]*\$\{methods\}[ \t]*\n/g, iface.map(method => {
       const focusable = method.tags.find(t => t['x-allow-focus'])
       const interfaceTemplate = `/${directory}/` + (focusable ? 'focusable' : 'default')
@@ -2018,9 +2022,9 @@ function insertProviderInterfaceMacros(template, _interface, server = {}, client
   // TODO: JSON-RPC examples need to use ${provider.interface} macros, but we're replacing them globally instead of each block
   // there's examples of this in methods, i think
 
-  template = template.replace(/\$\{provider\}/g, name)
+  template = template.replace(/\$\{provider\}/g, _interface)
   template = template.replace(/\$\{interface\}/g, interfaceShape)
-  template = template.replace(/\$\{capability\}/g, _interface)
+  template = template.replace(/\$\{capability\}/g, capability)
   template = insertProviderXValues(template, document, xValues)
 
   return template

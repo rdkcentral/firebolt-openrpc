@@ -168,7 +168,7 @@ const macrofy = async (
         const aggregatedExternalSchemas = mergeOnTitle ? Object.values(externalSchemas).filter(s => !modules.find(m => m.info.title === s.title)) : Object.values(externalSchemas)
 
         let start = Date.now()
-        const aggregateMacros = engine.generateAggregateMacros(serverRpc, modules.concat(staticModules).concat(copySchemasIntoModules ? [] : Object.values(aggregatedExternalSchemas)), templates, libraryName)
+        const aggregateMacros = engine.generateAggregateMacros(serverRpc, clientRpc, modules.concat(staticModules).concat(copySchemasIntoModules ? [] : Object.values(aggregatedExternalSchemas)), templates, libraryName)
         logSuccess(`Generated aggregate macros (${Date.now() - start}ms)`)
 
         const outputFiles = Object.fromEntries(Object.entries(await readFiles( staticCodeList, staticContent))

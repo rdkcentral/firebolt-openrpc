@@ -19,20 +19,26 @@
 import Events from '../Events/index.mjs'
 import Gateway from '../Gateway/index.mjs'
 
+// NOTE: this class only used by Unidirectional SDKs Gateway/index.mjs provides this capability to Bidirectional SDKs
+
 const providerInterfaces = {}
 
-export const registerProviderInterface = (interfaceName, module, methods) => {
-  if (providerInterfaces[interfaceName]) {
-    throw `Interface ${interfaceName} has multiple provider interfaces registered.`
+export const registerProviderInterface = (capability, _interface, method, params, response, focusable) => {
+  if (!providerInterfaces[capability]) {
+    providerInterfaces[capability] = []
   }
 
-  methods.forEach(m => m.name = `${module}.${m.name}`)
-  providerInterfaces[interfaceName] = methods.concat()
+  providerInterfaces[capability].push({
+    name: `${_interface}.${method}`,
+    parameters: params && params.length,
+    response,
+    focusable
+  })
 }
 
-const provide = function(interfaceName, provider) {
+const provide = function(capability, provider) {
   const methods = []
-  const iface = providerInterfaces[interfaceName]
+  const iface = providerInterfaces[capability]
 
   if (provider.constructor.name !== 'Object') {
     methods.push(...Object.getOwnPropertyNames(Object.getPrototypeOf(provider)).filter(item => typeof provider[item] === 'function' && item !== 'constructor'))
@@ -49,10 +55,10 @@ const provide = function(interfaceName, provider) {
   const valid = iface.every(method => methods.find(m => m === method.name.split('.').pop()))
 
   if (!valid) {
-    throw `Provider that does not fully implement ${interfaceName}:\n\t${iface.map(m=>m.name.split('.').pop()).join('\n\t')}`
+    throw `Provider that does not fully implement ${capability}:\n\t${iface.map(m=>m.name.split('.').pop()).join('\n\t')}`
   }
 
-  Gateway.provide(interfaceName, provider)
+//  Gateway.provide(iface[0].name.split('.')[0], provider)
 
   iface.forEach(imethod => {
     const parts = imethod.name.split('.')
@@ -66,7 +72,9 @@ const provide = function(interfaceName, provider) {
 
     Events.listen(module, `request${method.charAt(0).toUpperCase() + method.substr(1)}`, function (request) {
       const providerCallArgs = []
-      
+
+      console.dir(request)
+
       // only pass in parameters object if schema exists
       if (imethod.parameters) {
         providerCallArgs.push(request.parameters)

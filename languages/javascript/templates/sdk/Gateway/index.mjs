@@ -16,4 +16,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+
+${if.bidirectional}
 export {default} from './Bidirectional.mjs'
+${end.if.bidirectional}
+
+${if.unidirectional}
+export {default} from './Unidirectional.mjs'
+${end.if.unidirectional}

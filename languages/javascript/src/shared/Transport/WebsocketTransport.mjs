@@ -9,14 +9,14 @@ export default class WebsocketTransport {
     this._callbacks = []
   }
 
-  send (json) {
+  send (message) {
     this._connect()
 
     if (this._connected) {
-      this._ws.send(JSON.stringify(json))
+      this._ws.send(message)
     } else {
       if (this._queue.length < MAX_QUEUED_MESSAGES) {
-        this._queue.push(json)
+        this._queue.push(message)
       }
     }
   }
@@ -37,7 +37,7 @@ export default class WebsocketTransport {
     if (this._ws) return
     this._ws = new WebSocket(this._endpoint, ['jsonrpc'])
     this._ws.addEventListener('message', message => {
-      this._notifyCallbacks(JSON.parse(message.data))
+      this._notifyCallbacks(message.data)
     })
     this._ws.addEventListener('error', message => {
     })

@@ -16,6 +16,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import Gateway from "../Gateway/index.mjs"
 
 const win = typeof window !== 'undefined' ? window : {}
 
@@ -32,7 +33,8 @@ if (win.__firebolt && win.__firebolt.testHarness) {
   testHarness = win.__firebolt.testHarness
 }
 
-function send(json) {
+function send(message) {
+  const json = JSON.parse(message)
   // handle bulk sends
   if (Array.isArray(json)) {
     json.forEach(send)
@@ -69,21 +71,21 @@ function handle(json) {
     result = getResult(json.method, json.params)
   }
   catch (error) {
-    setTimeout(() => callback({ 
+    setTimeout(() => callback(JSON.stringify({ 
       jsonrpc: '2.0',
       error: {
         code: -32602,
         message: "Invalid params (this is a mock error from the mock transport layer)"
       },
       id: json.id
-    }))
+    })))
   }
 
-  setTimeout(() => callback({ 
+  setTimeout(() => callback(JSON.stringify({ 
     jsonrpc: '2.0',
     result: result,
     id: json.id
-  }))
+  })))
 }
 
 function receive(_callback) {
@@ -91,14 +93,16 @@ function receive(_callback) {
 
   if (testHarness && (typeof testHarness.initialize === 'function')) {
     testHarness.initialize({
-      emit: event,
+      emit: (module, method, value) => {
+        Gateway.simulate(`${module}.${method}`, value)
+      },
       listen: function(...args) { listener(...args) },
     })
   }
 }
 
 function event(module, event, value) {
-  callback({
+  callback(JSON.stringify({
     jsonrpc: '2.0',
     method: `${module}.${event}`,
     params: [
@@ -107,7 +111,7 @@ function event(module, event, value) {
         value: value
       }
     ]
-  })
+  }))
 }
 
 let id = 0
@@ -117,12 +121,12 @@ function request(method, params) {
   const promise = new Promise( (resolve, reject) => {
     requests[id] = { resolve, reject }
   })
-  callback({
+  callback(JSON.stringify({ 
     jsonrpc: '2.0',
     id: id,
     method: `${method}`,
     params: params
-  })
+  }))
 
   return promise
 }

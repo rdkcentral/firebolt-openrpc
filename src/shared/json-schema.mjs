@@ -213,7 +213,8 @@ const getPropertySchema = (json, dotPath, document) => {
     const property = path[i]
     const remainingPath = path.filter((x, j) => j >= i ).join('.')
     if (node.$ref) {
-      node = getPropertySchema(getPath(node.$ref, document), remainingPath, document)
+      console.log(node.$ref)
+      node = getPropertySchema(getReferencedSchema(node.$ref, document), remainingPath, document)
     }
     else if (property === '') {
       return node

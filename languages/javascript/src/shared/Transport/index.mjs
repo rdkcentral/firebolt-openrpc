@@ -35,7 +35,7 @@ export function send(json) {
     console.debug('Sending message to transport: \n' + JSON.stringify(json, { indent: '\t'}))
   }
 
-  implementation.send(json)
+  implementation.send(JSON.stringify(json))
 }
 
 export function receive(callback) {

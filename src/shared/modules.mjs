@@ -31,11 +31,7 @@ import predicates from 'crocks/predicates/index.js'
 import { getExternalSchemaPaths, isDefinitionReferencedBySchema, isNull, localizeDependencies, isSchema, getLocalSchemaPaths, replaceRef, getPropertySchema, getLinkedSchemaUris, getAllValuesForName, replaceUri } from './json-schema.mjs'
 import { getReferencedSchema } from './json-schema.mjs'
 const { isObject, isArray, propEq, pathSatisfies, hasProp, propSatisfies } = predicates
-import { extension, getNotifier, isEvent, isNotifier, isPusher, name as methodName, rename as methodRename, provides } from './methods.mjs'
-
-// TODO remove these when major/rpc branch is merged
-const name = method => method.name.split('.').pop()
-const rename = (method, renamer) => method.name.split('.').map((x, i, arr) => i === (arr.length-1) ? renamer(x) : x).join('.')
+import { extension, getNotifier, isEvent, isNotifier, isPusher, isRegistration, name as methodName, rename as methodRename, provides } from './methods.mjs'
 
 // util for visually debugging crocks ADTs
 const inspector = obj => {
@@ -62,7 +58,7 @@ const getMethods = compose(
 
 const isProviderInterfaceMethod = method => {
     let tag = method.tags.find(t => t.name === 'capabilities')
-    const isProvider = tag['x-provides'] && !tag['x-allow-focus-for'] && !tag['x-response-for'] && !tag['x-error-for']
+    const isProvider = tag['x-provides'] && !tag['x-allow-focus-for'] && !tag['x-response-for'] && !tag['x-error-for'] && !tag['x-push'] && !method.tags.find(t => t.name === 'registration')
 
     tag = method.tags.find(t => t.name.startsWith('polymorphic-pull'))
     const isPuller = !!tag
@@ -140,14 +136,31 @@ function getProviderInterface(_interface, module) {
     return iface
 }
 
+const capitalize = str => str.charAt(0).toUpperCase() + str.substr(1)
+
+// This is getting called before downgrading the provider interfaces AND after... it can't work for both cases.
+function getUnidirectionalProviderInterfaceName(_interface, capability, document = {}) {
+    const iface = getProviderInterface(_interface, document)
+    const [ module, method ] = iface[0].name.split('.')
+    const uglyName = capability.split(":").slice(-2).map(capitalize).reverse().join('') + "Provider"
+    let name = iface.length === 1 ? method.charAt(0).toUpperCase() + method.substr(1) + "Provider" : uglyName
+
+    if (document.info['x-interface-names']) {
+      name = document.info['x-interface-names'][capability] || name
+    }
+    return name
+  }
+
 function updateUnidirectionalProviderInterface(iface, module) {
     iface.forEach(method => {
         const payload = getPayloadFromEvent(method)
         const focusable = method.tags.find(t => t['x-allow-focus'])
     
         // remove `onRequest`
-        method.name = method.name.charAt(9).toLowerCase() + method.name.substr(10)
-  
+        method.name = methodRename(method, name => name.charAt(9).toLowerCase() + name.substr(10))
+
+        console.dir(method)
+
         const schema = getPropertySchema(payload, 'properties.parameters', module)
         
         method.params = [
@@ -158,7 +171,8 @@ function updateUnidirectionalProviderInterface(iface, module) {
           }
         ]
     
-        if (!extractProviderSchema) {
+        // TODO: we used to say !extractProviderSchema, which CPP sets to true and therefor skips this. not sure why...
+        if (true) {
           let exampleResult = null
   
           if (method.tags.find(tag => tag['x-response'])) {
@@ -371,6 +385,9 @@ const getPayloadFromEvent = (event, client) => {
             else if (client) {
                 const payload = getNotifier(event, client).params.slice(-1)[0].schema
                 return payload
+            }
+            else {
+                return event.result.schema
             }
         }
     }
@@ -1052,13 +1069,16 @@ const generateUnidirectionalProviderMethods = json => {
     // Transform providers to legacy events
     providers.forEach(p => {
         const name = methodRename(p, name => 'onRequest' + name.charAt(0).toUpperCase() + name.substring(1))
-        json.methods.filter(m => m.tags && m.tags.find( t=> t.name === 'capabilities')['x-provided-by'] === p.name).forEach(m => {
+        const prefix = name.split('.').pop().substring(9)
+
+        json.methods.filter(m => m.tags && m.tags.find( t=> t.name === 'capabilities')['x-provided-by'] === p.name && !m.tags.find(t => t.name === 'notifier')).forEach(m => {
             m.tags.find(t => t.name === 'capabilities')['x-provided-by'] = name
         })
         p.name = name
         p.tags.push({
             name: 'event',
-            'x-response': p.result.schema
+            'x-response-name': p.result.name,
+            'x-response': p.result.schema,
             // todo: add examples
         })
 
@@ -1066,16 +1086,19 @@ const generateUnidirectionalProviderMethods = json => {
         // This is here because we're generating names that used to be editorial. These don't match exactly,
         // but they're good enough and "PinChallengeRequest" is way better than "PinChallengeChallengeRequest"
         let overlap = 0
-        const module = p.name.split('.')[0]
+        const _interface = p.name.split('.')[0]
         const method = methodName(p).substring(9)
+        const capability = extension(p, 'x-provides')
 
-        for (let i=0; i<Math.min(module.length, method.length); i++) {
-            if (module.substring(module.length-i-1) === method.substring(0, i+1)) {
+        for (let i=0; i<Math.min(_interface.length, method.length); i++) {
+            if (_interface.substring(_interface.length-i-1) === method.substring(0, i+1)) {
                 overlap = i
             }
         }
 
-        const prefix = module.substring(0, module.length - 1 - overlap) + method
+        //const prefix = getUnidirectionalProviderInterfaceName(_interface, capability, json)//module.substring(0, module.length - overlap) + method
+
+        console.log(`Prefix: ${prefix}`)
 
         // Build the parameters wrapper
         const parameters = {
@@ -1095,6 +1118,8 @@ const generateUnidirectionalProviderMethods = json => {
             }
         })
 
+        console.dir(parameters)
+
         // remove them from the method
         p.params = []
 
@@ -1102,9 +1127,13 @@ const generateUnidirectionalProviderMethods = json => {
         const request = {
             title: prefix + 'Request',
             type: "object",
+            required: [
+                "parameters",
+                "correlationId"
+            ],
             properties: {
                 parameters: {
-                    $ref: `#/components/schemas/${parameters.title}`
+                    $ref: `#/components/schemas/${_interface}.${parameters.title}`
                 },
                 correlationId: {
                     type: "string"
@@ -1112,22 +1141,40 @@ const generateUnidirectionalProviderMethods = json => {
             },
             additionalProperties: false    
         }
+        
+        console.dir(request)
 
-        json.components.schemas[request.title] = request
-        json.components.schemas[parameters.title] = parameters
+        console.dir(_interface)
+
+        json.components.schemas[_interface + '.' + request.title] = request
+        json.components.schemas[_interface + '.' + parameters.title] = parameters
 
         // Put the request into the new event's result
         p.result = {
             name: 'result',
             schema: {
-                $ref: `#/components/schemas/${request.title}`
+                $ref: `#/components/schemas/${_interface}.${request.title}`
             }
         }
 
-
-
+        const eventTag = p.tags.find(t => t.name === 'event')
+        eventTag['x-response'].examples = []
         p.examples.forEach(example => {
             // transform examples
+            eventTag['x-response'].examples.push(example.result.value)
+            example.result = {
+                name: 'result',
+                value: {
+                    correlationId: '1',
+                    parameters: Object.fromEntries(example.params.map(p => [p.name, p.value]))
+                }
+            }
+            example.params = [
+                {
+                    name: 'listen',
+                    value: true
+                }
+            ]
         })
     })
 
@@ -1308,15 +1355,22 @@ const generateProviderRegistrars = json => {
     return json
 }
 
+const removeProviderRegistrars = (json) => {
+    json.methods && (json.methods = json.methods.filter(m => !isRegistration(m)))
+    return json
+}
+
 const generateUnidirectionalEventMethods = json => {
     const events = json.methods.filter( m => m.tags && m.tags.find(t => t.name == 'notifier')) || []
 
     events.forEach(event => {
         const tag = event.tags.find(t => t.name === 'notifier')
-        event.name = tag['x-event']
+        event.name = tag['x-event'] || methodRename(event, n => 'on' + n.charAt(0).toUpperCase() + n.substr(1))
         delete tag['x-event']
+        tag['x-subscriber-for'] = tag['x-notifier-for']
+        delete tag['x-notifier-for']
+
         tag.name = 'event'
-        tag['x-notifier'] = event.name
         event.result = event.params.pop()
         event.examples.forEach(example => {
             example.result = example.params.pop()
@@ -1598,6 +1652,7 @@ const fireboltize = (json, bidirectional) => {
         json = generateProviderMethods(json)
         json = generateEventListenerParameters(json)
         json = generateEventListenResponse(json)
+        json = removeProviderRegistrars(json)
     }
 
     json = generateTemporalSetMethods(json)
@@ -1941,6 +1996,7 @@ export {
     getProviderInterface,
     getProvidedCapabilities,
     getProvidedInterfaces,
+    getUnidirectionalProviderInterfaceName,
     getSetterFor,
     getSubscriberFor,
     getEnums,
