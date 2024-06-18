@@ -346,7 +346,6 @@ const generateAggregateMacros = (server, client, additional, templates, library)
 
     template = getTemplate('/codeblocks/mock-import', templates)
     if (template && module.info) {
-      console.dir(module.info)
       acc.mockImports += insertInfoMacros(template + '\n', infoMacros)
     }
 
@@ -528,8 +527,7 @@ const generateMacros = (server, client, templates, languages, options = {}) => {
   const initialization = generateInitialization(server, client, templates)
   const eventsEnum = generateEvents(server, templates)
 
-  const examples = Object.assign(generateExamples(server, templates, languages), generateExamples(client, templates, languages))
-  const allMethodsArray = generateMethods(server, client, examples, templates, languages, options.type)
+  const allMethodsArray = generateMethods(server, client, templates, languages, options.type)
 
   Array.from(new Set(['methods'].concat(config.additionalMethodTemplates))).filter(dir => dir).forEach(dir => {
 
@@ -568,7 +566,6 @@ const generateMacros = (server, client, templates, languages, options = {}) => {
     initialization,
     eventsEnum,
     defaults,
-    examples,
     xusesInterfaces,
     providerInterfaces,
     providerClasses,
@@ -721,14 +718,6 @@ const insertMacros = (fContents = '', macros = {}) => {
   else {
     fContents = fContents.replace(/\$\{if\.events\}.*?\$\{end\.if\.events\}/gms, '')
   }
-
-  const examples = [...fContents.matchAll(/0 \/\* \$\{EXAMPLE\:(.*?)\} \*\//g)]
-
-  examples.forEach((match) => {
-    // grab the examples, and check `onFoo` if `foo` isn't found...
-    const values = macros.examples[match[1]] || macros.examples['on' + match[1].charAt(0).toUpperCase() + match[1].substring(1)]
-    fContents = fContents.replace(match[0], JSON.stringify(values[0].value))
-  })
 
   fContents = insertTableofContents(fContents)
 
@@ -1176,45 +1165,41 @@ const generateDeprecatedInitialization = (server, client, templates) => {
   )(server)
 }
 
-function generateExamples(json = {}, mainTemplates = {}, languages = {}) {
-  const examples = {}
+function generateExamples(method = {}, mainTemplates = {}, languages = {}) {
   let value
 
-  json && json.methods && json.methods.forEach(method => {
-    const name = method.name.split('.').pop()
-    examples[name] = method.examples.map(example => ({
-      json: example,
-      value: value = example.result ? example.result.value : example.params[example.params.length-1].value,
-      languages: Object.fromEntries(Object.entries(languages).map(([lang, templates]) => ([lang, {
-        langcode: templates['__config'].langcode,
-        code: getTemplateForExample(method, templates)
-          .replace(/\$\{rpc\.example\.params\}/g, JSON.stringify(Object.fromEntries(example.params.map(param => [param.name, param.value])))),
-        result: method.result && getTemplateForExampleResult(method, templates)
-          .replace(/\$\{example\.result\}/g, JSON.stringify(value, null, '\t'))
-          .replace(/\$\{example\.result\.item\}/g, Array.isArray(value) ? JSON.stringify(value[0], null, '\t') : ''),
-        template: lang === 'JSON-RPC' ? getTemplate('/examples/jsonrpc', mainTemplates) : getTemplateForExample(method, mainTemplates) // getTemplate('/examples/default', mainTemplates)
-      }])))
+  let examples = method.examples.map(example => ({
+    json: example,
+    value: value = example.result ? example.result.value : example.params[example.params.length-1].value,
+    languages: Object.fromEntries(Object.entries(languages).map(([lang, templates]) => ([lang, {
+      langcode: templates['__config'].langcode,
+      code: getTemplateForExample(method, templates)
+        .replace(/\$\{rpc\.example\.params\}/g, JSON.stringify(Object.fromEntries(example.params.map(param => [param.name, param.value])))),
+      result: method.result && getTemplateForExampleResult(method, templates)
+        .replace(/\$\{example\.result\}/g, JSON.stringify(value, null, '\t'))
+        .replace(/\$\{example\.result\.item\}/g, Array.isArray(value) ? JSON.stringify(value[0], null, '\t') : ''),
+      template: lang === 'JSON-RPC' ? getTemplate('/examples/jsonrpc', mainTemplates) : getTemplateForExample(method, mainTemplates) // getTemplate('/examples/default', mainTemplates)
+    }])))
+  }))
+
+  // delete non RPC examples from rpc-only methods
+  if (isRPCOnlyMethod(method)) {
+    examples = examples.map(example => ({
+      json: example.json,
+      value: example.value,
+      languages: Object.fromEntries(Object.entries(example.languages).filter(([k, v]) => k === 'JSON-RPC'))
     }))
+  }
 
-    // delete non RPC examples from rpc-only methods
-    if (isRPCOnlyMethod(method)) {
-      examples[name] = examples[name].map(example => ({
-        json: example.json,
-        value: example.value,
-        languages: Object.fromEntries(Object.entries(example.languages).filter(([k, v]) => k === 'JSON-RPC'))
-      }))
-    }
-
-    // clean up JSON-RPC indentation, because it's easy and we can.
-    examples[name].map(example => {
-      if (example.languages['JSON-RPC']) {
-        try {
-          example.languages['JSON-RPC'].code = JSON.stringify(JSON.parse(example.languages['JSON-RPC'].code), null, '\t')
-          example.languages['JSON-RPC'].result = JSON.stringify(JSON.parse(example.languages['JSON-RPC'].result), null, '\t')
-        }
-        catch (error) { }
+  // clean up JSON-RPC indentation, because it's easy and we can.
+  examples.forEach(example => {
+    if (example.languages['JSON-RPC']) {
+      try {
+        example.languages['JSON-RPC'].code = JSON.stringify(JSON.parse(example.languages['JSON-RPC'].code), null, '\t')
+        example.languages['JSON-RPC'].result = JSON.stringify(JSON.parse(example.languages['JSON-RPC'].result), null, '\t')
       }
-    })
+      catch (error) { }
+    }
   })
 
   return examples
@@ -1241,7 +1226,7 @@ function generateMethodResult(type, templates) {
   return result
 }
 
-function generateMethods(server = {}, client = null, examples = {}, templates = {}, languages = [], type = '') {
+function generateMethods(server = {}, client = null, templates = {}, languages = [], type = '') {
   const methods = compose(
     option([]),
     getMethods
@@ -1254,7 +1239,8 @@ function generateMethods(server = {}, client = null, examples = {}, templates = 
       body: {},
       declaration: {},
       excluded: methodObj.tags.find(t => t.name === 'exclude-from-sdk'),
-      event: isEventMethod(methodObj)
+      event: isEventMethod(methodObj),
+      examples: generateExamples(methodObj, templates, languages)
     }
 
     // Generate implementation of methods/events for both dynamic and static configured templates
@@ -1262,13 +1248,13 @@ function generateMethods(server = {}, client = null, examples = {}, templates = 
       if (dir.includes('declarations')) {
         const template = getTemplateForDeclaration(methodObj, templates, dir)
         if (template && template.length) {
-          result.declaration[dir] = insertMethodMacros(template, methodObj, server, client, templates, '', examples)
+          result.declaration[dir] = insertMethodMacros(template, methodObj, server, client, templates, '', result.examples)
         }
       }
       else if (dir.includes('methods')) {
         const template = getTemplateForMethod(methodObj, templates, dir)
         if (template && template.length) {
-          result.body[dir] = insertMethodMacros(template, methodObj, server, client, templates, type, examples, languages)
+          result.body[dir] = insertMethodMacros(template, methodObj, server, client, templates, type, result.examples, languages)
         }
       }
     })
@@ -1296,7 +1282,7 @@ function generateMethods(server = {}, client = null, examples = {}, templates = 
 }
 
 // TODO: this is called too many places... let's reduce that to just generateMethods
-function insertMethodMacros(template, methodObj, server, client, templates, type = '', examples = {}, languages = {}) {
+function insertMethodMacros(template, methodObj, server, client, templates, type = '', examples = [], languages = {}) {
   try {
     // need a guaranteed place to get client stuff from...
     const document = client || server
@@ -1374,11 +1360,11 @@ function insertMethodMacros(template, methodObj, server, client, templates, type
     // grab some related methdos in case they are output together in a single template file
     const puller = server.methods.find(method => method.tags.find(tag => tag.name === 'event' && tag['x-pulls-for'] === methodObj.name))
     const pullsFor = methodObj.tags.find(t => t['x-pulls-for']) && server.methods.find(method => method.name === methodObj.tags.find(t => t['x-pulls-for'])['x-pulls-for'])
-    const pullerTemplate = (puller ? insertMethodMacros(getTemplate('/codeblocks/puller', templates), puller, server, client, templates, type, examples) : '')
+    const pullerTemplate = (puller ? insertMethodMacros(getTemplate('/codeblocks/puller', templates), puller, server, client, templates, type, generateExamples(puller, templates, languages)) : '')
     const setter = getSetterFor(methodObj.name, server)
-    const setterTemplate = (setter ? insertMethodMacros(getTemplate('/codeblocks/setter', templates), setter, server, client, templates, type, examples) : '')
+    const setterTemplate = (setter ? insertMethodMacros(getTemplate('/codeblocks/setter', templates), setter, server, client, templates, type, generateExamples(setter, templates, languages)) : '')
     const subscriber = server.methods.find(method => method.tags.find(tag => tag['x-subscriber-for'] === methodObj.name))
-    const subscriberTemplate = (subscriber ? insertMethodMacros(getTemplate('/codeblocks/subscriber', templates), subscriber, server, client, templates, type, examples) : '')
+    const subscriberTemplate = (subscriber ? insertMethodMacros(getTemplate('/codeblocks/subscriber', templates), subscriber, server, client, templates, type, generateExamples(subscriber, templates, languages)) : '')
     const setterFor = methodObj.tags.find(t => t.name === 'setter') && methodObj.tags.find(t => t.name === 'setter')['x-setter-for'] || ''
     const pullsResult = (puller || pullsFor) ? localizeDependencies(pullsFor || methodObj, server).params.findLast(x=>true).schema : null
     const pullsParams = (puller || pullsFor) ? localizeDependencies(getPayloadFromEvent(puller || methodObj, document), document, null, { mergeAllOfs: true }).properties.parameters : null
@@ -1469,7 +1455,7 @@ function insertMethodMacros(template, methodObj, server, client, templates, type
       signature = ''
     }
 
-    template = insertExampleMacros(template, examples[methodObj.name] || [], methodObj, server, templates)
+    template = insertExampleMacros(template, examples || [], methodObj, server, templates)
 
     template = template.replace(/\$\{method\.name\}/g, method.name)
       .replace(/\$\{method\.rpc\.name\}/g, methodObj.rpc_name || methodObj.name)
@@ -1584,7 +1570,7 @@ function insertMethodMacros(template, methodObj, server, client, templates, type
     })
 
     // Note that we do this twice to ensure all recursive macros are resolved
-    template = insertExampleMacros(template, examples[methodObj.name] || [], methodObj, server, templates)
+    template = insertExampleMacros(template, examples || [], methodObj, server, templates)
 
     return template
   }
@@ -1860,8 +1846,6 @@ function generateProviderSubscribe(server, client, templates, bidirectional) {
 function generateProviderInterfaces(server, client, templates, codeblock, directory, bidirectional) {
   const interfaces = getProvidedInterfaces(client || server)
   
-  console.dir(interfaces)
-
   let template = getTemplate('/sections/provider-interfaces', templates)
 
   const providers = reduce((acc, _interface) => {
@@ -1916,7 +1900,6 @@ function insertProviderSubscribeMacros(template, capability, server = {}, client
 function insertProviderInterfaceMacros(template, _interface, server = {}, client = null, codeblock='interface', directory='interfaces', templates, bidirectional) {
   const document = client || server
   const iface = getProviderInterface(_interface, document, bidirectional)
-  console.dir(iface)
   const capability = extension(iface[0], 'x-provides')
   let xValues
   let interfaceShape = getTemplate(`/codeblocks/${codeblock}`, templates)
@@ -1924,8 +1907,6 @@ function insertProviderInterfaceMacros(template, _interface, server = {}, client
   if (!client) {
     _interface = getUnidirectionalProviderInterfaceName(_interface, capability, server)
   }
-  console.log(_interface + ": " + capability)
-
   interfaceShape = interfaceShape.replace(/\$\{name\}/g, _interface)
     .replace(/\$\{capability\}/g, capability)
     .replace(/[ \t]*\$\{methods\}[ \t]*\n/g, iface.map(method => {

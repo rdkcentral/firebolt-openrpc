@@ -159,8 +159,6 @@ function updateUnidirectionalProviderInterface(iface, module) {
         // remove `onRequest`
         method.name = methodRename(method, name => name.charAt(9).toLowerCase() + name.substr(10))
 
-        console.dir(method)
-
         const schema = getPropertySchema(payload, 'properties.parameters', module)
         
         method.params = [
@@ -1098,8 +1096,6 @@ const generateUnidirectionalProviderMethods = json => {
 
         //const prefix = getUnidirectionalProviderInterfaceName(_interface, capability, json)//module.substring(0, module.length - overlap) + method
 
-        console.log(`Prefix: ${prefix}`)
-
         // Build the parameters wrapper
         const parameters = {
             title: prefix + 'Parameters',
@@ -1117,8 +1113,6 @@ const generateUnidirectionalProviderMethods = json => {
                 parameters.required.push(param.name)
             }
         })
-
-        console.dir(parameters)
 
         // remove them from the method
         p.params = []
@@ -1141,10 +1135,6 @@ const generateUnidirectionalProviderMethods = json => {
             },
             additionalProperties: false    
         }
-        
-        console.dir(request)
-
-        console.dir(_interface)
 
         json.components.schemas[_interface + '.' + request.title] = request
         json.components.schemas[_interface + '.' + parameters.title] = parameters

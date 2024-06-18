@@ -61,9 +61,6 @@ const run = ({
 
         const matches = openrpc.methods.filter(matcher)
 
-        console.dir(rule)
-        console.dir(matches)
-
         methods.push(...matches)
       })
       openrpc.methods.length = 0

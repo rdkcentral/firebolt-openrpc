@@ -73,7 +73,7 @@ try {
     await update(parsedArgs).then(signOff)
   }
   else {
-    console.log("Invalid build type")
+    console.log("Invalid task: " + task)
   }
 }
 catch (error) {

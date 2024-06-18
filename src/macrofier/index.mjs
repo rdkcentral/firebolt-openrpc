@@ -206,7 +206,6 @@ const macrofy = async (
         let append = false
 
         modules.forEach(module => {
-            console.log(`Generating ${module.info.title}...`)
             start = Date.now()
             const clientRpc2 = clientRpc && getClientModule(module.info.title, clientRpc, module)
             const macros = engine.generateMacros(module, clientRpc2, templates, exampleTemplates, {hideExcluded: hideExcluded, copySchemasIntoModules: copySchemasIntoModules, createPolymorphicMethods: createPolymorphicMethods, type: 'methods'})

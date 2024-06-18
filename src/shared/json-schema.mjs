@@ -213,7 +213,6 @@ const getPropertySchema = (json, dotPath, document) => {
     const property = path[i]
     const remainingPath = path.filter((x, j) => j >= i ).join('.')
     if (node.$ref) {
-      console.log(node.$ref)
       node = getPropertySchema(getReferencedSchema(node.$ref, document), remainingPath, document)
     }
     else if (property === '') {
@@ -483,7 +482,6 @@ const isDefinitionReferencedBySchema = (name = '', moduleJson = {}) => {
   let subSchema = false
   if (name.indexOf("/https://") >= 0) {
     name = name.substring(name.indexOf('/https://')+1)
-    console.log('searching for subschema: ' + name)
     subSchema = true
   }
   const refs = objectPaths(moduleJson)

@@ -191,7 +191,6 @@ const run = async ({
 
             // put module name in front of each method
             json.methods.filter(method => method.name.indexOf('.') === -1).forEach(method => {
-                console.log(json.info.title + '.' + method.name)
                 method.name = json.info.title + '.' + method.name
             })
             json.components && json.components.schemas && (json.components.schemas = Object.fromEntries(Object.entries(json.components.schemas).map( ([key, schema]) => ([json.info.title + '.' + key, schema]) )))
