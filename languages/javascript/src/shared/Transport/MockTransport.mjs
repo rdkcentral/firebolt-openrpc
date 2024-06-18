@@ -37,7 +37,7 @@ function send(message) {
   const json = JSON.parse(message)
   // handle bulk sends
   if (Array.isArray(json)) {
-    json.forEach(send)
+    json.forEach(json => send(JSON.stringify(json)))
     return
   }
 

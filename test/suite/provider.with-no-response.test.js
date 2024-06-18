@@ -38,7 +38,8 @@ beforeAll( () => {
         }
     }
 
-    transport.onSend(json => {
+    transport.onSend(message => {
+        const json = JSON.parse(message)
         if (json.method) {
             if (json.method === 'Provider.provideNoResponseMethod') {
                 providerMethodNotificationRegistered = true

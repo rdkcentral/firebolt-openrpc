@@ -52,10 +52,10 @@
              id: id,
              result: result
          }
-         receiver && receiver(response)
+         receiver && receiver(JSON.stringify(response))
      },
      request: function(json) {
-        receiver && receiver(json)
+        receiver && receiver(JSON.stringify(json))
      }
  }
  

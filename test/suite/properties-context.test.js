@@ -31,7 +31,8 @@ let bothContextSentToEvent = false
 
 beforeAll( () => {
 
-    transport.onSend(json => {
+    transport.onSend(message => {
+        const json = JSON.parse(message)
         console.dir(json)
         if (json.method === 'Advanced.propertyWithContext') {
             if (json.params.appId === 'some-app') {

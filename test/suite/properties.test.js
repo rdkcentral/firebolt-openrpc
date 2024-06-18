@@ -28,7 +28,8 @@ let propertySetterWasTriggeredWithValue = false
 
 beforeAll( () => {
 
-    transport.onSend(json => {
+    transport.onSend(message => {
+        const json = JSON.parse(message)
         if (json.method === 'Simple.property') {
             transport.response(json.id, {
                 foo: "here's foo"
