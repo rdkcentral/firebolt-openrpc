@@ -227,7 +227,7 @@ const insertEnumMacros = (content, schema, module, name, suffix, templateDir = "
         if (!value) {
           value = getTemplate(path.join(templateDir, 'unset' + suffix))
 	}
-        value ? values.push(template[i].replace(/\$\{key\}/g, getSafeEnumKeyName(value))
+        value ? values.push(template[i].replace(/\$\{key\}/g, getSafeEnumKeyName(value, schema.enumKeyPrefix))
                                        .replace(/\$\{value\}/g, value)) : ''
       })
       template[i] = values.map((value, id) => {
