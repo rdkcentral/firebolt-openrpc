@@ -424,7 +424,7 @@ const promoteAndNameSubSchemas = (obj) => {
       }
     })
     if (isSubSchema(method.result.schema)) {
-      addContentDescriptorSubSchema(method.result, '', obj)    
+      addContentDescriptorSubSchema(method.result, '', obj)
     }
     else if (isEventMethod(method) && isSubSchema(getPayloadFromEvent(method))) {
       // TODO: the `1` below is brittle... should find the index of the non-ListenResponse schema
@@ -1319,7 +1319,7 @@ function insertMethodMacros(template, methodObj, json, templates, type = '', exa
   const pullsForParamType = pullsParams ? types.getSchemaType(pullsParams, json, { destination: state.destination, section: state.section }) : ''
   const pullsForJsonType = pullsResult ? types.getSchemaType(pullsResult, json, { templateDir: 'json-types' }) : ''
   const pullsForParamJsonType = pullsParams ? types.getSchemaType(pullsParams, json, { templateDir: 'json-types' }) : ''
-  
+
   const pullsEventParamName = event ? types.getSchemaInstantiation(event.result, json, event.name, { instantiationType: 'pull.param.name' }) : ''
 
   let seeAlso = ''
@@ -1621,7 +1621,7 @@ function generateResultParams(result, json, templates, { name = '' } = {}) {
     return Object.entries(result.properties).map( ([name, type]) => template
                                                                       .replace(/\$\{method\.param\.name\}/g, name)
                                                                       .replace(/\$\{method\.param\.type\}/g, types.getSchemaType(type, json, { moduleTitle: moduleTitle, result: true, namespace: true}))
-    ).join(', ') // most languages separate params w/ a comma, so leaving this here for now  
+    ).join(', ') // most languages separate params w/ a comma, so leaving this here for now
   }
   // tuples get unwrapped
   else if (config.unwrapResultObjects && result.type && result.type === 'array' && Array.isArray(result.items)) {
