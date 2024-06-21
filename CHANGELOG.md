@@ -1,3 +1,10 @@
+# [3.0.0-next.5](https://github.com/rdkcentral/firebolt-openrpc/compare/v3.0.0-next.4...v3.0.0-next.5) (2024-06-13)
+
+
+### Bug Fixes
+
+* Resolve conflicts ([adf6762](https://github.com/rdkcentral/firebolt-openrpc/commit/adf6762c02e1ccd6e7cd708d5249630252bd7c44))
+
 # [3.0.0-next.4](https://github.com/rdkcentral/firebolt-openrpc/compare/v3.0.0-next.3...v3.0.0-next.4) (2024-06-06)
 
 
@@ -6,6 +13,7 @@
 * App Pass-through ([#188](https://github.com/rdkcentral/firebolt-openrpc/issues/188)) ([83fa0fc](https://github.com/rdkcentral/firebolt-openrpc/commit/83fa0fcb62cade7ed3b527de6b3fe1ebb42b54e0))
 
 # [3.0.0-next.3](https://github.com/rdkcentral/firebolt-openrpc/compare/v3.0.0-next.2...v3.0.0-next.3) (2024-05-09)
+# [2.3.0](https://github.com/rdkcentral/firebolt-openrpc/compare/v2.2.0...v2.3.0) (2024-02-08)
 
 
 ### Bug Fixes
@@ -13,6 +21,8 @@
 * Account for new OpenRPC spec URL contents ([#186](https://github.com/rdkcentral/firebolt-openrpc/issues/186)) ([66bd6ac](https://github.com/rdkcentral/firebolt-openrpc/commit/66bd6acc1ffdaefadcb46d78864d615a116b5a85))
 
 # [3.0.0-next.2](https://github.com/rdkcentral/firebolt-openrpc/compare/v3.0.0-next.1...v3.0.0-next.2) (2024-04-08)
+* Insert 'v' in front of version enum names ([d8b9ada](https://github.com/rdkcentral/firebolt-openrpc/commit/d8b9ada1b624df29821b74679291d36167208470))
+* Proper param handling for x-subscriber-type: global ([02204e5](https://github.com/rdkcentral/firebolt-openrpc/commit/02204e5f93d27a21086b4a9bbe5f586f969354f8))
 
 
 ### Features
@@ -40,6 +50,7 @@ Also started tweaking C templates and adding a few useful macros.
 * fix: Stop passing non-schemas in to getSchemaType
 
 * feat(accessors): New macro section for schema property accessors
+* Support for context-free property subscribers ([9809273](https://github.com/rdkcentral/firebolt-openrpc/commit/980927309fa6efc7b03a490aa5fd7909f39ff4de))
 
 # [2.3.0-next.1](https://github.com/rdkcentral/firebolt-openrpc/compare/v2.2.0...v2.3.0-next.1) (2024-01-12)
 
