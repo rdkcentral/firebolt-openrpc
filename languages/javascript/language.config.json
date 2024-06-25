@@ -10,6 +10,7 @@
     ],
     "createModuleDirectories": true,
     "copySchemasIntoModules": false,
+    "enableUnionTypes": true,
     "mergeOnTitle": true,
     "aggregateFiles": [
         "/index.d.ts"

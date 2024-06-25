@@ -26,7 +26,7 @@ import { logHeader, logSuccess } from '../shared/io.mjs'
 import Types from './types.mjs'
 import path from 'path'
 import engine from './engine.mjs'
-import { getLocalSchemas, replaceRef, replaceUri } from '../shared/json-schema.mjs'
+import { findAll, flattenMultipleOfs, getLocalSchemas, replaceRef, replaceUri } from '../shared/json-schema.mjs'
 
 /************************************************************************************************/
 /******************************************** MAIN **********************************************/
@@ -47,6 +47,7 @@ const macrofy = async (
         templatesPerSchema,
         persistPermission,
         createPolymorphicMethods,
+        enableUnionTypes,
         createModuleDirectories,
         copySchemasIntoModules,
         mergeOnTitle,
@@ -58,7 +59,6 @@ const macrofy = async (
         additionalMethodTemplates,
         templateExtensionMap,
         excludeDeclarations,
-        extractProviderSchema,
         aggregateFiles,
         operators,
         primitives,
@@ -79,6 +79,20 @@ const macrofy = async (
         const serverRpc = await readJson(server)
         const clientRpc = client && await readJson(client) || null
 
+        // Combine all-ofs to make code-generation simplier
+        flattenMultipleOfs(serverRpc, 'allOf')
+        flattenMultipleOfs(clientRpc, 'allOf')
+
+        // Combine union types (anyOf / oneOf) for languages that don't have them
+        // NOTE: anyOf and oneOf are both treated as ORs, i.e. oneOf is not XOR
+        if (!enableUnionTypes) {
+            flattenMultipleOfs(serverRpc, 'anyOf')
+            flattenMultipleOfs(serverRpc, 'oneOf')    
+
+            flattenMultipleOfs(clientRpc, 'anyOf')
+            flattenMultipleOfs(clientRpc, 'oneOf')        
+        }
+      
         logHeader(`Generating ${headline} for version ${serverRpc.info.title} ${serverRpc.info.version}`)
 
         engine.setConfig({
@@ -93,7 +107,6 @@ const macrofy = async (
             additionalMethodTemplates,
             templateExtensionMap,
             excludeDeclarations,
-            extractProviderSchema,
             operators            
         })
 
@@ -208,6 +221,8 @@ const macrofy = async (
         modules.forEach(module => {
             start = Date.now()
             const clientRpc2 = clientRpc && getClientModule(module.info.title, clientRpc, module)
+            logSuccess(` - gotClientModule ${Date.now() - start}ms`)
+            start = Date.now()
             const macros = engine.generateMacros(module, clientRpc2, templates, exampleTemplates, {hideExcluded: hideExcluded, copySchemasIntoModules: copySchemasIntoModules, createPolymorphicMethods: createPolymorphicMethods, type: 'methods'})
             logSuccess(`Generated macros for module ${module.info.title} (${Date.now() - start}ms)`)
 

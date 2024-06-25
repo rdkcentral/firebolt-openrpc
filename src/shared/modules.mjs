@@ -390,7 +390,6 @@ const getPayloadFromEvent = (event, client) => {
         }
     }
     catch (error) {
-        m(event)
         throw error
     }
 }
@@ -1423,138 +1422,6 @@ const generateEventListenResponse = json => {
     return json
 }
 
-const getAnyOfSchema = (inType, json) => {
-    let anyOfTypes = []
-    let outType = localizeDependencies(inType, json)
-    if (outType.schema.anyOf) {
-        let definition = ''
-        if (inType.schema['$ref'] && (inType.schema['$ref'][0] === '#')) {
-            definition = getReferencedSchema(inType.schema['$ref'], json, json['x-schemas'])
-        }
-        else {
-            definition = outType.schema
-        }
-        definition.anyOf.forEach(anyOf => {
-            anyOfTypes.push(anyOf)
-        })
-        outType.schema.anyOf = anyOfTypes
-    }
-    return outType
-}
-
-const generateAnyOfSchema = (anyOf, name, summary) => {
-    let anyOfType = {}
-    anyOfType["name"] = name;
-    anyOfType["summary"] = summary
-    anyOfType["schema"] = anyOf
-    return anyOfType
-}
-
-const generateParamsAnyOfSchema = (methodParams, anyOf, anyOfTypes, title, summary) => {
-    let params = []
-    methodParams.forEach(p => {
-        if (p.schema.anyOf === anyOfTypes) {
-            let anyOfType = generateAnyOfSchema(anyOf, p.name, summary)
-            anyOfType.required = p.required
-            params.push(anyOfType)
-        }
-        else {
-            params.push(p)
-        }
-    })
-    return params
-}
-
-const generateResultAnyOfSchema = (method, methodResult, anyOf, anyOfTypes, title, summary) => {
-    let methodResultSchema = {}
-    if (methodResult.schema.anyOf === anyOfTypes) {
-        let anyOfType = generateAnyOfSchema(anyOf, title, summary)
-        let index = 0
-        if (isEventMethod(method)) {
-            index = (method.result.schema.anyOf || method.result.schema.oneOf).indexOf(getPayloadFromEvent(method))
-        }
-        else {
-            index = (method.result.schema.anyOf || method.result.schema.oneOf).indexOf(anyOfType)
-        }
-        if (method.result.schema.anyOf) {
-            methodResultSchema["anyOf"] = Object.assign([], method.result.schema.anyOf)
-            methodResultSchema.anyOf[index] = anyOfType.schema
-        }
-        else if (method.result.schema.oneOf) {
-            methodResultSchema["oneOf"] = Object.assign([], method.result.schema.oneOf)
-            methodResultSchema.oneOf[index] = anyOfType.schema
-        }
-        else {
-            methodResultSchema = anyOfType.schema
-        }
-    }
-    return methodResultSchema
-}
-
-const createPolymorphicMethods = (method, json) => {
-    let anyOfTypes
-    let methodParams = []
-    let methodResult = Object.assign({}, method.result)
-
-    method.params.forEach(p => {
-        if (p.schema) {
-            let param = getAnyOfSchema(p, json)
-            if (param.schema.anyOf && anyOfTypes) {
-                //anyOf is allowed with only one param in the params list
-                throw `WARNING anyOf is repeated with param:${p}`
-            }
-            else if (param.schema.anyOf) {
-                anyOfTypes = param.schema.anyOf
-            }
-            methodParams.push(param)
-        }
-    })
-    let foundAnyOfParams = anyOfTypes ? true : false
-
-    if (isEventMethod(method)) {
-        methodResult.schema = getPayloadFromEvent(method)
-    }
-    methodResult = getAnyOfSchema(methodResult, json)
-    let foundAnyOfResult = methodResult.schema.anyOf ? true : false
-    if (foundAnyOfParams === true && foundAnyOfResult === true) {
-        throw `WARNING anyOf is already with param schema, it is repeated with ${method.name} result too`
-    }
-    else if (foundAnyOfResult === true) {
-        anyOfTypes = methodResult.schema.anyOf
-    }
-    let polymorphicMethodSchemas = []
-    //anyOfTypes will be allowed either in any one of the params or in result
-    if (anyOfTypes) {
-        let polymorphicMethodSchema = {
-            name: {},
-            tags: {},
-            summary: `${method.summary}`,
-            params: {},
-            result: {},
-            examples: {}
-        }
-        anyOfTypes.forEach(anyOf => {
-
-            let localized = localizeDependencies(anyOf, json)
-            let title = localized.title || localized.name || ''
-            let summary = localized.summary || localized.description || ''
-            polymorphicMethodSchema.rpc_name = method.name
-            polymorphicMethodSchema.name = foundAnyOfResult && isEventMethod(method) ? `${method.name}${title}` : method.name
-            polymorphicMethodSchema.tags = method.tags
-            polymorphicMethodSchema.params = foundAnyOfParams ? generateParamsAnyOfSchema(methodParams, anyOf, anyOfTypes, title, summary) : methodParams
-            polymorphicMethodSchema.result = Object.assign({}, method.result)
-            polymorphicMethodSchema.result.schema = foundAnyOfResult ? generateResultAnyOfSchema(method, methodResult, anyOf, anyOfTypes, title, summary) : methodResult.schema
-            polymorphicMethodSchema.examples = method.examples
-            polymorphicMethodSchemas.push(Object.assign({}, polymorphicMethodSchema))
-        })
-    }
-    else {
-      polymorphicMethodSchemas = method
-    }
-
-    return polymorphicMethodSchemas
-}
-
 const isSubSchema = (schema) => schema.type === 'object' || (schema.type === 'string' && schema.enum)
 const isSubEnumOfArraySchema = (schema) => (schema.type === 'array' && schema.items.enum)
 
@@ -1760,36 +1627,39 @@ const addExternalSchemas = (json, sharedSchemas) => {
 // TODO: make this recursive, and check for group vs schema
 const removeUnusedSchemas = (json) => {
     const schema = JSON.parse(JSON.stringify(json))
+    const components = schema.components
+    schema.components = { schemas: {} }
+
     const refs = getAllValuesForName('$ref', schema)
 
-    const recurse = (schema, path) => {
-        let deleted = false
-        Object.keys(schema).forEach(name => {
-            if (isSchema(schema[name])) {
-                const used = refs.includes(path + '/' + name) || ((name.startsWith('https://') && refs.find(ref => ref.startsWith(name)))) //isDefinitionReferencedBySchema(path + '/' + name, json)
-                if (!used) {
-                    delete schema[name]
-                    deleted = true
-                }
-                else {
+    const addSchemas = (schema, refs) => {
+        let added = false
+        refs.forEach(ref => {
+            if (ref.startsWith("https://")) {
+                const [uri, fragment] = ref.split("#")
+                if (!schema.components.schemas[uri]) {
+                    schema.components.schemas[uri] = components.schemas[uri]
+                    console.log(`Adding ${uri}`)
+                    added = true                    
                 }
             }
-            else if (typeof schema[name] === 'object') {
-                deleted = deleted || recurse(schema[name], path + '/' + name)
+            else {
+                const key = ref.split("/").pop()
+                if (!schema.components.schemas[key]) {
+                    schema.components.schemas[key] = components.schemas[key]
+                    console.log(`Adding ${key}`)
+                    added = true                    
+                }
             }
         })
-        return deleted
+        return added
     }
 
     if (schema.components.schemas) {
-        while(recurse(schema.components.schemas, '#/components/schemas')) {
+        while(addSchemas(schema, refs)) {
             refs.length = 0
             refs.push(...getAllValuesForName('$ref', schema))
         }
-    }
-
-    if (schema['x-schemas']) {
-        while(recurse(schema['x-schemas'], '#/x-schemas')) {}
     }
 
     return schema
@@ -2006,6 +1876,5 @@ export {
     getSemanticVersion,
     addExternalMarkdown,
     addExternalSchemas,
-    getExternalMarkdownPaths,
-    createPolymorphicMethods
+    getExternalMarkdownPaths
 }

@@ -17,7 +17,7 @@
  */
 
 import deepmerge from 'deepmerge'
-import { getReferencedSchema, localizeDependencies, getSafeEnumKeyName } from '../shared/json-schema.mjs'
+import { getReferencedSchema, localizeDependencies, getSafeEnumKeyName, schemaReferencesItself } from '../shared/json-schema.mjs'
 import path from "path"
 
 let convertTuplesToArraysOrObjects = false
@@ -150,7 +150,7 @@ const getXSchemaGroupFromProperties = (schema, title, properties, group) => {
 const getXSchemaGroup = (schema, module) => {
   let group = module.info ? module.info.title : module.title
   let bundles = module.definitions || module.components.schemas
-
+  
   if (schema.title && bundles) {
     Object.entries(bundles).filter(([key, s]) => s.$id).forEach(([id, bundle]) => {
       const title = bundle.title
@@ -303,7 +303,6 @@ const insertObjectPatternPropertiesMacros = (content, schema, module, title, opt
   if (patternSchema) {
     const shape = getSchemaShape(patternSchema, module, options2)
     let type = getSchemaType(patternSchema, module, options2).trimEnd()
-    const propertyNames = localizeDependencies(schema, module).propertyNames
 
     content = content
       .replace(/\$\{shape\}/g, shape)
@@ -323,7 +322,7 @@ const getIndents = level => level ? '    ' : ''
 const insertObjectMacros = (content, schema, module, title, property, options) => {
   const options2 = options ? JSON.parse(JSON.stringify(options)) : {}
   options2.parent = title
-  options2.parentLevel = options.parentLevel
+  options2.parentLevel = options.level
   options2.level = options.level + 1
   options2.templateDir = options.templateDir
   ;(['properties', 'properties.register', 'properties.assign']).forEach(macro => {
@@ -337,15 +336,10 @@ const insertObjectMacros = (content, schema, module, title, property, options) =
         const subProperty = getTemplate(path.join(options2.templateDir, 'sub-property/object'))
         options2.templateDir += subProperty ? '/sub-property' : ''
         const objSeparator = getTemplate(path.join(options2.templateDir, 'object-separator'))
-        if (localizedProp.type === 'array' || localizedProp.anyOf || localizedProp.oneOf || (typeof localizedProp.const === 'string')) {
-           options2.property = name
-           options2.required = schema.required
-        } else {
-           options2.property = options.property
-           options2.required = schema.required && schema.required.includes(name)
-        }
-        const schemaShape = indent + getSchemaShape(localizedProp, module, options2).replace(/\n/gms, '\n' + indent)
-        const type = getSchemaType(localizedProp, module, options2)
+        options2.property = name
+        options2.required = schema.required && schema.required.includes(name) //schema.required
+        const schemaShape = indent + getSchemaShape(prop, module, options2).replace(/\n/gms, '\n' + indent)
+        const type = getSchemaType(prop, module, options2)
         // don't push properties w/ unsupported types
         if (type) {
           const description = getSchemaDescription(prop, module)
@@ -360,8 +354,8 @@ const insertObjectMacros = (content, schema, module, title, property, options) =
           .replace(/\$\{if\.summary\}(.*?)\$\{end\.if\.summary\}/gms, description ? '$1' : '')
           .replace(/\$\{summary\}/g, description ? description.split('\n')[0] : '')
           .replace(/\$\{delimiter\}(.*?)\$\{end.delimiter\}/gms, i === schema.properties.length - 1 ? '' : '$1')
-          .replace(/\$\{if\.optional\}(.*?)\$\{end\.if\.optional\}/gms, ((schema.required && schema.required.includes(name)) || (localizedProp.required && localizedProp.required === true)) ? '' : '$1')
-          .replace(/\$\{if\.non.optional\}(.*?)\$\{end\.if\.non.optional\}/gms, ((schema.required && schema.required.includes(name)) || (localizedProp.required && localizedProp.required === true)) ? '$1' : '')
+          .replace(/\$\{if\.optional\}(.*?)\$\{end\.if\.optional\}/gms, ((schema.required && schema.required.includes(name))) ? '' : '$1')
+          .replace(/\$\{if\.non.optional\}(.*?)\$\{end\.if\.non.optional\}/gms, ((schema.required && schema.required.includes(name))) ? '$1' : '')
           .replace(/\$\{if\.base\.optional\}(.*?)\$\{end\.if\.base\.optional\}/gms, options.required ? '' : '$1')
           .replace(/\$\{if\.non\.object\}(.*?)\$\{end\.if\.non\.object\}/gms, isObject(localizedProp) ? '' : '$1')
           .replace(/\$\{if\.non\.array\}(.*?)\$\{end\.if\.non\.array\}/gms, (localizedProp.type === 'array') ? '' : '$1')
@@ -509,7 +503,8 @@ const insertPrimitiveMacros = (content, schema, module, name, templateDir) => {
   return content
 }
 
-const insertAnyOfMacros = (content, schema, module, name, namespace) => {
+//
+const insertAnyOfMacros = (content, schema, module, namespace) => {
   const itemTemplate = content
   if (content.split('\n').find(line => line.includes("${type}"))) {
     content = schema.anyOf.map((item, i) => itemTemplate
@@ -537,10 +532,14 @@ const sanitize = (schema) => {
   return result
 }
 
-function getSchemaShape(schema = {}, module = {}, { templateDir = 'types', parent = '', property = '', required = false, parentLevel = 0, level = 0, summary, descriptions = true, enums = true, enumImpl = false, skipTitleOnce = false, array = false, primitive = false, type = false, namespace=true } = {}) {
+function getSchemaShape(schema = {}, module = {}, { templateDir = 'types', parent = '', property = '', required = false, parentLevel = 0, level = 0, summary, descriptions = true, enums = true, enumImpl = false, skipTitleOnce = false, array = false, primitive = false, type = false, namespace=true } = {}) {  
   schema = sanitize(schema)
   if (level === 0 && !schema.title && !primitive) {
     return ''
+  }
+
+  if (schema.anyOf && schema.anyOf.find(s => s.$ref?.indexOf('/ListenResponse') >= 0)) {
+    schema = schema.anyOf.find(s => !s.$ref || s.$ref.indexOf('/ListenResponse') === -1)
   }
 
   const theTitle = insertSchemaMacros(getTemplate(path.join(templateDir, 'title')), schema, module, { name: schema.title, parent, property, required, recursive: false })
@@ -599,25 +598,16 @@ function getSchemaShape(schema = {}, module = {}, { templateDir = 'types', paren
     return insertSchemaMacros(result, schema, module, { name: theTitle, parent, property, required, templateDir })
   }
   else if (schema.anyOf || schema.oneOf) {
-    const template = getTemplate(path.join(templateDir, 'anyOfSchemaShape'))
-    let shape
-    if (template) {
-      shape = insertAnyOfMacros(template, schema, module, theTitle, namespace)
+    // borrow anyOf logic, note that schema is a copy, so we're not breaking it.
+    if (!schema.anyOf) {
+      schema.anyOf = schema.oneOf
     }
-    else {
-      // borrow anyOf logic, note that schema is a copy, so we're not breaking it.
-      if (!schema.anyOf) {
-        schema.anyOf = schema.oneOf
-      }
-      shape = insertAnyOfMacros(getTemplate(path.join(templateDir, 'anyOf')) || genericTemplate, schema, module, theTitle, namespace)
-    }
-    if (shape) {
-      result = result.replace(/\$\{shape\}/g, shape)
-      return insertSchemaMacros(result, schema, module, { name: theTitle, parent, property, required })
-    }
-    else {
-      return ''
-    }
+
+    let template = getTemplate(path.join(templateDir, 'anyOf')) || genericTemplate
+    template = insertAnyOfMacros(template, schema, module, namespace)
+
+    result = result.replace(/\$\{shape\}/g, template)
+    return insertSchemaMacros(result, schema, module, { name: theTitle, parent, property, required })
   }
   else if (schema.allOf) {
     const merger = (key) => function (a, b) {
@@ -849,8 +839,8 @@ function getSchemaType(schema, module, { templateDir = 'types', link = false, co
     if (!schema.anyOf) {
       schema.anyOf = schema.oneOf
     }
-    // todo... we probably shouldn't allow untitled anyOfs, at least not w/out a feature flag
-    const shape = insertAnyOfMacros(getTemplate(path.join(templateDir, 'anyOf')), schema, module, theTitle, namespace)
+
+    const shape = insertAnyOfMacros(getTemplate(path.join(templateDir, 'anyOf')), schema, module, namespace)
     return insertSchemaMacros(shape, schema, module, { name: theTitle, recursive: false })
 
     

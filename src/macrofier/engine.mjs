@@ -29,10 +29,10 @@ import isString from 'crocks/core/isString.js'
 import predicates from 'crocks/predicates/index.js'
 const { isObject, isArray, propEq, pathSatisfies, propSatisfies } = predicates
 
-import { isRPCOnlyMethod, isProviderInterfaceMethod, getProviderInterface, getPayloadFromEvent, providerHasNoParameters, isTemporalSetMethod, hasMethodAttributes, getMethodAttributes, isEventMethodWithContext, getSemanticVersion, getSetterFor, getProvidedCapabilities, isPolymorphicPullMethod, hasPublicAPIs, isAllowFocusMethod, hasAllowFocusMethods, createPolymorphicMethods, isExcludedMethod, isCallsMetricsMethod, getProvidedInterfaces, getUnidirectionalProviderInterfaceName } from '../shared/modules.mjs'
+import { isRPCOnlyMethod, isProviderInterfaceMethod, getProviderInterface, getPayloadFromEvent, providerHasNoParameters, isTemporalSetMethod, hasMethodAttributes, getMethodAttributes, isEventMethodWithContext, getSemanticVersion, getSetterFor, getProvidedCapabilities, isPolymorphicPullMethod, hasPublicAPIs, isAllowFocusMethod, hasAllowFocusMethods, isExcludedMethod, isCallsMetricsMethod, getProvidedInterfaces, getUnidirectionalProviderInterfaceName } from '../shared/modules.mjs'
 import { extension, getNotifier, name as methodName, name, provides } from '../shared/methods.mjs'
 import isEmpty from 'crocks/core/isEmpty.js'
-import { getReferencedSchema, getLinkedSchemaPaths, getSchemaConstraints, isSchema, localizeDependencies, isDefinitionReferencedBySchema, mergeAnyOf, mergeOneOf, getSafeEnumKeyName, getAllValuesForName } from '../shared/json-schema.mjs'
+import { getReferencedSchema, getLinkedSchemaPaths, getSchemaConstraints, isSchema, localizeDependencies, isDefinitionReferencedBySchema, getSafeEnumKeyName, getAllValuesForName } from '../shared/json-schema.mjs'
 
 import Types from './types.mjs'
 
@@ -50,7 +50,6 @@ let config = {
   extractSubSchemas: false,
   unwrapResultObjects: false,
   excludeDeclarations: false,
-  extractProviderSchema: false,
 }
 
 const state = {
@@ -468,22 +467,6 @@ const promoteAndNameSubSchemas = (server, client) => {
 }
 
 const generateMacros = (server, client, templates, languages, options = {}) => {
-  // TODO: figure out anyOfs/polymorphs on the client RPC. It can work for events, but not providers
-  if (options.createPolymorphicMethods) {
-    let methods = []
-    server.methods && server.methods.forEach(method => {
-      let polymorphicMethods = createPolymorphicMethods(method, server)
-      if (polymorphicMethods.length > 1) {
-        polymorphicMethods.forEach(polymorphicMethod => {
-          methods.push(polymorphicMethod)
-        })
-      }
-      else {
-        methods.push(method)
-      }
-    })
-    server.methods = methods
-  }
   // for languages that don't support nested schemas, let's promote them to first-class schemas w/ titles
   if (config.extractSubSchemas) {
     server = promoteAndNameSubSchemas(server, client)
@@ -511,6 +494,8 @@ const generateMacros = (server, client, templates, languages, options = {}) => {
     macros.callsMetrics = true
   }
 
+  let start = Date.now()
+
   const unique = list => list.map((item, i) => Object.assign(item, { index: i })).filter( (item, i, list) => !(list.find(x => x.name === item.name) && list.find(x => x.name === item.name).index < item.index))
 
   Array.from(new Set(['types'].concat(config.additionalSchemaTemplates))).filter(dir => dir).forEach(dir => {
@@ -522,10 +507,16 @@ const generateMacros = (server, client, templates, languages, options = {}) => {
     macros.enum_implementations[dir] = getTemplate('/sections/enums', templates).replace(/\$\{schema.list\}/g, schemasArray.filter(x => x.enum).map(s => s.impl).filter(body => body).join('\n'))
   })
 
+  console.log(` - Generated types macros ${Date.now() - start}`)
+  start = Date.now()
+
   state.typeTemplateDir = 'types'
   const imports = Object.fromEntries(Array.from(new Set(Object.keys(templates).filter(key => key.startsWith('/imports/')).map(key => key.split('.').pop()))).map(key => [key, generateImports(server, client, templates, { destination: key })]))
   const initialization = generateInitialization(server, client, templates)
   const eventsEnum = generateEvents(server, templates)
+
+  console.log(` - Generated imports, etc macros ${Date.now() - start}`)
+  start = Date.now()
 
   const allMethodsArray = generateMethods(server, client, templates, languages, options.type)
 
@@ -549,11 +540,17 @@ const generateMacros = (server, client, templates, languages, options = {}) => {
     }
   })
 
+  console.log(` - Generated method macros ${Date.now() - start}`)
+  start = Date.now()
+
   const xusesInterfaces = generateXUsesInterfaces(server, templates)
   const providerSubscribe = generateProviderSubscribe(server, client, templates, !!client)
   const providerInterfaces = generateProviderInterfaces(server, client, templates, 'interface', 'interfaces', !!client)
   const providerClasses = generateProviderInterfaces(server, client, templates, 'class', 'classes', !!client)
   const defaults = generateDefaults(server, client, templates)
+
+  console.log(` - Generated provider macros ${Date.now() - start}`)
+  start = Date.now()
 
   const module = getTemplate('/codeblocks/module', templates)
   const moduleInclude = getTemplate('/codeblocks/module-include', templates)
@@ -624,8 +621,6 @@ const insertMacros = (fContents = '', macros = {}) => {
   fContents = fContents.replace(/\$\{if\.enums\}(.*?)\$\{end\.if\.enums\}/gms, macros.enums.types.trim() ? '$1' : '')
   fContents = fContents.replace(/\$\{if\.declarations\}(.*?)\$\{end\.if\.declarations\}/gms, (macros.methods.declarations && macros.methods.declarations.trim() || macros.enums.types.trim()) || macros.types.types.trim()? '$1' : '')
   fContents = fContents.replace(/\$\{if\.callsmetrics\}(.*?)\$\{end\.if\.callsmetrics\}/gms, macros.callsMetrics ? '$1' : '')
-  fContents = fContents.replace(/\$\{if\.unidirectional\}(.*?)\$\{end\.if\.unidirectional\}/gms, macros.unidirectional ? '$1' : '')
-  fContents = fContents.replace(/\$\{if\.bidirectional\}(.*?)\$\{end\.if\.bidirectional\}/gms, !macros.unidirectional ? '$1' : '')
   
   fContents = fContents.replace(/\$\{module\.list\}/g, macros.module)
   fContents = fContents.replace(/\$\{module\.includes\}/g, macros.moduleInclude)
@@ -718,6 +713,9 @@ const insertMacros = (fContents = '', macros = {}) => {
   else {
     fContents = fContents.replace(/\$\{if\.events\}.*?\$\{end\.if\.events\}/gms, '')
   }
+
+  fContents = fContents.replace(/\$\{if\.unidirectional\}(.*?)\$\{end\.if\.unidirectional\}/gms, macros.unidirectional ? '$1' : '')
+  fContents = fContents.replace(/\$\{if\.bidirectional\}(.*?)\$\{end\.if\.bidirectional\}/gms, !macros.unidirectional ? '$1' : '')
 
   fContents = insertTableofContents(fContents)
 
@@ -931,9 +929,10 @@ function generateSchemas(server, templates, options) {
     else {
       content = content.replace(/\$\{if\.description\}(.*?)\{end\.if\.description\}/gms, '$1')
     }
+
+
     const schemaShape = Types.getSchemaShape(schema, server, { templateDir: state.typeTemplateDir, primitive: config.primitives ? Object.keys(config.primitives).length > 0 : false, namespace: !config.copySchemasIntoModules })
     const schemaImpl = Types.getSchemaShape(schema, server, { templateDir: state.typeTemplateDir, enumImpl: true, primitive: config.primitives ? Object.keys(config.primitives).length > 0 : false, namespace: !config.copySchemasIntoModules })
-
 
     content = content
       .replace(/\$\{schema.title\}/, (schema.title || name))
@@ -994,7 +993,14 @@ function generateSchemas(server, templates, options) {
   })
 
   list = sortSchemasByReference(list)
-  list.forEach(item => generate(...item))
+  list.forEach(item => {
+    try {
+      generate(...item)
+    }
+    catch (error) {
+      console.error(error)
+    }
+  })
 
   return results
 }
@@ -1282,8 +1288,8 @@ function generateMethods(server = {}, client = null, templates = {}, languages =
 }
 
 // TODO: this is called too many places... let's reduce that to just generateMethods
-function insertMethodMacros(template, methodObj, server, client, templates, type = '', examples = [], languages = {}) {
-  try {
+function insertMethodMacros(template, methodObj, server, client, templates, type = 'method', examples = [], languages = {}) {
+  // try {
     // need a guaranteed place to get client stuff from...
     const document = client || server
     const moduleName = getModuleName(server)
@@ -1573,14 +1579,14 @@ function insertMethodMacros(template, methodObj, server, client, templates, type
     template = insertExampleMacros(template, examples || [], methodObj, server, templates)
 
     return template
-  }
-  catch (error) {
-    console.log(`Error processing method ${methodObj.name}`)
-    console.dir(methodObj)
-    console.log()
-    console.dir(error)
-    process.exit(1)
-  }
+  // }
+  // catch (error) {
+  //   console.log(`Error processing method ${methodObj.name}`)
+  //   console.dir(methodObj, { depth: 10 })
+  //   console.log()
+  //   console.dir(error)
+  //   process.exit(1)
+  // }
 }
 
 function insertExampleMacros(template, examples, method, json, templates) {
@@ -1918,8 +1924,8 @@ function insertProviderInterfaceMacros(template, _interface, server = {}, client
         name: 'provider'
       })
 
-      let type = config.templateExtensionMap && config.templateExtensionMap['methods'] && config.templateExtensionMap['methods'].includes(suffix) ? 'methods' : 'declarations'
-      return insertMethodMacros(interfaceDeclaration, method, server, client, templates, type)
+//      let type = config.templateExtensionMap && config.templateExtensionMap['methods'] && config.templateExtensionMap['methods'].includes(suffix) ? 'methods' : 'declarations'
+      return insertMethodMacros(interfaceDeclaration, method, server, client, templates)
     }).join('') + '\n')
 
   if (iface.length === 0) {

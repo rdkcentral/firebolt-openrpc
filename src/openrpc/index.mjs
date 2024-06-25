@@ -20,7 +20,7 @@ import { readJson, readFiles, readDir, writeJson } from "../shared/filesystem.mj
 import { addExternalMarkdown, addExternalSchemas, fireboltize } from "../shared/modules.mjs"
 import path from "path"
 import { logHeader, logSuccess } from "../shared/io.mjs"
-import { namespaceRefs } from "../shared/json-schema.mjs"
+import { flattenMultipleOfs, namespaceRefs } from "../shared/json-schema.mjs"
 
 const run = async ({
   input: input,
