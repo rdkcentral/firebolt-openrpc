@@ -17,30 +17,39 @@
  */
 
 import { readJson, readFiles, readDir, writeJson } from "../shared/filesystem.mjs"
-import { addExternalMarkdown, addExternalSchemas, fireboltize, fireboltizeMerged } from "../shared/modules.mjs"
+import { addExternalMarkdown, addExternalSchemas, fireboltize } from "../shared/modules.mjs"
 import path from "path"
 import { logHeader, logSuccess } from "../shared/io.mjs"
+import { flattenMultipleOfs, namespaceRefs } from "../shared/json-schema.mjs"
 
 const run = async ({
   input: input,
-  output: output,
+  client: client,
+  server: server,
   template: template,
   schemas: schemas,
+  argv: {
+    remain: moduleWhitelist
+  }  
 }) => {
 
-  let openrpc = await readJson(template)
+  let serverOpenRPC = await readJson(template)
+  let clientOpenRPC = client && await readJson(template)
+  let mergedOpenRpc = await readJson(template)
+
   const sharedSchemaList = schemas ? (await Promise.all(schemas.map(d => readDir(d, { recursive: true })))).flat() : []
   const sharedSchemas = await readFiles(sharedSchemaList)
 
   try {
     const packageJson = await readJson(path.join(input, '..', 'package.json'))
-    openrpc.info.version = packageJson.version
+    serverOpenRPC.info.version = packageJson.version
+    clientOpenRPC && (clientOpenRPC.info.version = packageJson.version)
   }
   catch (error) {
     // fail silently
   }
 
-  logHeader(`Generating compiled ${openrpc.info.title} OpenRPC document version ${openrpc.info.version}`)
+  logHeader(`Generating compiled ${serverOpenRPC.info.title} OpenRPC document version ${serverOpenRPC.info.version}`)
 
   Object.entries(sharedSchemas).forEach(([path, schema]) => {
     const json = JSON.parse(schema)
@@ -55,57 +64,60 @@ const run = async ({
   const descriptionsList = input ? await readDir(path.join(input, 'descriptions'), { recursive: true }) : []
   const markdown = await readFiles(descriptionsList, path.join(input, 'descriptions'))
 
-  Object.keys(modules).forEach(key => {
-    let json = JSON.parse(modules[key])
+  const isNotifier = method => method.tags.find(t => t.name === 'notifier')
+  const isProvider = method => method.tags.find(t => t.name === 'capabilities')['x-provides'] && !method.tags.find(t => t.name === 'event') && !method.tags.find(t => t.name === 'polymorphic-pull') && !method.tags.find(t => t.name === 'registration')
+  const isClientAPI = method => client && (isNotifier(method) || isProvider(method))
+  const isServerAPI = method => !isClientAPI(method)
 
-    // Do the firebolt API magic
-    json = fireboltize(json)
-
+  Object.values(modules).map(JSON.parse).filter(m => moduleWhitelist.length ? moduleWhitelist.includes(m.info.title) : true).forEach(json => {
     // pull in external markdown files for descriptions
     json = addExternalMarkdown(json, markdown)
 
     // put module name in front of each method
-    json.methods.forEach(method => method.name = method.name.includes('\.') ? method.name : json.info.title + '.' + method.name)
+    json.methods.filter(method => method.name.indexOf('.') === -1).forEach(method => method.name = json.info.title + '.' + method.name)
 
     // merge any info['x-'] extension values (maps & arrays only..)
     Object.keys(json.info).filter(key => key.startsWith('x-')).forEach(extension => {
       if (Array.isArray(json.info[extension])) {
-        openrpc.info[extension] = openrpc.info[extension] || []
-        openrpc.info[extension].push(...json.info[extension])
+        mergedOpenRpc.info[extension] = mergedOpenRpc.info[extension] || []
+        mergedOpenRpc.info[extension].push(...json.info[extension])
       }
       else if (typeof json.info[extension] === 'object') {
-        openrpc.info[extension] = openrpc.info[extension] || {}
+        mergedOpenRpc.info[extension] = mergedOpenRpc.info[extension] || {}
         Object.keys(json.info[extension]).forEach(k => {
-          openrpc.info[extension][k] = json.info[extension][k]
+          mergedOpenRpc.info[extension][k] = json.info[extension][k]
         })
       }
     })
 
     if (json.info.description) {
-      openrpc.info['x-module-descriptions'] = openrpc.info['x-module-descriptions'] || {}
-      openrpc.info['x-module-descriptions'][json.info.title] = json.info.description
+      mergedOpenRpc.info['x-module-descriptions'] = mergedOpenRpc.info['x-module-descriptions'] || {}
+      mergedOpenRpc.info['x-module-descriptions'][json.info.title] = json.info.description
     }
 
-
     // add methods from this module
-    openrpc.methods.push(...json.methods)
+    mergedOpenRpc.methods.push(...json.methods)
 
     // add schemas from this module
-    json.components && Object.assign(openrpc.components.schemas, json.components.schemas)
+//    json.components && Object.assign(mergedOpenRpc.components.schemas, json.components.schemas)
+
+    json.components && json.components.schemas && Object.assign(mergedOpenRpc.components.schemas, Object.fromEntries(Object.entries(json.components.schemas).map( ([key, schema]) => ([json.info.title + '.' + key, schema]) )))
+    namespaceRefs('', json.info.title, mergedOpenRpc)
 
     // add externally referenced schemas that are in our shared schemas path
-    openrpc = addExternalSchemas(openrpc, sharedSchemas)
+    mergedOpenRpc = addExternalSchemas(mergedOpenRpc, sharedSchemas)
 
-    modules[key] = JSON.stringify(json, null, '\t')
-
-    logSuccess(`Generated the ${json.info.title} module.`)
+    logSuccess(`Merged the ${json.info.title} module.`)
   })
 
+  // Fireboltize!
+  mergedOpenRpc = fireboltize(mergedOpenRpc, !!client)
+
   // make sure all provided-by APIs point to a real provider method
-  const appProvided = openrpc.methods.filter(m => m.tags.find(t=>t['x-provided-by'])) || []
+  const appProvided = mergedOpenRpc.methods.filter(m => m.tags.find(t=>t['x-provided-by'])) || []
   appProvided.forEach(m => {
       const providedBy = m.tags.find(t=>t['x-provided-by'])['x-provided-by']
-      const provider = openrpc.methods.find(m => m.name === providedBy)
+      const provider = mergedOpenRpc.methods.find(m => m.name === providedBy)
       if (!provider) {
           throw `Method ${m.name} is provided by an undefined method (${providedBy})`
       }
@@ -114,12 +126,27 @@ const run = async ({
       }
   })
 
-  openrpc = fireboltizeMerged(openrpc)
+  Object.assign(serverOpenRPC.info, mergedOpenRpc.info)
 
-  await writeJson(output, openrpc)
+  // split into client & server APIs
+  serverOpenRPC.methods.push(...mergedOpenRpc.methods.filter(isServerAPI))
+  clientOpenRPC && clientOpenRPC.methods.push(...mergedOpenRpc.methods.filter(isClientAPI))
 
-  console.log()
-  logSuccess(`Wrote file ${path.relative('.', output)}`)
+  // add schemas - TODO: this just blindly copies them all
+  mergedOpenRpc.components && Object.assign(serverOpenRPC.components.schemas, mergedOpenRpc.components.schemas)
+  clientOpenRPC && mergedOpenRpc.components && Object.assign(clientOpenRPC.components.schemas, mergedOpenRpc.components.schemas)
+
+  // add externally referenced schemas that are in our shared schemas path
+  serverOpenRPC = addExternalSchemas(serverOpenRPC, sharedSchemas)
+
+  // add externally referenced schemas that are in our shared schemas path
+  clientOpenRPC && (clientOpenRPC = addExternalSchemas(clientOpenRPC, sharedSchemas))
+
+  await writeJson(server, serverOpenRPC)
+  clientOpenRPC && await writeJson(client, clientOpenRPC)
+
+  logSuccess(`Wrote file ${path.relative('.', server)}`)
+  client && logSuccess(`Wrote file ${path.relative('.', client)}`)
 
   return Promise.resolve()
 }

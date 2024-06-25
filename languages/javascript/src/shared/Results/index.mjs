@@ -1,4 +1,4 @@
-import Transport from "../Transport/index.mjs"
+import Gateway from "../Gateway/index.mjs"
 
 /*
 methods = Map<string, {
@@ -28,7 +28,7 @@ function transform(result, transforms) {
             for (var i=0; i<args.length; i++) {
                 params[method_info['x-additional-params'][i]] = args[i]
             }
-            return Transport.send(module.toLowerCase(), method, params)
+            return Gateway.request(`${module}.${method}`, params)
         }
     })
     return transformed

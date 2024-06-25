@@ -5,7 +5,7 @@
    * @param {Function} callback
 ${if.deprecated}   * @deprecated ${method.deprecation}
 ${end.if.deprecated}  */
-  function listen(event: '${event.name}'${if.context}, ${event.signature.params}${end.if.context}, callback: (data: ${method.result.type}) => void): Promise<number>
+  function listen(event: '${event.name}'${if.context}, ${event.signature.params}${end.if.context}, callback: (data: ${event.result.type}) => void): Promise<number>
 
   /**
    * ${method.summary}
@@ -15,4 +15,4 @@ ${end.if.deprecated}  */
    * @param {Function} callback
 ${if.deprecated}   * @deprecated ${method.deprecation}
 ${end.if.deprecated}  */
-function once(event: '${event.name}'${if.context}, ${event.signature.params}${end.if.context}, callback: (data: ${method.result.type}) => void): Promise<number>
+function once(event: '${event.name}'${if.context}, ${event.signature.params}${end.if.context}, callback: (data: ${event.result.type}) => void): Promise<number>

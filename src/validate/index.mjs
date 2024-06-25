@@ -18,7 +18,7 @@
 
 import { readJson, readFiles, readDir } from "../shared/filesystem.mjs"
 import { addExternalMarkdown, addExternalSchemas, fireboltize } from "../shared/modules.mjs"
-import { removeIgnoredAdditionalItems, replaceUri } from "../shared/json-schema.mjs"
+import { namespaceRefs, removeIgnoredAdditionalItems, replaceUri } from "../shared/json-schema.mjs"
 import { validate, displayError, validatePasshtroughs } from "./validator/index.mjs"
 import { logHeader, logSuccess, logError } from "../shared/io.mjs"
 
@@ -27,17 +27,27 @@ import addFormats from 'ajv-formats'
 import url from "url"
 import path from "path"
 import fetch from "node-fetch"
+import { getCapability } from "../shared/methods.mjs"
 
 const __dirname = url.fileURLToPath(new URL('.', import.meta.url))
 
 const run = async ({
     input: input,
+    server: server,
+    client: client,
     schemas: schemas,
     transformations = false,
+    bidirectional = false,
     'pass-throughs': passThroughs
 }) => {
 
-    logHeader(`Validating ${path.relative('.', input)} with${transformations ? '' : 'out'} Firebolt transformations.`)
+    if (input) {
+        logHeader(`Validating ${path.relative('.', input)} with${transformations ? '' : 'out'} Firebolt transformations.`)
+    }
+    else {
+        logHeader(`Validating ${path.relative('.', server)} with${transformations ? '' : 'out'} Firebolt transformations.`)
+
+    }
 
     let invalidResults = 0
 
@@ -66,11 +76,18 @@ const run = async ({
         delete sharedSchemas[path]
     })
 
-    const moduleList = input ? await readDir(path.join(input), { recursive: true }) : []
-    const modules = await readFiles(moduleList, path.join(input))
+    const moduleList = input ? await readDir(path.join(input), { recursive: true }) : [server]
+    const modules = await readFiles(moduleList, input ? path.join(input) : '.')
 
-    const descriptionsList = transformations ? await readDir(path.join(input, '..', 'descriptions'), { recursive: true }) : []
-    const markdown = await readFiles(descriptionsList, path.join(input, '..', 'descriptions'))
+    let descriptionsList, markdown
+
+    try {
+        descriptionsList = transformations ? await readDir(path.join(input, '..', 'descriptions'), { recursive: true }) : []
+        markdown = await readFiles(descriptionsList, path.join(input, '..', 'descriptions'))    
+    }
+    catch (error) {
+        markdown = {}
+    }
 
     const jsonSchemaSpec = await (await fetch('https://meta.json-schema.tools')).json()
 
@@ -103,18 +120,23 @@ const run = async ({
         schemas: [
             jsonSchemaSpec,
             openRpcSpec,
-            fireboltOpenRpcSpec,
-            ...Object.values(sharedSchemas)
+            fireboltOpenRpcSpec
         ]
     })
 
+//            ...( transformations ? Object.values(sharedSchemas) : [])
+
     addFormats(ajv)
+
     // explicitly add our custom extensions so we can keep strict mode on (TODO: put these in a JSON config?)
     ajv.addVocabulary(['x-method', 'x-this-param', 'x-additional-params', 'x-schemas', 'components', 'x-property'])
 
     const firebolt = ajv.compile(fireboltOpenRpcSpec)
     const jsonschema = ajv.compile(jsonSchemaSpec)
     const openrpc = ajv.compile(openRpcSpec)
+
+    // add the shared schemas so that each shared schema knows about the others
+    ajv.addSchema(Object.values(sharedSchemas))
 
     // Validate all shared schemas
     sharedSchemas && Object.keys(sharedSchemas).forEach(key => {
@@ -161,13 +183,21 @@ const run = async ({
         printResult(exampleResult, "JSON Schema")
     })
 
-    // Validate all modules
+    // Do Firebolt Transformations
     Object.keys(modules).forEach(key => {
         let json = JSON.parse(modules[key])
 
         if (transformations) {
+
+            // put module name in front of each method
+            json.methods.filter(method => method.name.indexOf('.') === -1).forEach(method => {
+                method.name = json.info.title + '.' + method.name
+            })
+            json.components && json.components.schemas && (json.components.schemas = Object.fromEntries(Object.entries(json.components.schemas).map( ([key, schema]) => ([json.info.title + '.' + key, schema]) )))
+            namespaceRefs('', json.info.title, json)
+
             // Do the firebolt API magic
-            json = fireboltize(json)
+            json = fireboltize(json, bidirectional)
 
             // pull in external markdown files for descriptions
             json = addExternalMarkdown(json, markdown)
@@ -177,123 +207,129 @@ const run = async ({
             json.components.schemas = json.components.schemas || {}
 
             // add externally referenced schemas that are in our shared schemas path
-            json = addExternalSchemas(json, sharedSchemas)
+//            json = addExternalSchemas(json, sharedSchemas)
         }
 
-        const exampleSpec = {
-            "$id": "https://meta.rdkcentral.com/firebolt/dynamic/" + (json.info.title) +"/examples",
-            "title": "FireboltOpenRPCExamples",
-            "definitions": {
-                "Document": {
-                    "type": "object",
-                    "properties": {
-                        "methods": {
-                            "type": "array",
-                            "items": {
-                                "allOf": json.methods.filter(m => m.result).map(method => ({
-                                    "if": {
-                                        "type": "object",
-                                        "properties": {
-                                            "name": {
-                                                "const": method.name
+        ajv.addSchema(Object.values(json.components.schemas).filter(s => s.$id))
+
+        modules[key] = json
+    })
+
+    // Validate all modules examples
+    Object.keys(modules).forEach(key => {
+        const json = modules[key]
+        json.methods.forEach((method, index) => {
+            const exampleSpec = {
+                "$id": `${json.info.title}.method.${index}.examples`,
+                "title": `${method.name} Examples`,
+                "oneOf": [],
+                "components": json.components
+            }
+
+            exampleSpec.oneOf.push({
+                type: "object",
+                required: ["examples"],
+                properties: {
+                    examples: {
+                        type: "array",
+                        items: {
+                            type: "object",
+                            properties: {
+                                params: method.params.length ? {
+                                    "type": "array",
+                                    "items": {
+                                        "allOf": method.params.map(param => ({
+                                            "if": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "name": {
+                                                        "const": param.name
+                                                    }
+                                                }
+                                            },
+                                            "then": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "value": param.schema
+                                                }
                                             }
-                                        }
+                                        }))
                                     },
-                                    "then": {
-                                        "type": "object",
-                                        "properties": {
-                                            "examples": {
-                                                "type": "array",
-                                                "items": {
-                                                    "type": "object",
-                                                    "properties": {
-                                                        "result": {
-                                                            "type": "object",
-                                                            "properties": {
-                                                                "value": method.result.schema
-                                                            }
-                                                        },
-                                                        "params": method.params.length ? {
-                                                            "type": "array",
-                                                            "items": {
-                                                                "allOf": method.params.map(param => ({
-                                                                    "if": {
-                                                                        "type": "object",
-                                                                        "properties": {
-                                                                            "name": {
-                                                                                "const": param.name
-                                                                            }
-                                                                        }
-                                                                    },
-                                                                    "then": {
-                                                                        "type": "object",
-                                                                        "properties": {
-                                                                            "value": param.schema
-                                                                        }
-                                                                    }
-                                                                }))
-                                                            },
-                                                            "if": {
-                                                                "type": "array" // always true, but avoids an empty allOf below
-                                                            },
-                                                            "then": method.params.filter(p => p.required).length ? {
-                                                                "allOf": method.params.filter(p => p.required).map(param => ({
-                                                                    "contains": {
-                                                                        "type": "object",
-                                                                        "properties": {
-                                                                            "name": {
-                                                                                "const": param.name
-                                                                            }
-                                                                        }
-                                                                    }
-                                                                }))
-                                                            } : {}
-                                                        } : {}
+                                    "if": {
+                                        "type": "array" // always true, but avoids an empty allOf below
+                                    },
+                                    "then": method.params.filter(p => p.required).length ? {
+                                        "allOf": method.params.filter(p => p.required).map(param => ({
+                                            "contains": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "name": {
+                                                        "const": param.name
                                                     }
                                                 }
                                             }
-                                        }
+                                        }))
+                                    } : {}
+                                } : {},                   
+                                result: method.result?.schema ? {
+                                    type: "object",
+                                    required: ["value"],
+                                    properties: {
+                                        value: method.result.schema
                                     }
-                                }))
+                                } : {}
                             }
                         }
                     }
                 }
-            },
-            "x-schemas": json['x-schemas'],
-            "components": json.components
-        }
+            })
 
-        exampleSpec.oneOf = [
-            {
-                "$ref": "#/definitions/Document"
+            const examples = ajv.compile(exampleSpec)
+
+            try {
+                const exampleResult = validate(method, { title: json.info.title, path: `/methods/${method.name}` }, ajv, examples)
+    
+                if (exampleResult.valid) {
+//                    printResult(exampleResult, "Firebolt Examples")
+                }
+                else {
+                    printResult(exampleResult, "Firebolt Examples")
+    
+    //                if (!exampleResult.valid) {
+    //                    console.dir(exampleSpec, { depth: 100 })
+    //                }
+                }
             }
-        ]
+            catch (error) {
+                throw error
+            }
+        })
 
-        const examples = ajv.compile(exampleSpec)
+    })
+
+    // Remove the shared schemas, because they're bundled into the OpenRPC docs
+    Object.values(sharedSchemas).map(schema => schema.$id).map(x => ajv.removeSchema(x))
+
+    // Validate all modules
+    Object.keys(modules).forEach(key => {
+        let json = modules[key]
 
         try {
             const openrpcResult = validate(json, {}, ajv, openrpc)
             const fireboltResult = validate(json, {}, ajv, firebolt)
-            const exampleResult = validate(json, {}, ajv, examples)
 
-            if (openrpcResult.valid && fireboltResult.valid && exampleResult.valid) {
+            if (openrpcResult.valid && fireboltResult.valid) {
                 printResult(openrpcResult, "OpenRPC & Firebolt")
             }
             else {
                 printResult(openrpcResult, "OpenRPC")
                 printResult(fireboltResult, "Firebolt")
-                printResult(exampleResult, "Firebolt Examples")
-
-                if (!exampleResult.valid) {
-//                    console.dir(exampleSpec, { depth: 100 })
-                }
             }
 
-            if (passThroughs) {
+            if (false && passThroughs) {
                 const passthroughResult = validatePasshtroughs(json)
                 printResult(passthroughResult, "Firebolt App pass-through")
-            }    
+            }
         }
         catch (error) {
             throw error

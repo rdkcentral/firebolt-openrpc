@@ -18,7 +18,7 @@ function ${method.name} (data) {
             correlationId: request.correlationId,
             result: result
           }
-          Transport.send('${info.title}', '${method.name}', params).catch(error => {
+          Gateway.request('${info.title}.${method.name}', params).catch(error => {
             const msg = typeof error === 'string' ? error : error.message || 'Unknown Error'
             console.error(`Failed to send ${method.name} pull response through Transport Layer: ${msg}`)
           })
@@ -34,6 +34,6 @@ function ${method.name} (data) {
     })
   }
   else {
-    return Transport.send('${info.title}', '${method.name}', { correlationId: null, result: data })
+    return Gateway.request('${info.title}.${method.name}', { correlationId: null, result: data })
   }
 }

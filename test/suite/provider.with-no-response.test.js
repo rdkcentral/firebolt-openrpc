@@ -16,7 +16,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { Provider } from '../../build/sdk/javascript/src/sdk.mjs'
+import { Settings, Provider } from '../../build/sdk/javascript/src/sdk.mjs'
 import Setup from '../Setup.js'
 import { transport } from '../TransportHarness.js'
 
@@ -25,10 +25,11 @@ let providerMethodRequestDispatched = false
 let providerMethodResultSent = false
 let numberOfArgs = -1
 let hasNoResponse
-let responseCorrelationId
 
 
 beforeAll( () => {
+
+    Settings.setLogLevel('DEBUG')
 
     class NoResponseProvider {
         noResponseMethod(...args) {
@@ -36,33 +37,32 @@ beforeAll( () => {
             return Promise.resolve()
         }
     }
-    
-    transport.onSend(json => {
-        if (json.method === 'provider.onRequestNoResponseMethod') {
-            providerMethodNotificationRegistered = true
 
-            // Confirm the listener is on
-            transport.response(json.id, {
-                listening: true,
-                event: json.method
-            })
+    transport.onSend(message => {
+        const json = JSON.parse(message)
+        if (json.method) {
+            if (json.method === 'Provider.provideNoResponseMethod') {
+                providerMethodNotificationRegistered = true
 
-            // send out a request event
-            setTimeout( _ => {
-                providerMethodRequestDispatched = true
-                transport.response(json.id, {
-                    correlationId: 123
+                // send out a request event
+                setTimeout( _ => {
+                    providerMethodRequestDispatched = true
+                    transport.request({
+                        id: 1,
+                        method: 'NoResponseMethod.noResponseMethod'
+                    })
                 })
-            })
+            }
         }
-        else if (json.method === 'provider.noResponseMethodResponse') {
-            providerMethodResultSent = true
-            hasNoResponse = json.params.hasOwnProperty('result') === false
-            responseCorrelationId = json.params.correlationId
+        else {
+            if (json.id === 1 && json.result !== undefined) {
+                providerMethodResultSent = true
+                hasNoResponse = json.result === null
+            }
         }
     })
 
-    Provider.provide('xrn:firebolt:capability:test:noresponse', new NoResponseProvider())
+    Provider.provideNoResponseMethod(new NoResponseProvider())
 
     return new Promise( (resolve, reject) => {
         setTimeout(resolve, 100)
@@ -80,14 +80,6 @@ test('Provider method notification turned on', () => {
 
 test('Provider method request dispatched', () => {
     expect(providerMethodRequestDispatched).toBe(true)
-})
-
-test('Provide method called with two args', () => {
-    expect(numberOfArgs).toBe(2)
-})
-
-test('Provider response used correct correlationId', () => {
-    expect(responseCorrelationId).toBe(123)
 })
 
 test('Provider method has no response', () => {

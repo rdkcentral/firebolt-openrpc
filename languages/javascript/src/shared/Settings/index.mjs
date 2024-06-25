@@ -16,7 +16,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-const settings = {}
+const settings = { platform: {} }
 const subscribers = {}
 
 export const initSettings = (appSettings, platformSettings) => {

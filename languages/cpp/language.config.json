@@ -4,9 +4,8 @@
     "createModuleDirectories": false,
     "extractSubSchemas": true,
     "unwrapResultObjects": false,
-    "createPolymorphicMethods": true,
+    "enableUnionTypes": false,
     "excludeDeclarations": true,
-    "extractProviderSchema": true,
     "aggregateFiles": [
         "/include/firebolt.h",
         "/src/firebolt.cpp"

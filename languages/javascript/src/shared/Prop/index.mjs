@@ -1,4 +1,4 @@
-import Transport from "../Transport/index.mjs"
+import Gateway from "../Gateway/index.mjs"
 import Events from "../Events/index.mjs"
 import router from "./Router.mjs"
 
@@ -7,7 +7,7 @@ function prop(moduleName, key, params, callbackOrValue = undefined, immutable, r
   const type = router(params, callbackOrValue, contextParameterCount)
 
   if (type === "getter") {
-    return Transport.send(moduleName, key, params)
+    return Gateway.request(moduleName + '.' + key, params)
   }
   else if (type === "subscriber") {
     // subscriber
@@ -24,7 +24,7 @@ function prop(moduleName, key, params, callbackOrValue = undefined, immutable, r
     if (readonly) {
       throw new Error('Cannot set a value to a readonly property')
     }
-    return Transport.send(moduleName, 'set' + key[0].toUpperCase() + key.substring(1), Object.assign({
+    return Gateway.request(moduleName + '.set' + key[0].toUpperCase() + key.substring(1), Object.assign({
       value: callbackOrValue
     }, params))
   }

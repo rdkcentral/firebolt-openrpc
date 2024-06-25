@@ -22,8 +22,8 @@ export default class Queue {
     this._queue = []
   }
 
-  send (json) {
-    this._queue.push(json)
+  send (message) {
+    this._queue.push(message)
   }
 
   receive (_callback) {

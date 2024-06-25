@@ -24,54 +24,50 @@ let providerMethodNotificationRegistered = false
 let providerMethodRequestDispatched = false
 let providerMethodResultSent = false
 let numberOfArgs = -1
-let methodParameters
-let methodSession
 let value
-let responseCorrelationId
-
 
 beforeAll( () => {
-    
-    transport.onSend(json => {
-        if (json.method === 'provider.onRequestSimpleMethod') {
-            providerMethodNotificationRegistered = true
 
-            // Confirm the listener is on
-            transport.response(json.id, {
-                listening: true,
-                event: json.method
-            })
-
-            // send out a request event
-            setTimeout( _ => {
-                providerMethodRequestDispatched = true
-                transport.response(json.id, {
-                    correlationId: 123
-                })
-            })
-        }
-        else if (json.method === 'provider.simpleMethodResponse') {
-            providerMethodResultSent = true
-            value = json.params.result
-            responseCorrelationId = json.params.correlationId
-        }
-    })
-
-    Provider.provide('xrn:firebolt:capability:test:simple', {
+    const myProvider = {
         simpleMethod: (...args) => {
             numberOfArgs = args.length
-            methodParameters = args[0]
-            methodSession = args[1]
             return Promise.resolve('a value!')
         }
-    })
+    }
     
+
+    transport.onSend(message => {
+        const json = JSON.parse(message)
+        if (json.method) {
+            if (json.method === 'Provider.provideSimple') {
+                providerMethodNotificationRegistered = true
+
+                // send out a request event
+                setTimeout( _ => {
+                    providerMethodRequestDispatched = true
+                    transport.request({
+                        id: 1,
+                        method: 'Simple.simpleMethod'
+                    })
+                })
+            }
+        }
+        else {
+            if (json.id === 1 && json.result) {
+                providerMethodResultSent = true
+                value = json.result
+            }    
+        }
+    })
+
+    Provider.provideSimple(myProvider)
+
     return new Promise( (resolve, reject) => {
         setTimeout(resolve, 100)
     })
 })
 
-test('Provider as Object registered', () => {
+test('Provider as Class registered', () => {
     // this one is good as long as there's no errors yet
     expect(1).toBe(1)
 });
@@ -85,23 +81,7 @@ test('Provider method request dispatched', () => {
 })
 
 test('Provide method called with two args', () => {
-    expect(numberOfArgs).toBe(2)
-})
-
-test('Provide method parameters arg is null', () => {
-    expect(methodParameters).toBe(null)
-})
-
-test('Provide method session arg has correlationId', () => {
-    expect(methodSession.correlationId()).toBe(123)
-})
-
-test('Provide method session arg DOES NOT have focus', () => {
-    expect(methodSession.hasOwnProperty('focus')).toBe(false)
-})
-
-test('Provider response used correct correlationId', () => {
-    expect(responseCorrelationId).toBe(123)
+    expect(numberOfArgs).toBe(0)
 })
 
 test('Provider method result is correct', () => {
