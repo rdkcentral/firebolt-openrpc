@@ -40,8 +40,8 @@ GetVersion()
   Version=${array[2]}
 }
 
-Version=0.0
-GetVersion
+Version=1.3.0-next.1
+#GetVersion
 ReleaseName=firebolt-${ModuleName}-native-sdk-${Version}
 ReleasePath=${InstallPath}/${ReleaseName}
 
