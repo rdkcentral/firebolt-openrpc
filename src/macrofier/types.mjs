@@ -227,7 +227,7 @@ const insertEnumMacros = (content, schema, module, name, suffix, templateDir = "
         if (!value) {
           value = getTemplate(path.join(templateDir, 'unset' + suffix))
 	}
-        value ? values.push(template[i].replace(/\$\{key\}/g, getSafeEnumKeyName(value))
+        value ? values.push(template[i].replace(/\$\{key\}/g, getSafeEnumKeyName(value, schema.enumKeyPrefix))
                                        .replace(/\$\{value\}/g, value)) : ''
       })
       template[i] = values.map((value, id) => {
@@ -360,7 +360,7 @@ const insertObjectMacros = (content, schema, module, title, property, options) =
           .replace(/\$\{if\.base\.optional\}(.*?)\$\{end\.if\.base\.optional\}/gms, options.required ? '' : '$1')
           .replace(/\$\{if\.non\.object\}(.*?)\$\{end\.if\.non\.object\}/gms, isObject(localizedProp) ? '' : '$1')
           .replace(/\$\{if\.non\.array\}(.*?)\$\{end\.if\.non\.array\}/gms, (localizedProp.type === 'array') ? '' : '$1')
-          .replace(/\$\{if\.non\.anyOf\}(.*?)\$\{end\.if\.non\.anyOf\}/gms, (localizedProp.anyOf || localizedProp.anyOneOf) ? '' : '$1')
+          .replace(/\$\{if\.non\.anyOf\}(.*?)\$\{end\.if\.non\.anyOf\}/gms, (localizedProp.anyOf || localizedProp.oneOf) ? '' : '$1')
           .replace(/\$\{if\.non\.const\}(.*?)\$\{end\.if\.non\.const\}/gms, (typeof localizedProp.const === 'string') ? '' : '$1')
           let baseTitle = options.property
 
