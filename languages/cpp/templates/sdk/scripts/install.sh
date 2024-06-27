@@ -14,7 +14,7 @@ usage()
 SdkPath=".."
 InstallPath=".."
 ModuleName="core"
-Version=0.0
+Version=1.3.0-next.1
 while getopts i:s:m:v:h flag
 do
     case "${flag}" in
