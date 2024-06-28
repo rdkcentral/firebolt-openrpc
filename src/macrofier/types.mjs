@@ -360,7 +360,7 @@ const insertObjectMacros = (content, schema, module, title, property, options) =
           .replace(/\$\{if\.base\.optional\}(.*?)\$\{end\.if\.base\.optional\}/gms, options.required ? '' : '$1')
           .replace(/\$\{if\.non\.object\}(.*?)\$\{end\.if\.non\.object\}/gms, isObject(localizedProp) ? '' : '$1')
           .replace(/\$\{if\.non\.array\}(.*?)\$\{end\.if\.non\.array\}/gms, (localizedProp.type === 'array') ? '' : '$1')
-          .replace(/\$\{if\.non\.anyOf\}(.*?)\$\{end\.if\.non\.anyOf\}/gms, (localizedProp.anyOf || localizedProp.anyOneOf) ? '' : '$1')
+          .replace(/\$\{if\.non\.anyOf\}(.*?)\$\{end\.if\.non\.anyOf\}/gms, (localizedProp.anyOf || localizedProp.oneOf) ? '' : '$1')
           .replace(/\$\{if\.non\.const\}(.*?)\$\{end\.if\.non\.const\}/gms, (typeof localizedProp.const === 'string') ? '' : '$1')
           let baseTitle = options.property
 
@@ -724,7 +724,7 @@ function getSchemaType(schema, module, { destination, templateDir = 'types', lin
   const theTitle = insertSchemaMacros(namespaceStr + getTemplate(path.join(templateDir, 'title' + suffix)), schema, module, { name: schema.title, parent: getXSchemaGroup(schema, module), recursive: false })
   const allocatedProxy = event || result
 
-  const title = schema.type === "object" || schema.anyOf || schema.oneOf || Array.isArray(schema.type) && schema.type.includes("object") || schema.enum ? true : false
+  const title = schema.type === "object" || Array.isArray(schema.type) && schema.type.includes("object") || schema.enum ? true : false
 
   if (schema['$ref']) {
     if (schema['$ref'][0] === '#') {
@@ -929,5 +929,6 @@ export default {
   getMethodSignatureResult,
   getSchemaShape,
   getSchemaType,
-  getSchemaInstantiation
+  getSchemaInstantiation,
+  getXSchemaGroup
 }

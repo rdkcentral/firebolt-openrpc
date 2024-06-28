@@ -25,7 +25,7 @@
 
         ProviderInvokeSession(methodName, jsonParameters, err);
     }
-    static void ProviderResultSession(std::string methodName, std::string& correlationId, ${provider.xresponse.name} result, Firebolt::Error *err = nullptr)
+    static void ProviderResultSession(std::string methodName, std::string& correlationId, ${if.result.namespace.notsame}${parent.Title}::${end.if.result.namespace.notsame}${provider.xresponse.name} result, Firebolt::Error *err = nullptr)
     {
         JsonObject jsonParameters;
         WPEFramework::Core::JSON::Variant CorrelationId(correlationId);
@@ -34,7 +34,7 @@
 ${provider.xresponse.serialization}
         ProviderInvokeSession(methodName, jsonParameters, err);
     }
-    static void ProviderErrorSession(std::string methodName, std::string& correlationId, ${provider.xerror.name} result, Firebolt::Error *err = nullptr)
+    static void ProviderErrorSession(std::string methodName, std::string& correlationId, ${if.error.namespace.notsame}${parent.Title}::${end.if.error.namespace.notsame}${provider.xerror.name} result, Firebolt::Error *err = nullptr)
     {
         JsonObject jsonParameters;
         WPEFramework::Core::JSON::Variant CorrelationId(correlationId);
