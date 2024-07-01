@@ -23,7 +23,25 @@ do
     esac
 done
 
-Version="TEST"
+GetVersion()
+{
+  PackagePath=${SdkPath}/../../../../../../package-lock.json
+  InputKey="\"@firebolt-js/openrpc\":"
+  Line=$(grep -n "${InputKey}" ${PackagePath})
+  if [[ "${Line}" == *"file:"* ]]; then
+    InputKey="name\": \"@firebolt-js/openrpc"
+    Line=$(grep -n "${InputKey}" ${PackagePath})
+    LineNo="$(echo ${Line} | head -n 1 | cut -d: -f1)"
+    VersionLine=$((LineNo++))
+  else
+    LineNo="$(echo ${Line} | head -n 1 | cut -d: -f1)"
+  fi
+  eval "array=(`sed -n "${LineNo}p" < ${PackagePath} | sed 's/\"/\n/g'`)"
+  Version=${array[2]}
+}
+
+Version=0.0
+GetVersion
 ReleaseName=firebolt-${ModuleName}-native-sdk-${Version}
 ReleasePath=${InstallPath}/${ReleaseName}
 
