@@ -31,7 +31,7 @@ const { isObject, isArray, propEq, pathSatisfies, propSatisfies } = predicates
 
 import { isRPCOnlyMethod, isProviderInterfaceMethod, getProviderInterface, getPayloadFromEvent, providerHasNoParameters, isTemporalSetMethod, hasMethodAttributes, getMethodAttributes, isEventMethodWithContext, getSemanticVersion, getSetterFor, getProvidedCapabilities, isPolymorphicPullMethod, hasPublicAPIs, isAllowFocusMethod, hasAllowFocusMethods, createPolymorphicMethods, isExcludedMethod, isCallsMetricsMethod } from '../shared/modules.mjs'
 import isEmpty from 'crocks/core/isEmpty.js'
-import { getPath as getJsonPath, getLinkedSchemaPaths, getSchemaConstraints, isSchema, localizeDependencies, isDefinitionReferencedBySchema, mergeAnyOf, mergeOneOf, getSafeEnumKeyName, getPropertySchema } from '../shared/json-schema.mjs'
+import { getPath as getJsonPath, getLinkedSchemaPaths, getSchemaConstraints, isSchema, localizeDependencies, isDefinitionReferencedBySchema, mergeAnyOf, mergeOneOf, getSafeEnumKeyName } from '../shared/json-schema.mjs'
 
 // util for visually debugging crocks ADTs
 const _inspector = obj => {
@@ -436,13 +436,6 @@ const promoteAndNameSubSchemas = (obj) => {
           const descriptor = {
               name: obj.info.title + 'Error',
               schema: tag['x-error']
-          }
-          addContentDescriptorSubSchema(descriptor, '', obj)
-        }
-        if (tag['x-response']) {
-          const descriptor = {
-              name: obj.info.title,
-              schema: tag['x-response']
           }
           addContentDescriptorSubSchema(descriptor, '', obj)
         }
@@ -1767,13 +1760,12 @@ function getProviderInterfaceName(iface, capability, moduleJson = {}) {
   return name
 }
 
-function getProviderXValues(method, document) {
+function getProviderXValues(method) {
   let xValues = []
   if (method.tags.find(t => t['x-error']) || method.tags.find(t => t['x-response'])) {
     method.tags.forEach(tag => {
       if (tag['x-response']) {
-        const resolvedRefResponse = getPropertySchema(tag['x-response'], '', document)
-        xValues['x-response'] = resolvedRefResponse
+        xValues['x-response'] = tag['x-response']
       }
       if (tag['x-error']) {
         xValues['x-error'] = tag['x-error']
@@ -1838,7 +1830,7 @@ function insertProviderInterfaceMacros(template, capability, moduleJson = {}, te
       if (!interfaceDeclaration) {
         interfaceDeclaration = getTemplate(interfaceTemplate, templates)
       }
-      xValues = getProviderXValues(method, moduleJson)
+      xValues = getProviderXValues(method)
       method.tags.unshift({
         name: 'provider'
       })
