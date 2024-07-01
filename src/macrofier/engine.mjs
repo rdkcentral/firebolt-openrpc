@@ -1788,18 +1788,18 @@ function insertProviderXValues(template, module, xValues) {
     let schema = localizeDependencies(xValues['x-response'], module)
     const moduleTitle = types.getXSchemaGroup(schema, module)
     const xResponseInst = types.getSchemaShape(schema, module, { templateDir: 'parameter-serialization', property: 'result', required: true, destination: state.destination, section: state.section, primitive: true, skipTitleOnce: true })
+    const type = types.getSchemaType(schema, module, { moduleTitle: moduleTitle, result: true, namespace: true})
     template = template.replace(/\$\{provider\.xresponse\.serialization\}/gms, xResponseInst)
-      .replace(/\$\{provider\.xresponse\.name\}/gms, schema.title)
-      .replace(/\$\{if\.result\.namespace\.notsame}(.*?)\$\{end\.if\.result\.namespace\.notsame\}/g, (module.info.title !== moduleTitle) ? '$1' : '')
+      .replace(/\$\{provider\.xresponse\.name\}/gms, type)
       .replace(/\$\{parent\.Title\}/g, capitalize(moduleTitle))
   }
   if (xValues['x-error']) {
     let schema = localizeDependencies(xValues['x-error'], module)
     const moduleTitle = types.getXSchemaGroup(schema, module)
     const xErrorInst = types.getSchemaShape(schema, module, { templateDir: 'parameter-serialization', property: 'result', required: true, destination: state.destination, section: state.section, primitive: true, skipTitleOnce: true })
+    const type = types.getSchemaType(schema, module, { moduleTitle: moduleTitle, result: true, namespace: true})
     template = template.replace(/\$\{provider\.xerror\.serialization\}/gms, xErrorInst)
-      .replace(/\$\{provider\.xerror\.name\}/gms, schema.title)
-      .replace(/\$\{if\.error\.namespace\.notsame}(.*?)\$\{end\.if\.error\.namespace\.notsame\}/g, (module.info.title !== moduleTitle) ? '$1' : '')
+      .replace(/\$\{provider\.xerror\.name\}/gms, type)
       .replace(/\$\{parent\.Title\}/g, capitalize(moduleTitle))
   }
   return template
