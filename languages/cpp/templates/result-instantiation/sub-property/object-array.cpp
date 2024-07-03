@@ -3,4 +3,4 @@
             {
 ${properties}
             }
-            ${property}Result.${property}${if.impl.array.optional}.value()${end.if.impl.array.optional}.push_back(${property}Result${level});
+            ${base.title}Result${property.dependency}${if.impl.optional}.value()${end.if.impl.optional}.${property}->push_back(${property}Result${level});
