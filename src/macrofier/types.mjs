@@ -19,7 +19,9 @@
 import deepmerge from 'deepmerge'
 import { getPath, localizeDependencies, getSafeEnumKeyName } from '../shared/json-schema.mjs'
 import path from "path"
+import { getConfig } from '../shared/configLoader.mjs'
 
+const config = getConfig()
 let convertTuplesToArraysOrObjects = false
 const templates = {}
 const state = {}
@@ -724,7 +726,11 @@ function getSchemaType(schema, module, { destination, templateDir = 'types', lin
   const theTitle = insertSchemaMacros(namespaceStr + getTemplate(path.join(templateDir, 'title' + suffix)), schema, module, { name: schema.title, parent: getXSchemaGroup(schema, module), recursive: false })
   const allocatedProxy = event || result
 
-  const title = schema.type === "object" || Array.isArray(schema.type) && schema.type.includes("object") || schema.enum ? true : false
+  let title = schema.type === "object" || schema.anyOf || schema.oneOf || Array.isArray(schema.type) && schema.type.includes("object") || schema.enum ? true : false
+  
+  if (config?.enableUnionTypes === false) {
+    title = schema.type === "object" || Array.isArray(schema.type) && schema.type.includes("object") || schema.enum ? true : false
+  }
 
   if (schema['$ref']) {
     if (schema['$ref'][0] === '#') {
