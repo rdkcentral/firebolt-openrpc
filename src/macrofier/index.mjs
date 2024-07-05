@@ -154,6 +154,7 @@ const macrofy = async (
         else {
             modules = moduleList.map(name => getModule(name, openrpc, copySchemasIntoModules, extractSubSchemas))
         }
+        console.log('****Modules is the',JSON.stringify(modules))
 
         const aggregateMacros = engine.generateAggregateMacros(openrpc, modules.concat(staticModules), templates, libraryName)
 
@@ -163,6 +164,7 @@ const macrofy = async (
         let primaryOutput = []
 
         Object.keys(templates).forEach(file => {
+            console.log("****TemplateFile"+JSON.stringify(file))
             if (file.startsWith(path.sep + outputDirectory + path.sep) || outputDirectory === '') {
                 // Note: '/foo/bar/file.js'.split('/') => ['', 'foo', 'bar', 'file.js'] so we need to drop one more that you might suspect, hence slice(2) below...
                 const dirsToDrop = outputDirectory === '' ? 1 : 2
@@ -191,19 +193,19 @@ const macrofy = async (
         let append = false
 
         modules.forEach(module => {
-
+            console.log('First module to gernerate Macros'+JSON.stringify(module))
             // Pick the index and defaults templates for each module.
             templatesPerModule.forEach(t => {
+                console.log("****Template per module"+JSON.stringify(t))
                 const macros = engine.generateMacros(module, templates, exampleTemplates, {hideExcluded: hideExcluded, copySchemasIntoModules: copySchemasIntoModules, createPolymorphicMethods: createPolymorphicMethods, destination: t, type: 'methods'})
                 let content = getTemplateForModule(module.info.title, t, templates)
-
                 // NOTE: whichever insert is called first also needs to be called again last, so each phase can insert recursive macros from the other
                 content = engine.insertAggregateMacros(content, aggregateMacros)
                 content = engine.insertMacros(content, macros)
                 content = engine.insertAggregateMacros(content, aggregateMacros)
 
                 const location = createModuleDirectories ? path.join(output, module.info.title, t) : path.join(output, t.replace(/module/, module.info.title.toLowerCase()).replace(/index/, module.info.title))
-
+                console.log('******Location'+JSON.stringify(location))
                 outputFiles[location] = content
                 logSuccess(`Generated macros for module ${path.relative(output, location)}`)
             })
