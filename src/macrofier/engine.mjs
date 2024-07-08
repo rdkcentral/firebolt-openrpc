@@ -1925,7 +1925,7 @@ function insertProviderInterfaceMacros(template, _interface, server = {}, client
       })
 
 //      let type = config.templateExtensionMap && config.templateExtensionMap['methods'] && config.templateExtensionMap['methods'].includes(suffix) ? 'methods' : 'declarations'
-      return insertMethodMacros(interfaceDeclaration, method, server, client, templates)
+      return insertMethodMacros(interfaceDeclaration, method, document, null, templates)
     }).join('') + '\n')
 
   if (iface.length === 0) {
