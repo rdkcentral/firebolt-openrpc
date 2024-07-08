@@ -228,6 +228,9 @@ export const validatePasshtroughs = (json) => {
         delete source.examples
       }
 
+      console.log('source ** ', JSON.stringify(source))
+      console.log('destination ** ', JSON.stringify(destination))
+
       if (!schemasMatch(source, destination)) {
         const properties = getPropertiesInSchema(destination, json)
         
@@ -264,6 +267,7 @@ export const validatePasshtroughs = (json) => {
         }
       }
     })
+    console.log('result ** ', JSON.stringify(result))
     if (result.errors.length) {
       result.valid = false
       result.errors.forEach(error => addPrettyPath(error, json))
