@@ -111,9 +111,10 @@ namespace FireboltSDK {
             return status;
         }
 
-        int32_t Prioritize(const string& eventName, const CALLBACK& callback, void* usercb, const void* userdata)
+        template <typename RESULT, typename CALLBACK>
+        Firebolt::Error Prioritize(const string& eventName, const CALLBACK& callback, void* usercb, const void* userdata)
         {
-            int32_t status = FireboltSDKErrorNone;
+            Firebolt::Error status = Firebolt::Error::General;
             JsonObject jsonParameters;
             // Assuming prioritized events also need subscription via transport
             status = Subscribe<RESULT, CALLBACK>(eventName, jsonParameters, callback, usercb, userdata, true);

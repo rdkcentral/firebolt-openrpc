@@ -22,7 +22,7 @@
 namespace FireboltSDK {
     Event* Event::_singleton = nullptr;
     Event::Event()
-         : _internalEventMap()
+        : _internalEventMap()
         , _externalEventMap()
         , _adminLock()
         , _transport(nullptr)
@@ -89,16 +89,16 @@ namespace FireboltSDK {
         return result;
     }
 
-    Firebolt::Error Event::Dispatch(const string& eventName, const WPEFramework::Core::ProxyType<WPEFramework::Core::JSONRPC::Message>& jsonResponse) /* override */
+   Firebolt::Error Event::Dispatch(const string& eventName, const WPEFramework::Core::ProxyType<WPEFramework::Core::JSONRPC::Message>& jsonResponse) /* override */
     {
         string response = jsonResponse->Result.Value();
-       
+        std::vector<EventMap*> eventMaps = {&_internalEventMap, &_externalEventMap};
 
         // Combine both _internalEventMap and _externalEventMap into a single loop
-        for (auto& eventMap : {_internalEventMap, _externalEventMap}) {
+        for (auto eventMap : eventMaps) {        
             _adminLock.Lock();
-            EventMap::iterator eventIndex = eventMap.find(eventName);
-            if (eventIndex != eventMap.end()) {
+            EventMap::iterator eventIndex = eventMap->find(eventName);
+            if (eventIndex != eventMap->end()) {
                 CallbackMap& callbacks = eventIndex->second;
                 for (CallbackMap::iterator callbackIndex = callbacks.begin(); callbackIndex != callbacks.end();) {
                     State state;
@@ -114,7 +114,7 @@ namespace FireboltSDK {
                     if (callbackIndex->second.state == State::REVOKED) {
                         callbackIndex = callbacks.erase(callbackIndex);
                         if (callbacks.empty()) {
-                            eventMap.erase(eventIndex); // Erase from the correct eventMap
+                            eventMap->erase(eventIndex); // Erase from the correct eventMap
                             break; // No need to continue iterating if map is empty
                         }
                     } else {
@@ -129,61 +129,65 @@ namespace FireboltSDK {
     }
 
 
-  Firebolt::Error Event::Revoke(const string& eventName, void* usercb)
-{
-    Firebolt::Error status = Firebolt::Error::None;
+    Firebolt::Error Event::Revoke(const string& eventName, void* usercb)
+    {
+        Firebolt::Error status = Firebolt::Error::None;
 
-    // Combine both _internalEventMap and _externalEventMap into a single loop
-    for (auto& eventMap : {_internalEventMap, _externalEventMap}) {
-        _adminLock.Lock(); // Lock inside the loop
+        // Combine both _internalEventMap and _externalEventMap into a single loop
+        std::vector<EventMap*> eventMaps = {&_internalEventMap, &_externalEventMap};
 
-        // Find the eventIndex for eventName in the current eventMap
-        EventMap::iterator eventIndex = eventMap.find(eventName);
-        if (eventIndex != eventMap.end()) {
-            // Find the callbackIndex for usercb in the current CallbackMap
-            CallbackMap::iterator callbackIndex = eventIndex->second.find(usercb);
-            if (callbackIndex != eventIndex->second.end()) {
-                // Check if callback is not executing, then erase it
-                if (callbackIndex->second.state != State::EXECUTING) {
-                    eventIndex->second.erase(callbackIndex);
-                } else {
-                    // Mark the callback as revoked
-                    callbackIndex->second.state = State::REVOKED;
-                }
+        for (auto eventMap : eventMaps) { 
+            _adminLock.Lock(); // Lock inside the loop
 
-                // Check if the CallbackMap is empty after potential erasure
-                if (eventIndex->second.empty()) {
-                    eventMap.erase(eventIndex);
-                } else {
-                    // Set status to General error if CallbackMap is not empty
-                    status = Firebolt::Error::General;
+            // Find the eventIndex for eventName in the current eventMap
+            EventMap::iterator eventIndex = eventMap->find(eventName);
+            if (eventIndex != eventMap->end()) {
+                // Find the callbackIndex for usercb in the current CallbackMap
+                CallbackMap::iterator callbackIndex = eventIndex->second.find(usercb);
+                if (callbackIndex != eventIndex->second.end()) {
+                    // Check if callback is not executing, then erase it
+                    if (callbackIndex->second.state != State::EXECUTING) {
+                        eventIndex->second.erase(callbackIndex);
+                    } else {
+                        // Mark the callback as revoked
+                        callbackIndex->second.state = State::REVOKED;
+                    }
+
+                    // Check if the CallbackMap is empty after potential erasure
+                    if (eventIndex->second.empty()) {
+                        eventMap->erase(eventIndex);
+                    } else {
+                        // Set status to General error if CallbackMap is not empty
+                        status = Firebolt::Error::General;
+                    }
                 }
             }
+
+            _adminLock.Unlock(); // Unlock after processing each eventMap
         }
 
-        _adminLock.Unlock(); // Unlock after processing each eventMap
+        return status;
     }
 
-    return status;
-}
+    void Event::Clear()
+    {
+        // Clear both _internalEventMap and _externalEventMap
+        std::vector<EventMap*> eventMaps = {&_internalEventMap, &_externalEventMap};
 
- void Event::Clear()
-{
-    // Clear both _internalEventMap and _externalEventMap
-    for (auto& eventMap : {_internalEventMap, _externalEventMap}) {
-        _adminLock.Lock(); // Lock before clearing
+        for (auto eventMap : eventMaps) { 
+            _adminLock.Lock(); // Lock before clearing
 
-        EventMap::iterator eventIndex = eventMap.begin();
-        while (eventIndex != eventMap.end()) {
-            CallbackMap::iterator callbackIndex = eventIndex->second.begin();
-            while (callbackIndex != eventIndex->second.end()) {
-                callbackIndex = eventIndex->second.erase(callbackIndex);
+            EventMap::iterator eventIndex = eventMap->begin();
+            while (eventIndex != eventMap->end()) {
+                CallbackMap::iterator callbackIndex = eventIndex->second.begin();
+                while (callbackIndex != eventIndex->second.end()) {
+                    callbackIndex = eventIndex->second.erase(callbackIndex);
+                }
+                eventIndex = eventMap->erase(eventIndex);
             }
-            eventIndex = eventMap.erase(eventIndex);
-        }
 
-        _adminLock.Unlock(); // Unlock after clearing
+            _adminLock.Unlock(); // Unlock after clearing
+        }
     }
-}
 
 }
