@@ -54,6 +54,10 @@ install(
         INCLUDES DESTINATION include/${FIREBOLT_NAMESPACE}Test # headers
 )
 
+include(FetchContent)
+FetchContent_Declare(json URL https://github.com/nlohmann/json/releases/download/v3.11.3/json.tar.xz)
+FetchContent_MakeAvailable(json)
+
 InstallCMakeConfig(TARGETS ${TESTLIB})
 InstallCMakeConfigs(TARGET ${TESTLIB} DESTINATION ${FIREBOLT_NAMESPACE})
 InstallHeaders(TARGET ${TESTLIB} HEADERS . NAMESPACE ${FIREBOLT_NAMESPACE} DESTINATION FireboltTest)
