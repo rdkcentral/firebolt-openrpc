@@ -46,7 +46,7 @@
                 "tags": {
                     "type": "array",
                     "items": {
-                        "type": "object"
+                        "$ref": "#/definitions/Tag"
                     },
                     "contains": {
                         "$ref": "#/definitions/CapabilitiesTag"
@@ -84,38 +84,6 @@
                     },
                     "then": {
                         "$ref": "#/definitions/PropertyMethod"
-                    }        
-                },
-                {
-                    "if": {
-                        "required": [ "tags"],
-                        "properties": {
-                            "tags": {
-                                "type": "array",
-                                "contains": {
-                                    "$ref": "#/definitions/PropertyReadOnlyTag"
-                                }
-                            }
-                        }
-                    },
-                    "then": {
-                        "$ref": "#/definitions/PropertyReadOnlyMethod"
-                    }        
-                },
-                {
-                    "if": {
-                        "required": [ "tags"],
-                        "properties": {
-                            "tags": {
-                                "type": "array",
-                                "contains": {
-                                    "$ref": "#/definitions/PropertyImmutableTag"
-                                }
-                            }
-                        }
-                    },
-                    "then": {
-                        "$ref": "#/definitions/PropertyImmutableMethod"
                     }        
                 },
                 {
@@ -304,78 +272,6 @@
                 }
             }
         },
-        "TaggedMethod": {
-            "allOf": [
-                {
-                    "type": "object",
-                    "required": ["name", "tags"],
-                    "propertyNames": {
-                        "enum": [
-                            "name",
-                            "summary",
-                            "description",
-                            "params",
-                            "result",
-                            "examples",
-                            "tags"
-                        ]
-                    },
-                    "properties": {
-                        "tags": {
-                            "type": "array",
-                            "minItems": 1
-                        }
-                    }
-                },
-                {
-                    "anyOf": [
-                        {
-                            "$ref": "#/definitions/PropertyMethod"
-                        },
-                        {
-                            "$ref": "#/definitions/PropertyReadOnlyMethod"
-                        },
-                        {
-                            "$ref": "#/definitions/PropertyImmutableMethod"
-                        },
-                        {
-                            "$ref": "#/definitions/ProviderMethod"
-                        },
-                        {
-                            "$ref": "#/definitions/CapabilityMethod"
-                        },
-                        {
-                            "$ref": "#/definitions/EventMethod"
-                        },
-                        {
-                            "$ref": "#/definitions/RpcOnlyMethod"
-                        },
-                        {
-                            "$ref": "#/definitions/SynchronousMethod"
-                        },
-                        {
-                            "$ref": "#/definitions/PolymorphicPullMethod"
-                        },
-                        {
-                            "$ref": "#/definitions/TemporalSetMethod"
-                        },
-                        {
-                            "$ref": "#/definitions/PolymorphicReducerMethod"
-                        },
-                        {
-                            "$ref": "#/definitions/CallsMetricsMethod"
-                        },
-                        {
-                            "$ref": "#/definitions/ExcludeMethod"
-                        },
-                        {
-                            "$ref": "#/definitions/DeprecatedMethod"
-                        }
-                    ]
-                }
-            ]
-
-        },
         "DeprecatedMethod": {
             "type": "object",
             "required": ["tags"],
@@ -517,53 +413,34 @@
                     "items": {
                         "$ref": "#/definitions/ContextParameter"
                     }
-                },
-                "examples": {
-                    "type": "array",
-                    "minItems": 2
                 }
-            }
-        },
-        "PropertyReadOnlyMethod": {
-            "type": "object",
-            "required": [
-                "tags"
-            ],
-            "properties": {
-                "tags": {
-                    "type": "array",
-                    "contains": {
-                        "$ref": "#/definitions/PropertyReadOnlyTag"
-                    }
-                },
-                "params": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/ContextParameter"
+            },
+            "if": {
+                "type": "object",
+                "properties": {
+                    "tags": {
+                        "type": "array",
+                        "contains": {
+                            "type": "object",
+                            "properties": {
+                                "name": {
+                                    "const": "property"
+                                }
+                            }
+                        }
                     }
                 }
-            }
-        },
-        "PropertyImmutableMethod": {
-            "type": "object",
-            "required": [
-                "tags"
-            ],
-            "properties": {
-                "tags": {
-                    "type": "array",
-                    "contains": {
-                        "$ref": "#/definitions/PropertyImmutableTag"
-                    }
-                },
-                "params": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/ContextParameter"
+            },
+            "then": {
+                "type": "object",
+                "properties": {
+                    "examples": {
+                        "type": "array",
+                        "minItems": 2
                     }
                 }
             }
-        },        
+        }, 
         "TemporalSetMethod": {
             "type": "object",
             "properties": {
@@ -674,389 +551,352 @@
             "pattern": "^xrn:firebolt:capability:"
         },
         "Tag": {
-            "type": "object",
-            "required": [
-                "name"
+            "anyOf": [
+                {
+                    "$ref": "#/definitions/EventTag"
+                },
+                {
+                    "$ref": "#/definitions/PolymorphicPullEventTag"
+                },
+                {
+                    "$ref": "#/definitions/SubscriberTag"
+                },
+                {
+                    "$ref": "#/definitions/SetterTag"
+                },
+                {
+                    "$ref": "#/definitions/DeprecatedTag"
+                },
+                {
+                    "$ref": "#/definitions/PropertyTag"
+                },
+                {
+                    "$ref": "#/definitions/SynchronousTag"
+                },
+                {
+                    "$ref": "#/definitions/RpcOnlyTag"
+                },
+                {
+                    "$ref": "#/definitions/ExcludeTag"
+                },
+                {
+                    "$ref": "#/definitions/TemporalSetTag"
+                },
+                {
+                    "$ref": "#/definitions/PolymorphicPullTag"
+                },
+                {
+                    "$ref": "#/definitions/PolymorphicReducerTag"
+                },
+                {
+                    "$ref": "#/definitions/CallsMetricsTag"
+                },
+                {
+                    "$ref": "#/definitions/CapabilitiesTag"
+                },
+                {
+                    "$ref": "#/definitions/CapabilitiesTagForProviderMethod"
+                }
             ]
         },
         "EventTag": {
-            "allOf": [
-                {
-                    "$ref": "#/definitions/Tag"
-                },
-                {
-                    "type": "object",
-                    "properties": {
-                        "name": {
-                            "const": "event"
-                        }
-                    },
-                    "propertyNames": {
-                        "type": "string",
-                        "enum": [
-                            "name",
-                            "x-response",
-                            "x-alternative",
-                            "x-since",
-                            "x-pulls-for",
-                            "x-error"
-                        ]
-                    }
+            "type": "object",
+            "properties": {
+                "name": {
+                    "const": "event"
                 }
-            ]
+            },
+            "propertyNames": {
+                "type": "string",
+                "enum": [
+                    "name",
+                    "x-response",
+                    "x-response-name",
+                    "x-alternative",
+                    "x-since",
+                    "x-pulls-for",
+                    "x-error"
+                ]
+            }
+        }, 
+        "PolymorphicPullEventTag": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "const": "polymorphic-pull-event"
+                }
+            },
+            "propertyNames": {
+                "type": "string",
+                "enum": [
+                    "name"
+                ]
+            }
+        }, 
+        "SubscriberTag": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "const": "subscriber"
+                }
+            },
+            "propertyNames": {
+                "type": "string",
+                "enum": [
+                    "name",
+                    "x-subscriber-for"
+                ]
+            }
+        }, 
+        "SetterTag": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "const": "setter"
+                }
+            },
+            "propertyNames": {
+                "type": "string",
+                "enum": [
+                    "name",
+                    "x-setter-for"
+                ]
+            }
         }, 
         "DeprecatedTag": {
-            "allOf": [
-                {
-                    "$ref": "#/definitions/Tag"
-                },
-                {
-                    "type": "object",
-                    "properties": {
-                        "name": {
-                            "const": "deprecated"
-                        }
-                    },
-                    "propertyNames": {
-                        "type": "string",
-                        "enum": [
-                            "name",
-                            "x-alternative",
-                            "x-since"
-                        ]
-                    }
+            "type": "object",
+            "properties": {
+                "name": {
+                    "const": "deprecated"
                 }
-            ]
+            },
+            "propertyNames": {
+                "type": "string",
+                "enum": [
+                    "name",
+                    "x-alternative",
+                    "x-since"
+                ]
+            }
         },
         "PropertyTag": {
-            "allOf": [
-                {
-                    "$ref": "#/definitions/Tag"
-                },
-                {
-                    "type": "object",
-                    "properties": {
-                        "name": {
-                            "type": "string",
-                            "enum": [
-                                "property"
-                            ]
-                        }
-                    },
-                    "propertyNames": {
-                        "type": "string",
-                        "enum": [
-                            "name",
-                            "x-alternative",
-                            "x-since"
-                        ]
-                    }
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "enum": [
+                        "property",
+                        "property:readonly",
+                        "property:immutable"
+                    ]
                 }
-            ]
-        },
-        "PropertyReadOnlyTag": {
-            "allOf": [
-                {
-                    "$ref": "#/definitions/Tag"
-                },
-                {
-                    "type": "object",
-                    "properties": {
-                        "name": {
-                            "type": "string",
-                            "enum": [
-                                "property:readonly"
-                            ]
-                        }
-                    },
-                    "propertyNames": {
-                        "type": "string",
-                        "enum": [
-                            "name",
-                            "x-alternative",
-                            "x-since"
-                        ]
-                    }
-                }
-            ]
-        },
-        "PropertyImmutableTag": {
-            "allOf": [
-                {
-                    "$ref": "#/definitions/Tag"
-                },
-                {
-                    "type": "object",
-                    "properties": {
-                        "name": {
-                            "type": "string",
-                            "enum": [
-                                "property:immutable"
-                            ]
-                        }
-                    },
-                    "propertyNames": {
-                        "type": "string",
-                        "enum": [
-                            "name",
-                            "x-alternative",
-                            "x-since"
-                        ]
-                    }
-                }
-            ]
+            },
+            "propertyNames": {
+                "type": "string",
+                "enum": [
+                    "name",
+                    "x-alternative",
+                    "x-since",
+                    "x-allow-value",
+                    "x-subscriber-type"
+                ]
+            }
         },
         "SynchronousTag": {
-            "allOf": [
-                {
-                    "$ref": "#/definitions/Tag"
-                },
-                {
-                    "type": "object",
-                    "properties": {
-                        "name": {
-                            "const": "synchronous"
-                        }
-                    },
-                    "propertyNames": {
-                        "type": "string",
-                        "enum": [
-                            "name",
-                            "x-alternative",
-                            "x-since"
-                        ]
-                    }
+            "type": "object",
+            "properties": {
+                "name": {
+                    "const": "synchronous"
                 }
-            ]
+            },
+            "propertyNames": {
+                "type": "string",
+                "enum": [
+                    "name",
+                    "x-alternative",
+                    "x-since"
+                ]
+            }
         },
         "RpcOnlyTag": {
-            "allOf": [
-                {
-                    "$ref": "#/definitions/Tag"
-                },
-                {
-                    "type": "object",
-                    "properties": {
-                        "name": {
-                            "const": "rpc-only"
-                        }
-                    },
-                    "propertyNames": {
-                        "type": "string",
-                        "enum": [
-                            "name",
-                            "x-alternative",
-                            "x-since",
-                            "x-pulls-for",
-                            "x-setter-for"
-                        ]
-                    }        
+            "type": "object",
+            "properties": {
+                "name": {
+                    "const": "rpc-only"
                 }
-            ]
+            },
+            "propertyNames": {
+                "type": "string",
+                "enum": [
+                    "name",
+                    "x-alternative",
+                    "x-since",
+                    "x-pulls-for",
+                    "x-setter-for"
+                ]
+            }        
         },
         "TemporalSetTag": {
-            "allOf": [
-                {
-                    "$ref": "#/definitions/Tag"
-                },
-                {
-                    "type": "object",
-                    "properties": {
-                        "name": {
-                            "const": "temporal-set"
-                        }
-                    },
-                    "propertyNames": {
-                        "type": "string",
-                        "enum": [
-                            "name",
-                            "x-alternative",
-                            "x-since"
-                        ]
-                    }        
+            "type": "object",
+            "properties": {
+                "name": {
+                    "const": "temporal-set"
                 }
-            ]
+            },
+            "propertyNames": {
+                "type": "string",
+                "enum": [
+                    "name",
+                    "x-alternative",
+                    "x-since"
+                ]
+            }        
         },
         "PolymorphicPullTag": {
-            "allOf": [
-                {
-                    "$ref": "#/definitions/Tag"
-                },
-                {
-                    "type": "object",
-                    "properties": {
-                        "name": {
-                            "const": "polymorphic-pull"
-                        }
-                    },
-                    "propertyNames": {
-                        "type": "string",
-                        "enum": [
-                            "name",
-                            "x-alternative",
-                            "x-since"
-                        ]
-                    }        
+            "type": "object",
+            "properties": {
+                "name": {
+                    "const": "polymorphic-pull"
                 }
-            ]
+            },
+            "propertyNames": {
+                "type": "string",
+                "enum": [
+                    "name",
+                    "x-alternative",
+                    "x-since"
+                ]
+            }        
         },
         "PolymorphicReducerTag": {
-            "allOf": [
-                {
-                    "$ref": "#/definitions/Tag"
-                },
-                {
-                    "type": "object",
-                    "properties": {
-                        "name": {
-                            "const": "polymorphic-reducer"
-                        }
-                    },
-                    "propertyNames": {
-                        "type": "string",
-                        "enum": [
-                            "name",
-                            "x-alternative",
-                            "x-since"
-                        ]
-                    }        
+            "type": "object",
+            "properties": {
+                "name": {
+                    "const": "polymorphic-reducer"
                 }
-            ]
+            },
+            "propertyNames": {
+                "type": "string",
+                "enum": [
+                    "name",
+                    "x-alternative",
+                    "x-since"
+                ]
+            }        
         },
         "CallsMetricsTag": {
-            "allOf": [
-                {
-                    "$ref": "#/definitions/Tag"
-                },
-                {
-                    "type": "object",
-                    "properties": {
-                        "name": {
-                            "const": "calls-metrics"
-                        }
-                    },
-                    "propertyNames": {
-                        "type": "string",
-                        "enum": [
-                            "name",
-                            "x-alternative",
-                            "x-since"
-                        ]
-                    }        
+            "type": "object",
+            "properties": {
+                "name": {
+                    "const": "calls-metrics"
                 }
-            ]
+            },
+            "propertyNames": {
+                "type": "string",
+                "enum": [
+                    "name",
+                    "x-alternative",
+                    "x-since"
+                ]
+            }        
         },
         "ExcludeTag": {
-            "allOf": [
-                {
-                    "$ref": "#/definitions/Tag"
-                },
-                {
-                    "type": "object",
-                    "properties": {
-                        "name": {
-                            "const": "exclude-from-sdk"
-                        }
-                    },
-                    "propertyNames": {
-                        "type": "string",
-                        "enum": [
-                            "name",
-                            "x-alternative",
-                            "x-since"
-                        ]
-                    }        
+            "type": "object",
+            "properties": {
+                "name": {
+                    "const": "exclude-from-sdk"
                 }
-            ]
+            },
+            "propertyNames": {
+                "type": "string",
+                "enum": [
+                    "name",
+                    "x-alternative",
+                    "x-since"
+                ]
+            }        
         },
         "CapabilitiesTag": {
-            "allOf": [
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "name": {
+                    "const": "capabilities"
+                },
+                "x-provides": {
+                    "$ref": "#/definitions/Capability"
+                },
+                "x-uses": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Capability"
+                    }
+                },
+                "x-manages": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Capability"
+                    }
+                },
+                "x-allow-focus": {
+                    "type": "boolean"
+                },
+                "x-response-for": {
+                    "type": "string"
+                },
+                "x-allow-focus-for": {
+                    "type": "string"
+                },
+                "x-error-for": {
+                    "type": "string"
+                },
+                "x-provided-by": {
+                    "type": "string"
+                }
+            },
+            "if": {
+                "required": [
+                    "x-provided-by"
+                ]
+            },
+            "then": {
+                "not": {
+                    "required": [
+                        "x-provides"
+                    ]
+                },
+                "oneOf": [
+                    {
+                        "required": [ "x-manages"],
+                        "properties": {
+                            "x-manages": {
+                                "type": "array",
+                                "minItems": 1,
+                                "maxItems": 1
+                            }
+                        }
+                    },
+                    {
+                        "required": [ "x-uses"],
+                        "properties": {
+                            "x-uses": {
+                                "type": "array",
+                                "minItems": 1,
+                                "maxItems": 1
+                            }
+                        }
+                    }
+                ]
+            },
+            "anyOf": [
                 {
-                    "$ref": "#/definitions/Tag"
+                    "required": [ "x-uses"]
                 },
                 {
-                    "type": "object",
-                    "additionalProperties": false,
-                    "properties": {
-                        "name": {
-                            "const": "capabilities"
-                        },
-                        "x-provides": {
-                            "$ref": "#/definitions/Capability"
-                        },
-                        "x-uses": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/Capability"
-                            }
-                        },
-                        "x-manages": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/Capability"
-                            }
-                        },
-                        "x-allow-focus": {
-                            "type": "boolean"
-                        },
-                        "x-response-for": {
-                            "type": "string"
-                        },
-                        "x-allow-focus-for": {
-                            "type": "string"
-                        },
-                        "x-error-for": {
-                            "type": "string"
-                        },
-                        "x-provided-by": {
-                            "type": "string"
-                        }
-                    },
-                    "if": {
-                        "required": [
-                            "x-provided-by"
-                        ]
-                    },
-                    "then": {
-                        "not": {
-                            "required": [
-                                "x-provides"
-                            ]
-                        },
-                        "oneOf": [
-                            {
-                                "required": [ "x-manages"],
-                                "properties": {
-                                    "x-manages": {
-                                        "type": "array",
-                                        "minItems": 1,
-                                        "maxItems": 1
-                                    }
-                                }
-                            },
-                            {
-                                "required": [ "x-uses"],
-                                "properties": {
-                                    "x-uses": {
-                                        "type": "array",
-                                        "minItems": 1,
-                                        "maxItems": 1
-                                    }
-                                }
-                            }
-                        ]
-                    },
-                    "anyOf": [
-                        {
-                            "required": [ "x-uses"]
-                        },
-                        {
-                            "required": [ "x-manages"]
-                        },
-                        {
-                            "required": [ "x-provides"]
-                        }
-                    ]
+                    "required": [ "x-manages"]
+                },
+                {
+                    "required": [ "x-provides"]
                 }
             ]
         },
