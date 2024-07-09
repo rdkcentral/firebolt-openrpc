@@ -603,8 +603,7 @@ namespace FireboltSDK
         Firebolt::Error Invoke(const string &method, const PARAMETERS &parameters, RESPONSE &response)
         {
 
-            // TODO: Just do all the things here. Avoid going into Send or WaitForResponse.
-            // Call the ToMessage or whatever to convert to RPC format.
+            // TODO: Call JSON engine's request and response functions below instead of static values.
 
             // REQUEST
             // Reference: {"jsonrpc":"2.0","id":1,"method":"account.id","params":{}}
