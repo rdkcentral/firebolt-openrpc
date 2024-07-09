@@ -169,6 +169,12 @@ export const validate = (json = {}, schemas = {}, ajv, validator, additionalPack
 }
 
 const schemasMatch = (a, b) => {
+  if (a == null) {
+    return b == null
+  }
+  if (b == null) {
+    return a == null
+  }
   const aKeys = Object.keys(a)
   const bKeys = Object.keys(b)
   const keysMatch = (aKeys.length == bKeys.length) && aKeys.every(key => bKeys.includes(key))
