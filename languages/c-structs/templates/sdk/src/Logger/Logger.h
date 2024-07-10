@@ -39,7 +39,8 @@ namespace FireboltSDK {
             OpenRPC,
             Core,
             Management,
-            Discovery
+            Discovery,
+            PlayerProvider
         };
 
     public:

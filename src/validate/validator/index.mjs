@@ -269,6 +269,7 @@ export const validatePasshtroughs = (json) => {
       }
     }
   })
+
   if (result.errors.length) {
     result.valid = false
     result.errors.forEach(error => addPrettyPath(error, json))
