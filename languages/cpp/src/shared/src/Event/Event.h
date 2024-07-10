@@ -88,7 +88,7 @@ namespace FireboltSDK {
                      status = Assign<RESULT, CALLBACK>(_internalEventMap, eventName, callback, usercb, userdata);
                 } else {
                      status = Assign<RESULT, CALLBACK>(_externalEventMap, eventName, callback, usercb, userdata);
-                }
+                }         
                 if (status == Firebolt::Error::None) {
                     Response response;
 
@@ -112,14 +112,15 @@ namespace FireboltSDK {
         }
 
         template <typename RESULT, typename CALLBACK>
-        Firebolt::Error Prioritize(const string& eventName, const CALLBACK& callback, void* usercb, const void* userdata)
+        Firebolt::Error Prioritize(const string& eventName,JsonObject& jsonParameters, const CALLBACK& callback, void* usercb, const void* userdata)
         {
+            std::cout << "Inside Prioritize" << std::endl;
             Firebolt::Error status = Firebolt::Error::General;
-            JsonObject jsonParameters;
             // Assuming prioritized events also need subscription via transport
             status = Subscribe<RESULT, CALLBACK>(eventName, jsonParameters, callback, usercb, userdata, true);
             return status;
         }
+
 
         Firebolt::Error Unsubscribe(const string& eventName, void* usercb);
 
@@ -128,13 +129,13 @@ namespace FireboltSDK {
         Firebolt::Error Assign(EventMap& eventMap, const string& eventName, const CALLBACK& callback, void* usercb, const void* userdata)
         {
             Firebolt::Error status = Firebolt::Error::General;
-            std::function<void(void* usercb, const void* userdata, void* parameters)> actualCallback = callback;
-            DispatchFunction implementation = [actualCallback](void* usercb, const void* userdata, const string& parameters) -> Firebolt::Error {
+            //std::function<void(void* usercb, const void* userdata, void* parameters)> actualCallback = callback;
+            DispatchFunction implementation = [callback](void* usercb, const void* userdata, const string& parameters) -> Firebolt::Error {
 
                 WPEFramework::Core::ProxyType<PARAMETERS>* inbound = new WPEFramework::Core::ProxyType<PARAMETERS>();
                 *inbound = WPEFramework::Core::ProxyType<PARAMETERS>::Create();
                 (*inbound)->FromString(parameters);
-                actualCallback(usercb, userdata, static_cast<void*>(inbound));
+                callback(usercb, userdata, static_cast<void*>(inbound));
                 return (Firebolt::Error::None);
             };
             CallbackData callbackData = {implementation, userdata, State::IDLE};
@@ -166,7 +167,7 @@ namespace FireboltSDK {
         Firebolt::Error ValidateResponse(const WPEFramework::Core::ProxyType<WPEFramework::Core::JSONRPC::Message>& jsonResponse, bool& enabled) override;
         Firebolt::Error Dispatch(const string& eventName, const WPEFramework::Core::ProxyType<WPEFramework::Core::JSONRPC::Message>& jsonResponse) override;
  
-    private:
+    private: 
         EventMap _internalEventMap;
         EventMap _externalEventMap;
         WPEFramework::Core::CriticalSection _adminLock;
@@ -175,3 +176,4 @@ namespace FireboltSDK {
         static Event* _singleton;
     };
 }
+
