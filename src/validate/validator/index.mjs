@@ -48,8 +48,8 @@ const addFailingMethodSchema = (error, json, schema) => {
         const i = parseInt(error.schemaPath.split("/")[2])
         error.params.failingSchema = schema.definitions.Method.allOf[i].then.$ref
       }
-  
-    }  
+
+    }
   }
 }
 
@@ -61,7 +61,7 @@ export const pruneErrors = (errors = []) => {
 
   Object.values(groups).forEach( group => {
     const paths = []
-    pruned.push(group.sort( (a, b) => b.schemaPath.split('/').length - a.schemaPath.split('/').length ).pop())  
+    pruned.push(group.sort( (a, b) => b.schemaPath.split('/').length - a.schemaPath.split('/').length ).pop())
   })
 
   return pruned
@@ -163,12 +163,18 @@ export const validate = (json = {}, schemas = {}, ajv, validator, additionalPack
     validator.errors.forEach(error => error.source = 'OpenRPC')
 
     errors.push(...pruneErrors(validator.errors))
-  } 
+  }
 
   return { valid: valid, title: json.title || json.info.title, errors: errors }
 }
 
 const schemasMatch = (a, b) => {
+  if (a == null) {
+    return b == null
+  }
+  if (b == null) {
+    return a == null
+  }
   const aKeys = Object.keys(a)
   const bKeys = Object.keys(b)
   const keysMatch = (aKeys.length == bKeys.length) && aKeys.every(key => bKeys.includes(key))
@@ -229,7 +235,7 @@ export const validatePasshtroughs = (json) => {
 
     if (!schemasMatch(source, destination)) {
       const properties = getPropertiesInSchema(destination, json)
-      
+
       // follow $refs so we can see the schemas
       source = getPropertySchema(source, '.', json)
       destination = getPropertySchema(destination, '.', json)
