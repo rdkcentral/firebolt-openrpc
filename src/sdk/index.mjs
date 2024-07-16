@@ -27,57 +27,82 @@ import macrofy from '../macrofier/index.mjs'
 /************************************************************************************************/
 // destructure well-known cli args and alias to variables expected by script
 const run = async ({
-  input: input,
+  server: server,
+  client: client,
   template: template,
   output: output,
   language: language,
-  'static-module': staticModuleNames
+  'static-module': staticModuleNames,
+  argv: {
+    remain: moduleWhitelist
+  }
 }) => {
   
   let mainFilename
   let declarationsFilename
   
+  const config = {
+    language: null,
+    project: null
+  }
+
   try {
+    const projectDir = process.env.npm_config_local_prefix
+    const workspaceDir = path.dirname(process.env.npm_package_json) 
+
     // Important file/directory locations
-    const packageJsonFile = path.join(path.dirname(input), '..', 'package.json')
+    const packageJsonFile = path.join(workspaceDir, 'package.json')
     const packageJson = await readJson(packageJsonFile)
     mainFilename = path.basename(packageJson.main)
     declarationsFilename = path.basename(packageJson.types)
+
+    // Load project firebolt-openrpc.config.json, if it exists
+    config.project = await readJson(path.join(projectDir, 'firebolt-openrpc.config.json'))
   }
   catch (error) {
+    //console.dir(error)
      // fail silently
   }
-  
-  const config = await readJson(path.join(language, 'language.config.json'))
 
-  return macrofy(input, template, output, {
+  config.language = await readJson(path.join(language, 'language.config.json'))
+
+  if (config.project && config.project.languages && config.project.languages[config.language.langcode]) {
+    console.log(`Applying project overrides to language config:`)
+    const overrides = config.project.languages[config.language.langcode]
+    console.log(Object.entries(overrides).map( ([key, value]) => ` - ${key} -> ${JSON.stringify(value)}`).join('\n'))
+    Object.assign(config.language, overrides)
+  }
+    
+  return macrofy(server, client, template, output, {
     headline: 'SDK code',
     outputDirectory:    'sdk',
     sharedTemplates:    path.join(language, 'templates'),
     staticContent:      path.join(language, 'src', 'shared'),
-    templatesPerModule: config.templatesPerModule,
-    templatesPerSchema: config.templatesPerSchema,
-    persistPermission: config.persistPermission,
-    createPolymorphicMethods: config.createPolymorphicMethods,
-    operators: config.operators,
-    primitives: config.primitives,
-    createModuleDirectories: config.createModuleDirectories,
-    copySchemasIntoModules: config.copySchemasIntoModules,
-    extractSubSchemas: config.extractSubSchemas,
-    convertTuplesToArraysOrObjects: config.convertTuplesToArraysOrObjects,
-    unwrapResultObjects: config.unwrapResultObjects,
-    allocatedPrimitiveProxies: config.allocatedPrimitiveProxies,
-    additionalSchemaTemplates: config.additionalSchemaTemplates,
-    additionalMethodTemplates: config.additionalMethodTemplates,
-    templateExtensionMap: config.templateExtensionMap,
-    excludeDeclarations: config.excludeDeclarations,
-    extractProviderSchema: config.extractProviderSchema,
+    templatesPerModule: config.language.templatesPerModule,
+    templatesPerSchema: config.language.templatesPerSchema,
+    persistPermission: config.language.persistPermission,
+    createPolymorphicMethods: config.language.createPolymorphicMethods || false,
+    enableUnionTypes: config.language.enableUnionTypes || false,
+    operators: config.language.operators,
+    primitives: config.language.primitives,
+    createModuleDirectories: config.language.createModuleDirectories,
+    copySchemasIntoModules: config.language.copySchemasIntoModules,
+    mergeOnTitle: config.language.mergeOnTitle,
+    extractSubSchemas: config.language.extractSubSchemas,
+    convertTuplesToArraysOrObjects: config.language.convertTuplesToArraysOrObjects,
+    unwrapResultObjects: config.language.unwrapResultObjects,
+    allocatedPrimitiveProxies: config.language.allocatedPrimitiveProxies,
+    additionalSchemaTemplates: config.language.additionalSchemaTemplates,
+    additionalMethodTemplates: config.language.additionalMethodTemplates,
+    templateExtensionMap: config.language.templateExtensionMap,
+    excludeDeclarations: config.language.excludeDeclarations,
     staticModuleNames: staticModuleNames,
     hideExcluded: true,
-    aggregateFiles: config.aggregateFiles,
+    moduleWhitelist: moduleWhitelist,
+    aggregateFiles: config.language.aggregateFiles,
     rename: mainFilename ? { '/index.mjs': mainFilename, '/index.d.ts': declarationsFilename } : {},
-    treeshakePattern: config.treeshakePattern ? new RegExp(config.treeshakePattern, "g") : undefined,
-    treeshakeTypes: config.treeshakeTypes,
+    treeshakePattern: config.language.treeshakePattern ? new RegExp(config.language.treeshakePattern, "g") : undefined,
+    treeshakeTypes: config.language.treeshakeTypes,
     treeshakeEntry: mainFilename ? '/' + mainFilename : '/index.mjs'
   })
 }

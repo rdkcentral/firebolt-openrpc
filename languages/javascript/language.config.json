@@ -5,8 +5,13 @@
         "/index.mjs",
         "/defaults.mjs"
     ],
+    "templatesPerSchema": [
+        "/index.mjs"
+    ],
     "createModuleDirectories": true,
-    "copySchemasIntoModules": true,
+    "copySchemasIntoModules": false,
+    "enableUnionTypes": true,
+    "mergeOnTitle": true,
     "aggregateFiles": [
         "/index.d.ts"
     ],

@@ -9,14 +9,14 @@ export default class WebsocketTransport {
     this._callbacks = []
   }
 
-  send (msg) {
+  send (message) {
     this._connect()
 
     if (this._connected) {
-      this._ws.send(msg)
+      this._ws.send(message)
     } else {
       if (this._queue.length < MAX_QUEUED_MESSAGES) {
-        this._queue.push(msg)
+        this._queue.push(message)
       }
     }
   }

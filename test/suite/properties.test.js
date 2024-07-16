@@ -16,23 +16,26 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { Simple } from '../../build/sdk/javascript/src/sdk.mjs'
+import { Settings, Simple } from '../../build/sdk/javascript/src/sdk.mjs'
 import Setup from '../Setup'
 import { transport } from '../TransportHarness.js'
 import { expect } from '@jest/globals';
+
+Settings.setLogLevel('DEBUG')
 
 let propertySetterWasTriggered = false
 let propertySetterWasTriggeredWithValue = false
 
 beforeAll( () => {
 
-    transport.onSend(json => {
-        if (json.method === 'simple.property') {
+    transport.onSend(message => {
+        const json = JSON.parse(message)
+        if (json.method === 'Simple.property') {
             transport.response(json.id, {
                 foo: "here's foo"
             })            
         }
-        else if (json.method === 'simple.onPropertyChanged') {
+        else if (json.method === 'Simple.onPropertyChanged') {
             // Confirm the listener is on
             transport.response(json.id, {
                 listening: true,
@@ -46,7 +49,7 @@ beforeAll( () => {
                 })
             })
         }
-        else if (json.method === 'simple.setProperty') {
+        else if (json.method === 'Simple.setProperty') {
             propertySetterWasTriggered = true
             if (json.params.value.foo === 'a new foo!' || json.params.value.foo === null) {
                 propertySetterWasTriggeredWithValue = true

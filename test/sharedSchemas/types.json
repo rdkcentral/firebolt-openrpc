@@ -1,5 +1,5 @@
 {
-    "$id": "https://meta.comcast.com/firebolt/types",
+    "$id": "https://meta.rdkcentral.com/firebolt/schemas/types",
     "title": "Types",
     "anyOf": [
         {

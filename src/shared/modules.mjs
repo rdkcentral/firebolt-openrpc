@@ -28,13 +28,10 @@ import isEmpty from 'crocks/core/isEmpty.js'
 const { and, not } = logic
 import isString from 'crocks/core/isString.js'
 import predicates from 'crocks/predicates/index.js'
-import { getExternalSchemaPaths, isDefinitionReferencedBySchema, isNull, localizeDependencies, isSchema, getLocalSchemaPaths, replaceRef, getPropertySchema } from './json-schema.mjs'
-import { getPath as getRefDefinition } from './json-schema.mjs'
+import { getExternalSchemaPaths, isDefinitionReferencedBySchema, isNull, localizeDependencies, isSchema, getLocalSchemaPaths, replaceRef, getPropertySchema, getLinkedSchemaUris, getAllValuesForName, replaceUri } from './json-schema.mjs'
+import { getReferencedSchema } from './json-schema.mjs'
 const { isObject, isArray, propEq, pathSatisfies, hasProp, propSatisfies } = predicates
-
-// TODO remove these when major/rpc branch is merged
-const name = method => method.name.split('.').pop()
-const rename = (method, renamer) => method.name.split('.').map((x, i, arr) => i === (arr.length-1) ? renamer(x) : x).join('.')
+import { extension, getNotifier, isEvent, isNotifier, isPusher, isRegistration, name as methodName, rename as methodRename, provides } from './methods.mjs'
 
 // util for visually debugging crocks ADTs
 const inspector = obj => {
@@ -59,114 +56,167 @@ const getMethods = compose(
     getPath(['methods'])
 )
 
-const isProviderInterfaceMethod = compose(
-    and(
-        compose(
-            propSatisfies('name', name => name.startsWith('onRequest'))
-        ),
-        compose(
-            option(false),
-            map(_ => true),
-            chain(
-              find(
-                and(
-                  propEq('name', 'capabilities'),
-                  propSatisfies('x-provides', not(isEmpty))
-                )
-              )
-            ),
-            getPath(['tags'])        
-        )
-    )
-  )
+const isProviderInterfaceMethod = method => {
+    let tag = method.tags.find(t => t.name === 'capabilities')
+    const isProvider = tag['x-provides'] && !tag['x-allow-focus-for'] && !tag['x-response-for'] && !tag['x-error-for'] && !tag['x-push'] && !method.tags.find(t => t.name === 'registration')
+
+    tag = method.tags.find(t => t.name.startsWith('polymorphic-pull'))
+    const isPuller = !!tag
+    return isProvider && !isPuller //(!method.tags.find(t => t.name.startsWith('polymorphic-pull')))
+}
+
+// const isProviderInterfaceMethod = compose(
+//         compose(
+//             option(false),
+//             map(_ => true),
+//             chain(
+//               find(
+//                 and(
+//                   propEq('name', 'capabilities'),
+//                   and(
+//                     propSatisfies('x-provides', not(isEmpty)),
+//                     and(
+//                         propSatisfies('x-allow-focus-for', isEmpty),
+//                         and(
+//                             propSatisfies('x-response-for', isEmpty),
+//                             propSatisfies('x-error-for', isEmpty)
+//                         )
+//                     )
+//                   )
+//                 )
+//               )
+//             ),
+//             getPath(['tags'])        
+//         )
+//   )
 
 const getProvidedCapabilities = (json) => {
     return Array.from(new Set([...getMethods(json).filter(isProviderInterfaceMethod).map(method => method.tags.find(tag => tag['x-provides'])['x-provides'])]))
 }
+const getProvidedInterfaces = (json) => {
+//    return json.methods?.filter(m => extension(m, 'x-interface')).map(m => extension(m, 'x-interface')) || []
+    return getInterfaces(json)
 
-const getProviderInterfaceMethods = (capability, json) => {
-    return getMethods(json).filter(method => method.name.startsWith("onRequest") && method.tags && method.tags.find(tag => tag['x-provides'] === capability))
+    const list = Array.from(new Set((json.methods || []).filter(m => m.tags.find(t => t['x-provides']))
+    .filter(m => !extension(m, 'x-push'))
+    .filter(m => !m.tags.find(t => t.name.startsWith('polymorphic-pull')))
+    .map(m => m.name.split('.')[0])))
+
+    return list
 }
-  
 
-function getProviderInterface(capability, module, extractProviderSchema = false) {
+const getInterfaces = (json) => {
+    const list = Array.from(new Set((json.methods || []).filter(m => m.tags.find(t => t['x-provides']))
+    .filter(m => !m.tags.find(t => t.name.startsWith('registration')))
+    .filter(m => !m.tags.find(t => t.name.startsWith('polymorphic-pull')))
+    .filter(m => !extension(m, 'x-push'))
+    .map(m => m.name.split('.')[0])))
+
+    return list    
+}
+
+// TODO: this code is all based on capability, but we now support two interfaces in the same capability. need to refactor
+
+const getProviderInterfaceMethods = (_interface, json, prefix) => {
+    return json.methods.filter(method => method.name.split('.')[0] === _interface).filter(isProviderInterfaceMethod)
+    //return getMethods(json).filter(method => methodName(method).startsWith(prefix) && method.tags && method.tags.find(tag => tag['x-provides'] === _interface))
+}
+
+function getProviderInterface(_interface, module) {
     module = JSON.parse(JSON.stringify(module))
-    const iface = getProviderInterfaceMethods(capability, module)//.map(method => localizeDependencies(method, module, null, { mergeAllOfs: true }))
-  
-    iface.forEach(method => {
-      const payload = getPayloadFromEvent(method)
-      const focusable = method.tags.find(t => t['x-allow-focus'])
-  
-      // remove `onRequest`
-      method.name = method.name.charAt(9).toLowerCase() + method.name.substr(10)
 
-      const schema = getPropertySchema(payload, 'properties.parameters', module)
-      
-      method.params = [
-        {
-          "name": "parameters",
-          "required": true,
-          "schema": schema
-        }
-      ]
-  
-      if (!extractProviderSchema) {
-        let exampleResult = null
-
-        if (method.tags.find(tag => tag['x-response'])) {
-          const result = method.tags.find(tag => tag['x-response'])['x-response']
-  
-          method.result = {
-            "name": "result",
-            "schema": result
-          }
-  
-          if (result.examples && result.examples[0]) {
-            exampleResult = result.examples[0]
-          }
-        }
-        else {
-          method.result = {
-            "name": "result",
-            "schema": {
-              "const": null
-            }
-          }
-        }
-  
-        method.examples = method.examples.map( example => (
-          {
-            params: [
-              {
-                name: "parameters",
-                value: example.result.value.parameters
-              },
-              {
-                  name: "correlationId",
-                  value: example.result.value.correlationId
-              }
-            ],
-            result: {
-              name: "result",
-              value: exampleResult
-            }
-          }
-        ))
-  
-        // remove event tag
-        method.tags = method.tags.filter(tag => tag.name !== 'event')
-      }
-    })
-  
-    return iface
-  }
-  
-
-const addMissingTitles = ([k, v]) => {
-    if (v && !v.hasOwnProperty('title')) {
-        v.title = k
+    // TODO: localizeDependencies??
+    const iface = getProviderInterfaceMethods(_interface, module).map(method => localizeDependencies(method, module, null, { mergeAllOfs: true }))
+    
+    if (iface.length && iface.every(method => methodName(method).startsWith('onRequest'))) {
+        console.log(`Transforming legacy provider interface ${_interface}`)
+        updateUnidirectionalProviderInterface(iface, module)
     }
-    return v
+    
+    return iface
+}
+
+const capitalize = str => str.charAt(0).toUpperCase() + str.substr(1)
+
+// This is getting called before downgrading the provider interfaces AND after... it can't work for both cases.
+function getUnidirectionalProviderInterfaceName(_interface, capability, document = {}) {
+    const iface = getProviderInterface(_interface, document)
+    const [ module, method ] = iface[0].name.split('.')
+    const uglyName = capability.split(":").slice(-2).map(capitalize).reverse().join('') + "Provider"
+    let name = iface.length === 1 ? method.charAt(0).toUpperCase() + method.substr(1) + "Provider" : uglyName
+
+    if (document.info['x-interface-names']) {
+      name = document.info['x-interface-names'][capability] || name
+    }
+    return name
+  }
+
+function updateUnidirectionalProviderInterface(iface, module) {
+    iface.forEach(method => {
+        const payload = getPayloadFromEvent(method)
+        const focusable = method.tags.find(t => t['x-allow-focus'])
+    
+        // remove `onRequest`
+        method.name = methodRename(method, name => name.charAt(9).toLowerCase() + name.substr(10))
+
+        const schema = getPropertySchema(payload, 'properties.parameters', module)
+        
+        method.params = [
+          {
+            "name": "parameters",
+            "required": true,
+            "schema": schema
+          }
+        ]
+    
+        // TODO: we used to say !extractProviderSchema, which CPP sets to true and therefor skips this. not sure why...
+        if (true) {
+          let exampleResult = null
+  
+          if (method.tags.find(tag => tag['x-response'])) {
+            const result = method.tags.find(tag => tag['x-response'])['x-response']
+    
+            method.result = {
+              "name": "result",
+              "schema": result
+            }
+    
+            if (result.examples && result.examples[0]) {
+              exampleResult = result.examples[0]
+            }
+          }
+          else {
+            method.result = {
+              "name": "result",
+              "schema": {
+                "const": null
+              }
+            }
+          }
+    
+          method.examples = method.examples.map( example => (
+            {
+              params: [
+                {
+                  name: "parameters",
+                  value: example.result.value.parameters
+                },
+                {
+                    name: "correlationId",
+                    value: example.result.value.correlationId
+                }
+              ],
+              result: {
+                name: "result",
+                value: exampleResult
+              }
+            }
+          ))
+    
+          // remove event tag
+          method.tags = method.tags.filter(tag => tag.name !== 'event')
+        }
+      })
 }
 
 // Maybe an array of <key, value> from the schema
@@ -322,10 +372,26 @@ const getParamsFromMethod = compose(
     getPath(['params'])
 )
 
-const getPayloadFromEvent = (event) => {
-    const choices = (event.result.schema.oneOf || event.result.schema.anyOf)
-    const choice = choices.find(schema => schema.title !== 'ListenResponse' && !(schema['$ref'] || '').endsWith('/ListenResponse'))
-    return choice
+const getPayloadFromEvent = (event, client) => {
+    try {
+        if (event.result) {
+            const choices = (event.result.schema.oneOf || event.result.schema.anyOf)
+            if (choices) {
+                const choice = choices.find(schema => schema.title !== 'ListenResponse' && !(schema['$ref'] || '').endsWith('/ListenResponse'))
+                return choice        
+            }
+            else if (client) {
+                const payload = getNotifier(event, client).params.slice(-1)[0].schema
+                return payload
+            }
+            else {
+                return event.result.schema
+            }
+        }
+    }
+    catch (error) {
+        throw error
+    }
 }
 
 const getSetterFor = (property, json) => json.methods && json.methods.find(m => m.tags && m.tags.find(t => t['x-setter-for'] === property))
@@ -336,18 +402,18 @@ const providerHasNoParameters = (schema) => {
     if (schema.allOf || schema.oneOf) {
         return !!(schema.allOf || schema.oneOf).find(schema => providerHasNoParameters(schema))
     }
-    else if (schema.properties && schema.properties.parameters) {
-        return isNull(schema.properties.parameters)
+    else if (schema.properties && schema.properties.params) {
+        return isNull(schema.properties.params)
     }
     else {
         console.dir(schema, {depth: 10})
-        throw "Invalid ProviderRequest"
+        console.log("Invalid ProviderRequest")
     }
 }
 
 const validEvent = and(
     pathSatisfies(['name'], isString),
-    pathSatisfies(['name'], x => x.match(/on[A-Z]/))
+    pathSatisfies(['name'], x => x.split('.').pop().match(/on[A-Z]/))
 )
 
 // Pick events out of the methods array
@@ -356,7 +422,7 @@ const getEvents = compose(
     map(filter(validEvent)),
     // Maintain the side effect of process.exit here if someone is violating the rules
     map(map(e => {
-        if (!e.name.match(/on[A-Z]/)) {
+        if (!methodName(e).match(/on[A-Z]/)) {
             console.error(`ERROR: ${e.name} method is tagged as an event, but does not match the pattern "on[A-Z]"`)
             process.exit(1) // Non-zero exit since we don't want to continue. Useful for CI/CD pipelines.
         }
@@ -381,14 +447,14 @@ const eventDefaults = event => {
 
     event.tags = [
         {
-            'name': 'event'
+            'name': 'notifier'
         }
     ]    
 
     return event
 }
 
-const createEventResultSchemaFromProperty = (property, type='') => {
+const createEventResultSchemaFromProperty = (property, type='Changed') => {
     const subscriberType = property.tags.map(t => t['x-subscriber-type']).find(t => typeof t === 'string') || 'context'
 
     const caps = property.tags.find(t => t.name === 'capabilities')
@@ -398,7 +464,7 @@ const createEventResultSchemaFromProperty = (property, type='') => {
     if ( subscriberType === 'global') { 
         // wrap the existing result and the params in a new result object
         const schema = {
-            title: name + type + 'Info',
+            title: methodRename(property, name => name.charAt(0).toUpperCase() + name.substring(1) + type + 'Info').split('.').pop(),
             type: "object",
             properties: {
 
@@ -420,64 +486,53 @@ const createEventResultSchemaFromProperty = (property, type='') => {
     }
 }
 
-const createEventFromProperty = (property, type='', alternative, json) => {
-    const provider = (property.tags.find(t => t['x-provided-by']) || {})['x-provided-by']
-    const pusher = provider ? provider.replace('onRequest', '').split('.').map((x, i, arr) => (i === arr.length-1) ? x.charAt(0).toLowerCase() + x.substr(1) : x).join('.') : undefined
-    const event = eventDefaults(JSON.parse(JSON.stringify(property)))
-//    event.name = (module ? module + '.' : '') + 'on' + event.name.charAt(0).toUpperCase() + event.name.substr(1) + type
-    event.name = provider ? provider.split('.').pop().replace('onRequest', '') : event.name.charAt(0).toUpperCase() + event.name.substr(1) + type
-    event.name = event.name.split('.').map((x, i, arr) => (i === arr.length-1) ? 'on' + x.charAt(0).toUpperCase() + x.substr(1) : x).join('.')
-    const subscriberFor = pusher || (json.info.title + '.' + property.name)
-    
-    const old_tags = JSON.parse(JSON.stringify(property.tags))
+const createNotifierFromProperty = (property, type='Changed') => {
+    const subscriberType = property.tags.map(t => t['x-subscriber-type']).find(t => typeof t === 'string') || 'context'
 
-    alternative && (event.tags[0]['x-alternative'] = alternative)
+    const notifier = JSON.parse(JSON.stringify(property))
+    notifier.name = methodRename(notifier, name => name + type)
 
-    !provider && event.tags.unshift({
-        name: "subscriber",
-        'x-subscriber-for': subscriberFor
+    Object.assign(notifier.tags.find(t => t.name.startsWith('property')), {
+        name: 'notifier',
+        'x-notifier-for': property.name,
+        'x-event': methodRename(notifier, name => 'on' + name.charAt(0).toUpperCase() + name.substring(1))
     })
 
-    const subscriberType = property.tags.map(t => t['x-subscriber-type']).find(t => typeof t === 'string') || 'context'
-    
-    // if the subscriber type is global, zap all of the parameters and change the result type to the schema that includes them
     if (subscriberType === 'global') {
-        
-        // wrap the existing result and the params in a new result object
-        const result = {
-            name: "data",
-            schema: {
-                $ref: "#/components/schemas/" + event.name.substring(2) + 'Info'
+        notifier.params = [
+            {
+                name: "info",
+                schema: {
+                    "$ref": "#/components/schemas/" + methodRename(notifier, name => name.charAt(0).toUpperCase() + name.substr(1) + 'Info')
+                }
             }
-        }
-
-        event.examples.map(example => {
-            const result = {}
-            example.params.filter(p => p.name !== 'listen').forEach(p => {
-                result[p.name] = p.value
-            })
-            result[example.result.name] = example.result.value
-            example.params = example.params.filter(p => p.name === 'listen')
-            example.result.name = "data"
-            example.result.value = result
-        })
-
-        event.result = result
-        
-        // remove the params
-        event.params = event.params.filter(p => p.name === 'listen')
+        ]
+    }
+    else {
+        notifier.params.push(notifier.result)
     }
 
-    old_tags.forEach(t => {
-        if (t.name !== 'property' && !t.name.startsWith('property:') && t.name !== 'push-pull')
-        {
-            event.tags.push(t)
-        }
-    })
+    delete notifier.result    
 
-    provider && (event.tags.find(t => t.name === 'capabilities')['x-provided-by'] = subscriberFor)
+    if (subscriberType === 'global') {
+        notifier.examples = property.examples.map(example => ({
+            name: example.name,
+            params: [
+                {
+                    name: "info",
+                    value: Object.assign(Object.fromEntries(example.params.map(p => [p.name, p.value])), Object.fromEntries([[example.result.name, example.result.value]]))
+                }                    
+            ]
+        }))
+    }
+    else {
+        notifier.examples.forEach(example => {
+            example.params.push(example.result)
+            delete example.result    
+        })
+    }
 
-    return event
+    return notifier
 }
 
 // create foo() notifier from onFoo() event
@@ -513,37 +568,44 @@ const createNotifierFromEvent = (event, json) => {
     return push
 }
 
-const createPushEvent = (requestor, json) => {
-    return createEventFromProperty(requestor, '', undefined, json)
-}
-
 const createPullEventFromPush = (pusher, json) => {
-    const event = eventDefaults(JSON.parse(JSON.stringify(pusher)))
+    const event = JSON.parse(JSON.stringify(pusher))
     event.params = []
-    event.name = 'onPull' + event.name.charAt(0).toUpperCase() + event.name.substr(1)
-    const old_tags = JSON.parse(JSON.stringify(pusher.tags))
+    event.name = methodRename(event, name => 'pull' + name.charAt(0).toUpperCase() + name.substr(1))
+    const old_tags = pusher.tags.concat()
+    event.tags = [
+        {
+            name: "notifier",
+            'x-event': methodRename(pusher, name => 'onPull' + name.charAt(0).toUpperCase() + name.substr(1))
+        }
+    ]
 
     event.tags[0]['x-pulls-for'] = pusher.name
     event.tags.unshift({
         name: 'polymorphic-pull-event'
     })
 
-    const requestType = (pusher.name.charAt(0).toUpperCase() + pusher.name.substr(1)) + "FederatedRequest"
-    event.result.name = "request"
-    event.result.summary = "A " + requestType + " object."
+    const requestType = methodRename(pusher, name => name.charAt(0).toUpperCase() + name.substr(1) + "FederatedRequest")
+    event.params.push({
+        name: "request",
+        summary: "A " + requestType + " object.",
+        schema: {
+            "$ref": "#/components/schemas/" + requestType
+        }
+    })
 
-    event.result.schema = {
-        "$ref": "#/components/schemas/" + requestType
-    }
+    delete event.result
 
     const exampleResult = {
-        name: "result",
+        name: "request",
         value: JSON.parse(JSON.stringify(getPathOr(null, ['components', 'schemas', requestType, 'examples', 0], json)))
     }
 
     event.examples && event.examples.forEach(example => {
-        example.result = exampleResult
-        example.params = []
+        delete example.result
+        example.params = [
+            exampleResult
+        ]
     })
 
     old_tags.forEach(t => {
@@ -556,65 +618,19 @@ const createPullEventFromPush = (pusher, json) => {
     return event
 }
 
-const createPullProvider = (requestor, params) => {
-    const event = eventDefaults(JSON.parse(JSON.stringify(requestor)))
-    event.name = requestor.tags.find(t => t['x-provided-by'])['x-provided-by']
+const createPullProvider = (requestor) => {
+    const provider = JSON.parse(JSON.stringify(requestor))
+    provider.name = requestor.tags.find(t => t['x-provided-by'])['x-provided-by']
     const old_tags = JSON.parse(JSON.stringify(requestor.tags))
 
-    const value = event.result
-
-    event.tags[0]['x-response'] = value.schema
-    event.tags[0]['x-response'].examples = event.examples.map(e => e.result.value)
-
-    event.result = {
-        "name": "request",
-        "schema": {
-            "type": "object",
-            "required": ["correlationId", "parameters"],
-            "properties":{
-                "correlationId": {
-                    "type": "string",
-                },
-                "parameters": {
-                    "$ref": "#/components/schemas/" + params
-                }
-            },
-            "additionalProperties": false
-        }
-    }
-
-    event.params = []
-
-    event.examples = event.examples.map(example => {
-        example.result = {
-            "name": "request",
-            "value": {
-                "correlationId": "xyz",
-                "parameters": {}
-            }                
-        }
-        example.params.forEach(p => {
-            example.result.value.parameters[p.name] = p.value
-        })
-        example.params = []
-        return example
-    })
-
-    old_tags.forEach(t => {
-        if (t.name !== 'push-pull')
-        {
-            event.tags.push(t)
-        }
-    })
-
-    const caps = event.tags.find(t => t.name === 'capabilities')
+    const caps = provider.tags.find(t => t.name === 'capabilities')
     caps['x-provides'] = caps['x-uses'].pop() || caps['x-manages'].pop()
     caps['x-requestor'] = requestor.name
     delete caps['x-uses']
     delete caps['x-manages']
     delete caps['x-provided-by']    
 
-    return event
+    return provider
 }
 
 const createPullProviderParams = (requestor) => {
@@ -698,7 +714,7 @@ const createTemporalEventMethod = (method, json, name) => {
 
 const createEventFromMethod = (method, json, name, correlationExtension, tagsToRemove = []) => {
     const event = eventDefaults(JSON.parse(JSON.stringify(method)))
-    event.name = 'on' + name
+    event.name = methodRename(event, _ => 'on' + name)
     const old_tags = JSON.parse(JSON.stringify(method.tags))
 
     event.tags[0][correlationExtension] = method.name
@@ -719,7 +735,7 @@ const createEventFromMethod = (method, json, name, correlationExtension, tagsToR
 const createTemporalStopMethod = (method, jsoname) => {
     const stop = JSON.parse(JSON.stringify(method))
 
-    stop.name = 'stop' + method.name.charAt(0).toUpperCase() + method.name.substr(1)
+    stop.name = methodRename(stop, name => 'stop' + name.charAt(0).toUpperCase() + name.substr(1))
 
     stop.tags = stop.tags.filter(tag => tag.name !== 'temporal-set')
     stop.tags.unshift({
@@ -757,7 +773,7 @@ const createTemporalStopMethod = (method, jsoname) => {
 
 const createSetterFromProperty = property => {
     const setter = JSON.parse(JSON.stringify(property))
-    setter.name = 'set' + setter.name.charAt(0).toUpperCase() + setter.name.substr(1)
+    setter.name = methodRename(setter, name => 'set' + name.charAt(0).toUpperCase() + name.substr(1))
     const old_tags = setter.tags
     setter.tags = [
         {
@@ -805,14 +821,10 @@ const createSetterFromProperty = property => {
 }
 
 const createFocusFromProvider = provider => {
-
-    if (!name(provider).startsWith('onRequest')) {
-        throw "Methods with the `x-provider` tag extension MUST start with 'onRequest'."
-    }
     
     const ready = JSON.parse(JSON.stringify(provider))
-    ready.name = rename(ready, n => n.charAt(9).toLowerCase() + n.substr(10) + 'Focus')
-    ready.summary = `Internal API for ${name(provider).substr(9)} Provider to request focus for UX purposes.`
+    ready.name = methodRename(ready, name => name.charAt(9).toLowerCase() + name.substr(10) + 'Focus')
+    ready.summary = `Internal API for ${methodName(provider).substr(9)} Provider to request focus for UX purposes.`
     ready.tags = ready.tags.filter(t => t.name !== 'event')
     ready.tags.find(t => t.name === 'capabilities')['x-allow-focus-for'] = provider.name
 
@@ -841,13 +853,9 @@ const createFocusFromProvider = provider => {
 // type = Response | Error
 const createResponseFromProvider = (provider, type, json) => {
 
-    if (!name(provider).startsWith('onRequest')) {
-        throw "Methods with the `x-provider` tag extension MUST start with 'onRequest'."
-    }
-
     const response = JSON.parse(JSON.stringify(provider))
-    response.name = rename(response, n => n.charAt(9).toLowerCase() + n.substr(10) + type)
-    response.summary = `Internal API for ${provider.name.substr(9)} Provider to send back ${type.toLowerCase()}.`
+    response.name = methodRename(response, name => name.charAt(9).toLowerCase() + name.substr(10) + type)
+    response.summary = `Internal API for ${methodName(provider).substr(9)} Provider to send back ${type.toLowerCase()}.`
 
     response.tags = response.tags.filter(t => t.name !== 'event')
     response.tags.find(t => t.name === 'capabilities')[`x-${type.toLowerCase()}-for`] = provider.name
@@ -995,17 +1003,17 @@ const generatePropertyEvents = json => {
     const readonlies = json.methods.filter( m => m.tags && m.tags.find( t => t.name == 'property:readonly')) || []
 
     properties.forEach(property => {
-        json.methods.push(createEventFromProperty(property, 'Changed', property.name, json))
-        const schema = createEventResultSchemaFromProperty(property, 'Changed')
+        json.methods.push(createNotifierFromProperty(property))
+        const schema = createEventResultSchemaFromProperty(property)
         if (schema) {
-            json.components.schemas[schema.title] = schema
+            json.components.schemas[property.name.split('.').shift() + '.' + schema.title] = schema
         }
     })
     readonlies.forEach(property => {
-        json.methods.push(createEventFromProperty(property, 'Changed', property.name, json))
-        const schema = createEventResultSchemaFromProperty(property, 'Changed')
+        json.methods.push(createNotifierFromProperty(property))
+        const schema = createEventResultSchemaFromProperty(property)
         if (schema) {
-            json.components.schemas[schema.title] = schema
+            json.components.schemas[property.name.split('.').shift() + '.' + schema.title] = schema
         }
     })
 
@@ -1028,38 +1036,14 @@ const generatePolymorphicPullEvents = json => {
     return json
 }
 
-const generatePushPullMethods = json => {
-    const requestors = json.methods.filter( m => m.tags && m.tags.find( t => t.name == 'push-pull')) || []
-    requestors.forEach(requestor => {
-        json.methods.push(createPushEvent(requestor, json))
-        
-        const schema = createEventResultSchemaFromProperty(requestor)
-        if (schema) {
-            json.components = json.components || {}
-            json.components.schemas = json.components.schemas || {}
-            json.components.schemas[schema.title] = schema
-        }        
-    })
-
-    return json
-}
-
 const generateProvidedByMethods = json => {
-    const requestors = json.methods.filter(m => !m.tags.find(t => t.name === 'event')).filter( m => m.tags && m.tags.find( t => t['x-provided-by'])) || []
-    const events = json.methods .filter(m => m.tags.find(t => t.name === 'event'))
-                                .filter( m => m.tags && m.tags.find( t => t['x-provided-by']))
-                                .filter(e => !json.methods.find(m => m.name === e.tags.find(t => t['x-provided-by'])['x-provided-by']))
-
-    const pushers = events.map(m => createNotifierFromEvent(m, json))
-    pushers.forEach(m => json.methods.push(m))
+    const requestors = json.methods.filter(m => !m.tags.find(t => t.name === 'notifier')).filter( m => m.tags && m.tags.find( t => t['x-provided-by'])) || []
 
     requestors.forEach(requestor => {
-        const schema = createPullProviderParams(requestor)
-        json.methods.push(createPullProvider(requestor, schema.title))
-
-        json.components = json.components || {}
-        json.components.schemas = json.components.schemas || {}
-        json.components.schemas[schema.title] = schema
+        const provider = json.methods.find(m => (m.name === extension(requestor, 'x-provided-by')) && provides(m) && !isEvent(m) && !isPusher(m) && !isNotifier(m))
+        if (!provider) {
+            json.methods.push(createPullProvider(requestor))
+        }
     })
 
     return json
@@ -1076,10 +1060,120 @@ const generateTemporalSetMethods = json => {
 }
 
 
-const generateProviderMethods = json => {
-    const providers = json.methods.filter( m => name(m).startsWith('onRequest') && m.tags && m.tags.find( t => t.name == 'capabilities' && t['x-provides'])) || []
+const generateUnidirectionalProviderMethods = json => {
+    const providers = json.methods.filter(isProviderInterfaceMethod)// m => m.tags && m.tags.find( t => t.name == 'capabilities' && t['x-provides'] && !t['x-push'])) || []
 
-    providers.forEach(provider => {
+    // Transform providers to legacy events
+    providers.forEach(p => {
+        const name = methodRename(p, name => 'onRequest' + name.charAt(0).toUpperCase() + name.substring(1))
+        const prefix = name.split('.').pop().substring(9)
+
+        json.methods.filter(m => m.tags && m.tags.find( t=> t.name === 'capabilities')['x-provided-by'] === p.name && !m.tags.find(t => t.name === 'notifier')).forEach(m => {
+            m.tags.find(t => t.name === 'capabilities')['x-provided-by'] = name
+        })
+        p.name = name
+        p.tags.push({
+            name: 'event',
+            'x-response-name': p.result.name,
+            'x-response': p.result.schema,
+            // todo: add examples
+        })
+
+        // Need to calculate if the module name ends with the same word as the method starts with, and dedupe
+        // This is here because we're generating names that used to be editorial. These don't match exactly,
+        // but they're good enough and "PinChallengeRequest" is way better than "PinChallengeChallengeRequest"
+        let overlap = 0
+        const _interface = p.name.split('.')[0]
+        const method = methodName(p).substring(9)
+        const capability = extension(p, 'x-provides')
+
+        for (let i=0; i<Math.min(_interface.length, method.length); i++) {
+            if (_interface.substring(_interface.length-i-1) === method.substring(0, i+1)) {
+                overlap = i
+            }
+        }
+
+        //const prefix = getUnidirectionalProviderInterfaceName(_interface, capability, json)//module.substring(0, module.length - overlap) + method
+
+        // Build the parameters wrapper
+        const parameters = {
+            title: prefix + 'Parameters',
+            type: "object",
+            properties: {
+                // actual params                
+            },
+            required: []
+        }
+
+        // add each param
+        p.params.forEach(param => {
+            parameters.properties[param.name] = param.schema
+            if (param.required) {
+                parameters.required.push(param.name)
+            }
+        })
+
+        // remove them from the method
+        p.params = []
+
+        // build the request wrapper
+        const request = {
+            title: prefix + 'Request',
+            type: "object",
+            required: [
+                "parameters",
+                "correlationId"
+            ],
+            properties: {
+                parameters: {
+                    $ref: `#/components/schemas/${_interface}.${parameters.title}`
+                },
+                correlationId: {
+                    type: "string"
+                }
+            },
+            additionalProperties: false    
+        }
+
+        json.components.schemas[_interface + '.' + request.title] = request
+        json.components.schemas[_interface + '.' + parameters.title] = parameters
+
+        // Put the request into the new event's result
+        p.result = {
+            name: 'result',
+            schema: {
+                $ref: `#/components/schemas/${_interface}.${request.title}`
+            }
+        }
+
+        const eventTag = p.tags.find(t => t.name === 'event')
+        eventTag['x-response'].examples = []
+        p.examples.forEach(example => {
+            // transform examples
+            eventTag['x-response'].examples.push(example.result.value)
+            example.result = {
+                name: 'result',
+                value: {
+                    correlationId: '1',
+                    parameters: Object.fromEntries(example.params.map(p => [p.name, p.value]))
+                }
+            }
+            example.params = [
+                {
+                    name: 'listen',
+                    value: true
+                }
+            ]
+        })
+    })
+
+    return json
+}
+
+const generateProviderMethods = (json) => {
+    const providers = json.methods.filter(isProviderInterfaceMethod) || []
+
+    providers.filter(p => methodName(p).startsWith('onRequest') && p.tags.find(t => t.name === 'event')).forEach(provider => {
         if (! isRPCOnlyMethod(provider)) {
             provider.tags.unshift({
                 "name": "rpc-only"
@@ -1094,6 +1188,182 @@ const generateProviderMethods = json => {
     providers.forEach(provider => {
         json.methods.push(createResponseFromProvider(provider, 'Response', json))
         json.methods.push(createResponseFromProvider(provider, 'Error', json))
+    })
+
+    return json
+}
+
+const generateEventSubscribers = json => {
+    const notifiers = json.methods.filter( m => m.tags && m.tags.find(t => t.name == 'notifier')) || []
+
+    notifiers.forEach(notifier => {
+        const tag = notifier.tags.find(tag => tag.name === 'notifier')
+        // if there's an x-event extension, this denotes an editorially created subscriber
+        if (!tag['x-event']) {
+            tag['x-event'] = methodRename(notifier, name => 'on' + name.charAt(0).toUpperCase() + name.substring(1))
+        }
+        const subscriber = json.methods.find(method => method.name === tag['x-event'])
+
+        if (!subscriber) {
+            const subscriber = JSON.parse(JSON.stringify(notifier))
+            subscriber.name = methodRename(subscriber, name => 'on' + name.charAt(0).toUpperCase() + name.substring(1))
+            subscriber.params.pop()
+            subscriber.params.push({
+                name: 'listen',
+                schema: {
+                    type: 'boolean'
+                }
+            })
+
+            subscriber.result = {
+                name: "result",
+                schema: {
+                    type: "null"
+                }
+            }
+
+            subscriber.examples.forEach(example => {
+                example.params.pop()
+                example.params.push({
+                    name: "listen",
+                    value: true
+                })
+                example.result = {
+                    name: "result",
+                    value: null
+                }
+            })
+
+            const tag = subscriber.tags.find(tag => tag.name === 'notifier')
+
+            tag['x-notifier'] = notifier.name
+            tag['x-subscriber-for'] = tag['x-notifier-for']
+            tag.name = 'event'
+            delete tag['x-notifier-for']
+            delete tag['x-event']
+
+            subscriber.result = {
+                name: "result",
+                schema: {
+                    "type": "null"
+                }
+            }
+            json.methods.push(subscriber)
+        }
+    })
+
+    return json
+}
+
+const generateProviderRegistrars = json => {
+    const interfaces = getInterfaces(json)
+
+    interfaces.forEach(name => {
+        const registration = json.methods.find(m => m.tags.find(t => t.name === 'registration') && extension(m, 'x-interface') === name)
+
+        if (!registration) {
+            json.methods.push({
+                name: `${name}.provide`,
+                tags: [
+                    {
+                        "name": "registration",
+                        "x-interface": name
+                    },
+                    {
+                        "name": "capabilities",
+                        "x-provides": json.methods.find(m => m.name.startsWith(name) && m.tags.find(t => t.name === 'capabilities')['x-provides']).tags.find(t => t.name === 'capabilities')['x-provides']
+                    }
+
+                ],
+                params: [
+                    {
+                        name: "enabled",
+                        schema: {
+                            type: "boolean"
+                        }
+                    }
+                ],
+                result: {
+                    name: "result",
+                    schema: {
+                        type: "null"
+                    }
+                },
+                examples: [
+                    {
+                        name: "Default example",
+                        params: [
+                            {
+                                name: "enabled",
+                                value: true
+                            }
+                        ],
+                        result: {
+                            name: "result",
+                            value: null
+                        }
+                    }
+                ]
+            })
+        }
+    })
+
+    return json
+    const notifiers = json.methods.filter( m => m.tags && m.tags.find(t => t.name == 'notifier')) || []
+
+    notifiers.forEach(notifier => {
+        const tag = notifier.tags.find(tag => tag.name === 'notifier')
+        // if there's an x-event extension, this denotes an editorially created subscriber
+        if (!tag['x-event']) {
+            tag['x-event'] = methodRename(notifier, name => 'on' + name.charAt(0).toUpperCase() +! name.substring(1))
+        }
+        const subscriber = json.methods.find(method => method.name === tag['x-event'])
+
+        if (!subscriber) {
+            const subscriber = JSON.parse(JSON.stringify(notifier))
+            subscriber.name = methodRename(subscriber, name => 'on' + name.charAt(0).toUpperCase() + name.substring(1))
+            subscriber.params.pop()
+            subscriber.params.push({
+                name: 'listen',
+                schema: {
+                    type: 'boolean'
+                }
+            })
+            subscriber.tags.find(t => t.name === 'notifier')['x-notifier'] = notifier.name
+            subscriber.tags.find(t => t.name === 'notifier').name = 'event'
+            subscriber.result = {
+                name: "result",
+                schema: {
+                    "type": "null"
+                }
+            }
+            json.methods.push(subscriber)
+        }
+    })
+
+    return json
+}
+
+const removeProviderRegistrars = (json) => {
+    json.methods && (json.methods = json.methods.filter(m => !isRegistration(m)))
+    return json
+}
+
+const generateUnidirectionalEventMethods = json => {
+    const events = json.methods.filter( m => m.tags && m.tags.find(t => t.name == 'notifier')) || []
+
+    events.forEach(event => {
+        const tag = event.tags.find(t => t.name === 'notifier')
+        event.name = tag['x-event'] || methodRename(event, n => 'on' + n.charAt(0).toUpperCase() + n.substr(1))
+        delete tag['x-event']
+        tag['x-subscriber-for'] = tag['x-notifier-for']
+        delete tag['x-notifier-for']
+
+        tag.name = 'event'
+        event.result = event.params.pop()
+        event.examples.forEach(example => {
+            example.result = example.params.pop()
+        })
     })
 
     return json
@@ -1133,7 +1403,7 @@ const generateEventListenResponse = json => {
         // only want or and xor here (might even remove xor)
         const anyOf = event.result.schema.oneOf || event.result.schema.anyOf
         const ref = {
-            "$ref": "https://meta.comcast.com/firebolt/types#/definitions/ListenResponse"
+            "$ref": "https://meta.rdkcentral.com/firebolt/schemas/types#/definitions/ListenResponse"
         }
 
         if (anyOf) {
@@ -1150,138 +1420,6 @@ const generateEventListenResponse = json => {
     })
 
     return json
-}
-
-const getAnyOfSchema = (inType, json) => {
-    let anyOfTypes = []
-    let outType = localizeDependencies(inType, json)
-    if (outType.schema.anyOf) {
-        let definition = ''
-        if (inType.schema['$ref'] && (inType.schema['$ref'][0] === '#')) {
-            definition = getRefDefinition(inType.schema['$ref'], json, json['x-schemas'])
-        }
-        else {
-            definition = outType.schema
-        }
-        definition.anyOf.forEach(anyOf => {
-            anyOfTypes.push(anyOf)
-        })
-        outType.schema.anyOf = anyOfTypes
-    }
-    return outType
-}
-
-const generateAnyOfSchema = (anyOf, name, summary) => {
-    let anyOfType = {}
-    anyOfType["name"] = name;
-    anyOfType["summary"] = summary
-    anyOfType["schema"] = anyOf
-    return anyOfType
-}
-
-const generateParamsAnyOfSchema = (methodParams, anyOf, anyOfTypes, title, summary) => {
-    let params = []
-    methodParams.forEach(p => {
-        if (p.schema.anyOf === anyOfTypes) {
-            let anyOfType = generateAnyOfSchema(anyOf, p.name, summary)
-            anyOfType.required = p.required
-            params.push(anyOfType)
-        }
-        else {
-            params.push(p)
-        }
-    })
-    return params
-}
-
-const generateResultAnyOfSchema = (method, methodResult, anyOf, anyOfTypes, title, summary) => {
-    let methodResultSchema = {}
-    if (methodResult.schema.anyOf === anyOfTypes) {
-        let anyOfType = generateAnyOfSchema(anyOf, title, summary)
-        let index = 0
-        if (isEventMethod(method)) {
-            index = (method.result.schema.anyOf || method.result.schema.oneOf).indexOf(getPayloadFromEvent(method))
-        }
-        else {
-            index = (method.result.schema.anyOf || method.result.schema.oneOf).indexOf(anyOfType)
-        }
-        if (method.result.schema.anyOf) {
-            methodResultSchema["anyOf"] = Object.assign([], method.result.schema.anyOf)
-            methodResultSchema.anyOf[index] = anyOfType.schema
-        }
-        else if (method.result.schema.oneOf) {
-            methodResultSchema["oneOf"] = Object.assign([], method.result.schema.oneOf)
-            methodResultSchema.oneOf[index] = anyOfType.schema
-        }
-        else {
-            methodResultSchema = anyOfType.schema
-        }
-    }
-    return methodResultSchema
-}
-
-const createPolymorphicMethods = (method, json) => {
-    let anyOfTypes
-    let methodParams = []
-    let methodResult = Object.assign({}, method.result)
-
-    method.params.forEach(p => {
-        if (p.schema) {
-            let param = getAnyOfSchema(p, json)
-            if (param.schema.anyOf && anyOfTypes) {
-                //anyOf is allowed with only one param in the params list
-                throw `WARNING anyOf is repeated with param:${p}`
-            }
-            else if (param.schema.anyOf) {
-                anyOfTypes = param.schema.anyOf
-            }
-            methodParams.push(param)
-        }
-    })
-    let foundAnyOfParams = anyOfTypes ? true : false
-
-    if (isEventMethod(method)) {
-        methodResult.schema = getPayloadFromEvent(method)
-    }
-    methodResult = getAnyOfSchema(methodResult, json)
-    let foundAnyOfResult = methodResult.schema.anyOf ? true : false
-    if (foundAnyOfParams === true && foundAnyOfResult === true) {
-        throw `WARNING anyOf is already with param schema, it is repeated with ${method.name} result too`
-    }
-    else if (foundAnyOfResult === true) {
-        anyOfTypes = methodResult.schema.anyOf
-    }
-    let polymorphicMethodSchemas = []
-    //anyOfTypes will be allowed either in any one of the params or in result
-    if (anyOfTypes) {
-        let polymorphicMethodSchema = {
-            name: {},
-            tags: {},
-            summary: `${method.summary}`,
-            params: {},
-            result: {},
-            examples: {}
-        }
-        anyOfTypes.forEach(anyOf => {
-
-            let localized = localizeDependencies(anyOf, json)
-            let title = localized.title || localized.name || ''
-            let summary = localized.summary || localized.description || ''
-            polymorphicMethodSchema.rpc_name = method.name
-            polymorphicMethodSchema.name = foundAnyOfResult && isEventMethod(method) ? `${method.name}${title}` : method.name
-            polymorphicMethodSchema.tags = method.tags
-            polymorphicMethodSchema.params = foundAnyOfParams ? generateParamsAnyOfSchema(methodParams, anyOf, anyOfTypes, title, summary) : methodParams
-            polymorphicMethodSchema.result = Object.assign({}, method.result)
-            polymorphicMethodSchema.result.schema = foundAnyOfResult ? generateResultAnyOfSchema(method, methodResult, anyOf, anyOfTypes, title, summary) : methodResult.schema
-            polymorphicMethodSchema.examples = method.examples
-            polymorphicMethodSchemas.push(Object.assign({}, polymorphicMethodSchema))
-        })
-    }
-    else {
-      polymorphicMethodSchemas = method
-    }
-
-    return polymorphicMethodSchemas
 }
 
 const isSubSchema = (schema) => schema.type === 'object' || (schema.type === 'string' && schema.enum)
@@ -1350,24 +1488,33 @@ const getPathFromModule = (module, path) => {
     return item    
 }
 
-const fireboltize = (json) => {
+const fireboltize = (json, bidirectional) => {
     json = generatePropertyEvents(json)
     json = generatePropertySetters(json)
     //  TODO: we don't use this yet... consider removing?
     //    json = generatePushPullMethods(json)
-    //    json = generateProvidedByMethods(json)
+    json = generateProvidedByMethods(json)
     json = generatePolymorphicPullEvents(json)
-    json = generateProviderMethods(json)
+
+    if (bidirectional) {
+        console.log('Creating bidirectional APIs')
+        json = generateEventSubscribers(json)
+        json = generateProviderRegistrars(json)
+        // generateInterfaceProviders
+    }
+    else {
+        console.log('Creating uni-directional provider and event APIs')
+        json = generateUnidirectionalProviderMethods(json)
+        json = generateUnidirectionalEventMethods(json)
+        json = generateProviderMethods(json)
+        json = generateEventListenerParameters(json)
+        json = generateEventListenResponse(json)
+        json = removeProviderRegistrars(json)
+    }
+
     json = generateTemporalSetMethods(json)
-    json = generateEventListenerParameters(json)
-    json = generateEventListenResponse(json)
-    
-    return json
-}
-
-const fireboltizeMerged = (json) => {
     json = copyAllowFocusTags(json)
-
+    
     return json
 }
 
@@ -1452,88 +1599,120 @@ const getExternalSchemas = (json = {}, schemas = {}) => {
 
 const addExternalSchemas = (json, sharedSchemas) => {
     json = JSON.parse(JSON.stringify(json))
-
-    let searching = true
-
-    while (searching) {
-        searching = false
-        const externalSchemas = getExternalSchemas(json, sharedSchemas)
-        Object.entries(externalSchemas).forEach( ([name, schema]) => {
-            const group = sharedSchemas[name.split('#')[0]].title
-            const id = sharedSchemas[name.split('#')[0]].$id
-            const refs = getLocalSchemaPaths(schema)
-            refs.forEach(ref => {
-                ref.pop() // drop the actual '$ref' so we can modify it
-                getPathOr(null, ref, schema).$ref = id + getPathOr(null, ref, schema).$ref
-            })
-            // if this schema is a child of some other schema that will be copied in this batch, then skip it
-            if (Object.keys(externalSchemas).find(s => name.startsWith(s+'/') && s.length < name.length)) {
-                console.log('Skipping: ' + name)
-                console.log('Because of: ' + Object.keys(externalSchemas).find(s => name.startsWith(s) && s.length < name.length))
-                throw "Skipping sub schema"
-                return
-            }
-            searching = true
-            json['x-schemas'] = json['x-schemas'] || {}
-            json['x-schemas'][group] = json['x-schemas'][group] || { uri: name.split("#")[0]}
-            json['x-schemas'][group][name.split("/").pop()] = schema
-        })
+    json.components = json.components || {}
+    json.components.schemas = json.components.schemas || {}
     
-        //update references to external schemas to be local
-        Object.keys(externalSchemas).forEach(ref => {
-          const group = sharedSchemas[ref.split('#')[0]].title
-          replaceRef(ref, `#/x-schemas/${group}/${ref.split("#").pop().substring('/definitions/'.length)}`, json)
-        })    
+    let found = true
+    const added = []
+    while (found) {
+        const ids = getAllValuesForName('$ref', json)
+        found = false
+        Object.entries(sharedSchemas).forEach( ([key, schema], i) => {
+            if (!added.includes(key)) {
+                if (ids.find(id => id.startsWith(key))) {
+                    const bundle = JSON.parse(JSON.stringify(schema))
+                    replaceUri('', bundle.$id, bundle)
+                    json.components.schemas[key] = bundle
+                    added.push(key)
+                    found = true
+                }    
+            }
+        })
     }
 
+//    json = removeUnusedSchemas(json)
     return json
 }
 
 // TODO: make this recursive, and check for group vs schema
 const removeUnusedSchemas = (json) => {
     const schema = JSON.parse(JSON.stringify(json))
+    const components = schema.components
+    schema.components = { schemas: {} }
 
-    const recurse = (schema, path) => {
-        let deleted = false
-        Object.keys(schema).forEach(name => {
-            if (isSchema(schema[name])) {
-                const used = isDefinitionReferencedBySchema(path + '/' + name, json)
+    const refs = getAllValuesForName('$ref', schema)
 
-                if (!used) {
-                    delete schema[name]
-                    deleted = true
-                }
-                else {
+    const addSchemas = (schema, refs) => {
+        let added = false
+        refs.forEach(ref => {
+            if (ref.startsWith("https://")) {
+                const [uri, fragment] = ref.split("#")
+                if (!schema.components.schemas[uri]) {
+                    schema.components.schemas[uri] = components.schemas[uri]
+                    console.log(`Adding ${uri}`)
+                    added = true                    
                 }
             }
-            else if (typeof schema[name] === 'object') {
-                deleted = deleted || recurse(schema[name], path + '/' + name)
+            else {
+                const key = ref.split("/").pop()
+                if (!schema.components.schemas[key]) {
+                    schema.components.schemas[key] = components.schemas[key]
+                    console.log(`Adding ${key}`)
+                    added = true                    
+                }
             }
         })
-        return deleted
+        return added
     }
 
     if (schema.components.schemas) {
-        while(recurse(schema.components.schemas, '#/components/schemas')) {}
-    }
-
-    if (schema['x-schemas']) {
-        while(recurse(schema['x-schemas'], '#/x-schemas')) {}
+        while(addSchemas(schema, refs)) {
+            refs.length = 0
+            refs.push(...getAllValuesForName('$ref', schema))
+        }
     }
 
     return schema
 }
 
+const removeUnusedBundles = (json) => {
+    json = JSON.parse(JSON.stringify(json))
+    // remove all the shared schemas
+    const sharedSchemas = {}
+    Object.keys(json.components.schemas).forEach (key => {
+        if (key.startsWith('https://')) {
+            sharedSchemas[key] = json.components.schemas[key]
+            delete json.components.schemas[key]
+        }
+    })
+
+    // and only add back in the ones that are still referenced
+    let found = true
+    while(found) {
+        found = false
+        const ids = [ ...new Set(getAllValuesForName('$ref', json).map(ref => ref.split('#').shift()))]
+        Object.keys(sharedSchemas).forEach(key => {
+            if (ids.includes(key)) {
+                json.components.schemas[key] = sharedSchemas[key]
+                delete sharedSchemas[key]
+                found = true
+            }
+        })  
+    }
+
+    return json
+}    
+
 const getModule = (name, json, copySchemas, extractSubSchemas) => {
+    
+    // TODO: extractSubschemas was added by cpp branch, but that code is short-circuited out here...
+    
     let openrpc = JSON.parse(JSON.stringify(json))
     openrpc.methods = openrpc.methods
                         .filter(method => method.name.toLowerCase().startsWith(name.toLowerCase() + '.'))
-                        .map(method => Object.assign(method, { name: method.name.split('.').pop() }))
+                        .filter(method => method.name !== 'rpc.discover') 
+//                        .map(method => Object.assign(method, { name: method.name.split('.').pop() }))
     openrpc.info.title = name
+    openrpc.components.schemas = Object.fromEntries(Object.entries(openrpc.components.schemas).filter( ([key, schema]) => key.startsWith('http') || key.split('.')[0] === name))
     if (json.info['x-module-descriptions'] && json.info['x-module-descriptions'][name]) {
         openrpc.info.description = json.info['x-module-descriptions'][name]
     }
     delete openrpc.info['x-module-descriptions']
+
+    openrpc = promoteAndNameXSchemas(openrpc)
+    return removeUnusedSchemas(openrpc)
+    return removeUnusedBundles(removeUnusedSchemas(openrpc))
+    
     const copy = JSON.parse(JSON.stringify(openrpc))
 
     // zap all of the schemas
@@ -1592,6 +1771,27 @@ const getModule = (name, json, copySchemas, extractSubSchemas) => {
     }
 
     return removeUnusedSchemas(openrpc)
+}
+
+const getClientModule = (name, client, server) => {
+
+    const notifierFor = m => (m.tags.find(t => t['x-event']) || {})['x-event']
+    const interfaces = server.methods.filter(m => m.tags.find(t => t['x-interface']))
+                                        .map(m => m.tags.find(t => t['x-interface'])['x-interface'])
+
+    let openrpc = JSON.parse(JSON.stringify(client))
+
+    openrpc.methods = openrpc.methods
+                        .filter(method => (notifierFor(method) && notifierFor(method).startsWith(name + '.') || interfaces.find(name => method.name.startsWith(name + '.'))))
+    openrpc.info.title = name
+    openrpc.components.schemas = Object.fromEntries(Object.entries(openrpc.components.schemas).filter( ([key, schema]) => key.startsWith('http') || key.split('.')[0] === name))
+    if (client.info['x-module-descriptions'] && client.info['x-module-descriptions'][name]) {
+        openrpc.info.description = client.info['x-module-descriptions'][name]
+    }
+    delete openrpc.info['x-module-descriptions']
+
+    openrpc = promoteAndNameXSchemas(openrpc)
+    return removeUnusedBundles(removeUnusedSchemas(openrpc))
 }
 
 const getSemanticVersion = json => {
@@ -1655,6 +1855,8 @@ export {
     getMethods,
     getProviderInterface,
     getProvidedCapabilities,
+    getProvidedInterfaces,
+    getUnidirectionalProviderInterfaceName,
     getSetterFor,
     getSubscriberFor,
     getEnums,
@@ -1664,15 +1866,15 @@ export {
     getSchemas,
     getParamsFromMethod,
     fireboltize,
-    fireboltizeMerged,
     getPayloadFromEvent,
     getPathFromModule,
     providerHasNoParameters,
     removeUnusedSchemas,
+    removeUnusedBundles,
     getModule,
+    getClientModule,
     getSemanticVersion,
     addExternalMarkdown,
     addExternalSchemas,
-    getExternalMarkdownPaths,
-    createPolymorphicMethods
+    getExternalMarkdownPaths
 }

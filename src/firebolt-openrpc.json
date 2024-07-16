@@ -1,5 +1,5 @@
 {
-    "$id": "https://meta.comcast.com/firebolt/openrpc",
+    "$id": "https://meta.rdkcentral.com/firebolt/schemas/openrpc",
     "title": "FireboltOpenRPC",
     "oneOf": [
         {
@@ -1011,6 +1011,12 @@
                         },
                         "x-provided-by": {
                             "type": "string"
+                        },
+                        "x-requestor": {
+                            "type": "string"
+                        },
+                        "x-push": {
+                            "type": "boolean"
                         }
                     },
                     "if": {

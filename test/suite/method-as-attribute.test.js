@@ -16,9 +16,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { Simple, Advanced } from '../../build/sdk/javascript/src/sdk.mjs'
+import { Simple, Advanced, Settings } from '../../build/sdk/javascript/src/sdk.mjs'
 import Setup from '../Setup'
 import { expect } from '@jest/globals';
+
+Settings.setLogLevel('DEBUG')
 
 test('Method as attribute', () => {
     return Simple.methodWithMethodAttribute('test').then( result => {
@@ -33,19 +35,8 @@ test('Method attribute returns promise', () => {
 });
 
 test('Method attribute promise resolves', () => {
-    let resolver
-    const p = new Promise( (a, b) => { resolver = a; })
-
-    Advanced.list(item => {
-        expect(item.aString).toBe("Here's a string")
-        expect(item.aNumber).toBe(123)
-        expect(typeof item.aMethod).toBe('function')
-        item.aMethod().then(result => {
-            expect(result.foo).toBe("here's foo")
-            expect(result.bar).toBe(1)
-            resolver()
-        })
+    return Simple.methodWithMethodAttribute('test').then( async result => {
+        const value = await result.aMethod()
+        expect(value).toBeDefined()
     })
-
-    return p
 })

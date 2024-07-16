@@ -36,8 +36,7 @@
  let receiver
  
  export const transport = {
-     send: function(message) {
-         const json = JSON.parse(message)
+     send: function(json) {
          sendListener && sendListener(json)
      },
      receive: function(callback) {
@@ -54,9 +53,12 @@
              result: result
          }
          receiver && receiver(JSON.stringify(response))
+     },
+     request: function(json) {
+        receiver && receiver(JSON.stringify(json))
      }
  }
  
- win.__firebolt.setTransportLayer(transport)
+ win.__firebolt.transport = transport
 
  export default transport
