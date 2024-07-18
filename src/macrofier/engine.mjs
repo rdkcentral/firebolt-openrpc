@@ -363,7 +363,6 @@ const makeProviderMethod = x => x.name["onRequest".length].toLowerCase() + x.nam
 //import { default as platform } from '../Platform/defaults'
 const generateAggregateMacros = (openrpc, modules, templates, library) => Object.values(modules)
   .reduce((acc, module) => {
-    console.log("Inside generate Aggregated macros")
     let template = getTemplate('/codeblocks/export', templates)
     if (template) {
       acc.exports += insertMacros(template + '\n', generateMacros(module, templates))
@@ -378,7 +377,6 @@ const generateAggregateMacros = (openrpc, modules, templates, library) => Object
     if (template) {
       acc.mockObjects += insertMacros(template + '\n', generateMacros(module, templates))
     }
-    console.log('****Return ACC'+JSON.stringify(acc))
     return acc
   }, {
     exports: '',
@@ -405,7 +403,6 @@ const promoteSchema = (location, property, title, document, destinationPath) => 
   location[property] = {
     $ref: `${destinationPath}/${title}`
   }
-  console.log('***** Destinationin the promoteSchema',JSON.stringify(promoteSchema))
 }
 
 // only consider sub-objects and sub enums to be sub-schemas
@@ -597,14 +594,11 @@ const clearMacros = (fContents = '') => {
 }
 
 const insertAggregateMacros = (fContents = '', aggregateMacros = {}) => {
-  console.log('**FCONTENT in the BEGINNING'+JSON.stringify(fContents))
-  console.log('**aggregateMacros in the BEGINNING'+JSON.stringify(aggregateMacros))
   fContents = fContents.replace(/[ \t]*\/\* \$\{EXPORTS\} \*\/[ \t]*\n/, aggregateMacros.exports)
   fContents = fContents.replace(/[ \t]*\/\* \$\{MOCK_IMPORTS\} \*\/[ \t]*\n/, aggregateMacros.mockImports)
   fContents = fContents.replace(/[ \t]*\/\* \$\{MOCK_OBJECTS\} \*\/[ \t]*\n/, aggregateMacros.mockObjects)
   fContents = fContents.replace(/\$\{readable\}/g, aggregateMacros.version.readable)
   fContents = fContents.replace(/\$\{package.name\}/g, aggregateMacros.library)
-  console.log('****Inside insertAggregateMacros and displaying its contents'+JSON.stringify(Contents))
   return fContents
 }
 

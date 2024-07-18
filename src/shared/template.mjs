@@ -24,7 +24,6 @@ const getTemplateForMethod = (method, suffix, templates) => {
 }
 
 const getTemplateForModule = (module, file, templates) => {
-  console.log("***Module in get getTemplateForModule"+JSON.stringify(getTemplateForModule))
   return getTemplate(module, file, templates) || getTemplate('/modules/', file, templates)
 }
 

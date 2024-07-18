@@ -273,7 +273,6 @@ const run = async ({
         const examples = ajv.compile(exampleSpec)
 
         try {
-            console.log("*****************Inside Validate*************")
             const openrpcResult = validate(json, {}, ajv, openrpc)
             const fireboltResult = validate(json, {}, ajv, firebolt)
             const exampleResult = validate(json, {}, ajv, examples)
