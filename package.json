@@ -10,7 +10,7 @@
   "scripts": {
     "prepack": "npm run prepare:setup && npm run dist",
     "prepare:setup": "npx mkdirp ./dist/docs ./build/docs/markdown ./build/docs/wiki ./build/sdk/javascript/src",
-    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --config=jest.config.json --detectOpenHandles --collectCoverage --runInBand --forceExit",
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --config=jest.config.json --detectOpenHandles",
     "build": "npm run validate && npm run build:docs && npm run build:sdk",
     "validate": "node ./src/cli.mjs validate --input ./test/openrpc --schemas test/schemas --transformations && npm run build:openrpc && node ./src/cli.mjs validate --input ./build/sdk-open-rpc.json",
     "build:openrpc": "node ./src/cli.mjs openrpc --input ./test --template ./src/openrpc-template.json --output ./build/sdk-open-rpc.json --schemas test/schemas",
