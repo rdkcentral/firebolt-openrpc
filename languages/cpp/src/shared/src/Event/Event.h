@@ -111,10 +111,10 @@ namespace FireboltSDK {
             return status;
         }
 
+        // To prioritize internal and external events and its corresponding callbacks
         template <typename RESULT, typename CALLBACK>
         Firebolt::Error Prioritize(const string& eventName,JsonObject& jsonParameters, const CALLBACK& callback, void* usercb, const void* userdata)
         {
-            std::cout << "Inside Prioritize" << std::endl;
             Firebolt::Error status = Firebolt::Error::General;
             // Assuming prioritized events also need subscription via transport
             status = Subscribe<RESULT, CALLBACK>(eventName, jsonParameters, callback, usercb, userdata, true);
@@ -129,22 +129,22 @@ namespace FireboltSDK {
         Firebolt::Error Assign(EventMap& eventMap, const string& eventName, const CALLBACK& callback, void* usercb, const void* userdata)
         {
             Firebolt::Error status = Firebolt::Error::General;
-            //std::function<void(void* usercb, const void* userdata, void* parameters)> actualCallback = callback;
-            DispatchFunction implementation = [callback](void* usercb, const void* userdata, const string& parameters) -> Firebolt::Error {
-
+            std::function<void(void* usercb, const void* userdata, void* parameters)> actualCallback = callback;
+            DispatchFunction implementation = [actualCallback](void* usercb, const void* userdata, const string& parameters) -> Firebolt::Error {
                 WPEFramework::Core::ProxyType<PARAMETERS>* inbound = new WPEFramework::Core::ProxyType<PARAMETERS>();
                 *inbound = WPEFramework::Core::ProxyType<PARAMETERS>::Create();
                 (*inbound)->FromString(parameters);
-                callback(usercb, userdata, static_cast<void*>(inbound));
+                actualCallback(usercb, userdata, static_cast<void*>(inbound));
                 return (Firebolt::Error::None);
             };
             CallbackData callbackData = {implementation, userdata, State::IDLE};
-
             _adminLock.Lock();
             EventMap::iterator eventIndex = eventMap.find(eventName);
             if (eventIndex != eventMap.end()) {
                 CallbackMap::iterator callbackIndex = eventIndex->second.find(usercb);
+               
                 if (callbackIndex == eventIndex->second.end()) {
+                     std::cout << "Registering new callback for event: " << eventName << std::endl;
                     eventIndex->second.emplace(std::piecewise_construct, std::forward_as_tuple(usercb), std::forward_as_tuple(callbackData));
                     status = Firebolt::Error::None;
                 }
@@ -176,4 +176,3 @@ namespace FireboltSDK {
         static Event* _singleton;
     };
 }
-

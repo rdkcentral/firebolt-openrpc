@@ -88,8 +88,8 @@ namespace FireboltSDK {
         }
         return result;
     }
-
-   Firebolt::Error Event::Dispatch(const string& eventName, const WPEFramework::Core::ProxyType<WPEFramework::Core::JSONRPC::Message>& jsonResponse) /* override */
+    
+     Firebolt::Error Event::Dispatch(const string& eventName, const WPEFramework::Core::ProxyType<WPEFramework::Core::JSONRPC::Message>& jsonResponse) /* override */
     {
         string response = jsonResponse->Result.Value();
         std::vector<EventMap*> eventMaps = {&_internalEventMap, &_externalEventMap};
