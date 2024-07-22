@@ -38,7 +38,8 @@ ENUM_CONVERSION_BEGIN(FireboltSDK::Logger::Category)
     { FireboltSDK::Logger::Category::Manage, _TXT("FireboltSDK::Manage") },
     { FireboltSDK::Logger::Category::Discovery, _TXT("FireboltSDK::Discovery") },
     { FireboltSDK::Logger::Category::PlayerProvider, _TXT("FireboltSDK::PlayerProvider") },
-    { FireboltSDK::Logger::Category::PlayerProvider, _TXT("FireboltSDK::PlayerManager") },
+    { FireboltSDK::Logger::Category::PlayerManager, _TXT("FireboltSDK::PlayerManager") },
+    { FireboltSDK::Logger::Category::EntOSRuntime, _TXT("FireboltSDK::EndOSRuntime") },
 
 ENUM_CONVERSION_END(FireboltSDK::Logger::Category)
 

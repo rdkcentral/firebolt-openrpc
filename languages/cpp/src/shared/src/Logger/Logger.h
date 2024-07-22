@@ -42,6 +42,7 @@ namespace FireboltSDK {
             Discovery,
             PlayerProvider,
             PlayerManager,
+            EntOSRuntime,
         };
 
     public:
