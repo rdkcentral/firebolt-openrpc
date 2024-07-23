@@ -83,32 +83,29 @@ namespace FireboltSDK {
         Firebolt::Error Subscribe(const string& eventName, JsonObject& jsonParameters, const CALLBACK& callback, void* usercb, const void* userdata, bool prioritize = false)
         {
             Firebolt::Error status = Firebolt::Error::General;
+
             if (_transport != nullptr) {
-                if (prioritize) {
-                     status = Assign<RESULT, CALLBACK>(_internalEventMap, eventName, callback, usercb, userdata);
-                } else {
-                     status = Assign<RESULT, CALLBACK>(_externalEventMap, eventName, callback, usercb, userdata);
-                }         
+                EventMap& eventMap = prioritize ? _internalEventMap : _externalEventMap;
+                
+                status = Assign<RESULT, CALLBACK>(eventMap, eventName, callback, usercb, userdata);
+
                 if (status == Firebolt::Error::None) {
                     Response response;
-
                     WPEFramework::Core::JSON::Variant Listen = true;
                     jsonParameters.Set(_T("listen"), Listen);
                     string parameters;
                     jsonParameters.ToString(parameters);
 
-                    status = _transport->Subscribe<Response>(eventName, parameters, response);
+                    status = _transport->Subscribe<Response>(eventName, parameters, response, prioritize);
 
                     if (status != Firebolt::Error::None) {
                         Revoke(eventName, usercb);
-                    } else if ((response.Listening.IsSet() == true) &&
-                              (response.Listening.Value() == true)) {
+                    } else if (response.Listening.IsSet() && response.Listening.Value()) {
                         status = Firebolt::Error::None;
                     }
                 }
             }
-
-            return status;
+        return status;
         }
 
         // To prioritize internal and external events and its corresponding callbacks
@@ -128,6 +125,7 @@ namespace FireboltSDK {
         template <typename PARAMETERS, typename CALLBACK>
         Firebolt::Error Assign(EventMap& eventMap, const string& eventName, const CALLBACK& callback, void* usercb, const void* userdata)
         {
+            
             Firebolt::Error status = Firebolt::Error::General;
             std::function<void(void* usercb, const void* userdata, void* parameters)> actualCallback = callback;
             DispatchFunction implementation = [actualCallback](void* usercb, const void* userdata, const string& parameters) -> Firebolt::Error {

@@ -565,7 +565,13 @@ namespace FireboltSDK {
         void Revoke(const string& eventName)
         {
             _adminLock.Lock();
-            _eventMap.erase(eventName);
+
+            // Remove from internal event map
+            _internalEventMap.erase(eventName);
+
+            // Remove from external event map
+            _externalEventMap.erase(eventName);
+
             _adminLock.Unlock();
         }
 
@@ -640,22 +646,31 @@ namespace FireboltSDK {
         }
 
         template <typename RESPONSE>
-        Firebolt::Error Subscribe(const string& eventName, const string& parameters, RESPONSE& response)
+      
+        Firebolt::Error Subscribe(const string& eventName, const string& parameters, RESPONSE& response, bool updateInternal = false)
         {
             Entry slot;
             uint32_t id = _channel->Sequence();
             Firebolt::Error result = Send(eventName, parameters, id);
+
             if (result == Firebolt::Error::None) {
                 _adminLock.Lock();
-                _eventMap.emplace(std::piecewise_construct,
-                std::forward_as_tuple(eventName),
-                std::forward_as_tuple(~0));
+                
+                // Choose the map based on updateInternal flag
+                EventMap& eventMap = updateInternal ? _internalEventMap : _externalEventMap;
+
+                // Add to the selected event map
+                eventMap.emplace(std::piecewise_construct,
+                                std::forward_as_tuple(eventName),
+                                std::forward_as_tuple(id));
+
                 _adminLock.Unlock();
 
-                result = WaitForEventResponse(id, eventName, response, _waitTime);
+                result = WaitForEventResponse(id, eventName, response, _waitTime, eventMap);
+              
             }
 
-            return (result);
+            return result;
         }
 
         Firebolt::Error Unsubscribe(const string& eventName, const string& parameters)
@@ -692,18 +707,34 @@ namespace FireboltSDK {
 
     private:
         friend Channel;
+
         inline bool IsEvent(const uint32_t id, string& eventName)
         {
             _adminLock.Lock();
-            for (auto& event : _eventMap) {
-                 if (event.second == id) {
-                     eventName = event.first;
-                     break;
+            
+            bool eventExist = false;
+
+            // List of maps to search
+            std::vector<EventMap*> maps = {&_internalEventMap, &_externalEventMap};
+
+            // Loop through each map
+            for (const auto* map : maps) {
+                for (const auto& event : *map) {
+                    if (event.second == id) {
+                        eventName = event.first;
+                        eventExist = true;
+                        break; // Break the inner loop
+                    }
+                }
+                if (eventExist) {
+                    break; // Break the outer loop
                 }
             }
+
             _adminLock.Unlock();
-            return (eventName.empty() != true);
+            return eventExist;
         }
+        
         uint64_t Timed()
         {
             uint64_t result = ~0;
@@ -802,8 +833,7 @@ namespace FireboltSDK {
 
             return (result);
         }
-
-
+        
         template <typename PARAMETERS>
         Firebolt::Error Send(const string& method, const PARAMETERS& parameters, const uint32_t& id)
         {
@@ -844,7 +874,7 @@ namespace FireboltSDK {
 
         static constexpr uint32_t WAITSLOT_TIME = 100;
         template <typename RESPONSE>
-        Firebolt::Error WaitForEventResponse(const uint32_t& id, const string& eventName, RESPONSE& response, const uint32_t waitTime)
+         Firebolt::Error WaitForEventResponse(const uint32_t& id, const string& eventName, RESPONSE& response, const uint32_t waitTime, EventMap& _eventMap)
         {
             Firebolt::Error result = Firebolt::Error::Timedout;
             _adminLock.Lock();
@@ -973,7 +1003,8 @@ namespace FireboltSDK {
         WPEFramework::Core::ProxyType<Channel> _channel;
         IEventHandler* _eventHandler;
         PendingMap _pendingQueue;
-        EventMap _eventMap;
+        EventMap _internalEventMap;
+        EventMap _externalEventMap;
         uint64_t _scheduledTime;
         uint32_t _waitTime;
         Listener _listener;
