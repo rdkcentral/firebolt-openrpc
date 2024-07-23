@@ -696,6 +696,7 @@
                         "enum": [
                             "name",
                             "x-response",
+                            "x-response-name",
                             "x-alternative",
                             "x-since",
                             "x-pulls-for",
