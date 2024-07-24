@@ -89,7 +89,12 @@ namespace FireboltSDK {
         return result;
     }
     
-     Firebolt::Error Event::Dispatch(const string& eventName, const WPEFramework::Core::ProxyType<WPEFramework::Core::JSONRPC::Message>& jsonResponse) /* override */
+    
+    /* This function combines both internal and external event maps, and iterates over them to find the specified event.
+       If the event is found, it iterates over its associated callbacks, updating their states and executing them if applicable.
+       Callbacks in the REVOKED state are removed. 
+    */
+    Firebolt::Error Event::Dispatch(const string& eventName, const WPEFramework::Core::ProxyType<WPEFramework::Core::JSONRPC::Message>& jsonResponse) /* override */
     {
         string response = jsonResponse->Result.Value();
         std::vector<EventMap*> eventMaps = {&_internalEventMap, &_externalEventMap};
