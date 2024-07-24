@@ -16,7 +16,7 @@ InstallPath=".."
 ModuleName="core"
 Version=1.3.0-next.1
 
-while getopts i:s:m:h flag
+while getopts i:s:m:v:h flag
 do
     case "${flag}" in
         i) InstallPath="${OPTARG}";;
