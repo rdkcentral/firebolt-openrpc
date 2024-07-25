@@ -91,7 +91,7 @@ const getProviderInterfaceMethods = (capability, json) => {
 
 function getProviderInterface(capability, module, extractProviderSchema = false) {
     module = JSON.parse(JSON.stringify(module))
-    const iface = getProviderInterfaceMethods(capability, module).map(method => localizeDependencies(method, module, null, { mergeAllOfs: true }))
+    const iface = getProviderInterfaceMethods(capability, module)//.map(method => localizeDependencies(method, module, null, { mergeAllOfs: true }))
 
     iface.forEach(method => {
       const payload = getPayloadFromEvent(method)
