@@ -5,7 +5,7 @@ usage()
    echo "    -i install path"
    echo "    -s sdk path"
    echo "    -m module name. i.e, core/manage"
-   echo "    -v sdk version. i.e, 1.3.0"
+   echo "    -v sdk version. i.e, 1.3.0 "
    echo
    echo "usage: "
    echo "    ./install.sh -i path -s sdk path -m core"
