@@ -21,6 +21,7 @@
 import path from 'path'
 import { readJson } from '../shared/filesystem.mjs'
 import macrofy from '../macrofier/index.mjs'
+import { loadConfig, getConfig } from '../shared/configLoader.mjs';
 
 /************************************************************************************************/
 /******************************************** MAIN **********************************************/
@@ -48,7 +49,9 @@ const run = async ({
      // fail silently
   }
   
-  const config = await readJson(path.join(language, 'language.config.json'))
+  // Load in config
+  await loadConfig(language)
+  const config = getConfig()
 
   return macrofy(input, template, output, {
     headline: 'SDK code',

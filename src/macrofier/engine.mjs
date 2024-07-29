@@ -1775,16 +1775,24 @@ function getProviderXValues(method) {
   return xValues
 }
 
-function insertProviderXValues(template, moduleJson, xValues) {
+function insertProviderXValues(template, module, xValues) {
   if (xValues['x-response']) {
-    const xResponseInst = types.getSchemaShape(xValues['x-response'], moduleJson, { templateDir: 'parameter-serialization', property: 'result', required: true, destination: state.destination, section: state.section, primitive: true, skipTitleOnce: true })
+    let schema = localizeDependencies(xValues['x-response'], module)
+    const moduleTitle = types.getXSchemaGroup(schema, module)
+    const xResponseInst = types.getSchemaShape(schema, module, { templateDir: 'parameter-serialization', property: 'result', required: true, destination: state.destination, section: state.section, primitive: true, skipTitleOnce: true })
+    const type = types.getSchemaType(schema, module, { moduleTitle: moduleTitle, result: true, namespace: true})
     template = template.replace(/\$\{provider\.xresponse\.serialization\}/gms, xResponseInst)
-      .replace(/\$\{provider\.xresponse\.name\}/gms, xValues['x-response'].title)
+      .replace(/\$\{provider\.xresponse\.name\}/gms, type)
+      .replace(/\$\{parent\.Title\}/g, capitalize(moduleTitle))
   }
   if (xValues['x-error']) {
-    const xErrorInst = types.getSchemaShape(xValues['x-error'], moduleJson, { templateDir: 'parameter-serialization', property: 'result', required: true, destination: state.destination, section: state.section, primitive: true, skipTitleOnce: true })
+    let schema = localizeDependencies(xValues['x-error'], module)
+    const moduleTitle = types.getXSchemaGroup(schema, module)
+    const xErrorInst = types.getSchemaShape(schema, module, { templateDir: 'parameter-serialization', property: 'result', required: true, destination: state.destination, section: state.section, primitive: true, skipTitleOnce: true })
+    const type = types.getSchemaType(schema, module, { moduleTitle: moduleTitle, result: true, namespace: true})
     template = template.replace(/\$\{provider\.xerror\.serialization\}/gms, xErrorInst)
-      .replace(/\$\{provider\.xerror\.name\}/gms, xValues['x-error'].title)
+      .replace(/\$\{provider\.xerror\.name\}/gms, type)
+      .replace(/\$\{parent\.Title\}/g, capitalize(moduleTitle))
   }
   return template
 }
@@ -1805,9 +1813,24 @@ function insertProviderInterfaceMacros(template, capability, moduleJson = {}, te
   let name = getProviderInterfaceName(iface, capability, moduleJson)
   let xValues
   const suffix = state.destination ? state.destination.split('.').pop() : ''
-  let interfaceShape = getTemplate(suffix ? `/codeblocks/interface.${suffix}` : '/codeblocks/interface', templates)
-  if (!interfaceShape) {
-    interfaceShape = getTemplate('/codeblocks/interface', templates)
+  
+  // Determine if any method has the 'x-allow-focus' tag set to true
+  const hasFocusableMethods = iface.some(method => 
+    method.tags.some(tag => tag['x-allow-focus'] === true)
+  )
+
+  // Determine the appropriate template based on hasFocusableMethods and suffix
+  let interfaceShape;
+  if (hasFocusableMethods) {
+    interfaceShape = getTemplate(suffix ? `/codeblocks/interface-focusable.${suffix}` : '/codeblocks/interface-focusable', templates);
+    if (!interfaceShape) {
+      interfaceShape = getTemplate('/codeblocks/interface-focusable', templates);
+    }
+  } else {
+    interfaceShape = getTemplate(suffix ? `/codeblocks/interface.${suffix}` : '/codeblocks/interface', templates);
+    if (!interfaceShape) {
+      interfaceShape = getTemplate('/codeblocks/interface', templates);
+    }
   }
 
   interfaceShape = interfaceShape.replace(/\$\{name\}/g, name)
