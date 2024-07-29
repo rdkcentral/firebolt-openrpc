@@ -18,6 +18,7 @@
 
 #include <firebolt.h>
 #include "FireboltSDK.h"
+#include "IModule.h"
 ${module.includes.private}
 
 namespace Firebolt {
