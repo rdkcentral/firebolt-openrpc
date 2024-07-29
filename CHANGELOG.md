@@ -1,3 +1,10 @@
+# [3.0.0-next.10](https://github.com/rdkcentral/firebolt-openrpc/compare/v3.0.0-next.9...v3.0.0-next.10) (2024-07-29)
+
+
+### Features
+
+* CPP App-Passthrough ([#196](https://github.com/rdkcentral/firebolt-openrpc/issues/196)) ([eeabccb](https://github.com/rdkcentral/firebolt-openrpc/commit/eeabccb8c65761e06447bf7be460d61f47992161))
+
 # [3.0.0-next.9](https://github.com/rdkcentral/firebolt-openrpc/compare/v3.0.0-next.8...v3.0.0-next.9) (2024-07-29)
 
 
