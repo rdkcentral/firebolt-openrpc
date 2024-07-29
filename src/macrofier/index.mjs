@@ -196,14 +196,14 @@ const macrofy = async (
             templatesPerModule.forEach(t => {
                 const macros = engine.generateMacros(module, templates, exampleTemplates, {hideExcluded: hideExcluded, copySchemasIntoModules: copySchemasIntoModules, createPolymorphicMethods: createPolymorphicMethods, destination: t, type: 'methods'})
                 let content = getTemplateForModule(module.info.title, t, templates)
-
+                
                 // NOTE: whichever insert is called first also needs to be called again last, so each phase can insert recursive macros from the other
                 content = engine.insertAggregateMacros(content, aggregateMacros)
                 content = engine.insertMacros(content, macros)
                 content = engine.insertAggregateMacros(content, aggregateMacros)
 
                 const location = createModuleDirectories ? path.join(output, module.info.title, t) : path.join(output, t.replace(/module/, module.info.title.toLowerCase()).replace(/index/, module.info.title))
-
+                
                 outputFiles[location] = content
                 logSuccess(`Generated macros for module ${path.relative(output, location)}`)
             })
