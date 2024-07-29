@@ -1813,9 +1813,24 @@ function insertProviderInterfaceMacros(template, capability, moduleJson = {}, te
   let name = getProviderInterfaceName(iface, capability, moduleJson)
   let xValues
   const suffix = state.destination ? state.destination.split('.').pop() : ''
-  let interfaceShape = getTemplate(suffix ? `/codeblocks/interface.${suffix}` : '/codeblocks/interface', templates)
-  if (!interfaceShape) {
-    interfaceShape = getTemplate('/codeblocks/interface', templates)
+  
+  // Determine if any method has the 'x-allow-focus' tag set to true
+  const hasFocusableMethods = iface.some(method => 
+    method.tags.some(tag => tag['x-allow-focus'] === true)
+  )
+
+  // Determine the appropriate template based on hasFocusableMethods and suffix
+  let interfaceShape;
+  if (hasFocusableMethods) {
+    interfaceShape = getTemplate(suffix ? `/codeblocks/interface-focusable.${suffix}` : '/codeblocks/interface-focusable', templates);
+    if (!interfaceShape) {
+      interfaceShape = getTemplate('/codeblocks/interface-focusable', templates);
+    }
+  } else {
+    interfaceShape = getTemplate(suffix ? `/codeblocks/interface.${suffix}` : '/codeblocks/interface', templates);
+    if (!interfaceShape) {
+      interfaceShape = getTemplate('/codeblocks/interface', templates);
+    }
   }
 
   interfaceShape = interfaceShape.replace(/\$\{name\}/g, name)

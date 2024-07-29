@@ -1,3 +1,17 @@
+# [3.0.0-next.7](https://github.com/rdkcentral/firebolt-openrpc/compare/v3.0.0-next.6...v3.0.0-next.7) (2024-07-10)
+
+
+### Bug Fixes
+
+* Added x-response-name in EventTag ([#200](https://github.com/rdkcentral/firebolt-openrpc/issues/200)) ([d2130a8](https://github.com/rdkcentral/firebolt-openrpc/commit/d2130a8bfa88a4a43c033596c9a8aa4d7b1864fa))
+
+# [3.0.0-next.6](https://github.com/rdkcentral/firebolt-openrpc/compare/v3.0.0-next.5...v3.0.0-next.6) (2024-07-10)
+
+
+### Bug Fixes
+
+* SchemasMatch handling null ([#199](https://github.com/rdkcentral/firebolt-openrpc/issues/199)) ([07c47db](https://github.com/rdkcentral/firebolt-openrpc/commit/07c47db16ca2a533ee29e6586703834658928bc4))
+
 # [3.0.0-next.5](https://github.com/rdkcentral/firebolt-openrpc/compare/v3.0.0-next.4...v3.0.0-next.5) (2024-06-13)
 
 
