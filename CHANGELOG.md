@@ -1,3 +1,10 @@
+# [3.0.0-next.8](https://github.com/rdkcentral/firebolt-openrpc/compare/v3.0.0-next.7...v3.0.0-next.8) (2024-07-29)
+
+
+### Bug Fixes
+
+* Added firebolt header to the call-metrics ([#201](https://github.com/rdkcentral/firebolt-openrpc/issues/201)) ([1b3f261](https://github.com/rdkcentral/firebolt-openrpc/commit/1b3f2619c8da9d560b37e48dc5ca78709b453d6e))
+
 # [3.0.0-next.7](https://github.com/rdkcentral/firebolt-openrpc/compare/v3.0.0-next.6...v3.0.0-next.7) (2024-07-10)
 
 
