@@ -601,7 +601,7 @@ const insertAggregateMacros = (fContents = '', aggregateMacros = {}) => {
   fContents = fContents.replace(/[ \t]*\/\* \$\{MOCK_OBJECTS\} \*\/[ \t]*\n/, aggregateMacros.mockObjects)
   fContents = fContents.replace(/\$\{readable\}/g, aggregateMacros.version.readable)
   fContents = fContents.replace(/\$\{package.name\}/g, aggregateMacros.library)
-
+  
   return fContents
 }
 

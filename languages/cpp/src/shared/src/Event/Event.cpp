@@ -22,7 +22,8 @@
 namespace FireboltSDK {
     Event* Event::_singleton = nullptr;
     Event::Event()
-        : _eventMap()
+        : _internalEventMap()
+        , _externalEventMap()
         , _adminLock()
         , _transport(nullptr)
     {
@@ -87,77 +88,111 @@ namespace FireboltSDK {
         }
         return result;
     }
-
+    
+    
+    /* This function combines both internal and external event maps, and iterates over them to find the specified event.
+       If the event is found, it iterates over its associated callbacks, updating their states and executing them if applicable.
+       Callbacks in the REVOKED state are removed. 
+    */
     Firebolt::Error Event::Dispatch(const string& eventName, const WPEFramework::Core::ProxyType<WPEFramework::Core::JSONRPC::Message>& jsonResponse) /* override */
     {
         string response = jsonResponse->Result.Value();
-        _adminLock.Lock();
-        EventMap::iterator eventIndex = _eventMap.find(eventName);
-        if (eventIndex != _eventMap.end()) {
-            CallbackMap::iterator callbackIndex = eventIndex->second.begin();
-            while(callbackIndex != eventIndex->second.end()) {
-                State state;
-                if (callbackIndex->second.state != State::REVOKED) {
-                    callbackIndex->second.state = State::EXECUTING;
-                }
-                state = callbackIndex->second.state;
-                _adminLock.Unlock();
-                if (state == State::EXECUTING) {
-                    callbackIndex->second.lambda(callbackIndex->first, callbackIndex->second.userdata, (jsonResponse->Result.Value()));
-                }
-                _adminLock.Lock();
-                if (callbackIndex->second.state == State::REVOKED) {
-                    callbackIndex = eventIndex->second.erase(callbackIndex);
-                    if (eventIndex->second.size() == 0) {
-                        _eventMap.erase(eventIndex);
+        std::vector<EventMap*> eventMaps = {&_internalEventMap, &_externalEventMap};
+
+        // Combine both _internalEventMap and _externalEventMap into a single loop
+        for (auto eventMap : eventMaps) {        
+            _adminLock.Lock();
+            EventMap::iterator eventIndex = eventMap->find(eventName);
+            if (eventIndex != eventMap->end()) {
+                CallbackMap& callbacks = eventIndex->second;
+                for (CallbackMap::iterator callbackIndex = callbacks.begin(); callbackIndex != callbacks.end();) {
+                    State state;
+                    if (callbackIndex->second.state != State::REVOKED) {
+                        callbackIndex->second.state = State::EXECUTING;
                     }
-                } else {
-                    callbackIndex->second.state = State::IDLE;
-                    callbackIndex++;
+                    state = callbackIndex->second.state;
+                    _adminLock.Unlock();
+                    if (state == State::EXECUTING) {
+                        callbackIndex->second.lambda(callbackIndex->first, callbackIndex->second.userdata, response);
+                    }
+                    _adminLock.Lock();
+                    if (callbackIndex->second.state == State::REVOKED) {
+                        callbackIndex = callbacks.erase(callbackIndex);
+                        if (callbacks.empty()) {
+                            eventMap->erase(eventIndex); // Erase from the correct eventMap
+                            break; // No need to continue iterating if map is empty
+                        }
+                    } else {
+                        callbackIndex->second.state = State::IDLE;
+                        ++callbackIndex;
+                    }
                 }
             }
+            _adminLock.Unlock();
         }
-        _adminLock.Unlock();
-
-        return Firebolt::Error::None;;
+        return Firebolt::Error::None;
     }
+
 
     Firebolt::Error Event::Revoke(const string& eventName, void* usercb)
     {
         Firebolt::Error status = Firebolt::Error::None;
-        _adminLock.Lock();
-        EventMap::iterator eventIndex = _eventMap.begin();
-        if (eventIndex != _eventMap.end()) {
-            CallbackMap::iterator callbackIndex = eventIndex->second.find(usercb);
-            if (callbackIndex->second.state != State::EXECUTING) {
+
+        // Combine both _internalEventMap and _externalEventMap into a single loop
+        std::vector<EventMap*> eventMaps = {&_internalEventMap, &_externalEventMap};
+
+        for (auto eventMap : eventMaps) { 
+            _adminLock.Lock(); // Lock inside the loop
+
+            // Find the eventIndex for eventName in the current eventMap
+            EventMap::iterator eventIndex = eventMap->find(eventName);
+            if (eventIndex != eventMap->end()) {
+                // Find the callbackIndex for usercb in the current CallbackMap
+                CallbackMap::iterator callbackIndex = eventIndex->second.find(usercb);
                 if (callbackIndex != eventIndex->second.end()) {
-                    eventIndex->second.erase(callbackIndex);
+                    // Check if callback is not executing, then erase it
+                    if (callbackIndex->second.state != State::EXECUTING) {
+                        eventIndex->second.erase(callbackIndex);
+                    } else {
+                        // Mark the callback as revoked
+                        callbackIndex->second.state = State::REVOKED;
+                    }
+
+                    // Check if the CallbackMap is empty after potential erasure
+                    if (eventIndex->second.empty()) {
+                        eventMap->erase(eventIndex);
+                    } else {
+                        // Set status to General error if CallbackMap is not empty
+                        status = Firebolt::Error::General;
+                    }
                 }
-            } else {
-                callbackIndex->second.state = State::REVOKED;
             }
-            if (eventIndex->second.size() == 0) {
-                _eventMap.erase(eventIndex);
-            } else {
-                status = Firebolt::Error::General;
-            }
+
+            _adminLock.Unlock(); // Unlock after processing each eventMap
         }
-        _adminLock.Unlock();
 
         return status;
     }
 
     void Event::Clear()
     {
-        EventMap::iterator eventIndex = _eventMap.begin();
-        while (eventIndex != _eventMap.end()) {
-            CallbackMap::iterator callbackIndex = eventIndex->second.begin();
-            while (callbackIndex != eventIndex->second.end()) {
-                 callbackIndex = eventIndex->second.erase(callbackIndex);
+        // Clear both _internalEventMap and _externalEventMap
+        std::vector<EventMap*> eventMaps = {&_internalEventMap, &_externalEventMap};
+
+        for (auto eventMap : eventMaps) { 
+            _adminLock.Lock(); // Lock before clearing
+
+            EventMap::iterator eventIndex = eventMap->begin();
+            while (eventIndex != eventMap->end()) {
+                CallbackMap::iterator callbackIndex = eventIndex->second.begin();
+                while (callbackIndex != eventIndex->second.end()) {
+                    callbackIndex = eventIndex->second.erase(callbackIndex);
+                }
+                eventIndex = eventMap->erase(eventIndex);
             }
-            eventIndex = _eventMap.erase(eventIndex);
+
+            _adminLock.Unlock(); // Unlock after clearing
         }
-        _adminLock.Unlock();
     }
 
 }
