@@ -177,6 +177,9 @@ const doListen = function(module, event, callback, context, once, internal=false
           resolve(listenerId)
         }
         else {
+          // Remove the listerner from Promise list on failure to register
+          const key = module + '.' + event + (hasContext ? `.${contextKey}` : '')
+          delete listeners.external[key][listenerId]
           reject(error)
         }
       })
@@ -184,7 +187,6 @@ const doListen = function(module, event, callback, context, once, internal=false
     else {
       resolve(listenerId)
     }
-
     return p
   }
 }
