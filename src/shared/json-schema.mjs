@@ -282,55 +282,35 @@ const schemaReferencesItself = (schema, path) => {
   return false
 }
 
-const dereferenceAndMergeAllOfs = (method, module) => {
-  // Make a deep copy of the method to avoid mutating the original
-  let definition = JSON.parse(JSON.stringify(method))
-  let refs = getLocalSchemaPaths(definition)
-  let unresolvedRefs = []
+/**
+ * Deep clones an object to avoid mutating the original.
+ * @param {Object} obj - The object to clone.
+ * @returns {Object} - The cloned object.
+ */
+const cloneDeep = (obj) => JSON.parse(JSON.stringify(obj))
 
-  const originalDefinition = JSON.parse(JSON.stringify(definition))
-
-  // Dereference local schemas
+/**
+ * Dereferences schema paths and resolves references.
+ * @param {Array} refs - Array of schema paths to dereference.
+ * @param {Object} definition - The schema definition.
+ * @param {Object} document - The document containing schemas.
+ * @param {Array} unresolvedRefs - Array to collect unresolved references.
+ * @param {boolean} [externalOnly=false] - Whether to only dereference external schemas.
+ * @param {boolean} [keepRefsAndLocalizeAsComponent=false] - Whether to keep references and localize as components.
+ * @returns {Object} - The updated schema definition.
+ */
+const dereferenceSchema = (refs, definition, document, unresolvedRefs, externalOnly = false, keepRefsAndLocalizeAsComponent = false) => {
   while (refs.length > 0) {
     for (let i = 0; i < refs.length; i++) {
       let path = refs[i]
       const ref = getPathOr(null, path, definition)
       path.pop() // drop ref
 
-      if (refToPath(ref).length > 1) {
-        let resolvedSchema = JSON.parse(JSON.stringify(getPathOr(null, refToPath(ref), module)))
+      let resolvedSchema = cloneDeep(getPathOr(null, refToPath(ref), document))
 
-        if (schemaReferencesItself(resolvedSchema, refToPath(ref))) {
-          resolvedSchema = null
-        }
-
-        if (!resolvedSchema) {
-          resolvedSchema = { "$REF": ref }
-          unresolvedRefs.push([...path])
-        }
-
-        if (path.length) {
-          const examples = getPathOr(null, [...path, 'examples'], definition)
-          resolvedSchema.examples = examples || resolvedSchema.examples
-          definition = setPath(path, resolvedSchema, definition)
-        } else {
-          delete definition['$ref']
-          Object.assign(definition, resolvedSchema)
-        }
+      if (schemaReferencesItself(resolvedSchema, refToPath(ref))) {
+        resolvedSchema = null
       }
-    }
-    refs = getLocalSchemaPaths(definition)
-  }
-
-  // Dereference external schemas
-  refs = getExternalSchemaPaths(definition)
-  while (refs.length > 0) {
-    for (let i = 0; i < refs.length; i++) {
-      let path = refs[i]
-      const ref = getPathOr(null, path, definition)
-
-      path.pop() // drop ref
-      let resolvedSchema = JSON.parse(JSON.stringify(getPathOr(null, refToPath(ref), module)))
 
       if (!resolvedSchema) {
         resolvedSchema = { "$REF": ref }
@@ -340,46 +320,74 @@ const dereferenceAndMergeAllOfs = (method, module) => {
       if (path.length) {
         const examples = getPathOr(null, [...path, 'examples'], definition)
         resolvedSchema.examples = examples || resolvedSchema.examples
-        definition = setPath(path, resolvedSchema, definition)
+
+        if (keepRefsAndLocalizeAsComponent) {
+          const title = ref.split('/').pop()
+          definition.components = definition.components || {}
+          definition.components.schemas = definition.components.schemas || {}
+          definition.components.schemas[title] = resolvedSchema
+          definition = setPath([...path, '$ref'], `#/components/schemas/${title}`, definition)
+        } else {
+          definition = setPath(path, resolvedSchema, definition)
+        }
       } else {
         delete definition['$ref']
         Object.assign(definition, resolvedSchema)
       }
     }
-    refs = getExternalSchemaPaths(definition)
+    refs = externalOnly ? getExternalSchemaPaths(definition) : getLocalSchemaPaths(definition)
+  }
+  return definition
+}
+
+/**
+ * Recursively finds and merges allOf entries in the schema.
+ * @param {Object} pointer - The schema object to search for allOf entries.
+ * @returns {Object} - The updated schema object.
+ */
+const findAndMergeAllOfs = (pointer) => {
+  if (typeof pointer !== 'object' || !pointer) {
+    return pointer
   }
 
-  // Merge allOfs if present
-  let allOfFound = false
-  const findAndMergeAllOfs = (pointer) => {
-    if ((typeof pointer) !== 'object' || !pointer) {
+  Object.keys(pointer).forEach((key) => {
+    if (Array.isArray(pointer) && key === 'length') {
       return
     }
 
-    Object.keys(pointer).forEach((key) => {
-      if (Array.isArray(pointer) && key === 'length') {
-        return
+    if (key !== 'allOf' && typeof pointer[key] === 'object') {
+      pointer[key] = findAndMergeAllOfs(pointer[key])
+    } else if (key === 'allOf' && Array.isArray(pointer[key])) {
+      const union = deepmerge.all(pointer.allOf.reverse())
+      const title = pointer.title
+      Object.assign(pointer, union)
+      if (title) {
+        pointer.title = title
       }
+      delete pointer.allOf
+    }
+  })
 
-      if ((key !== 'allOf') && (typeof pointer[key] === 'object')) {
-        findAndMergeAllOfs(pointer[key])
-      } else if (key === 'allOf' && Array.isArray(pointer[key])) {
-        allOfFound = true
-        const union = deepmerge.all(pointer.allOf.reverse())
-        const title = pointer.title
-        Object.assign(pointer, union)
-        if (title) {
-          pointer.title = title
-        }
-        delete pointer.allOf
-      }
-    })
-  }
+  return pointer
+}
 
-  findAndMergeAllOfs(definition)
+/**
+ * Dereferences and merges allOf entries in a method schema.
+ * @param {Object} method - The method schema to dereference and merge.
+ * @param {Object} module - The module containing schemas.
+ * @returns {Object} - The dereferenced and merged schema.
+ */
+const dereferenceAndMergeAllOfs = (method, module) => {
+  let definition = cloneDeep(method)
+  let unresolvedRefs = []
+  const originalDefinition = cloneDeep(definition)
 
-  // If no allOf elements are found, revert to the original state
-  if (!allOfFound) {
+  definition = dereferenceSchema(getLocalSchemaPaths(definition), definition, module, unresolvedRefs)
+  definition = dereferenceSchema(getExternalSchemaPaths(definition), definition, module, unresolvedRefs, true)
+
+  definition = findAndMergeAllOfs(definition)
+
+  if (unresolvedRefs.length === 0) {
     return originalDefinition
   }
 
@@ -392,127 +400,36 @@ const dereferenceAndMergeAllOfs = (method, module) => {
   return definition
 }
 
-// TODO: get rid of schemas param, after updating the validate task to use addExternalSchemas
+/**
+ * Localizes dependencies in a JSON schema, dereferencing references and optionally merging allOf entries.
+ * @param {Object} json - The JSON schema to localize.
+ * @param {Object} document - The document containing schemas.
+ * @param {Object} [schemas={}] - Additional schemas to use for dereferencing.
+ * @param {Object|boolean} [options=defaultLocalizeOptions] - Options for localization, or a boolean for externalOnly.
+ * @returns {Object} - The localized schema.
+ */
 const localizeDependencies = (json, document, schemas = {}, options = defaultLocalizeOptions) => {
   if (typeof options === 'boolean') {
-    // if we got a boolean, then inject it into the default options for the externalOnly value (for backwards compatibility)
-    options = Object.assign(JSON.parse(JSON.stringify(defaultLocalizeOptions)), { externalOnly: options })
+    options = { ...defaultLocalizeOptions, externalOnly: options }
   }
 
-  let definition = JSON.parse(JSON.stringify(json))
-  let refs = getLocalSchemaPaths(definition)
+  let definition = cloneDeep(json)
   let unresolvedRefs = []
 
   if (!options.externalOnly) {
-    while (refs.length > 0) {
-      for (let i=0; i<refs.length; i++) {
-        let path = refs[i]      
-        const ref = getPathOr(null, path, definition)
-        path.pop() // drop ref
-        if (refToPath(ref).length > 1) {
-          let resolvedSchema = JSON.parse(JSON.stringify(getPathOr(null, refToPath(ref), document)))
-          if (schemaReferencesItself(resolvedSchema, refToPath(ref))) {
-            resolvedSchema = null
-          }
-
-          if (!resolvedSchema) {
-            resolvedSchema = { "$REF": ref}
-            unresolvedRefs.push([...path])
-          }
-  
-          if (path.length) {
-            // don't loose examples from original object w/ $ref
-            // todo: should we preserve other things, like title?
-            const examples = getPathOr(null, [...path, 'examples'], definition)
-            resolvedSchema.examples = examples || resolvedSchema.examples
-            definition = setPath(path, resolvedSchema, definition)
-          }
-          else {
-            delete definition['$ref']
-            Object.assign(definition, resolvedSchema)
-          }  
-        }
-      }
-      refs = getLocalSchemaPaths(definition)
-    }
-  }
-  
-  refs = getExternalSchemaPaths(definition)
-  while (refs.length > 0) {
-    for (let i=0; i<refs.length; i++) {
-      let path = refs[i]      
-      const ref = getPathOr(null, path, definition)
-
-      path.pop() // drop ref
-      let resolvedSchema
-      
-      if (!resolvedSchema) {
-        resolvedSchema = { "$REF": ref}
-        unresolvedRefs.push([...path])
-      }
-
-      if (path.length) {
-        // don't loose examples from original object w/ $ref
-        // todo: should we preserve other things, like title?
-        const examples = getPathOr(null, [...path, 'examples'], definition)
-        resolvedSchema.examples = examples || resolvedSchema.examples
-
-        if (options.keepRefsAndLocalizeAsComponent) {
-          // if copying schemas, just drop them in components.schemas
-          const title = ref.split('/').pop()
-          definition.components = definition.components || {}
-          definition.components.schemas = definition.components.schemas || {}
-          definition.components.schemas[title] = resolvedSchema
-          definition = setPath([...path, '$ref'], `#/components/schemas/${title}`, definition)
-        }
-        else {
-          // otherwise, copy the schema definition to the exact location of the old $ref
-          definition = setPath(path, resolvedSchema, definition)
-        }
-      }
-      else {
-        // TODO: do we need keepRefsAndLocalizeAsComponent support at the root? i don't think so, that would mean that an OpenRPC doc just pointed to another right from the root.
-        delete definition['$ref']
-        Object.assign(definition, resolvedSchema)
-      }
-    }
-    refs = getExternalSchemaPaths(definition)
+    definition = dereferenceSchema(getLocalSchemaPaths(definition), definition, document, unresolvedRefs)
   }
 
-  unresolvedRefs.forEach(ref => {
+  definition = dereferenceSchema(getExternalSchemaPaths(definition), definition, document, unresolvedRefs, true, options.keepRefsAndLocalizeAsComponent)
+
+  unresolvedRefs.forEach((ref) => {
     let node = getPathOr({}, ref, definition)
     node['$ref'] = node['$REF']
     delete node['$REF']
   })
 
   if (options.mergeAllOfs) {
-    const findAndMergeAllOfs = pointer => {
-      if ((typeof pointer) !== 'object' || !pointer) {
-        return
-      }
-
-      Object.keys(pointer).forEach( key => {
-
-        if (Array.isArray(pointer) && key === 'length') {
-          return
-        }
-        // do a depth-first search for `allOfs` to reduce complexity of merges
-        if ((key !== 'allOf') && (typeof pointer[key] === 'object')) {
-          findAndMergeAllOfs(pointer[key])
-        }
-        else if (key === 'allOf' && Array.isArray(pointer[key])) {
-          const union = deepmerge.all(pointer.allOf.reverse()) // reversing so lower `title` attributes will win
-          const title = pointer.title
-          Object.assign(pointer, union)
-          if (title) {
-            pointer.title = title
-          }
-          delete pointer.allOf
-        }
-      })
-    }
-
-    findAndMergeAllOfs(definition)
+    definition = findAndMergeAllOfs(definition)
   }
 
   return definition
