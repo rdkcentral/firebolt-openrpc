@@ -282,6 +282,116 @@ const schemaReferencesItself = (schema, path) => {
   return false
 }
 
+const dereferenceAndMergeAllOfs = (method, module) => {
+  // Make a deep copy of the method to avoid mutating the original
+  let definition = JSON.parse(JSON.stringify(method))
+  let refs = getLocalSchemaPaths(definition)
+  let unresolvedRefs = []
+
+  const originalDefinition = JSON.parse(JSON.stringify(definition))
+
+  // Dereference local schemas
+  while (refs.length > 0) {
+    for (let i = 0; i < refs.length; i++) {
+      let path = refs[i]
+      const ref = getPathOr(null, path, definition)
+      path.pop() // drop ref
+
+      if (refToPath(ref).length > 1) {
+        let resolvedSchema = JSON.parse(JSON.stringify(getPathOr(null, refToPath(ref), module)))
+
+        if (schemaReferencesItself(resolvedSchema, refToPath(ref))) {
+          resolvedSchema = null
+        }
+
+        if (!resolvedSchema) {
+          resolvedSchema = { "$REF": ref }
+          unresolvedRefs.push([...path])
+        }
+
+        if (path.length) {
+          const examples = getPathOr(null, [...path, 'examples'], definition)
+          resolvedSchema.examples = examples || resolvedSchema.examples
+          definition = setPath(path, resolvedSchema, definition)
+        } else {
+          delete definition['$ref']
+          Object.assign(definition, resolvedSchema)
+        }
+      }
+    }
+    refs = getLocalSchemaPaths(definition)
+  }
+
+  // Dereference external schemas
+  refs = getExternalSchemaPaths(definition)
+  while (refs.length > 0) {
+    for (let i = 0; i < refs.length; i++) {
+      let path = refs[i]
+      const ref = getPathOr(null, path, definition)
+
+      path.pop() // drop ref
+      let resolvedSchema = JSON.parse(JSON.stringify(getPathOr(null, refToPath(ref), module)))
+
+      if (!resolvedSchema) {
+        resolvedSchema = { "$REF": ref }
+        unresolvedRefs.push([...path])
+      }
+
+      if (path.length) {
+        const examples = getPathOr(null, [...path, 'examples'], definition)
+        resolvedSchema.examples = examples || resolvedSchema.examples
+        definition = setPath(path, resolvedSchema, definition)
+      } else {
+        delete definition['$ref']
+        Object.assign(definition, resolvedSchema)
+      }
+    }
+    refs = getExternalSchemaPaths(definition)
+  }
+
+  // Merge allOfs if present
+  let allOfFound = false
+  const findAndMergeAllOfs = (pointer) => {
+    if ((typeof pointer) !== 'object' || !pointer) {
+      return
+    }
+
+    Object.keys(pointer).forEach((key) => {
+      if (Array.isArray(pointer) && key === 'length') {
+        return
+      }
+
+      if ((key !== 'allOf') && (typeof pointer[key] === 'object')) {
+        findAndMergeAllOfs(pointer[key])
+      } else if (key === 'allOf' && Array.isArray(pointer[key])) {
+        allOfFound = true
+        const union = deepmerge.all(pointer.allOf.reverse())
+        const title = pointer.title
+        Object.assign(pointer, union)
+        if (title) {
+          pointer.title = title
+        }
+        delete pointer.allOf
+      }
+    })
+  }
+
+  findAndMergeAllOfs(definition)
+
+  // If no allOf elements are found, revert to the original state
+  if (!allOfFound) {
+    return originalDefinition
+  }
+
+  unresolvedRefs.forEach((ref) => {
+    let node = getPathOr({}, ref, definition)
+    node['$ref'] = node['$REF']
+    delete node['$REF']
+  })
+
+  return definition
+}
+
 // TODO: get rid of schemas param, after updating the validate task to use addExternalSchemas
 const localizeDependencies = (json, document, schemas = {}, options = defaultLocalizeOptions) => {
   if (typeof options === 'boolean') {
@@ -519,5 +629,6 @@ export {
   replaceRef,
   removeIgnoredAdditionalItems,
   mergeAnyOf,
-  mergeOneOf
+  mergeOneOf,
+  dereferenceAndMergeAllOfs
 } 
