@@ -340,36 +340,35 @@ const dereferenceSchema = (refs, definition, document, unresolvedRefs, externalO
   return definition
 }
 
-/**
- * Recursively finds and merges allOf entries in the schema.
- * @param {Object} pointer - The schema object to search for allOf entries.
- * @returns {Object} - The updated schema object.
- */
 const findAndMergeAllOfs = (pointer) => {
-  if (typeof pointer !== 'object' || !pointer) {
-    return pointer
-  }
+  let allOfFound = false;
 
-  Object.keys(pointer).forEach((key) => {
-    if (Array.isArray(pointer) && key === 'length') {
-      return
+  const mergeAllOfs = (obj) => {
+    if (Array.isArray(obj) && obj.length === 0) {
+      return obj;
     }
 
-    if (key !== 'allOf' && typeof pointer[key] === 'object') {
-      pointer[key] = findAndMergeAllOfs(pointer[key])
-    } else if (key === 'allOf' && Array.isArray(pointer[key])) {
-      const union = deepmerge.all(pointer.allOf.reverse())
-      const title = pointer.title
-      Object.assign(pointer, union)
-      if (title) {
-        pointer.title = title
+    for (const key in obj) {
+      if (obj.hasOwnProperty(key)) {
+        if (key === 'allOf' && Array.isArray(obj[key])) {
+          const union = deepmerge.all(obj.allOf.reverse());
+          const title = obj.title;
+          Object.assign(obj, union);
+          if (title) {
+            obj.title = title;
+          }
+          delete obj.allOf;
+          allOfFound = true;
+        } else if (typeof obj[key] === 'object') {
+          mergeAllOfs(obj[key]);
+        }
       }
-      delete pointer.allOf
     }
-  })
+  };
 
-  return pointer
-}
+  mergeAllOfs(pointer);
+  return allOfFound;
+};
 
 /**
  * Dereferences and merges allOf entries in a method schema.
@@ -385,9 +384,9 @@ const dereferenceAndMergeAllOfs = (method, module) => {
   definition = dereferenceSchema(getLocalSchemaPaths(definition), definition, module, unresolvedRefs)
   definition = dereferenceSchema(getExternalSchemaPaths(definition), definition, module, unresolvedRefs, true)
 
-  definition = findAndMergeAllOfs(definition)
+  const allOfFound = findAndMergeAllOfs(definition)
 
-  if (unresolvedRefs.length === 0) {
+  if (!allOfFound) {
     return originalDefinition
   }
 
@@ -429,7 +428,7 @@ const localizeDependencies = (json, document, schemas = {}, options = defaultLoc
   })
 
   if (options.mergeAllOfs) {
-    definition = findAndMergeAllOfs(definition)
+    findAndMergeAllOfs(definition)
   }
 
   return definition
