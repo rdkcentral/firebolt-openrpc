@@ -1,3 +1,10 @@
+# [3.0.0-next.11](https://github.com/rdkcentral/firebolt-openrpc/compare/v3.0.0-next.10...v3.0.0-next.11) (2024-08-08)
+
+
+### Bug Fixes
+
+* Build issues with CPP Manage SDK ([#203](https://github.com/rdkcentral/firebolt-openrpc/issues/203)) ([e06f6e2](https://github.com/rdkcentral/firebolt-openrpc/commit/e06f6e2b8c103d44c177351eaa05f9d965b61518))
+
 # [3.0.0-next.10](https://github.com/rdkcentral/firebolt-openrpc/compare/v3.0.0-next.9...v3.0.0-next.10) (2024-07-29)
 
 
