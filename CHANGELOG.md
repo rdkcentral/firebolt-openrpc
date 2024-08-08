@@ -1,3 +1,26 @@
+# [3.1.0](https://github.com/rdkcentral/firebolt-openrpc/compare/v3.0.0...v3.1.0) (2024-08-08)
+
+
+### Bug Fixes
+
+* Account for new OpenRPC spec URL contents ([#186](https://github.com/rdkcentral/firebolt-openrpc/issues/186)) ([66bd6ac](https://github.com/rdkcentral/firebolt-openrpc/commit/66bd6acc1ffdaefadcb46d78864d615a116b5a85))
+* Added CPP Event prioritization ([#197](https://github.com/rdkcentral/firebolt-openrpc/issues/197)) ([11d25e9](https://github.com/rdkcentral/firebolt-openrpc/commit/11d25e9a9784cea105c1de832179e776956b893a))
+* Added firebolt header to the call-metrics ([#201](https://github.com/rdkcentral/firebolt-openrpc/issues/201)) ([1b3f261](https://github.com/rdkcentral/firebolt-openrpc/commit/1b3f2619c8da9d560b37e48dc5ca78709b453d6e))
+* Added x-response-name in EventTag ([#200](https://github.com/rdkcentral/firebolt-openrpc/issues/200)) ([d2130a8](https://github.com/rdkcentral/firebolt-openrpc/commit/d2130a8bfa88a4a43c033596c9a8aa4d7b1864fa))
+* Build issues with CPP Manage SDK ([#203](https://github.com/rdkcentral/firebolt-openrpc/issues/203)) ([e06f6e2](https://github.com/rdkcentral/firebolt-openrpc/commit/e06f6e2b8c103d44c177351eaa05f9d965b61518))
+* Manual release 3.1.0-next.4 ([53d4a14](https://github.com/rdkcentral/firebolt-openrpc/commit/53d4a1436c6deef9508a96ec24e8203a170a1447))
+* Manually create 3.1.0-next.2 ([f9c2c3c](https://github.com/rdkcentral/firebolt-openrpc/commit/f9c2c3c987fc61ebdac8dc54b707338527723d2f))
+* Manually release 3.1.0-next.3 ([e8b0075](https://github.com/rdkcentral/firebolt-openrpc/commit/e8b0075823a9d2f124c03797cb3f9d71bfbfdbf1))
+* Manually update version to 3.1.0-next.1 ([#204](https://github.com/rdkcentral/firebolt-openrpc/issues/204)) ([699fd65](https://github.com/rdkcentral/firebolt-openrpc/commit/699fd653999e42b6ba1bee977fcfb75241adf123))
+* Resolve conflicts ([adf6762](https://github.com/rdkcentral/firebolt-openrpc/commit/adf6762c02e1ccd6e7cd708d5249630252bd7c44))
+* SchemasMatch handling null ([#199](https://github.com/rdkcentral/firebolt-openrpc/issues/199)) ([07c47db](https://github.com/rdkcentral/firebolt-openrpc/commit/07c47db16ca2a533ee29e6586703834658928bc4))
+
+
+### Features
+
+* App Pass-through ([#188](https://github.com/rdkcentral/firebolt-openrpc/issues/188)) ([83fa0fc](https://github.com/rdkcentral/firebolt-openrpc/commit/83fa0fcb62cade7ed3b527de6b3fe1ebb42b54e0))
+* CPP App-Passthrough ([#196](https://github.com/rdkcentral/firebolt-openrpc/issues/196)) ([eeabccb](https://github.com/rdkcentral/firebolt-openrpc/commit/eeabccb8c65761e06447bf7be460d61f47992161))
+
 # [3.0.0](https://github.com/rdkcentral/firebolt-openrpc/compare/v2.3.0...v3.0.0) (2024-08-08)
 
 
