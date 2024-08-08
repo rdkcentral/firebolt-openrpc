@@ -1,0 +1,1 @@
+        ${type} ${property} = 0;

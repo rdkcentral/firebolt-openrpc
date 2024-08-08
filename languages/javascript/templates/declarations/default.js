@@ -3,4 +3,4 @@
    * 
 ${method.params.annotations}${if.deprecated}   * @deprecated ${method.deprecation}
 ${end.if.deprecated}  */
-  ${method.signature}
+  function ${method.name}(${method.signature.params}): Promise<${method.result.type}>

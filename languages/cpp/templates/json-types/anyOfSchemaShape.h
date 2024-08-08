@@ -1,0 +1,1 @@
+    /* anyOf schema shape is not supported right now */

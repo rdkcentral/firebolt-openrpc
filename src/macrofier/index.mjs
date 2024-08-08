@@ -48,9 +48,17 @@ const macrofy = async (
         createModuleDirectories,
         copySchemasIntoModules,
         extractSubSchemas,
+        unwrapResultObjects,
+        allocatedPrimitiveProxies,
+        convertTuplesToArraysOrObjects,
+        additionalSchemaTemplates,
+        additionalMethodTemplates,
+        templateExtensionMap,
         excludeDeclarations,
-        aggregateFile,
+        extractProviderSchema,
+        aggregateFiles,
         operators,
+        primitives,
         hidePrivate = true,
         hideExcluded = false,
         staticModuleNames = [],
@@ -71,19 +79,28 @@ const macrofy = async (
         let typer
 
         try {
-            const typerModule = await import(path.join(sharedTemplates, '..', 'Types.mjs'))
-            typer = typerModule.default
+//            const typerModule = await import(path.join(sharedTemplates, '..', 'Types.mjs'))
+//            typer = typerModule.default
         }
         catch (_) {
-            typer = (await import('../shared/typescript.mjs')).default
+//            typer = (await import('../shared/typescript.mjs')).default
         }
+
+        typer = (await import('./types.mjs')).default
 
         engine.setTyper(typer)
         engine.setConfig({
             copySchemasIntoModules,
             createModuleDirectories,
             extractSubSchemas,
+            unwrapResultObjects,
+            primitives,
+            allocatedPrimitiveProxies,
+            additionalSchemaTemplates,
+            additionalMethodTemplates,
+            templateExtensionMap,
             excludeDeclarations,
+            extractProviderSchema,
             operators
         })
 
@@ -92,6 +109,7 @@ const macrofy = async (
         const sharedTemplateList = await readDir(sharedTemplates, { recursive: true })
         const templates = Object.assign(await readFiles(sharedTemplateList, sharedTemplates),
                                         await readFiles(sdkTemplateList, template)) // sdkTemplates are second so they win ties
+
         let templatesPermission = {}
         if (persistPermission) {
             templatesPermission = Object.assign(await readFilesPermissions(sharedTemplateList, sharedTemplates),
@@ -110,16 +128,31 @@ const macrofy = async (
             exampleTemplates[config.name]['__config'] = config
         }
 
-        const staticCodeList = staticContent ? await readDir(staticContent, { recursive: true }) : []
-        const staticModules = staticModuleNames.map(name => ( { info: { title: name } } ))
-        
-        let modules
-        
-        if (hidePrivate) {
-            modules = moduleList.map(name => getModule(name, openrpc, copySchemasIntoModules)).filter(hasPublicAPIs)
+        // check if this is a "real" language or just documentation broiler-plate, e.g. markdown
+        if (Object.keys(templates).find(key => key.startsWith('/types/primitive'))) {
+            typer.setTemplates && typer.setTemplates(templates)
+            typer.setPrimitives(primitives)
         }
         else {
-            modules = moduleList.map(name => getModule(name, openrpc, copySchemasIntoModules))
+            const lang = Object.entries(exampleTemplates)[0][1]
+            const prims = Object.entries(exampleTemplates)[0][1]['__config'].primitives
+            // add the templates from the first example language and the wrapper langauage
+            typer.setTemplates && typer.setTemplates(lang)
+            typer.setTemplates && typer.setTemplates(templates)
+            typer.setPrimitives(prims)
+        }
+        typer.setAllocatedPrimitiveProxies(allocatedPrimitiveProxies)
+        typer.setConvertTuples(convertTuplesToArraysOrObjects)
+
+        const staticCodeList = staticContent ? await readDir(staticContent, { recursive: true }) : []
+        const staticModules = staticModuleNames.map(name => ( { info: { title: name } } ))
+
+        let modules
+        if (hidePrivate) {
+            modules = moduleList.map(name => getModule(name, openrpc, copySchemasIntoModules, extractSubSchemas)).filter(hasPublicAPIs)
+        }
+        else {
+            modules = moduleList.map(name => getModule(name, openrpc, copySchemasIntoModules, extractSubSchemas))
         }
 
         const aggregateMacros = engine.generateAggregateMacros(openrpc, modules.concat(staticModules), templates, libraryName)
@@ -127,21 +160,20 @@ const macrofy = async (
         const outputFiles = Object.fromEntries(Object.entries(await readFiles( staticCodeList, staticContent))
                                 .map( ([n, v]) => [path.join(output, n), v]))
         
-        let primaryOutput
+        let primaryOutput = []
 
         Object.keys(templates).forEach(file => {
             if (file.startsWith(path.sep + outputDirectory + path.sep) || outputDirectory === '') {
                 // Note: '/foo/bar/file.js'.split('/') => ['', 'foo', 'bar', 'file.js'] so we need to drop one more that you might suspect, hence slice(2) below...
                 const dirsToDrop = outputDirectory === '' ? 1 : 2
                 let outputFile = path.sep + file.split(path.sep).slice(dirsToDrop).join(path.sep)
-                const isPrimary = outputFile === aggregateFile
-
+                const isPrimary = (aggregateFiles && aggregateFiles.includes(outputFile))
                 if (rename[outputFile]) {
                     outputFile = outputFile.split(path.sep).slice(0, -1).concat([rename[outputFile]]).join(path.sep)
                 }
 
                 if (isPrimary) {
-                    primaryOutput = path.join(output, outputFile)
+                    primaryOutput.push(path.join(output, outputFile))
                 }
 
                 const content = engine.insertAggregateMacros(templates[file], aggregateMacros)
@@ -162,29 +194,32 @@ const macrofy = async (
 
             // Pick the index and defaults templates for each module.
             templatesPerModule.forEach(t => {
-                const macros = engine.generateMacros(module, templates, exampleTemplates, {hideExcluded: hideExcluded, copySchemasIntoModules: copySchemasIntoModules, createPolymorphicMethods: createPolymorphicMethods, destination: t})
+                const macros = engine.generateMacros(module, templates, exampleTemplates, {hideExcluded: hideExcluded, copySchemasIntoModules: copySchemasIntoModules, createPolymorphicMethods: createPolymorphicMethods, destination: t, type: 'methods'})
                 let content = getTemplateForModule(module.info.title, t, templates)
-
+                
                 // NOTE: whichever insert is called first also needs to be called again last, so each phase can insert recursive macros from the other
                 content = engine.insertAggregateMacros(content, aggregateMacros)
                 content = engine.insertMacros(content, macros)
                 content = engine.insertAggregateMacros(content, aggregateMacros)
 
                 const location = createModuleDirectories ? path.join(output, module.info.title, t) : path.join(output, t.replace(/module/, module.info.title.toLowerCase()).replace(/index/, module.info.title))
-
+                
                 outputFiles[location] = content
                 logSuccess(`Generated macros for module ${path.relative(output, location)}`)
             })
 
-            if (primaryOutput) {
-                const macros = engine.generateMacros(module, templates, exampleTemplates, {hideExcluded: hideExcluded, copySchemasIntoModules: copySchemasIntoModules, createPolymorphicMethods: createPolymorphicMethods, destination: primaryOutput})
+            primaryOutput.forEach(output => {
+                const macros = engine.generateMacros(module, templates, exampleTemplates, {hideExcluded: hideExcluded, copySchemasIntoModules: copySchemasIntoModules, createPolymorphicMethods: createPolymorphicMethods, destination: output})
                 macros.append = append
-                outputFiles[primaryOutput] = engine.insertMacros(outputFiles[primaryOutput], macros)
-            }
+                outputFiles[output] = engine.insertMacros(outputFiles[output], macros)
+            })
 
             append = true
         })
-        
+        primaryOutput.forEach(output => {
+            outputFiles[output] = engine.clearMacros(outputFiles[output]);
+        })
+
         if (treeshakePattern && treeshakeEntry) {
             const importedFiles = (code, base) => Array.from(new Set([...code.matchAll(treeshakePattern)].map(arr => arr[2]))).map(i => path.join(output, base, i))
 

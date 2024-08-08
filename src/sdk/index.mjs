@@ -21,6 +21,7 @@
 import path from 'path'
 import { readJson } from '../shared/filesystem.mjs'
 import macrofy from '../macrofier/index.mjs'
+import { loadConfig, getConfig } from '../shared/configLoader.mjs';
 
 /************************************************************************************************/
 /******************************************** MAIN **********************************************/
@@ -48,7 +49,9 @@ const run = async ({
      // fail silently
   }
   
-  const config = await readJson(path.join(language, 'language.config.json'))
+  // Load in config
+  await loadConfig(language)
+  const config = getConfig()
 
   return macrofy(input, template, output, {
     headline: 'SDK code',
@@ -60,13 +63,21 @@ const run = async ({
     persistPermission: config.persistPermission,
     createPolymorphicMethods: config.createPolymorphicMethods,
     operators: config.operators,
+    primitives: config.primitives,
     createModuleDirectories: config.createModuleDirectories,
     copySchemasIntoModules: config.copySchemasIntoModules,
     extractSubSchemas: config.extractSubSchemas,
+    convertTuplesToArraysOrObjects: config.convertTuplesToArraysOrObjects,
+    unwrapResultObjects: config.unwrapResultObjects,
+    allocatedPrimitiveProxies: config.allocatedPrimitiveProxies,
+    additionalSchemaTemplates: config.additionalSchemaTemplates,
+    additionalMethodTemplates: config.additionalMethodTemplates,
+    templateExtensionMap: config.templateExtensionMap,
     excludeDeclarations: config.excludeDeclarations,
+    extractProviderSchema: config.extractProviderSchema,
     staticModuleNames: staticModuleNames,
     hideExcluded: true,
-    aggregateFile: config.aggregateFile,
+    aggregateFiles: config.aggregateFiles,
     rename: mainFilename ? { '/index.mjs': mainFilename, '/index.d.ts': declarationsFilename } : {},
     treeshakePattern: config.treeshakePattern ? new RegExp(config.treeshakePattern, "g") : undefined,
     treeshakeTypes: config.treeshakeTypes,
