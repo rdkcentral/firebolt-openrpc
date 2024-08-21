@@ -1,3 +1,10 @@
+## [3.1.1-next.1](https://github.com/rdkcentral/firebolt-openrpc/compare/v3.1.0...v3.1.1-next.1) (2024-08-21)
+
+
+### Bug Fixes
+
+* Add provider-selection tag to validation schema ([756e88a](https://github.com/rdkcentral/firebolt-openrpc/commit/756e88a92782c8d65ec481182c31c8edb218c9d6))
+
 # [3.1.0](https://github.com/rdkcentral/firebolt-openrpc/compare/v3.0.0...v3.1.0) (2024-08-08)
 
 
