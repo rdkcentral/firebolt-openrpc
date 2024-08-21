@@ -1011,6 +1011,13 @@
                         },
                         "x-provided-by": {
                             "type": "string"
+                        },
+                        "x-provider-selection": {
+                            "type": "string",
+                            "enum": [
+                                "focus",
+                                "appId"
+                            ]
                         }
                     },
                     "if": {
