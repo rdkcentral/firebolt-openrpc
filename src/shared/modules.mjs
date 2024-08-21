@@ -97,7 +97,7 @@ function getProviderInterface(capability, module, extractProviderSchema = false)
       const payload = getPayloadFromEvent(method)
       const focusable = method.tags.find(t => t['x-allow-focus'])
   
-      // remove `onRequest`
+      // remove `onRequest` 
       method.name = method.name.charAt(9).toLowerCase() + method.name.substr(10)
 
       const schema = getPropertySchema(payload, 'properties.parameters', module)
