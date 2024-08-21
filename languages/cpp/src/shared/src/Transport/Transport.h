@@ -19,7 +19,7 @@
 #pragma once
 
 #include "Module.h"
-#include "error.h"
+#include "Error.h"
 
 namespace FireboltSDK {
 
@@ -254,7 +254,7 @@ namespace FireboltSDK {
 
         public:
             ChannelImpl(CommunicationChannel* parent, const WPEFramework::Core::NodeId& remoteNode, const string& path, const string& query, const bool mask)
-                : BaseClass(5, FactoryImpl::Instance(), path, _T("JSON"), query, "", false, mask, false, remoteNode.AnyInterface(), remoteNode, 512, 512)
+                : BaseClass(5, FactoryImpl::Instance(), path, _T("JSON"), query, "", false, mask, false, remoteNode.AnyInterface(), remoteNode, 1024 * 2, 1024 * 2) //TODO Relook this size issue
                   , _parent(*parent)
             {
             }
@@ -418,9 +418,9 @@ namespace FireboltSDK {
         }
 
     private:
-        int32_t Inbound(const WPEFramework::Core::ProxyType<MESSAGETYPE>& inbound)
+        uint32_t Inbound(const WPEFramework::Core::ProxyType<MESSAGETYPE>& inbound)
         {
-            int32_t result = WPEFramework::Core::ERROR_UNAVAILABLE;
+            uint32_t result = WPEFramework::Core::ERROR_UNAVAILABLE;
             _adminLock.Lock();
             typename std::list<CLIENT*>::iterator index(_observers.begin());
             while ((result != WPEFramework::Core::ERROR_NONE) && (index != _observers.end())) {
@@ -441,8 +441,8 @@ namespace FireboltSDK {
 
     class IEventHandler {
     public:
-        virtual Firebolt::Error ValidateResponse(const WPEFramework::Core::ProxyType<WPEFramework::Core::JSONRPC::Message>& jsonResponse, bool& enabled) = 0;
-        virtual Firebolt::Error Dispatch(const string& eventName, const WPEFramework::Core::ProxyType<WPEFramework::Core::JSONRPC::Message>& jsonResponse) = 0;
+        virtual uint32_t ValidateResponse(const WPEFramework::Core::ProxyType<WPEFramework::Core::JSONRPC::Message>& jsonResponse, bool& enabled) = 0;
+        virtual uint32_t Dispatch(const string& eventName, const WPEFramework::Core::ProxyType<WPEFramework::Core::JSONRPC::Message>& jsonResponse) = 0;
         virtual ~IEventHandler() = default;
     };
 
@@ -455,20 +455,20 @@ namespace FireboltSDK {
         using EventMap = std::map<string, uint32_t>;
         typedef std::function<uint32_t(const WPEFramework::Core::ProxyType<WPEFramework::Core::JSONRPC::Message>& jsonResponse, bool& enabled)> EventResponseValidatioionFunction;
 
-        class CommunicationJob : public WPEFramework::Core::IDispatch {
+        class Job : public WPEFramework::Core::IDispatch {
         protected:
-            CommunicationJob(const WPEFramework::Core::ProxyType<WPEFramework::Core::JSONRPC::Message>& inbound, class Transport* parent)
+            Job(const WPEFramework::Core::ProxyType<WPEFramework::Core::JSONRPC::Message>& inbound, class Transport* parent)
                 : _inbound(inbound)
                 , _parent(parent)
             {
             }
 
        public:
-            CommunicationJob() = delete;
-            CommunicationJob(const CommunicationJob&) = delete;
-            CommunicationJob& operator=(const CommunicationJob&) = delete;
+            Job() = delete;
+            Job(const Job&) = delete;
+            Job& operator=(const Job&) = delete;
 
-            ~CommunicationJob() = default;
+            ~Job() = default;
 
         public:
             static WPEFramework::Core::ProxyType<WPEFramework::Core::IDispatch> Create(const WPEFramework::Core::ProxyType<WPEFramework::Core::JSONRPC::Message>& inbound, class Transport* parent);
@@ -483,36 +483,6 @@ namespace FireboltSDK {
             class Transport* _parent;
         };
 
-        class ConnectionJob : public WPEFramework::Core::IDispatch {
-        protected:
-            ConnectionJob(class Transport* parent)
-                : _parent(parent)
-            {
-            }
-
-       public:
-            ConnectionJob() = delete;
-            ConnectionJob(const ConnectionJob&) = delete;
-            ConnectionJob& operator=(const ConnectionJob&) = delete;
-
-            ~ConnectionJob() = default;
-
-        public:
-            static WPEFramework::Core::ProxyType<WPEFramework::Core::IDispatch> Create(class Transport* parent);
-
-            void Dispatch() override
-            {
-                if (Firebolt::Error::None != _parent->WaitForLinkReady()) {
-                    _parent->NotifyStatus(Firebolt::Error::Timedout);
-                }
-            }
-
-        private:
-            const WPEFramework::Core::ProxyType<WPEFramework::Core::JSONRPC::Message> _inbound;
-            class Transport* _parent;
-        };
-
-
     protected:
         static constexpr uint32_t DefaultWaitTime = 10000;
 
@@ -522,15 +492,11 @@ namespace FireboltSDK {
 
     private:
         static constexpr const TCHAR* PathPrefix = _T("/");
-
-    public:
-        typedef std::function<void(const bool connected, const Firebolt::Error error)> Listener;
-
     public:
         Transport() = delete;
         Transport(const Transport&) = delete;
         Transport& operator=(Transport&) = delete;
-        Transport(const WPEFramework::Core::URL& url, const uint32_t waitTime, const Listener listener)
+        Transport(const WPEFramework::Core::URL& url, const uint32_t waitTime)
             : _adminLock()
             , _connectId(WPEFramework::Core::NodeId(url.Host().Value().c_str(), url.Port().Value()))
             , _channel(Channel::Instance(_connectId, ((url.Path().Value().rfind(PathPrefix, 0) == 0) ? url.Path().Value() :  string(PathPrefix + url.Path().Value())), url.Query().Value(), true))
@@ -538,13 +504,8 @@ namespace FireboltSDK {
             , _pendingQueue()
             , _scheduledTime(0)
             , _waitTime(waitTime)
-            , _listener(listener)
-            , _connected(false)
-            , _status(Firebolt::Error::NotConnected)
         {
             _channel->Register(*this);
-            WPEFramework::Core::ProxyType<WPEFramework::Core::IDispatch> job = WPEFramework::Core::ProxyType<WPEFramework::Core::IDispatch>(WPEFramework::Core::ProxyType<Transport::ConnectionJob>::Create(this));
-            WPEFramework::Core::IWorkerPool::Instance().Submit(job);
         }
 
         virtual ~Transport()
@@ -565,13 +526,7 @@ namespace FireboltSDK {
         void Revoke(const string& eventName)
         {
             _adminLock.Lock();
-
-            // Remove from internal event map
-            _internalEventMap.erase(eventName);
-
-            // Remove from external event map
-            _externalEventMap.erase(eventName);
-
+            _eventMap.erase(eventName);
             _adminLock.Unlock();
         }
 
@@ -581,160 +536,61 @@ namespace FireboltSDK {
         }
 
         template <typename PARAMETERS, typename RESPONSE>
-        Firebolt::Error Invoke(const string& method, const PARAMETERS& parameters, RESPONSE& response)
+        uint32_t Invoke(const string& method, const PARAMETERS& parameters, RESPONSE& response)
         {
             Entry slot;
             uint32_t id = _channel->Sequence();
-            Firebolt::Error result = Send(method, parameters, id);
-            if (result == Firebolt::Error::None) {
+            uint32_t result = Send(method, parameters, id);
+            if (result == WPEFramework::Core::ERROR_NONE) {
                 result = WaitForResponse<RESPONSE>(id, response, _waitTime);
             }
 
-            return (result);
-        }
-
-        template <typename PARAMETERS>
-        Firebolt::Error InvokeAsync(const string& method, const PARAMETERS& parameters, uint32_t& id)
-        {
-            Entry slot;
-            id = _channel->Sequence();
-            return Send(method, parameters, id);
+            return (FireboltErrorValue(result));
         }
 
         template <typename RESPONSE>
-        Firebolt::Error WaitForResponse(const uint32_t& id, RESPONSE& response, const uint32_t waitTime)
-        {
-            int32_t result = WPEFramework::Core::ERROR_TIMEDOUT;
-            _adminLock.Lock();
-            typename PendingMap::iterator index = _pendingQueue.find(id);
-            Entry& slot(index->second);
-            _adminLock.Unlock();
-
-            if (slot.WaitForResponse(waitTime) == true) {
-                WPEFramework::Core::ProxyType<WPEFramework::Core::JSONRPC::Message> jsonResponse = slot.Response();
-
-                // See if we have a jsonResponse, maybe it was just the connection
-                // that closed?
-                if (jsonResponse.IsValid() == true) {
-                    if (jsonResponse->Error.IsSet() == true) {
-                        result = jsonResponse->Error.Code.Value();
-                    }
-                    else {
-                        result = WPEFramework::Core::ERROR_NONE;
-                        if ((jsonResponse->Result.IsSet() == true)
-                            && (jsonResponse->Result.Value().empty() == false)) {
-                            FromMessage((INTERFACE*)&response, *jsonResponse);
-                        }
-                    }
-                }
-            } else {
-                result = WPEFramework::Core::ERROR_TIMEDOUT;
-            }
-            _adminLock.Lock();
-            _pendingQueue.erase(id);
-            _adminLock.Unlock();
-            return FireboltErrorValue(result);
-        }
-
-        void Abort(uint32_t id)
-        {
-            _adminLock.Lock();
-            typename PendingMap::iterator index = _pendingQueue.find(id);
-            Entry& slot(index->second);
-            _adminLock.Unlock();
-            slot.Abort(id);
-        }
-
-        template <typename RESPONSE>
-      
-        Firebolt::Error Subscribe(const string& eventName, const string& parameters, RESPONSE& response, bool updateInternal = false)
+        uint32_t Subscribe(const string& eventName, const string& parameters, RESPONSE& response)
         {
             Entry slot;
             uint32_t id = _channel->Sequence();
-            Firebolt::Error result = Send(eventName, parameters, id);
-
-            if (result == Firebolt::Error::None) {
+            uint32_t result = Send(eventName, parameters, id);
+            if (result == WPEFramework::Core::ERROR_NONE) {
                 _adminLock.Lock();
-                
-                // Choose the map based on updateInternal flag
-                EventMap& eventMap = updateInternal ? _internalEventMap : _externalEventMap;
-
-                // Add to the selected event map
-                eventMap.emplace(std::piecewise_construct,
-                                std::forward_as_tuple(eventName),
-                                std::forward_as_tuple(id));
-
+                _eventMap.emplace(std::piecewise_construct,
+                std::forward_as_tuple(eventName),
+                std::forward_as_tuple(~0));
                 _adminLock.Unlock();
 
-                result = WaitForEventResponse(id, eventName, response, _waitTime, eventMap);
-              
+                result = WaitForEventResponse(id, eventName, response, _waitTime);
             }
 
-            return result;
+            return (FireboltErrorValue(result));
         }
 
-        Firebolt::Error Unsubscribe(const string& eventName, const string& parameters)
+        uint32_t Unsubscribe(const string& eventName, const string& parameters)
         {
             Revoke(eventName);
             Entry slot;
             uint32_t id = _channel->Sequence();
+            uint32_t result = Send(eventName, parameters, id);
 
-            return Send(eventName, parameters, id);
-        }
-
-        void NotifyStatus(Firebolt::Error status)
-        {
-            _listener(false, status);
-        }
-
-        Firebolt::Error WaitForLinkReady()
-        {
-            uint32_t waiting = _waitTime;
-            static constexpr uint32_t SLEEPSLOT_TIME = 100;
-
-            // Right, a wait till connection is closed is requested..
-            while ((waiting > 0) && (IsOpen() == false) && (_status == Firebolt::Error::NotConnected)) {
-
-                uint32_t sleepSlot = (waiting > SLEEPSLOT_TIME ? SLEEPSLOT_TIME : waiting);
-
-                // Right, lets sleep in slices of 100 ms
-                SleepMs(sleepSlot);
-
-                waiting -= (waiting == WPEFramework::Core::infinite ? 0 : sleepSlot);
-            }
-            return (((waiting == 0) || (IsOpen() == true)) ? Firebolt::Error::None : Firebolt::Error::Timedout);
+            return (FireboltErrorValue(result));
         }
 
     private:
         friend Channel;
-
         inline bool IsEvent(const uint32_t id, string& eventName)
         {
             _adminLock.Lock();
-            
-            bool eventExist = false;
-
-            // List of maps to search
-            std::vector<EventMap*> maps = {&_internalEventMap, &_externalEventMap};
-
-            // Loop through each map
-            for (const auto* map : maps) {
-                for (const auto& event : *map) {
-                    if (event.second == id) {
-                        eventName = event.first;
-                        eventExist = true;
-                        break; // Break the inner loop
-                    }
-                }
-                if (eventExist) {
-                    break; // Break the outer loop
+            for (auto& event : _eventMap) {
+                 if (event.second == id) {
+                     eventName = event.first;
+                     break;
                 }
             }
-
             _adminLock.Unlock();
-            return eventExist;
+            return (eventName.empty() != true);
         }
-        
         uint64_t Timed()
         {
             uint64_t result = ~0;
@@ -763,11 +619,7 @@ namespace FireboltSDK {
 
         virtual void Opened()
         {
-            _status = Firebolt::Error::None;
-            if (_connected != true) {
-                _connected = true;
-                _listener(_connected, _status);
-            }
+            // Nice to know :-)
         }
 
         void Closed()
@@ -783,23 +635,19 @@ namespace FireboltSDK {
             }
 
             _adminLock.Unlock();
-            if (_connected != false) {
-                _connected = false;
-                _listener(_connected, _status);
-            }
         }
 
-        int32_t Submit(const WPEFramework::Core::ProxyType<WPEFramework::Core::JSONRPC::Message>& inbound)
+        uint32_t Submit(const WPEFramework::Core::ProxyType<WPEFramework::Core::JSONRPC::Message>& inbound)
         {
-            int32_t result = WPEFramework::Core::ERROR_UNAVAILABLE;
-            WPEFramework::Core::ProxyType<WPEFramework::Core::IDispatch> job = WPEFramework::Core::ProxyType<WPEFramework::Core::IDispatch>(WPEFramework::Core::ProxyType<Transport::CommunicationJob>::Create(inbound, this));
+            uint32_t result = WPEFramework::Core::ERROR_UNAVAILABLE;
+            WPEFramework::Core::ProxyType<WPEFramework::Core::IDispatch> job = WPEFramework::Core::ProxyType<WPEFramework::Core::IDispatch>(WPEFramework::Core::ProxyType<Transport::Job>::Create(inbound, this));
             WPEFramework::Core::IWorkerPool::Instance().Submit(job);
             return result;
         }
 
-        int32_t Inbound(const WPEFramework::Core::ProxyType<WPEFramework::Core::JSONRPC::Message>& inbound)
+        uint32_t Inbound(const WPEFramework::Core::ProxyType<WPEFramework::Core::JSONRPC::Message>& inbound)
         {
-            int32_t result = WPEFramework::Core::ERROR_INVALID_SIGNATURE;
+            uint32_t result = WPEFramework::Core::ERROR_INVALID_SIGNATURE;
 
             ASSERT(inbound.IsValid() == true);
 
@@ -820,24 +668,25 @@ namespace FireboltSDK {
                     }
 
                      result = WPEFramework::Core::ERROR_NONE;
-                    _adminLock.Unlock();
                 } else {
-                    _adminLock.Unlock();
+
                     string eventName;
                     if (IsEvent(inbound->Id.Value(), eventName)) {
                         _eventHandler->Dispatch(eventName, inbound);
                     }
 
                 }
+                _adminLock.Unlock();
             }
 
             return (result);
         }
-        
+
+
         template <typename PARAMETERS>
-        Firebolt::Error Send(const string& method, const PARAMETERS& parameters, const uint32_t& id)
+        uint32_t Send(const string& method, const PARAMETERS& parameters, const uint32_t& id)
         {
-            int32_t result = WPEFramework::Core::ERROR_UNAVAILABLE;
+            uint32_t result = WPEFramework::Core::ERROR_UNAVAILABLE;
 
             if ((_channel.IsValid() == true) && (_channel->IsSuspended() == true)) {
                 result = WPEFramework::Core::ERROR_ASYNC_FAILED;
@@ -869,14 +718,49 @@ namespace FireboltSDK {
                     result = WPEFramework::Core::ERROR_NONE;
                 }
             }
-            return FireboltErrorValue(result);
+            return result;
+        }
+
+        template <typename RESPONSE>
+        uint32_t WaitForResponse(const uint32_t& id, RESPONSE& response, const uint32_t waitTime)
+        {
+            uint32_t result = WPEFramework::Core::ERROR_TIMEDOUT;
+            _adminLock.Lock();
+            typename PendingMap::iterator index = _pendingQueue.find(id);
+            Entry& slot(index->second);
+            _adminLock.Unlock();
+
+            if (slot.WaitForResponse(waitTime) == true) {
+                WPEFramework::Core::ProxyType<WPEFramework::Core::JSONRPC::Message> jsonResponse = slot.Response();
+
+                // See if we have a jsonResponse, maybe it was just the connection
+                // that closed?
+                if (jsonResponse.IsValid() == true) {
+                    if (jsonResponse->Error.IsSet() == true) {
+                        result = jsonResponse->Error.Code.Value();
+                    }
+                    else {
+                        result = WPEFramework::Core::ERROR_NONE;
+                        if ((jsonResponse->Result.IsSet() == true)
+                            && (jsonResponse->Result.Value().empty() == false)) {
+                            FromMessage((INTERFACE*)&response, *jsonResponse);
+                        }
+                    }
+                }
+            } else {
+                result = WPEFramework::Core::ERROR_TIMEDOUT;
+            }
+            _adminLock.Lock();
+            _pendingQueue.erase(id);
+            _adminLock.Unlock();
+            return result;
         }
 
         static constexpr uint32_t WAITSLOT_TIME = 100;
         template <typename RESPONSE>
-         Firebolt::Error WaitForEventResponse(const uint32_t& id, const string& eventName, RESPONSE& response, const uint32_t waitTime, EventMap& _eventMap)
+        uint32_t WaitForEventResponse(const uint32_t& id, const string& eventName, RESPONSE& response, const uint32_t waitTime)
         {
-            Firebolt::Error result = Firebolt::Error::Timedout;
+            uint32_t result = WPEFramework::Core::ERROR_TIMEDOUT;
             _adminLock.Lock();
             typename PendingMap::iterator index = _pendingQueue.find(id);
             Entry& slot(index->second);
@@ -892,13 +776,14 @@ namespace FireboltSDK {
                     // that closed?
                     if (jsonResponse.IsValid() == true) {
                         if (jsonResponse->Error.IsSet() == true) {
-                            result = FireboltErrorValue(jsonResponse->Error.Code.Value());
+                            result = jsonResponse->Error.Code.Value();
                         } else {
                             if ((jsonResponse->Result.IsSet() == true)
                                 && (jsonResponse->Result.Value().empty() == false)) {
+                                result = WPEFramework::Core::ERROR_NONE;
                                 bool enabled;
                                 result = _eventHandler->ValidateResponse(jsonResponse, enabled);
-                                if (result == Firebolt::Error::None) {
+                                if (result == WPEFramework::Core::ERROR_NONE) {
                                     FromMessage((INTERFACE*)&response, *jsonResponse);
                                     if (enabled) {
                                         _adminLock.Lock();
@@ -913,10 +798,10 @@ namespace FireboltSDK {
                         }
                     }
                 } else {
-                    result = Firebolt::Error::Timedout;
+                    result = WPEFramework::Core::ERROR_TIMEDOUT;
                 }
                 waiting -= (waiting == WPEFramework::Core::infinite ? 0 : waitSlot);
-            } while ((result != Firebolt::Error::None) && (waiting > 0 ));
+            } while ((result != WPEFramework::Core::ERROR_NONE) && (waiting > 0 ));
             _adminLock.Lock();
             _pendingQueue.erase(id);
             _adminLock.Unlock();
@@ -975,20 +860,22 @@ namespace FireboltSDK {
             return;
         }
 
-        Firebolt::Error FireboltErrorValue(const uint32_t error)
+        uint32_t FireboltErrorValue(const uint32_t error)
         {
 
-            Firebolt::Error fireboltError = static_cast<Firebolt::Error>(error);
+            uint32_t fireboltError = FireboltSDKErrorUnknown;
             switch (error) {
             case WPEFramework::Core::ERROR_NONE:
-                fireboltError = Firebolt::Error::None;
+                fireboltError = FireboltSDKErrorNone;
                 break;
             case WPEFramework::Core::ERROR_GENERAL:
+                fireboltError = FireboltSDKErrorGeneral;
+                break;
             case WPEFramework::Core::ERROR_UNAVAILABLE:
-                fireboltError = Firebolt::Error::General;
+                fireboltError = FireboltSDKErrorUnavailable;
                 break;
             case WPEFramework::Core::ERROR_TIMEDOUT:
-                fireboltError = Firebolt::Error::Timedout;
+                fireboltError = FireboltSDKErrorTimedout;
                 break;
             default:
                 break;
@@ -1003,12 +890,8 @@ namespace FireboltSDK {
         WPEFramework::Core::ProxyType<Channel> _channel;
         IEventHandler* _eventHandler;
         PendingMap _pendingQueue;
-        EventMap _internalEventMap;
-        EventMap _externalEventMap;
+        EventMap _eventMap;
         uint64_t _scheduledTime;
         uint32_t _waitTime;
-        Listener _listener;
-        bool _connected;
-        Firebolt::Error _status;
     };
 }
