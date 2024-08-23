@@ -1,3 +1,11 @@
+## [3.1.1-next.2](https://github.com/rdkcentral/firebolt-openrpc/compare/v3.1.1-next.1...v3.1.1-next.2) (2024-08-23)
+
+
+### Bug Fixes
+
+* Quote unsafe property names in languages that support it ([647043d](https://github.com/rdkcentral/firebolt-openrpc/commit/647043d59ea0399b725d32e4a2e48ee017965288))
+* Return empty config, not null ([f02aadc](https://github.com/rdkcentral/firebolt-openrpc/commit/f02aadcb57f3936f1dcebfe570e418c1d04f626d))
+
 ## [3.1.1-next.1](https://github.com/rdkcentral/firebolt-openrpc/compare/v3.1.0...v3.1.1-next.1) (2024-08-21)
 
 
