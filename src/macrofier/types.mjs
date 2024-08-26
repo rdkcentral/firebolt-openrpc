@@ -318,7 +318,7 @@ const insertObjectPatternPropertiesMacros = (content, schema, module, title, opt
 
 const getIndents = level => level ? '    ' : ''
 const wrapProp = name => name.match(/[/\.\+]/) ? `"${name}"` : name
-const safePropName = name => config.enableStringPropertyKeys ? wrapProp(name) : getSafeEnumKeyName(name)
+const safePropName = name => config.enableStringPropertyKeys ? wrapProp(name) : name
 const insertObjectMacros = (content, schema, module, title, property, options) => {
   const options2 = options ? JSON.parse(JSON.stringify(options)) : {}
   options2.parent = title
