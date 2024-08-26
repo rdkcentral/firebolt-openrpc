@@ -1,3 +1,10 @@
+## [3.1.1-next.3](https://github.com/rdkcentral/firebolt-openrpc/compare/v3.1.1-next.2...v3.1.1-next.3) (2024-08-26)
+
+
+### Bug Fixes
+
+* Update getSuffix to properly work in pipeline ([#209](https://github.com/rdkcentral/firebolt-openrpc/issues/209)) ([16b4e6e](https://github.com/rdkcentral/firebolt-openrpc/commit/16b4e6eb5a8739a7715eb975104d7bb33053b28c))
+
 ## [3.1.1-next.2](https://github.com/rdkcentral/firebolt-openrpc/compare/v3.1.1-next.1...v3.1.1-next.2) (2024-08-23)
 
 
