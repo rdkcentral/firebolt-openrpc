@@ -350,6 +350,8 @@ const insertObjectMacros = (content, schema, module, title, property, options) =
           const description = getSchemaDescription(prop, module)
           let replacedTemplate  = template
           .replace(/(^\s+)/g, '$1'.repeat(options2.level))
+          .replace(/\$\{property.raw\}/g, name) //Gives the raw RPC propery name, even if it's unsafe
+          .replace(/\$\{Property.raw\}/g, capitalize(name))
           .replace(/\$\{property\}/g, safePropName(name))
           .replace(/\$\{Property\}/g, capitalize(safePropName(name)))
           .replace(/\$\{parent\.title\}/g, title)
