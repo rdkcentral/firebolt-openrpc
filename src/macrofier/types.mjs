@@ -348,8 +348,11 @@ const insertObjectMacros = (content, schema, module, title, property, options) =
         // don't push properties w/ unsupported types
         if (type) {
           const description = getSchemaDescription(prop, module)
+          const additionalType = getPrimitiveType(prop.type, 'additional-types')
+
           let replacedTemplate  = template
           .replace(/(^\s+)/g, '$1'.repeat(options2.level))
+          .replace(/\$\{additional\.type\}/g, additionalType)
           .replace(/\$\{property.raw\}/g, name) //Gives the raw RPC propery name, even if it's unsafe
           .replace(/\$\{Property.raw\}/g, capitalize(name))
           .replace(/\$\{property\}/g, safePropName(name))
