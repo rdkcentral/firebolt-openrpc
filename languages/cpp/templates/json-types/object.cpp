@@ -32,5 +32,4 @@ ${properties.assign}
 
     public:
 ${properties}
-        std::map<std::string, std::bool> members;
     };

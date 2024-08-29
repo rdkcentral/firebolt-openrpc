@@ -1,3 +1,2 @@
-            Add(_T("${property}"), &${Property});
+            Add(_T("${property.raw}"), &${Property});
             ${Property} = other.${Property};
-            members["${property.raw}"] = other.${Property}

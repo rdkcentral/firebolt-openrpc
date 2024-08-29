@@ -1,2 +1,1 @@
-            Add(_T("${property}"), &${Property});
-            members["${property.raw}"] = &${Property}
+            Add(_T("${property.raw}"), &${Property});
