@@ -1,1 +1,1 @@
-          std::string ${property};
+            std::string ${property};

@@ -1,1 +1,1 @@
-         ${property} = proxyResponse->Value();
+            ${property} = proxyResponse->Value();
