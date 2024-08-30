@@ -20,16 +20,6 @@ ${properties.assign}
             return (*this);
         }
 
-        // Function to get value from map using a key
-        std::string Get(const std::string& key) const {
-            auto it = members.find(key);
-            if (it != members.end()) {
-                return it->second;
-            } else {
-                return "Key not found";
-            }
-        }
-
     public:
 ${properties}
     };
