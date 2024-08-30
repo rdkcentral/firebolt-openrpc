@@ -520,6 +520,10 @@ function mergeOneOf(schema) {
   return union(schema.oneOf)
 }
 
+const getSafeKeyName = (value) => value.split(':').pop()
+                                        .replace(/[\.\-]/g, '_')                       // replace dots and dashes
+                                        .replace(/\+/g, '_plus')                       // change + to _plus
+
 const getSafeEnumKeyName = (value) => value.split(':').pop()                           // use last portion of urn:style:values
                                         .replace(/[\.\-]/g, '_')                       // replace dots and dashes
                                         .replace(/\+/g, '_plus')                       // change + to _plus
@@ -529,6 +533,7 @@ const getSafeEnumKeyName = (value) => value.split(':').pop()                    
 
 export {
   getSchemaConstraints,
+  getSafeKeyName,
   getSafeEnumKeyName,
   getExternalSchemaPaths,
   getLocalSchemas,
