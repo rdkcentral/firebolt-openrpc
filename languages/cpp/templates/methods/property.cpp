@@ -4,7 +4,7 @@
         const string method = _T("${info.title.lowercase}.${method.name}");
         ${if.params}JsonObject jsonParameters;${end.if.params}
         ${if.params}${method.params.serialization}${end.if.params}
-        ${method.result.json} jsonResult;
+        ${title} jsonResult;
 ${method.result.initialization}
         ${if.params}Firebolt::Error status = FireboltSDK::Properties::Get(method, jsonParameters, jsonResult);${end.if.params}
         ${if.params.empty}Firebolt::Error status = FireboltSDK::Properties::Get(method, jsonResult);${end.if.params.empty}
