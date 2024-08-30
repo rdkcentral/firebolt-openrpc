@@ -17,7 +17,7 @@
  */
 
 import deepmerge from 'deepmerge'
-import { getPath, localizeDependencies, getSafeEnumKeyName } from '../shared/json-schema.mjs'
+import { getPath, localizeDependencies, getSafeEnumKeyName, getSafeKeyName } from '../shared/json-schema.mjs'
 import path from "path"
 import { getConfig } from '../shared/configLoader.mjs'
 
@@ -317,6 +317,8 @@ const insertObjectPatternPropertiesMacros = (content, schema, module, title, opt
 }
 
 const getIndents = level => level ? '    ' : ''
+const wrapProp = name => name.match(/[/\.\+]/) ? `"${name}"` : name
+const safePropName = name => config.enableStringPropertyKeys ? wrapProp(name) : getSafeKeyName(name)
 const insertObjectMacros = (content, schema, module, title, property, options) => {
   const options2 = options ? JSON.parse(JSON.stringify(options)) : {}
   options2.parent = title
@@ -348,8 +350,10 @@ const insertObjectMacros = (content, schema, module, title, property, options) =
           const description = getSchemaDescription(prop, module)
           let replacedTemplate  = template
           .replace(/(^\s+)/g, '$1'.repeat(options2.level))
-          .replace(/\$\{property\}/g, name)
-          .replace(/\$\{Property\}/g, capitalize(name))
+          .replace(/\$\{property.raw\}/g, name) //Gives the raw RPC propery name, even if it's unsafe
+          .replace(/\$\{Property.raw\}/g, capitalize(name))
+          .replace(/\$\{property\}/g, safePropName(name))
+          .replace(/\$\{Property\}/g, capitalize(safePropName(name)))
           .replace(/\$\{parent\.title\}/g, title)
           .replace(/\$\{title\}/g, type)
           .replace(/\$\{shape\}/g, schemaShape)

@@ -12,7 +12,7 @@ export const loadConfig = async (language) => {
 
 export const getConfig = () => {
   if (!config) {
-    return null;
+    return {};
   }
   return config
 }

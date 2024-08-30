@@ -5,6 +5,7 @@
         "/index.mjs",
         "/defaults.mjs"
     ],
+    "enableStringPropertyKeys": true,
     "createModuleDirectories": true,
     "copySchemasIntoModules": true,
     "aggregateFiles": [

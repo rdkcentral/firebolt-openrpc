@@ -1161,7 +1161,33 @@ function generateMethods(json = {}, examples = {}, templates = {}, languages = [
       event: isEventMethod(methodObj)
     }
 
-    const suffix = state.destination && config.templateExtensionMap ? state.destination.split(state.destination.includes('_') ? '_' : '.').pop() : ''
+
+    /**
+     * Extracts the suffix from a given file path.
+     *
+     * The suffix is determined by the last underscore or period in the filename.
+     * If the filename contains an underscore, the portion after the last underscore
+     * is considered the suffix. If no underscore is found but there is a period,
+     * the portion after the last period (typically the file extension) is considered the suffix.
+     * If neither an underscore nor a period is found, an empty string is returned.
+     *
+     * @param {string} path - The full file path from which to extract the suffix.
+     * @returns {string} - The extracted suffix or an empty string if no suffix is found.
+     */
+    const getSuffix = (path) => {
+      // Extract the last part of the path (the filename)
+      const filename = path.split('/').pop() // Get the last part of the path
+      // Check for underscores or periods in the filename and handle accordingly
+      if (filename.includes('_')) {
+        return filename.split('_').pop() // Return the last part after the last underscore
+      } else if (filename.includes('.')) {
+        return filename.split('.').pop() // Return the extension after the last period
+      } else {
+        return '' // Return empty if no suffix can be determined
+      }
+    }
+
+    const suffix = state.destination && config.templateExtensionMap ? getSuffix(state.destination) : ''
 
     // Generate implementation of methods/events for both dynamic and static configured templates
     Array.from(new Set(['methods'].concat(config.additionalMethodTemplates))).filter(dir => dir).forEach(dir => {
