@@ -1,3 +1,10 @@
+## [3.1.1-next.4](https://github.com/rdkcentral/firebolt-openrpc/compare/v3.1.1-next.3...v3.1.1-next.4) (2024-08-30)
+
+
+### Bug Fixes
+
+* CPP Enum/AnyOf ([#210](https://github.com/rdkcentral/firebolt-openrpc/issues/210)) ([eb768fb](https://github.com/rdkcentral/firebolt-openrpc/commit/eb768fb5f0d8ce4c123daab428bd53ca7225333c))
+
 ## [3.1.1-next.3](https://github.com/rdkcentral/firebolt-openrpc/compare/v3.1.1-next.2...v3.1.1-next.3) (2024-08-26)
 
 
