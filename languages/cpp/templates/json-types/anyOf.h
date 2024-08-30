@@ -1,1 +1,1 @@
-WPEFramework::Core::JSON::VariantContainer
+FireboltSDK::JSON::String
