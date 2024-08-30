@@ -1,3 +1,14 @@
+## [3.1.1](https://github.com/rdkcentral/firebolt-openrpc/compare/v3.1.0...v3.1.1) (2024-08-30)
+
+
+### Bug Fixes
+
+* Add provider-selection tag to validation schema ([756e88a](https://github.com/rdkcentral/firebolt-openrpc/commit/756e88a92782c8d65ec481182c31c8edb218c9d6))
+* CPP Enum/AnyOf ([#210](https://github.com/rdkcentral/firebolt-openrpc/issues/210)) ([eb768fb](https://github.com/rdkcentral/firebolt-openrpc/commit/eb768fb5f0d8ce4c123daab428bd53ca7225333c))
+* Quote unsafe property names in languages that support it ([647043d](https://github.com/rdkcentral/firebolt-openrpc/commit/647043d59ea0399b725d32e4a2e48ee017965288))
+* Return empty config, not null ([f02aadc](https://github.com/rdkcentral/firebolt-openrpc/commit/f02aadcb57f3936f1dcebfe570e418c1d04f626d))
+* Update getSuffix to properly work in pipeline ([#209](https://github.com/rdkcentral/firebolt-openrpc/issues/209)) ([16b4e6e](https://github.com/rdkcentral/firebolt-openrpc/commit/16b4e6eb5a8739a7715eb975104d7bb33053b28c))
+
 ## [3.1.1-next.4](https://github.com/rdkcentral/firebolt-openrpc/compare/v3.1.1-next.3...v3.1.1-next.4) (2024-08-30)
 
 
