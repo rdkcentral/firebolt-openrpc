@@ -17,7 +17,7 @@
  */
 
 import deepmerge from 'deepmerge'
-import { getPath, localizeDependencies, getSafeEnumKeyName } from '../shared/json-schema.mjs'
+import { getPath, localizeDependencies, getSafeEnumKeyName, getSafeKeyName } from '../shared/json-schema.mjs'
 import path from "path"
 import { getConfig } from '../shared/configLoader.mjs'
 
@@ -318,7 +318,7 @@ const insertObjectPatternPropertiesMacros = (content, schema, module, title, opt
 
 const getIndents = level => level ? '    ' : ''
 const wrapProp = name => name.match(/[/\.\+]/) ? `"${name}"` : name
-const safePropName = name => config.enableStringPropertyKeys ? wrapProp(name) : getSafeEnumKeyName(name)
+const safePropName = name => config.enableStringPropertyKeys ? wrapProp(name) : getSafeKeyName(name)
 const insertObjectMacros = (content, schema, module, title, property, options) => {
   const options2 = options ? JSON.parse(JSON.stringify(options)) : {}
   options2.parent = title
