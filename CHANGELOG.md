@@ -1,3 +1,10 @@
+## [3.1.1-next.5](https://github.com/rdkcentral/firebolt-openrpc/compare/v3.1.1-next.4...v3.1.1-next.5) (2024-09-04)
+
+
+### Bug Fixes
+
+* Void provider methods have JSONRPC errors ([#212](https://github.com/rdkcentral/firebolt-openrpc/issues/212)) ([d984304](https://github.com/rdkcentral/firebolt-openrpc/commit/d9843044cc1da2656edd70c01cc57ebcee3dedfb))
+
 ## [3.1.1-next.4](https://github.com/rdkcentral/firebolt-openrpc/compare/v3.1.1-next.3...v3.1.1-next.4) (2024-08-30)
 
 
