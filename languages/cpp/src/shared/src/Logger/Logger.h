@@ -19,6 +19,7 @@
 #pragma once
 
 #include "types.h"
+#include <cxxabi.h>
 
 namespace FireboltSDK {
 
@@ -56,7 +57,17 @@ namespace FireboltSDK {
         template<typename CLASS>
         static const string Module()
         {
-            return WPEFramework::Core::ClassNameOnly(typeid(CLASS).name()).Text(); 
+            char _name[512];
+            size_t _size = sizeof(_name) - 1;
+            std::string demangled_name = abi::__cxa_demangle(typeid(CLASS).name(), _name, &_size, 0);
+            std::string method_name;
+            std::string full_name(demangled_name);
+            std::size_t last_colon = full_name.rfind("::");
+            if (last_colon != std::string::npos) {
+                method_name = full_name.substr(last_colon + 2);
+            }
+
+            return method_name;
         }
 
     private:
