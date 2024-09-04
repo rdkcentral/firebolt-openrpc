@@ -1,3 +1,13 @@
+## [3.1.2](https://github.com/rdkcentral/firebolt-openrpc/compare/v3.1.1...v3.1.2) (2024-09-04)
+
+
+### Bug Fixes
+
+* Merge latest main to next ([07c3a81](https://github.com/rdkcentral/firebolt-openrpc/commit/07c3a81c198c5450a44ba0b5d3d3677a185444f3))
+* Merge latest main to next ([b488f38](https://github.com/rdkcentral/firebolt-openrpc/commit/b488f38ca270973b44f46ccd6997246772609d8f))
+* Merge latest main to next ([#214](https://github.com/rdkcentral/firebolt-openrpc/issues/214)) ([650360c](https://github.com/rdkcentral/firebolt-openrpc/commit/650360c2b48fccb91a2743cec03ba5b47734fb0e))
+* Void provider methods have JSONRPC errors ([#212](https://github.com/rdkcentral/firebolt-openrpc/issues/212)) ([d984304](https://github.com/rdkcentral/firebolt-openrpc/commit/d9843044cc1da2656edd70c01cc57ebcee3dedfb))
+
 ## [3.1.2-next.1](https://github.com/rdkcentral/firebolt-openrpc/compare/v3.1.1...v3.1.2-next.1) (2024-09-04)
 
 ### Bug Fixes
