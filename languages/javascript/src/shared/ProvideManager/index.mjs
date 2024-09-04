@@ -115,7 +115,8 @@ const provide = function(capability, provider) {
       
         result.then(result => {
           if (imethod.response) {
-            response.result = result
+            // void results should be null in the JSONRPC message
+            response.result = result == null ? null : result
           }
 
           Transport.send(module, `${method}Response`, response)
