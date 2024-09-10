@@ -18,6 +18,7 @@
 
 #pragma once
 
+#include <mutex>
 #include "Module.h"
 
 namespace FireboltSDK {
@@ -126,7 +127,7 @@ namespace FireboltSDK {
             };
             CallbackData callbackData = {implementation, userdata, State::IDLE};
 
-            _adminLock.Lock();
+            std::lock_guard<std::mutex> guard(_adminLock);
             EventMap::iterator eventIndex = _eventMap.find(eventName);
             if (eventIndex != _eventMap.end()) {
                 CallbackMap::iterator callbackIndex = eventIndex->second.find(usercb);
@@ -140,10 +141,7 @@ namespace FireboltSDK {
                 callbackMap.emplace(std::piecewise_construct, std::forward_as_tuple(usercb), std::forward_as_tuple(callbackData));
                 _eventMap.emplace(std::piecewise_construct, std::forward_as_tuple(eventName), std::forward_as_tuple(callbackMap));
                 status = Firebolt::Error::None;
-
             }
-
-            _adminLock.Unlock();
             return status;
         }
         Firebolt::Error Revoke(const string& eventName, void* usercb);
@@ -155,7 +153,7 @@ namespace FireboltSDK {
  
     private:
         EventMap _eventMap;
-        WPEFramework::Core::CriticalSection _adminLock;
+        std::mutex _adminLock;
         Transport<WPEFramework::Core::JSON::IElement>* _transport;
 
         static Event* _singleton;

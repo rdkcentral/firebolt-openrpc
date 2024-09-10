@@ -18,6 +18,7 @@
 
 #pragma once
 
+#include <mutex>
 #include "Module.h"
 
 namespace FireboltSDK {
@@ -111,7 +112,7 @@ namespace FireboltSDK {
                     return (status);
                 };
 
-                _adminLock.Lock();
+                _adminLock.lock();
                 WPEFramework::Core::ProxyType<WPEFramework::Core::IDispatch> job = WPEFramework::Core::ProxyType<WPEFramework::Core::IDispatch>(WPEFramework::Core::ProxyType<Async::Job>::Create(*this, method, lambda, usercb));
                 CallbackData callbackData = {lambda, job, DefaultId};
                 MethodMap::iterator index = _methodMap.find(method);
@@ -126,7 +127,7 @@ namespace FireboltSDK {
                     callbackMap.emplace(std::piecewise_construct, std::forward_as_tuple(usercb), std::forward_as_tuple(callbackData));
                     _methodMap.emplace(std::piecewise_construct, std::forward_as_tuple(method), std::forward_as_tuple(callbackMap));
                 }
-                _adminLock.Unlock();
+                _adminLock.unlock();
 
                 WPEFramework::Core::IWorkerPool::Instance().Submit(job);
             }
@@ -142,7 +143,7 @@ namespace FireboltSDK {
 
         void UpdateEntry(const string& method, void* usercb, uint32_t id)
         {
-            _adminLock.Lock();
+            std::lock_guard<std::mutex> guard(_adminLock);
             MethodMap::iterator index = _methodMap.find(method);
             if (index != _methodMap.end()) {
                 CallbackMap::iterator callbackIndex = index->second.find(usercb);
@@ -150,12 +151,11 @@ namespace FireboltSDK {
                     callbackIndex->second.id = id;
                 }
             }
-            _adminLock.Unlock();
         }
 
         void RemoveEntry(const string& method, void* usercb)
         {
-            _adminLock.Lock();
+            std::lock_guard<std::mutex> guard(_adminLock);
             MethodMap::iterator index = _methodMap.find(method);
             if (index != _methodMap.end()) {
                 CallbackMap::iterator callbackIndex = index->second.find(usercb);
@@ -169,13 +169,13 @@ namespace FireboltSDK {
                     }
                 }
             }
-            _adminLock.Unlock();
         }
 
         bool IsActive(const string& method, void* usercb)
         {
             bool valid = false;
-            _adminLock.Lock();
+
+            std::lock_guard<std::mutex> guard(_adminLock);
             MethodMap::iterator index = _methodMap.find(method);
             if (index != _methodMap.end()) {
                 CallbackMap::iterator callbackIndex = index->second.find(usercb);
@@ -183,7 +183,6 @@ namespace FireboltSDK {
                     valid = true;
                 }
             }
-            _adminLock.Unlock();
             return valid;
         }
 
@@ -195,7 +194,7 @@ namespace FireboltSDK {
 
     private:
         MethodMap _methodMap;
-        WPEFramework::Core::CriticalSection _adminLock;
+        std::mutex _adminLock;
         Transport<WPEFramework::Core::JSON::IElement>* _transport;
 
         static Async* _singleton;

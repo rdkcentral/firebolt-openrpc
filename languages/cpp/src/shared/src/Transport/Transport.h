@@ -18,6 +18,7 @@
 
 #pragma once
 
+#include <mutex>
 #include "Module.h"
 #include "error.h"
 #include "time_new.h"
@@ -349,23 +350,23 @@ namespace FireboltSDK {
         }
         void Register(CLIENT& client)
         {
-            _adminLock.Lock();
+            std::lock_guard<std::mutex> guard(_adminLock);
+
             ASSERT(std::find(_observers.begin(), _observers.end(), &client) == _observers.end());
             _observers.push_back(&client);
             if (_channel.IsOpen() == true) {
                 client.Opened();
             }
-            _adminLock.Unlock();
         }
         void Unregister(CLIENT& client)
         {
-            _adminLock.Lock();
+            std::lock_guard<std::mutex> guard(_adminLock);
+
             typename std::list<CLIENT* >::iterator index(std::find(_observers.begin(), _observers.end(), &client));
             if (index != _observers.end()) {
                     _observers.erase(index);
             }
             FactoryImpl::Instance().Revoke(&client);
-            _adminLock.Unlock();
         }
 
         void Submit(const WPEFramework::Core::ProxyType<INTERFACE>& message)
@@ -392,7 +393,8 @@ namespace FireboltSDK {
     protected:
         void StateChange()
         {
-            _adminLock.Lock();
+            std::lock_guard<std::mutex> guard(_adminLock);
+
             typename std::list<CLIENT* >::iterator index(_observers.begin());
             while (index != _observers.end()) {
                 if (_channel.IsOpen() == true) {
@@ -403,7 +405,6 @@ namespace FireboltSDK {
                 }
                 index++;
             }
-            _adminLock.Unlock();
         }
         bool Open(const uint32_t waitTime)
         {
@@ -422,19 +423,20 @@ namespace FireboltSDK {
         int32_t Inbound(const WPEFramework::Core::ProxyType<MESSAGETYPE>& inbound)
         {
             int32_t result = WPEFramework::Core::ERROR_UNAVAILABLE;
-            _adminLock.Lock();
+            
+            std::lock_guard<std::mutex> guard(_adminLock);
+
             typename std::list<CLIENT*>::iterator index(_observers.begin());
             while ((result != WPEFramework::Core::ERROR_NONE) && (index != _observers.end())) {
                 result = (*index)->Submit(inbound);
                 index++;
             }
-            _adminLock.Unlock();
 
             return (result);
         }
 
     private:
-        WPEFramework::Core::CriticalSection _adminLock;
+        std::mutex _adminLock;
         ChannelImpl _channel;
         mutable std::atomic<uint32_t> _sequence;
         std::list<CLIENT*> _observers;
@@ -565,9 +567,8 @@ namespace FireboltSDK {
 
         void Revoke(const string& eventName)
         {
-            _adminLock.Lock();
+            std::lock_guard<std::mutex> guard(_adminLock);
             _eventMap.erase(eventName);
-            _adminLock.Unlock();
         }
 
         void SetEventHandler(IEventHandler* eventHandler)
@@ -600,10 +601,11 @@ namespace FireboltSDK {
         Firebolt::Error WaitForResponse(const uint32_t& id, RESPONSE& response, const uint32_t waitTime)
         {
             int32_t result = WPEFramework::Core::ERROR_TIMEDOUT;
-            _adminLock.Lock();
+                        
+            _adminLock.lock();
             typename PendingMap::iterator index = _pendingQueue.find(id);
             Entry& slot(index->second);
-            _adminLock.Unlock();
+            _adminLock.unlock();
 
             if (slot.WaitForResponse(waitTime) == true) {
                 WPEFramework::Core::ProxyType<WPEFramework::Core::JSONRPC::Message> jsonResponse = slot.Response();
@@ -625,18 +627,19 @@ namespace FireboltSDK {
             } else {
                 result = WPEFramework::Core::ERROR_TIMEDOUT;
             }
-            _adminLock.Lock();
-            _pendingQueue.erase(id);
-            _adminLock.Unlock();
+            
+            {
+                std::lock_guard<std::mutex> guard(_adminLock);
+                _pendingQueue.erase(id);
+            }
             return FireboltErrorValue(result);
         }
 
         void Abort(uint32_t id)
         {
-            _adminLock.Lock();
+            std::lock_guard<std::mutex> guard(_adminLock);
             typename PendingMap::iterator index = _pendingQueue.find(id);
             Entry& slot(index->second);
-            _adminLock.Unlock();
             slot.Abort(id);
         }
 
@@ -646,12 +649,14 @@ namespace FireboltSDK {
             Entry slot;
             uint32_t id = _channel->Sequence();
             Firebolt::Error result = Send(eventName, parameters, id);
-            if (result == Firebolt::Error::None) {
-                _adminLock.Lock();
-                _eventMap.emplace(std::piecewise_construct,
-                std::forward_as_tuple(eventName),
-                std::forward_as_tuple(~0));
-                _adminLock.Unlock();
+            if (result == Firebolt::Error::None) 
+            {
+                {
+                    std::lock_guard<std::mutex> guard(_adminLock);
+                    _eventMap.emplace(std::piecewise_construct,
+                    std::forward_as_tuple(eventName),
+                    std::forward_as_tuple(~0));
+                }
 
                 result = WaitForEventResponse(id, eventName, response, _waitTime);
             }
@@ -695,14 +700,15 @@ namespace FireboltSDK {
         friend Channel;
         inline bool IsEvent(const uint32_t id, string& eventName)
         {
-            _adminLock.Lock();
-            for (auto& event : _eventMap) {
-                 if (event.second == id) {
-                     eventName = event.first;
-                     break;
+            {
+                std::lock_guard<std::mutex> guard(_adminLock);
+                for (auto& event : _eventMap) {
+                    if (event.second == id) {
+                        eventName = event.first;
+                        break;
+                    }
                 }
             }
-            _adminLock.Unlock();
             return (eventName.empty() != true);
         }
         uint64_t Timed()
@@ -711,7 +717,7 @@ namespace FireboltSDK {
             uint64_t currentTime = FireboltSDK::Core::MyTime::Now().Ticks();
 
             // Lets see if some callback are expire. If so trigger and remove...
-            _adminLock.Lock();
+            std::lock_guard<std::mutex> guard(_adminLock);
 
             typename PendingMap::iterator index = _pendingQueue.begin();
 
@@ -725,8 +731,6 @@ namespace FireboltSDK {
                 }
             }
             _scheduledTime = (result != static_cast<uint64_t>(~0) ? result : 0);
-
-            _adminLock.Unlock();
 
             return (_scheduledTime);
         }
@@ -742,17 +746,18 @@ namespace FireboltSDK {
 
         void Closed()
         {
-            // Abort any in progress RPC command:
-            _adminLock.Lock();
+            {
+                // Abort any in progress RPC command:
+                std::lock_guard<std::mutex> guard(_adminLock);
 
-            // See if we issued anything, if so abort it..
-            while (_pendingQueue.size() != 0) {
+                // See if we issued anything, if so abort it..
+                while (_pendingQueue.size() != 0) {
 
-                _pendingQueue.begin()->second.Abort(_pendingQueue.begin()->first);
-                _pendingQueue.erase(_pendingQueue.begin());
+                    _pendingQueue.begin()->second.Abort(_pendingQueue.begin()->first);
+                    _pendingQueue.erase(_pendingQueue.begin());
+                }
             }
 
-            _adminLock.Unlock();
             if (_connected != false) {
                 _connected = false;
                 _listener(_connected, _status);
@@ -778,7 +783,7 @@ namespace FireboltSDK {
                 ASSERT(inbound->Parameters.IsSet() == false);
                 ASSERT(inbound->Designator.IsSet() == false);
 
-                _adminLock.Lock();
+                _adminLock.lock();
 
                 // See if we issued this..
                 typename PendingMap::iterator index = _pendingQueue.find(inbound->Id.Value());
@@ -790,9 +795,9 @@ namespace FireboltSDK {
                     }
 
                      result = WPEFramework::Core::ERROR_NONE;
-                    _adminLock.Unlock();
+                    _adminLock.unlock();
                 } else {
-                    _adminLock.Unlock();
+                    _adminLock.unlock();
                     string eventName;
                     if (IsEvent(inbound->Id.Value(), eventName)) {
                         _eventHandler->Dispatch(eventName, inbound);
@@ -822,7 +827,7 @@ namespace FireboltSDK {
                 message->Designator = method;
                 ToMessage(parameters, message);
 
-                _adminLock.Lock();
+                _adminLock.lock();
 
                 typename std::pair< typename PendingMap::iterator, bool> newElement =
                         _pendingQueue.emplace(std::piecewise_construct,
@@ -832,7 +837,7 @@ namespace FireboltSDK {
 
                 if (newElement.second == true) {
 
-                    _adminLock.Unlock();
+                    _adminLock.unlock();
 
                     _channel->Submit(WPEFramework::Core::ProxyType<INTERFACE>(message));
 
@@ -848,10 +853,11 @@ namespace FireboltSDK {
         Firebolt::Error WaitForEventResponse(const uint32_t& id, const string& eventName, RESPONSE& response, const uint32_t waitTime)
         {
             Firebolt::Error result = Firebolt::Error::Timedout;
-            _adminLock.Lock();
+
+            _adminLock.lock();
             typename PendingMap::iterator index = _pendingQueue.find(id);
             Entry& slot(index->second);
-            _adminLock.Unlock();
+            _adminLock.unlock();
 
             uint8_t waiting = waitTime;
             do {
@@ -871,13 +877,13 @@ namespace FireboltSDK {
                                 result = _eventHandler->ValidateResponse(jsonResponse, enabled);
                                 if (result == Firebolt::Error::None) {
                                     FromMessage((INTERFACE*)&response, *jsonResponse);
-                                    if (enabled) {
-                                        _adminLock.Lock();
+                                    if (enabled) 
+                                    {
+                                        std::lock_guard<std::mutex> guard(_adminLock);
                                         typename EventMap::iterator index = _eventMap.find(eventName);
                                         if (index != _eventMap.end()) {
                                             index->second = id;
                                         }
-                                        _adminLock.Unlock();
                                     }
                                 }
                             }
@@ -888,9 +894,9 @@ namespace FireboltSDK {
                 }
                 waiting -= (waiting == WPEFramework::Core::infinite ? 0 : waitSlot);
             } while ((result != Firebolt::Error::None) && (waiting > 0 ));
-            _adminLock.Lock();
+            
+            std::lock_guard<std::mutex> guard(_adminLock);
             _pendingQueue.erase(id);
-            _adminLock.Unlock();
 
             return result;
         }
@@ -969,7 +975,7 @@ namespace FireboltSDK {
         }
 
     private:
-        WPEFramework::Core::CriticalSection _adminLock;
+        std::mutex _adminLock;
         WPEFramework::Core::NodeId _connectId;
         WPEFramework::Core::ProxyType<Channel> _channel;
         IEventHandler* _eventHandler;

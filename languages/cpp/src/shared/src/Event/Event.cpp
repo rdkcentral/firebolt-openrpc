@@ -16,6 +16,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <mutex>
 #include "Transport/Transport.h"
 #include "Event.h"
 
@@ -91,7 +92,7 @@ namespace FireboltSDK {
     Firebolt::Error Event::Dispatch(const string& eventName, const WPEFramework::Core::ProxyType<WPEFramework::Core::JSONRPC::Message>& jsonResponse) /* override */
     {
         string response = jsonResponse->Result.Value();
-        _adminLock.Lock();
+        _adminLock.lock();
         EventMap::iterator eventIndex = _eventMap.find(eventName);
         if (eventIndex != _eventMap.end()) {
             CallbackMap::iterator callbackIndex = eventIndex->second.begin();
@@ -101,11 +102,11 @@ namespace FireboltSDK {
                     callbackIndex->second.state = State::EXECUTING;
                 }
                 state = callbackIndex->second.state;
-                _adminLock.Unlock();
+                _adminLock.unlock();
                 if (state == State::EXECUTING) {
                     callbackIndex->second.lambda(callbackIndex->first, callbackIndex->second.userdata, (jsonResponse->Result.Value()));
                 }
-                _adminLock.Lock();
+                _adminLock.lock();
                 if (callbackIndex->second.state == State::REVOKED) {
                     callbackIndex = eventIndex->second.erase(callbackIndex);
                     if (eventIndex->second.size() == 0) {
@@ -117,7 +118,7 @@ namespace FireboltSDK {
                 }
             }
         }
-        _adminLock.Unlock();
+        _adminLock.unlock();
 
         return Firebolt::Error::None;;
     }
@@ -125,24 +126,33 @@ namespace FireboltSDK {
     Firebolt::Error Event::Revoke(const string& eventName, void* usercb)
     {
         Firebolt::Error status = Firebolt::Error::None;
-        _adminLock.Lock();
+
+        std::lock_guard<std::mutex> guard(_adminLock);
+
         EventMap::iterator eventIndex = _eventMap.begin();
-        if (eventIndex != _eventMap.end()) {
+        if (eventIndex != _eventMap.end())
+        {
             CallbackMap::iterator callbackIndex = eventIndex->second.find(usercb);
-            if (callbackIndex->second.state != State::EXECUTING) {
-                if (callbackIndex != eventIndex->second.end()) {
+            if (callbackIndex->second.state != State::EXECUTING)
+            {
+                if (callbackIndex != eventIndex->second.end())
+                {
                     eventIndex->second.erase(callbackIndex);
                 }
-            } else {
+            }
+            else
+            {
                 callbackIndex->second.state = State::REVOKED;
             }
-            if (eventIndex->second.size() == 0) {
+            if (eventIndex->second.size() == 0)
+            {
                 _eventMap.erase(eventIndex);
-            } else {
+            }
+            else
+            {
                 status = Firebolt::Error::General;
             }
         }
-        _adminLock.Unlock();
 
         return status;
     }
@@ -157,7 +167,7 @@ namespace FireboltSDK {
             }
             eventIndex = _eventMap.erase(eventIndex);
         }
-        _adminLock.Unlock();
+        _adminLock.unlock();
     }
 
 }
