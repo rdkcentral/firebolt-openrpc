@@ -19,6 +19,7 @@
 #include "Module.h"
 #include "error.h"
 #include "Logger.h"
+#include "time_new.h"
 
 namespace WPEFramework {
 
@@ -69,7 +70,7 @@ namespace FireboltSDK {
             msg[position] = '\0';
 
             char formattedMsg[Logger::MaxBufSize];
-            const string time = WPEFramework::Core::Time::Now().ToTimeOnly(true);
+            const string time = FireboltSDK::Core::MyTime::Now().ToTimeOnly(true);
             const string categoryName =  WPEFramework::Core::EnumerateType<Logger::Category>(category).Data();
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wformat-truncation"

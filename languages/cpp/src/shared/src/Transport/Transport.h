@@ -20,6 +20,7 @@
 
 #include "Module.h"
 #include "error.h"
+#include "time_new.h"
 
 namespace FireboltSDK {
 
@@ -44,7 +45,7 @@ namespace FireboltSDK {
             };
             struct ASynchronous {
                 ASynchronous(const uint32_t waitTime, const Callback& completed)
-                    : _waitTime(WPEFramework::Core::Time::Now().Add(waitTime).Ticks())
+                    : _waitTime(FireboltSDK::Core::MyTime::Now().Add(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::milliseconds(waitTime))).Ticks())
                     , _completed(completed)
                 {
                 }
@@ -707,7 +708,7 @@ namespace FireboltSDK {
         uint64_t Timed()
         {
             uint64_t result = ~0;
-            uint64_t currentTime = WPEFramework::Core::Time::Now().Ticks();
+            uint64_t currentTime = FireboltSDK::Core::MyTime::Now().Ticks();
 
             // Lets see if some callback are expire. If so trigger and remove...
             _adminLock.Lock();
