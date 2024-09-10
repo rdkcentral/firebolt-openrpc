@@ -1,6 +1,6 @@
 ### ${method.name}
 
-*This is an private RPC method.*
+*This is a private RPC method.*
 
 ${method.summary}
 
