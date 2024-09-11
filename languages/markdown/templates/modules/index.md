@@ -23,7 +23,11 @@ ${end.if.public}
 
 /* ${METHODS} */
 
+/* ${PRIVATE_METHODS} */
+
 /* ${EVENTS} */
+
+/* ${PRIVATE_EVENTS} */
 
 /* ${PROVIDERS} */
 

@@ -23,7 +23,7 @@ import { ${info.title} } from '${package.name}'
 class My${provider} {
 ${provider.interface.start}
     async ${provider.interface.name}(parameters, session) {
-        return ${provider.interface.example.result}
+        ${if.provider.interface.example.result}return ${provider.interface.example.result}${end.if.provider.interface.example.result}
     }
 ${provider.interface.end}
 }
