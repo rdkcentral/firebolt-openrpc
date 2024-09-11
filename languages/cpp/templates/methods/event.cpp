@@ -35,3 +35,5 @@ ${event.params.serialization}
             *err = status;
         }
     }
+
+    ${if.globalsubscriber} /*THIS IS A TEST!!!!!*/${end.if.globalsubscriber}
