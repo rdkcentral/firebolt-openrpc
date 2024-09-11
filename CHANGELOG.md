@@ -1,3 +1,10 @@
+# [3.2.0-next.1](https://github.com/rdkcentral/firebolt-openrpc/compare/v3.1.2-next.1...v3.2.0-next.1) (2024-09-11)
+
+
+### Features
+
+* Make private method and private events more hidden ([#216](https://github.com/rdkcentral/firebolt-openrpc/issues/216)) ([d3d5bdd](https://github.com/rdkcentral/firebolt-openrpc/commit/d3d5bddc7a2f979bd5efea960786ea1b488b0751))
+
 ## [3.1.2-next.1](https://github.com/rdkcentral/firebolt-openrpc/compare/v3.1.1...v3.1.2-next.1) (2024-09-04)
 
 ### Bug Fixes
