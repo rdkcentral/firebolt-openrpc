@@ -1,2 +1,2 @@
-            Add(_T("${property}"), &${Property});
+            Add(_T("${property.raw}"), &${Property});
             ${Property} = other.${Property};

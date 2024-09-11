@@ -177,6 +177,9 @@ const doListen = function(module, event, callback, context, once, internal=false
           resolve(listenerId)
         }
         else {
+          // Remove the listener from external list on failure to subscribe
+          // TODO: Instead of removing, the failed subscription shouldn't be put into the external list
+          listeners.remove(listenerId)
           reject(error)
         }
       })
@@ -184,7 +187,6 @@ const doListen = function(module, event, callback, context, once, internal=false
     else {
       resolve(listenerId)
     }
-
     return p
   }
 }

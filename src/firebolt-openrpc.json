@@ -696,6 +696,7 @@
                         "enum": [
                             "name",
                             "x-response",
+                            "x-response-name",
                             "x-alternative",
                             "x-since",
                             "x-pulls-for",
@@ -1010,6 +1011,13 @@
                         },
                         "x-provided-by": {
                             "type": "string"
+                        },
+                        "x-provider-selection": {
+                            "type": "string",
+                            "enum": [
+                                "focus",
+                                "appId"
+                            ]
                         }
                     },
                     "if": {
