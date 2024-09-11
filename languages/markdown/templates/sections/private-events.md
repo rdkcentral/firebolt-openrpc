@@ -1,5 +1,5 @@
 ## Private Events
-<details>
+<details id="private-events-details">
   <summary>View</summary>
 
   ${event.list}

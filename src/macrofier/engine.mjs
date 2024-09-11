@@ -745,7 +745,8 @@ function insertTableofContents(content) {
         const link = '#' + slug + (count[slug] ? `-${count[slug]}` : '')
         toc += ' ' + '  '.repeat(level - 1) + `- [${title}](${link})`
         if (title === 'Private Methods' || title === 'Private Events') {
-          toc += '<details><summary>Show</summary>\n'
+          let anchor = title === 'Private Methods' ? 'private-methods-details' : 'private-events-details'
+          toc += '<details ontoggle="document.getElementById(\'' + anchor + '\').open=this.open"><summary>Show</summary>\n'
           collapsedContentLevel = level
         } else {
           toc += '\n'
