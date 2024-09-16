@@ -269,6 +269,10 @@ const eventHasOptionalParam = (event) => {
   return event.params.length && event.params.find(param => !(param.required && param.required === true))
 }
 
+const isGlobalSubscriber = (method) => {
+  return method.tags && method.tags.some(tag => tag['x-subscriber-type'] === 'global');
+}
+
 const isOptionalParam = (param) => {
   return (!(param.required && param.required === true))
 }
@@ -344,6 +348,12 @@ const providersOrEmptyArray = compose(
 const deprecatedOrEmptyArray = compose(
   option([]),
   map(filter(isDeprecatedMethod)),
+  getMethods
+)
+
+const getGlobalSubscribers = compose(
+  option([]),
+  map(filter(isGlobalSubscriber)),
   getMethods
 )
 
@@ -1299,7 +1309,17 @@ function insertMethodMacros(template, methodObj, json, templates, type = '', exa
   const result = JSON.parse(JSON.stringify(methodObj.result))
   const event = isEventMethod(methodObj) ? JSON.parse(JSON.stringify(methodObj)) : ''
 
+  // Keep track of any global subscribers to insert into templates
+  const globalSubscribersArr = getGlobalSubscribers(json);
+  let isGlobalSubscriberEvent = false
+
   if (event) {
+    isGlobalSubscriberEvent = globalSubscribersArr.some(subscriber => {
+      const strippedEventName = event.name.replace(/^on/, '').replace(/Changed$/, '').toLowerCase();
+      const subscriberName = subscriber.name.toLowerCase();
+      return subscriberName && strippedEventName === subscriberName;
+    })
+    
     result.schema = JSON.parse(JSON.stringify(getPayloadFromEvent(methodObj)))
     event.result.schema = getPayloadFromEvent(event)
     event.params = event.params.filter(p => p.name !== 'listen')
@@ -1440,6 +1460,7 @@ function insertMethodMacros(template, methodObj, json, templates, type = '', exa
     .replace(/\$\{event\.params\}/g, eventParams)
     .replace(/\$\{event\.params\.table\.rows\}/g, eventParamsRows)
     .replace(/\$\{if\.event\.params\}(.*?)\$\{end\.if\.event\.params\}/gms, event && event.params.length ? '$1' : '')
+    .replace(/\$\{if\.globalsubscriber\}(.*?)\$\{end\.if\.globalsubscriber\}/gms, (isGlobalSubscriberEvent) ? '$1' : '')
     .replace(/\$\{if\.event\.callback\.params\}(.*?)\$\{end\.if\.event\.callback\.params\}/gms, event && eventHasOptionalParam(event) ? '$1' : '')
     .replace(/\$\{event\.signature\.params\}/g, event ? types.getMethodSignatureParams(event, json, { destination: state.destination, section: state.section }) : '')
     .replace(/\$\{event\.signature\.callback\.params\}/g, event ? types.getMethodSignatureParams(event, json, { destination: state.destination, section: state.section, callback: true }) : '')

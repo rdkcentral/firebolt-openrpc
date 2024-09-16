@@ -6,3 +6,7 @@
     // method result properties : ${method.result.properties}
     virtual void subscribe( ${event.signature.params}${if.event.params}, ${end.if.event.params}I${method.Name}Notification& notification, Firebolt::Error *err = nullptr ) = 0;
     virtual void unsubscribe( I${method.Name}Notification& notification, Firebolt::Error *err = nullptr ) = 0;
+${if.globalsubscriber}
+    virtual void globalSubscribe( I${method.Name}Notification& notification, Firebolt::Error *err = nullptr ) = 0;
+    virtual void globalUnsubscribe( I${method.Name}Notification& notification, Firebolt::Error *err = nullptr ) = 0;
+${end.if.globalsubscriber}
