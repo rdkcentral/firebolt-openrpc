@@ -37,6 +37,8 @@ find_package(${NAMESPACE}WebSocket CONFIG REQUIRED)
 find_package(${NAMESPACE}WebSocket CONFIG REQUIRED)
 find_package(${NAMESPACE}Core CONFIG REQUIRED)
 
+include_directories(${CMAKE_SOURCE_DIR}/build/${FIREBOLT_NAMESPACE}/usr/include/)
+
 target_link_libraries(${TARGET}
     PUBLIC
         ${NAMESPACE}WebSocket::${NAMESPACE}WebSocket

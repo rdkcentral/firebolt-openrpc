@@ -29,8 +29,57 @@ else ()
     set(FIREBOLT_LIBRARY_TYPE SHARED)
 endif ()
 
+include(FetchContent)
+
+message("Fetching nlohmann json... ")
+set(nlohmann_json_VERSION v3.11.3 CACHE STRING "Fetch nlohmann::json version")
+FetchContent_Declare(
+    nlohmann_json
+    GIT_REPOSITORY https://github.com/nlohmann/json
+    GIT_TAG ${nlohmann_json_VERSION}
+)
+FetchContent_GetProperties(nlohmann_json)
+if(NOT nlohmann_json)
+    FetchContent_Populate(nlohmann_json)
+    add_subdirectory(${nlohmann_json_SOURCE_DIR} ${nlohmann_json_BUILD_DIR})
+endif()
+FetchContent_MakeAvailable(nlohmann_json)
+
+message("Fetching nlohmann json-schema-validator... ")
+FetchContent_Declare(
+    nlohmann_json_schema_validator
+    GIT_REPOSITORY https://github.com/pboettch/json-schema-validator.git
+    GIT_TAG 2.3.0
+)
+FetchContent_GetProperties(nlohmann_json_schema_validator)
+if(NOT nlohmann_json_schema_validator)
+    FetchContent_Populate(nlohmann_json_schema_validator)
+    add_subdirectory(${nlohmann_json_schema_validator_SOURCE_DIR} ${nlohmann_json_schema_validator_BUILD_DIR})
+endif()
+FetchContent_MakeAvailable(nlohmann_json_schema_validator)
+
+message("Fetching googletest... ")
+FetchContent_Declare(
+    googletest
+    GIT_REPOSITORY https://github.com/google/googletest
+    GIT_TAG v1.15.2
+)
+FetchContent_GetProperties(googletest)
+if(NOT googletest_POPULATED)
+    FetchContent_Populate(googletest)
+    add_subdirectory(${googletest_SOURCE_DIR} ${google_BUILD_DIR})
+endif()
+FetchContent_MakeAvailable(googletest)
+
+include_directories(
+    ${nlohmann_json_SOURCE_DIR}/include
+    ${nlohmann_json_schema_validator_SOURCE_DIR}/src
+    ${googletest_SOURCE_DIR}/googletest/include
+    ${googletest_SOURCE_DIR}/googlemock/include
+)
+
 if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
-    set(CMAKE_INSTALL_PREFIX "${SYSROOT_PATH}/usr" CACHE INTERNAL "" FORCE)
+    set(CMAKE_INSTALL_PREFIX ${SYSROOT_PATH}/usr CACHE INTERNAL "" FORCE)
     set(CMAKE_PREFIX_PATH ${SYSROOT_PATH}/usr/lib/cmake CACHE INTERNAL "" FORCE)
 endif()
 
@@ -41,6 +90,8 @@ list(APPEND CMAKE_MODULE_PATH
 include(HelperFunctions)
 
 set(FIREBOLT_NAMESPACE ${PROJECT_NAME} CACHE STRING "Namespace of the project")
+
+message("CMAKE_PREFIX_PATH: " ${CMAKE_PREFIX_PATH})
 
 find_package(WPEFramework CONFIG REQUIRED)
 
