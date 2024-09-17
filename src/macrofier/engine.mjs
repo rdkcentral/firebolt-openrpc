@@ -269,6 +269,10 @@ const eventHasOptionalParam = (event) => {
   return event.params.length && event.params.find(param => !(param.required && param.required === true))
 }
 
+const isGlobalSubscriber = (method) => {
+  return method.tags && method.tags.some(tag => tag['x-subscriber-type'] === 'global');
+}
+
 const isOptionalParam = (param) => {
   return (!(param.required && param.required === true))
 }
@@ -344,6 +348,12 @@ const providersOrEmptyArray = compose(
 const deprecatedOrEmptyArray = compose(
   option([]),
   map(filter(isDeprecatedMethod)),
+  getMethods
+)
+
+const getGlobalSubscribers = compose(
+  option([]),
+  map(filter(isGlobalSubscriber)),
   getMethods
 )
 
@@ -535,21 +545,28 @@ const generateMacros = (obj, templates, languages, options = {}) => {
   const allMethodsArray = generateMethods(obj, examples, templates, languages, options.type)
 
   Array.from(new Set(['methods'].concat(config.additionalMethodTemplates))).filter(dir => dir).forEach(dir => {
-
     if (dir.includes('declarations')) {
       const declarationsArray = allMethodsArray.filter(m => m.declaration[dir] && (!config.excludeDeclarations || (!options.hideExcluded || !m.excluded)))
       macros.methods[dir] = declarationsArray.length ? getTemplate('/sections/declarations', templates).replace(/\$\{declaration\.list\}/g, declarationsArray.map(m => m.declaration[dir]).join('\n')) : ''
     }
     else if (dir.includes('methods')) {
-      const methodsArray = allMethodsArray.filter(m => m.body[dir] && !m.event && (!options.hideExcluded || !m.excluded))
-      macros.methods[dir] = methodsArray.length ? getTemplate('/sections/methods', templates).replace(/\$\{method.list\}/g, methodsArray.map(m => m.body[dir]).join('\n')) : ''
+      const publicMethodsArray = allMethodsArray.filter(m => m.body[dir] && !m.event && (!options.hideExcluded || !m.excluded) && !m.private)
+      const privateMethodsArray = allMethodsArray.filter(m => m.body[dir] && !m.event && (!options.hideExcluded || !m.excluded) && m.private)
+      const methodSection = (template, arr) => {
+        const regex = template.endsWith('events') ? /\$\{event.list\}/g : /\$\{method.list\}/g
+        return arr.length ? getTemplate('/sections/' + template, templates).replace(regex, arr.map(m => m.body[dir]).join('\n')) : ''
+      }
+      macros.methods.methods = methodSection('methods', publicMethodsArray)
+      macros.methods.private = methodSection('private-methods', privateMethodsArray)
 
-      const eventsArray = allMethodsArray.filter(m => m.body[dir] && m.event && (!options.hideExcluded || !m.excluded))
-      macros.events[dir] = eventsArray.length ? getTemplate('/sections/events', templates).replace(/\$\{event.list\}/g, eventsArray.map(m => m.body[dir]).join('\n')) : ''
+      const publicEventsArray = allMethodsArray.filter(m => m.body[dir] && m.event && (!options.hideExcluded || !m.excluded) && !m.private)
+      const privateEventsArray = allMethodsArray.filter(m => m.body[dir] && m.event && (!options.hideExcluded || !m.excluded && m.private))
+      macros.events.methods = methodSection('events', publicEventsArray)
+      macros.events.private = methodSection('private-events', privateEventsArray)
 
       if (dir === 'methods') {
-        macros.methodList = methodsArray.filter(m => m.body).map(m => m.name)
-        macros.eventList = eventsArray.map(m => makeEventName(m))
+        macros.methodList = publicMethodsArray.filter(m => m.body).map(m => m.name)
+        macros.eventList = publicEventsArray.map(m => makeEventName(m))
       }
     }
   })
@@ -640,8 +657,10 @@ const insertMacros = (fContents = '', macros = {}) => {
 
   // Output the originally supported non-configurable methods & events macros
   fContents = fContents.replace(/[ \t]*\/\* \$\{METHODS\} \*\/[ \t]*\n/, macros.methods.methods)
+  fContents = fContents.replace(/[ \t]*\/\* \$\{PRIVATE_METHODS\} \*\/[ \t]*\n/, macros.methods.private)
   fContents = fContents.replace(/[ \t]*\/\* \$\{METHOD_LIST\} \*\/[ \t]*\n/, macros.methodList.join(',\n'))
   fContents = fContents.replace(/[ \t]*\/\* \$\{EVENTS\} \*\/[ \t]*\n/, macros.events.methods)
+  fContents = fContents.replace(/[ \t]*\/\* \$\{PRIVATE_EVENTS\} \*\/[ \t]*\n/, macros.events.private)
   fContents = fContents.replace(/[ \t]*\/\* \$\{EVENT_LIST\} \*\/[ \t]*\n/, macros.eventList.join(','))
   fContents = fContents.replace(/[ \t]*\/\* \$\{EVENTS_ENUM\} \*\/[ \t]*\n/, macros.eventsEnum)
 
@@ -713,12 +732,18 @@ function insertTableofContents(content) {
   let toc = ''
   const count = {}
   const slugger = title => title.toLowerCase().replace(/ /g, '-').replace(/-+/g, '-').replace(/[^a-zA-Z-]/g, '')
+  let collapsedContentLevel = null
 
   content.split('\n').filter(line => line.match(/^\#/)).map(line => {
     const match = line.match(/^(\#+) (.*)/)
     if (match) {
       const level = match[1].length
       if (level > 1 && level < 4) {
+        if (collapsedContentLevel === level) {
+          // we are back to the level we started the collapsed content, end the collapse
+          toc += ' ' + '  '.repeat(collapsedContentLevel) + '</details>\n'
+          collapsedContentLevel = null
+        }
         const title = match[2]
         const slug = slugger(title)
         if (count.hasOwnProperty(slug)) {
@@ -728,7 +753,14 @@ function insertTableofContents(content) {
           count[slug] = 0
         }
         const link = '#' + slug + (count[slug] ? `-${count[slug]}` : '')
-        toc += ' ' + '  '.repeat(level - 1) + `- [${title}](${link})\n`
+        toc += ' ' + '  '.repeat(level - 1) + `- [${title}](${link})`
+        if (title === 'Private Methods' || title === 'Private Events') {
+          let anchor = title === 'Private Methods' ? 'private-methods-details' : 'private-events-details'
+          toc += '<details ontoggle="document.getElementById(\'' + anchor + '\').open=this.open"><summary>Show</summary>\n'
+          collapsedContentLevel = level
+        } else {
+          toc += '\n'
+        }
       }
     }
   }).join('\n')
@@ -1158,7 +1190,8 @@ function generateMethods(json = {}, examples = {}, templates = {}, languages = [
       body: {},
       declaration: {},
       excluded: methodObj.tags.find(t => t.name === 'exclude-from-sdk'),
-      event: isEventMethod(methodObj)
+      event: isEventMethod(methodObj),
+      private: isRPCOnlyMethod(methodObj)
     }
 
 
@@ -1276,7 +1309,17 @@ function insertMethodMacros(template, methodObj, json, templates, type = '', exa
   const result = JSON.parse(JSON.stringify(methodObj.result))
   const event = isEventMethod(methodObj) ? JSON.parse(JSON.stringify(methodObj)) : ''
 
+  // Keep track of any global subscribers to insert into templates
+  const globalSubscribersArr = getGlobalSubscribers(json);
+  let isGlobalSubscriberEvent = false
+
   if (event) {
+    isGlobalSubscriberEvent = globalSubscribersArr.some(subscriber => {
+      const strippedEventName = event.name.replace(/^on/, '').replace(/Changed$/, '').toLowerCase();
+      const subscriberName = subscriber.name.toLowerCase();
+      return subscriberName && strippedEventName === subscriberName;
+    })
+    
     result.schema = JSON.parse(JSON.stringify(getPayloadFromEvent(methodObj)))
     event.result.schema = getPayloadFromEvent(event)
     event.params = event.params.filter(p => p.name !== 'listen')
@@ -1417,6 +1460,7 @@ function insertMethodMacros(template, methodObj, json, templates, type = '', exa
     .replace(/\$\{event\.params\}/g, eventParams)
     .replace(/\$\{event\.params\.table\.rows\}/g, eventParamsRows)
     .replace(/\$\{if\.event\.params\}(.*?)\$\{end\.if\.event\.params\}/gms, event && event.params.length ? '$1' : '')
+    .replace(/\$\{if\.globalsubscriber\}(.*?)\$\{end\.if\.globalsubscriber\}/gms, (isGlobalSubscriberEvent) ? '$1' : '')
     .replace(/\$\{if\.event\.callback\.params\}(.*?)\$\{end\.if\.event\.callback\.params\}/gms, event && eventHasOptionalParam(event) ? '$1' : '')
     .replace(/\$\{event\.signature\.params\}/g, event ? types.getMethodSignatureParams(event, json, { destination: state.destination, section: state.section }) : '')
     .replace(/\$\{event\.signature\.callback\.params\}/g, event ? types.getMethodSignatureParams(event, json, { destination: state.destination, section: state.section, callback: true }) : '')
@@ -1931,9 +1975,9 @@ function insertProviderInterfaceMacros(template, capability, moduleJson = {}, te
 
       let i = 1
       iface.forEach(method => {
-
         methodsBlock += match[0].replace(/\$\{provider\.interface\.name\}/g, method.name)
           .replace(/\$\{provider\.interface\.Name\}/g, method.name.charAt(0).toUpperCase() + method.name.substr(1))
+          .replace(/\$\{if\.provider\.interface\.example\.result\}(.*?)\$\{end\.if\.provider\.interface\.example\.result\}/gms, method.examples[0].result.value == null ? '' : '$1')
 
           // first check for indented lines, and do the fancy indented replacement
           .replace(/^([ \t]+)(.*?)\$\{provider\.interface\.example\.result\}/gm, '$1$2' + indent(JSON.stringify(method.examples[0].result.value, null, '    '), '$1'))
@@ -1948,7 +1992,6 @@ function insertProviderInterfaceMacros(template, capability, moduleJson = {}, te
           .replace(/\$\{provider\.interface\.i\}/g, i)
           .replace(/\$\{provider\.interface\.j\}/g, (i + iface.length))
           .replace(/\$\{provider\.interface\.k\}/g, (i + 2 * iface.length))
-
         i++
       })
       methodsBlock = methodsBlock.replace(/\$\{provider\.interface\.[a-zA-Z]+\}/g, '')
