@@ -1,3 +1,10 @@
+# [3.2.0-next.3](https://github.com/rdkcentral/firebolt-openrpc/compare/v3.2.0-next.2...v3.2.0-next.3) (2024-09-17)
+
+
+### Bug Fixes
+
+* Add open-rpc to generated C++ SDK ([#217](https://github.com/rdkcentral/firebolt-openrpc/issues/217)) ([a02980a](https://github.com/rdkcentral/firebolt-openrpc/commit/a02980a2aebb4a8c0cd675ea8752ee7b5ecd9fd7))
+
 # [3.2.0-next.2](https://github.com/rdkcentral/firebolt-openrpc/compare/v3.2.0-next.1...v3.2.0-next.2) (2024-09-16)
 
 
