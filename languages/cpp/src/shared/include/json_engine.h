@@ -1,4 +1,4 @@
-// #include<iostream>
+#include<iostream>
 #include <fstream>
 
 #include "gtest/gtest.h"
@@ -26,16 +26,14 @@ inline std::string capitalizeFirstChar(std::string str) {
 class JsonEngine
 {
     private:
-        std::fstream _file;
+        std::ifstream _file;
         nlohmann::json _data;
 
     public:
 
         JsonEngine()
         {
-            if (!_file.is_open())
-            _file.open("../dist/firebolt-core-open-rpc.json");
-            _file >> _data;
+            _data = read_json_from_file("../firebolt-core-open-rpc.json");
         }
 
         ~JsonEngine(){
@@ -54,6 +52,72 @@ class JsonEngine
                     }
                 }
             return "";
+        }
+
+        json read_json_from_file(const std::string &filename)
+        {
+            std::ifstream file(filename);
+            if (!file.is_open())
+            {
+                throw std::runtime_error("Could not open file: " + filename);
+            }
+
+            json j;
+            file >> j;
+            return j;
+        }
+
+        json resolve_reference(const json &full_schema, const std::string &ref)
+        {
+            if (ref.find("#/") != 0)
+            {
+                throw std::invalid_argument("Only internal references supported");
+            }
+
+            std::string path = ref.substr(2);
+            std::istringstream ss(path);
+            std::string token;
+            json current = full_schema;
+
+            while (std::getline(ss, token, '/'))
+            {
+                if (current.contains(token))
+                {
+                    current = current[token];
+                }
+                else
+                {
+                    throw std::invalid_argument("Invalid reference path: " + ref);
+                }
+            }
+
+            return current;
+        }
+
+        json process_schema(json schema, const json &full_schema)
+        {
+            if (schema.is_object())
+            {
+                if (schema.contains("$ref"))
+                {
+                    std::string ref = schema["$ref"];
+                    schema = resolve_reference(full_schema, ref);
+                }
+
+                for (auto &el : schema.items())
+                {
+                    el.value() = process_schema(el.value(), full_schema);
+                }
+            }
+            else if (schema.is_array())
+            {
+                for (auto &el : schema)
+                {
+                    el = process_schema(el, full_schema);
+                }
+            }
+
+            return schema;
         }
 
 
@@ -88,58 +152,22 @@ class JsonEngine
                     }
                     else {
                         std::cout << "Params is NOT empty" << std::endl;
-                        const json openRPCSchema = method["params"][0]["schema"];
-                        std::cout << "Schema validator schema JSON: " << openRPCSchema.dump() << std::endl;
-
+                        const json currentSchema = method["params"][0]["schema"];
+                        std::cout << "schema JSON before $ref: " << currentSchema.dump() << std::endl;
+                        
+                        json dereferenced_schema = process_schema(currentSchema, _data);
+                        std::cout << "schema JSON after $ref: " << dereferenced_schema.dump() << std::endl;
+                        
                         json_validator validator;
                         try{
-                            validator.set_root_schema(openRPCSchema);
+                            validator.set_root_schema(dereferenced_schema);
                             validator.validate(requestParams);
-                            // EXPECT_NO_THROW(validator.validate(requestParams)); // For usage without try catch
                             std::cout << "Schema validation succeeded" << std::endl;
                         }
                         catch (const std::exception &e){
                             FAIL() << "Schema validation error: " << e.what() << std::endl;
                         }
                     }
-
-                    // DUMMY SCHEMA VALIDATION - TO BE REMOVED
-                    // const json openRPCSchema = R"(
-                    //     {
-                    //     "title": "AdConfigurationOptions",
-                    //     "type": "object",
-                    //     "properties": {
-                    //         "coppa": {
-                    //             "type": "boolean",
-                    //             "description": "Whether or not the app requires US COPPA compliance."
-                    //         },
-                    //         "environment": {
-                    //             "type": "string",
-                    //             "enum": [
-                    //                 "prod",
-                    //                 "test"
-                    //             ],
-                    //             "default": "prod",
-                    //             "description": "Whether the app is running in a production or test mode."
-                    //         },
-                    //         "authenticationEntity": {
-                    //             "type": "string",
-                    //             "description": "The authentication provider, when it is separate entity than the app provider, e.g. an MVPD."
-                    //         }
-                    //     }
-			        // })"_json;
-                    // const json requestParams = json::parse(message->Parameters.Value());
-                    // // const json requestParams = R"({"options":{}})"_json;
-                    // json_validator validator;
-                    // try{
-                    //     validator.set_root_schema(openRPCSchema);
-                    //     validator.validate(requestParams);
-                    //     // EXPECT_NO_THROW(validator.validate(requestParams)); // For usage without try catch
-                    //     std::cout << "Schema validation succeeded" << std::endl;
-                    // }
-                    // catch (const std::exception &e){
-                    //     FAIL() << "Schema validation error: " << e.what() << std::endl;
-                    // }
                 }
             }
         }
