@@ -152,20 +152,26 @@ class JsonEngine
                     }
                     else {
                         std::cout << "Params is NOT empty" << std::endl;
-                        const json currentSchema = method["params"][0]["schema"];
-                        std::cout << "schema JSON before $ref: " << currentSchema.dump() << std::endl;
-                        
-                        json dereferenced_schema = process_schema(currentSchema, _data);
-                        std::cout << "schema JSON after $ref: " << dereferenced_schema.dump() << std::endl;
-                        
                         json_validator validator;
-                        try{
-                            validator.set_root_schema(dereferenced_schema);
-                            validator.validate(requestParams);
-                            std::cout << "Schema validation succeeded" << std::endl;
-                        }
-                        catch (const std::exception &e){
-                            FAIL() << "Schema validation error: " << e.what() << std::endl;
+                        const json openRPCParams = method["params"];
+                        for (auto& item : openRPCParams.items()) {
+                            std::string key = item.key();
+                            json currentSchema = item.value();
+                            std::string paramName = currentSchema["name"];
+                            std::cout << "paramName: " << paramName << std::endl;
+                            if (requestParams.contains(paramName)) {
+                                std::cout << "RequestParams contain paramName in rpc" << std::endl;
+                                json dereferenced_schema = process_schema(currentSchema, _data);
+                                std::cout << "schema JSON after $ref: " << dereferenced_schema.dump() << std::endl;
+                                try{
+                                    validator.set_root_schema(dereferenced_schema["schema"]);
+                                    validator.validate(requestParams[paramName]);
+                                    std::cout << "Schema validation succeeded" << std::endl;
+                                }
+                                catch (const std::exception &e){
+                                    FAIL() << "Schema validation error: " << e.what() << std::endl;
+                                }
+                            }
                         }
                     }
                 }
