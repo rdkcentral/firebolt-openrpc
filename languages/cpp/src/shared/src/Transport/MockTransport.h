@@ -23,9 +23,6 @@
 #include "error.h"
 #include "json_engine.h"
 
-// #define MY_DEBUG(message, value)
-// #define MY_DEBUG(message, value) std::cout << "[MyDebug] " << __FILE__ << " "<< __func__ << "() " << message << ": "<< value << std::endl;
-
 namespace FireboltSDK
 {
 
@@ -396,13 +393,11 @@ namespace FireboltSDK
 #ifdef UNIT_TEST
         void Submit(const WPEFramework::Core::ProxyType<INTERFACE> &message)
         {
-            std::cout << "Inside Transport Submit function 1" << std::endl;
             _channel.Submit(message);
         }
 #else
     void Submit(const WPEFramework::Core::ProxyType<INTERFACE> &message)
         {
-            std::cout << "Inside Mock Transport Submit function 1" << std::endl;
             const WPEFramework::Core::JSONRPC::Message* jsonRpcMessage = dynamic_cast<const WPEFramework::Core::JSONRPC::Message*>(message.operator->());
             std::unique_ptr<JsonEngine> jsonEngine = std::make_unique<JsonEngine>();
             jsonEngine->MockRequest(jsonRpcMessage);
@@ -420,12 +415,19 @@ namespace FireboltSDK
         {
             Close();
         }
+
+#ifdef UNIT_TEST
         bool IsOpen()
         {
-            // return (_channel.IsOpen() == true);
+            return (_channel.IsOpen() == true);
+        }
+#else
+        bool IsOpen()
+        {
             return true;
         }
-
+#endif
+        
     protected:
         void StateChange()
         {
@@ -445,15 +447,22 @@ namespace FireboltSDK
             }
             _adminLock.Unlock();
         }
+        
+#ifdef UNIT_TEST
         bool Open(const uint32_t waitTime)
         {
-            // bool result = true;
-            // if (_channel.IsClosed() == true) {
-            //     result = (_channel.Open(waitTime) == WPEFramework::Core::ERROR_NONE);
-            // }
-            // return (result);
+            bool result = true;
+            if (_channel.IsClosed() == true) {
+                result = (_channel.Open(waitTime) == WPEFramework::Core::ERROR_NONE);
+            }
+            return (result);
+        }
+#else
+        bool Open(const uint32_t waitTime)
+        {
             return true;
         }
+#endif
         void Close()
         {
             _channel.Close(WPEFramework::Core::infinite);
@@ -596,11 +605,18 @@ namespace FireboltSDK
         }
 
     public:
+
+#ifdef UNIT_TEST
         inline bool IsOpen()
         {
-            // return _channel->IsOpen();
+            return _channel->IsOpen();
+        }
+#else
+        inline bool IsOpen()
+        {
             return true;
         }
+#endif
 
         void Revoke(const string &eventName)
         {
@@ -618,7 +634,6 @@ namespace FireboltSDK
         template <typename PARAMETERS, typename RESPONSE>
         Firebolt::Error Invoke(const string& method, const PARAMETERS& parameters, RESPONSE& response)
         {
-            std::cout << "Inside OG Transport Invoke function" << std::endl;
             Entry slot;
             uint32_t id = _channel->Sequence();
             Firebolt::Error result = Send(method, parameters, id);
@@ -635,7 +650,6 @@ namespace FireboltSDK
             std::cout << "Inside Mock Transport Invoke function" << std::endl;
             Entry slot;
             uint32_t id = _channel->Sequence();
-            std::cout << "Inside Mock Transport Invoke function - id: " << id << std::endl;
             Firebolt::Error result = Send(method, parameters, id);
 
             WPEFramework::Core::JSONRPC::Message message;
@@ -643,8 +657,6 @@ namespace FireboltSDK
             std::unique_ptr<JsonEngine> jsonEngine = std::make_unique<JsonEngine>();
             result = jsonEngine->MockResponse(message, response);
             FromMessage((INTERFACE *)&response, message);
-
-            // return Firebolt::Error::None;
             return (result);
         }
 #endif
@@ -884,7 +896,6 @@ namespace FireboltSDK
         template <typename PARAMETERS>
         Firebolt::Error Send(const string &method, const PARAMETERS &parameters, const uint32_t &id)
         {
-            std::cout << "Inside Transport Send function" << std::endl;
             int32_t result = WPEFramework::Core::ERROR_UNAVAILABLE;
 
             if ((_channel.IsValid() == true) && (_channel->IsSuspended() == true))
