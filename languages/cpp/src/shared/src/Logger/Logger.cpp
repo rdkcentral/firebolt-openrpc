@@ -16,9 +16,25 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <chrono>
+#include <ctime>
+#include <iomanip>
+#include <sstream>
+#include <string>
 #include "Module.h"
 #include "error.h"
 #include "Logger.h"
+
+std::string GetCurrentTime24HoursFormat()
+{
+    auto now = std::chrono::system_clock::now();
+    std::time_t now_c = std::chrono::system_clock::to_time_t(now);
+    std::tm *now_tm = std::localtime(&now_c);
+
+    std::stringstream ss;
+    ss << std::put_time(now_tm, "%H:%M:%S");
+    return ss.str();
+}
 
 namespace WPEFramework {
 
@@ -71,7 +87,7 @@ namespace FireboltSDK {
             msg[position] = '\0';
 
             char formattedMsg[Logger::MaxBufSize];
-            const string time = WPEFramework::Core::Time::Now().ToTimeOnly(true);
+            const string time = GetCurrentTime24HoursFormat();
             const string categoryName =  WPEFramework::Core::EnumerateType<Logger::Category>(category).Data();
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wformat-truncation"

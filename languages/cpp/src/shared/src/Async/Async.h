@@ -18,6 +18,7 @@
 
 #pragma once
 
+#include <mutex>
 #include "Module.h"
 
 namespace FireboltSDK {
@@ -86,47 +87,53 @@ namespace FireboltSDK {
 
     public:
         template <typename RESPONSE, typename PARAMETERS, typename CALLBACK>
-        Firebolt::Error Invoke(const string& method, const PARAMETERS& parameters, const CALLBACK& callback, void* usercb, uint32_t waitTime = DefaultWaitTime)
+        Firebolt::Error Invoke(const string &method, const PARAMETERS &parameters, const CALLBACK &callback, void *usercb, uint32_t waitTime = DefaultWaitTime)
         {
             Firebolt::Error status = Firebolt::Error::None;
-            if (_transport != nullptr) {
-                Transport<WPEFramework::Core::JSON::IElement>* transport = _transport;
-                std::function<void(void* usercb, void* response, Firebolt::Error status)> actualCallback = callback;
-                DispatchFunction lambda = [actualCallback, transport, method, parameters, waitTime](Async& parent, void* usercb) -> Firebolt::Error {
+            if (_transport != nullptr)
+            {
+                Transport<WPEFramework::Core::JSON::IElement> *transport = _transport;
+                std::function<void(void *usercb, void *response, Firebolt::Error status)> actualCallback = callback;
+                DispatchFunction lambda = [actualCallback, transport, method, parameters, waitTime](Async &parent, void *usercb) -> Firebolt::Error
+                {
                     RESPONSE response;
                     uint32_t id = DefaultId;
                     Firebolt::Error status = transport->InvokeAsync(method, parameters, id);
-                    if (status == Firebolt::Error::None && parent.IsActive(method, usercb) == true) {
+                    if (status == Firebolt::Error::None && parent.IsActive(method, usercb) == true)
+                    {
                         parent.UpdateEntry(method, usercb, id);
                         status = transport->WaitForResponse(id, response, waitTime);
-                        if (status == Firebolt::Error::None && parent.IsActive(method, usercb) == true) {
-                            WPEFramework::Core::ProxyType<RESPONSE>* jsonResponse = new WPEFramework::Core::ProxyType<RESPONSE>();
+                        if (status == Firebolt::Error::None && parent.IsActive(method, usercb) == true)
+                        {
+                            WPEFramework::Core::ProxyType<RESPONSE> *jsonResponse = new WPEFramework::Core::ProxyType<RESPONSE>();
                             *jsonResponse = WPEFramework::Core::ProxyType<RESPONSE>::Create();
                             (*jsonResponse)->FromString(response);
                             actualCallback(usercb, jsonResponse, status);
                             parent.RemoveEntry(method, usercb);
                         }
-
                     }
                     return (status);
                 };
 
-                _adminLock.Lock();
+                std::lock_guard<std::mutex> guard(_adminLock);
                 WPEFramework::Core::ProxyType<WPEFramework::Core::IDispatch> job = WPEFramework::Core::ProxyType<WPEFramework::Core::IDispatch>(WPEFramework::Core::ProxyType<Async::Job>::Create(*this, method, lambda, usercb));
                 CallbackData callbackData = {lambda, job, DefaultId};
                 MethodMap::iterator index = _methodMap.find(method);
-                if (index != _methodMap.end()) {
+                if (index != _methodMap.end())
+                {
                     CallbackMap::iterator callbackIndex = index->second.find(usercb);
-                    if (callbackIndex == index->second.end()) {
+                    if (callbackIndex == index->second.end())
+                    {
                         index->second.emplace(std::piecewise_construct, std::forward_as_tuple(usercb), std::forward_as_tuple(callbackData));
                     }
-                } else {
+                }
+                else
+                {
 
                     CallbackMap callbackMap;
                     callbackMap.emplace(std::piecewise_construct, std::forward_as_tuple(usercb), std::forward_as_tuple(callbackData));
                     _methodMap.emplace(std::piecewise_construct, std::forward_as_tuple(method), std::forward_as_tuple(callbackMap));
                 }
-                _adminLock.Unlock();
 
                 WPEFramework::Core::IWorkerPool::Instance().Submit(job);
             }
@@ -140,50 +147,57 @@ namespace FireboltSDK {
             return (Firebolt::Error::None);
         }
 
-        void UpdateEntry(const string& method, void* usercb, uint32_t id)
+        void UpdateEntry(const string &method, void *usercb, uint32_t id)
         {
-            _adminLock.Lock();
+            std::lock_guard<std::mutex> guard(_adminLock);
             MethodMap::iterator index = _methodMap.find(method);
-            if (index != _methodMap.end()) {
+            if (index != _methodMap.end())
+            {
                 CallbackMap::iterator callbackIndex = index->second.find(usercb);
-                if (callbackIndex != index->second.end()) {
+                if (callbackIndex != index->second.end())
+                {
                     callbackIndex->second.id = id;
                 }
             }
-            _adminLock.Unlock();
         }
 
-        void RemoveEntry(const string& method, void* usercb)
+        void RemoveEntry(const string &method, void *usercb)
         {
-            _adminLock.Lock();
+            std::lock_guard<std::mutex> guard(_adminLock);
             MethodMap::iterator index = _methodMap.find(method);
-            if (index != _methodMap.end()) {
+            if (index != _methodMap.end())
+            {
                 CallbackMap::iterator callbackIndex = index->second.find(usercb);
-                if (callbackIndex != index->second.end()) {
-                    if (IsValidJob(callbackIndex->second)) {
+                if (callbackIndex != index->second.end())
+                {
+                    if (IsValidJob(callbackIndex->second))
+                    {
                         WPEFramework::Core::IWorkerPool::Instance().Revoke(callbackIndex->second.job);
                     }
                     index->second.erase(callbackIndex);
-                    if (index->second.size() == 0) {
+                    if (index->second.size() == 0)
+                    {
                         _methodMap.erase(index);
                     }
                 }
             }
-            _adminLock.Unlock();
         }
 
-        bool IsActive(const string& method, void* usercb)
+        bool IsActive(const string &method, void *usercb)
         {
             bool valid = false;
-            _adminLock.Lock();
-            MethodMap::iterator index = _methodMap.find(method);
-            if (index != _methodMap.end()) {
-                CallbackMap::iterator callbackIndex = index->second.find(usercb);
-                if (callbackIndex != index->second.end()) {
-                    valid = true;
+            {
+                std::lock_guard<std::mutex> guard(_adminLock);
+                MethodMap::iterator index = _methodMap.find(method);
+                if (index != _methodMap.end())
+                {
+                    CallbackMap::iterator callbackIndex = index->second.find(usercb);
+                    if (callbackIndex != index->second.end())
+                    {
+                        valid = true;
+                    }
                 }
             }
-            _adminLock.Unlock();
             return valid;
         }
 
@@ -195,9 +209,9 @@ namespace FireboltSDK {
 
     private:
         MethodMap _methodMap;
-        WPEFramework::Core::CriticalSection _adminLock;
-        Transport<WPEFramework::Core::JSON::IElement>* _transport;
+        std::mutex _adminLock;
+        Transport<WPEFramework::Core::JSON::IElement> *_transport;
 
-        static Async* _singleton;
+        static Async *_singleton;
     };
 }
