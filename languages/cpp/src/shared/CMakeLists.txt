@@ -18,10 +18,15 @@ cmake_minimum_required(VERSION 3.3)
 
 project(Firebolt)
 
+# set(CMAKE_VERBOSE_MAKEFILE ON)
 set(FIREBOLT_TRANSPORT_WAITTIME 1000 CACHE STRING "Maximum time to wait for Transport layer to get response")
 set(FIREBOLT_LOGLEVEL "Info" CACHE STRING  "Log level to be enabled")
+
+# Default options
 option(FIREBOLT_ENABLE_STATIC_LIB "Create Firebolt library as Static library" OFF)
-option(ENABLE_TESTS "Build openrpc native test" OFF)
+option(ENABLE_TESTS "Build openrpc native test" ON)
+option(ENABLE_UNIT_TESTS "Enable unit test" ON)
+option(ENABLE_COVERAGE "Enable code coverage build." OFF)
 
 if (FIREBOLT_ENABLE_STATIC_LIB)
     set(FIREBOLT_LIBRARY_TYPE STATIC)
@@ -78,10 +83,10 @@ include_directories(
     ${googletest_SOURCE_DIR}/googlemock/include
 )
 
-if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+# if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
     set(CMAKE_INSTALL_PREFIX ${SYSROOT_PATH}/usr CACHE INTERNAL "" FORCE)
     set(CMAKE_PREFIX_PATH ${SYSROOT_PATH}/usr/lib/cmake CACHE INTERNAL "" FORCE)
-endif()
+# endif()
 
 list(APPEND CMAKE_MODULE_PATH
         "${CMAKE_SOURCE_DIR}/cmake"
@@ -95,11 +100,19 @@ message("CMAKE_PREFIX_PATH: " ${CMAKE_PREFIX_PATH})
 
 find_package(WPEFramework CONFIG REQUIRED)
 
+if (ENABLE_TESTS AND ENABLE_COVERAGE)
+    include(CodeCoverage)
+    append_coverage_compiler_flags()
+endif()
+
 add_subdirectory(src)
 
 if (ENABLE_TESTS)
-   add_subdirectory(test)
+    enable_testing()
+    add_subdirectory(test)
 endif()
+
+
 
 # make sure others can make use cmake settings of Firebolt OpenRPC
 configure_file( "${CMAKE_SOURCE_DIR}/cmake/project.cmake.in"
