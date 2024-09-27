@@ -420,12 +420,13 @@ namespace FireboltSDK
 #ifdef UNIT_TEST
         bool IsOpen()
         {
-            return (_channel.IsOpen() == true);
+            return true;
         }
+        
 #else
         bool IsOpen()
         {
-            return true;
+            return (_channel.IsOpen() == true);
         }
 #endif
         
@@ -452,17 +453,18 @@ namespace FireboltSDK
 #ifdef UNIT_TEST
         bool Open(const uint32_t waitTime)
         {
+            return true;
+        }
+#else
+        bool Open(const uint32_t waitTime)
+        {
             bool result = true;
             if (_channel.IsClosed() == true) {
                 result = (_channel.Open(waitTime) == WPEFramework::Core::ERROR_NONE);
             }
             return (result);
         }
-#else
-        bool Open(const uint32_t waitTime)
-        {
-            return true;
-        }
+        
 #endif
         void Close()
         {
@@ -610,13 +612,13 @@ namespace FireboltSDK
 #ifdef UNIT_TEST
         inline bool IsOpen()
         {
-            return _channel->IsOpen();
+            return true;
         }
 #else
         inline bool IsOpen()
         {
-            return true;
-        }
+            return _channel->IsOpen();
+        } 
 #endif
 
         void Revoke(const string &eventName)
