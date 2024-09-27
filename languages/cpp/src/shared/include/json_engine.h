@@ -33,7 +33,7 @@ class JsonEngine
 
         JsonEngine()
         {
-            _data = read_json_from_file("../firebolt-core-open-rpc.json");
+            _data = read_json_from_file("../../firebolt-core-open-rpc.json");
         }
 
         ~JsonEngine(){
@@ -121,7 +121,7 @@ class JsonEngine
         }
 
 
- #ifndef UNIT_TEST    
+ #ifdef UNIT_TEST    
 
         // template <typename RESPONSE>
         void MockRequest(const WPEFramework::Core::JSONRPC::Message* message)

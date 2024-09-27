@@ -31,6 +31,10 @@ add_library(${TARGET} ${FIREBOLT_LIBRARY_TYPE}
     Async/Async.cpp
 )
 
+if(ENABLE_UNIT_TESTS)
+    target_compile_definitions(FireboltSDK PRIVATE UNIT_TEST)
+endif()
+
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 find_package(${NAMESPACE}WebSocket CONFIG REQUIRED)
