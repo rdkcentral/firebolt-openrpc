@@ -126,7 +126,6 @@ class JsonEngine
         // template <typename RESPONSE>
         void MockRequest(const WPEFramework::Core::JSONRPC::Message* message)
         {
-            std::cout << "Inside JSON engine MockRequest function" << std::endl;
             std::string methodName = capitalizeFirstChar(message->Designator.Value().c_str());
 
             /* TODO: Add a flag here that will be set to true if the method name is found in the rpc block, u
@@ -140,29 +139,23 @@ class JsonEngine
 
                     // ID Validation
                     // TODO: Check if id gets incremented by 1 for each request
-                    std::cout << "MockRequest actual message.Id.Value(): " << message->Id.Value() << std::endl;
                     EXPECT_THAT(message->Id, AllOf(Ge(1),Le(std::numeric_limits<int>::max())));
 
                     // Schema validation
                     const json requestParams = json::parse(message->Parameters.Value());
-                    std::cout << "Schema validator requestParams JSON: " << requestParams.dump() << std::endl;
                     if(method["params"].empty()) {
-                        std::cout << "Params is empty" << std::endl;
+                        std::cout << "Schema validation for empty parameters" << std::endl;
                         EXPECT_EQ(requestParams, "{}"_json);
                     }
                     else {
-                        std::cout << "Params is NOT empty" << std::endl;
                         json_validator validator;
                         const json openRPCParams = method["params"];
                         for (auto& item : openRPCParams.items()) {
                             std::string key = item.key();
                             json currentSchema = item.value();
                             std::string paramName = currentSchema["name"];
-                            std::cout << "paramName: " << paramName << std::endl;
                             if (requestParams.contains(paramName)) {
-                                std::cout << "RequestParams contain paramName in rpc" << std::endl;
                                 json dereferenced_schema = process_schema(currentSchema, _data);
-                                std::cout << "schema JSON after $ref: " << dereferenced_schema.dump() << std::endl;
                                 try{
                                     validator.set_root_schema(dereferenced_schema["schema"]);
                                     validator.validate(requestParams[paramName]);
@@ -181,7 +174,6 @@ class JsonEngine
         template <typename RESPONSE>
         Firebolt::Error MockResponse(WPEFramework::Core::JSONRPC::Message &message, RESPONSE &response)
         {
-                std::cout << "Inside JSON engine MockResponse function" << std::endl;
                 std::string methodName = capitalizeFirstChar(message.Designator.Value().c_str());
 
                 // Loop through the methods to find the one with the given name

@@ -390,6 +390,7 @@ namespace FireboltSDK
             _adminLock.Unlock();
         }
 
+// Send requests to JSON engine's mockRequest method for unit testing instead of channel's submit method
 #ifdef UNIT_TEST
         void Submit(const WPEFramework::Core::ProxyType<INTERFACE> &message)
         {
@@ -417,6 +418,7 @@ namespace FireboltSDK
             Close();
         }
 
+// Always return true for unit testing
 #ifdef UNIT_TEST
         bool IsOpen()
         {
@@ -449,7 +451,8 @@ namespace FireboltSDK
             }
             _adminLock.Unlock();
         }
-        
+
+// Always return true for unit testing       
 #ifdef UNIT_TEST
         bool Open(const uint32_t waitTime)
         {
@@ -609,6 +612,7 @@ namespace FireboltSDK
 
     public:
 
+// Always return true for unit testing
 #ifdef UNIT_TEST
         inline bool IsOpen()
         {
@@ -637,11 +641,11 @@ namespace FireboltSDK
             _eventHandler = eventHandler;
         }
 
+// Invoke method is overriden for unit testing to call MockResponse method from JSON engine
 #ifdef UNIT_TEST
         template <typename PARAMETERS, typename RESPONSE>
         Firebolt::Error Invoke(const string &method, const PARAMETERS &parameters, RESPONSE &response)
         {
-            std::cout << "Inside Mock Transport Invoke function" << std::endl;
             Entry slot;
             uint32_t id = _channel->Sequence();
             Firebolt::Error result = Send(method, parameters, id);
@@ -657,7 +661,6 @@ namespace FireboltSDK
         template <typename PARAMETERS, typename RESPONSE>
         Firebolt::Error Invoke(const string& method, const PARAMETERS& parameters, RESPONSE& response)
         {
-            std::cout << "Inside Transport Invoke function" << std::endl;
             Entry slot;
             uint32_t id = _channel->Sequence();
             Firebolt::Error result = Send(method, parameters, id);
@@ -871,7 +874,6 @@ namespace FireboltSDK
 
         int32_t Submit(const WPEFramework::Core::ProxyType<WPEFramework::Core::JSONRPC::Message> &inbound)
         {
-            std::cout << "Inside Transport Submit function 2" << std::endl;
             int32_t result = WPEFramework::Core::ERROR_UNAVAILABLE;
             WPEFramework::Core::ProxyType<WPEFramework::Core::IDispatch> job = WPEFramework::Core::ProxyType<WPEFramework::Core::IDispatch>(WPEFramework::Core::ProxyType<Transport::CommunicationJob>::Create(inbound, this));
             WPEFramework::Core::IWorkerPool::Instance().Submit(job);
