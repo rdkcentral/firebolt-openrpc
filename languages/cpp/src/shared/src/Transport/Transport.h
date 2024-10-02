@@ -962,11 +962,25 @@ namespace FireboltSDK
             }
             return FireboltErrorValue(result);
         }
-
+#ifdef UNIT_TEST
+template <typename RESPONSE>
+        Firebolt::Error WaitForEventResponse(const uint32_t &id, const string &eventName, RESPONSE &response, const uint32_t waitTime, EventMap& _eventMap)
+        {
+            std::cout << "Inside Mock Transport WaitForEventResponse function" << std::endl;
+            std::cout << "Mock Transport WaitForEventResponse eventName: " << eventName << std::endl;
+            /*  We could optionally return a response inside WaitForEventResponse using JSON engine's mockResponse
+                pointing to #/x-schemas/Types/ListenResponse dereferenced to "{listening:true}".
+                Since there is no return value for event subscription, error would be the only validation for now.
+                Ideally, the event response should be returned here after the event is triggered.
+            */
+            return Firebolt::Error::None;
+        }
+#else
         static constexpr uint32_t WAITSLOT_TIME = 100;
         template <typename RESPONSE>
         Firebolt::Error WaitForEventResponse(const uint32_t &id, const string &eventName, RESPONSE &response, const uint32_t waitTime, EventMap& _eventMap)
         {
+            std::cout << "Inside Transport WaitForEventResponse function" << std::endl;
             Firebolt::Error result = Firebolt::Error::Timedout;
             _adminLock.Lock();
             typename PendingMap::iterator index = _pendingQueue.find(id);
@@ -1025,7 +1039,7 @@ namespace FireboltSDK
 
             return result;
         }
-
+#endif
     public:
         void FromMessage(WPEFramework::Core::JSON::IElement *response, const WPEFramework::Core::JSONRPC::Message &message) const
         {
