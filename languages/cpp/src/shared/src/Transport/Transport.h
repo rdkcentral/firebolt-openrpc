@@ -968,10 +968,10 @@ template <typename RESPONSE>
         {
             std::cout << "Inside Mock Transport WaitForEventResponse function" << std::endl;
             std::cout << "Mock Transport WaitForEventResponse eventName: " << eventName << std::endl;
-            /*  We could optionally return a response inside WaitForEventResponse using JSON engine's mockResponse
-                pointing to #/x-schemas/Types/ListenResponse dereferenced to "{listening:true}".
-                Since there is no return value for event subscription, error would be the only validation for now.
-                Ideally, the event response should be returned here after the event is triggered.
+            /*  Since there is no return value for event subscription, error would be the only validation for now.
+                Returning a mock event response from open rpc would mean that the logic in WaitForEventResponse to check a queue is not used.
+                At which point, the function would no longer be validating the SDK functionality.
+                If the queue find functionality is to be tested, the _pendingQueue could be mocked in upcoming iterations.
             */
             return Firebolt::Error::None;
         }
