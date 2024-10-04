@@ -148,7 +148,7 @@ class JsonEngine
                         EXPECT_EQ(requestParams, "{}"_json);
                     }
                     else {
-                        json_validator validator;
+                        json_validator validator(nullptr, nlohmann::json_schema::default_string_format_check);
                         const json openRPCParams = method["params"];
                         for (auto& item : openRPCParams.items()) {
                             std::string key = item.key();
