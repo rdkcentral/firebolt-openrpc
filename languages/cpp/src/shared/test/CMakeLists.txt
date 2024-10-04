@@ -16,64 +16,58 @@
 
 cmake_minimum_required(VERSION 3.3)
 
-project(FireboltSDKTests)
-project_version(1.0.0)
+project(FireboltCoreSDKTests)
 
-set(TESTLIB ${PROJECT_NAME})
+if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+    set(CMAKE_INSTALL_PREFIX "${SYSROOT_PATH}/usr" CACHE INTERNAL "" FORCE)
+    set(CMAKE_PREFIX_PATH ${SYSROOT_PATH}/usr/lib/cmake CACHE INTERNAL "" FORCE)
+endif()
 
-message("Setup ${TESTLIB} v${PROJECT_VERSION}")
+list(APPEND CMAKE_MODULE_PATH
+	"${SYSROOT_PATH}/usr/lib/cmake"
+	"${SYSROOT_PATH}/tools/cmake")
+message("FIREBOLT_PATH inside cmake " ${FIREBOLT_PATH})
+if (FIREBOLT_PATH)
+    set(CMAKE_FIREBOLT_PATH
+        "${FIREBOLT_PATH}/usr/lib/cmake/Firebolt"
+	"${FIREBOLT_PATH}/usr/lib/cmake/FireboltSDK")
+    list(APPEND CMAKE_PREFIX_PATH ${CMAKE_FIREBOLT_PATH})
+    list(APPEND CMAKE_MODULE_PATH ${CMAKE_FIREBOLT_PATH})
+else ()
+   set(FIREBOLT_PATH "${SYSROOT_PATH}" CACHE INTERNAL "" FORCE)
+endif ()
 
-set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+find_package(WPEFramework CONFIG REQUIRED)
 find_package(${NAMESPACE}Core CONFIG REQUIRED)
 
-add_library(${TESTLIB} STATIC OpenRPCTests.cpp)
-
-target_link_libraries(${TESTLIB}
-    PUBLIC
-        ${NAMESPACE}Core::${NAMESPACE}Core
-        ${FIREBOLT_NAMESPACE}SDK
-)
-
-target_include_directories(${TESTLIB}
-    PRIVATE
-    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/src>
-    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
-)
-
-set_target_properties(${TESTLIB} PROPERTIES
-    CXX_STANDARD 11
-    CXX_STANDARD_REQUIRED YES
-    LINK_WHAT_YOU_USE TRUE
-    FRAMEWORK FALSE
-)
-
-install(
-    TARGETS ${TESTLIB} EXPORT ${TESTLIB}Targets
-    LIBRARY DESTINATION lib COMPONENT libs
-     PUBLIC_HEADER DESTINATION include/${FIREBOLT_NAMESPACE}Test COMPONENT devel   # headers for mac (note the different component -> different package)
-        INCLUDES DESTINATION include/${FIREBOLT_NAMESPACE}Test # headers
-)
-
-InstallCMakeConfig(TARGETS ${TESTLIB})
-InstallCMakeConfigs(TARGET ${TESTLIB} DESTINATION ${FIREBOLT_NAMESPACE})
-InstallHeaders(TARGET ${TESTLIB} HEADERS . NAMESPACE ${FIREBOLT_NAMESPACE} DESTINATION FireboltTest)
-InstallLibraries(TARGET ${TESTLIB} STATIC LIBRARIES ${TESTLIB} DESTINATION ${FIREBOLT_NAMESPACE})
-
-set(TESTAPP "FireboltSDKTestApp")
+set(TESTAPP TestFireboltCore)
 
 message("Setup ${TESTAPP}")
 
-add_executable(${TESTAPP} Main.cpp)
+add_executable(${TESTAPP} CoreSDKTest.cpp Main.cpp)
 
 target_link_libraries(${TESTAPP}
     PRIVATE
-       ${TESTLIB}
+        ${NAMESPACE}Core::${NAMESPACE}Core
+        ${FIREBOLT_NAMESPACE}SDK::${FIREBOLT_NAMESPACE}SDK
+        nlohmann_json_schema_validator
+        gtest_main
 )
 
 target_include_directories(${TESTAPP}
     PRIVATE
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/>
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/../>
+        $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include/>
+)
+
+if (POLYMORPHICS_REDUCER_METHODS)
+    target_compile_definitions(${TESTAPP}
+        PUBLIC
+            POLYMORPHICS_REDUCER_METHODS=1)
+endif()
+
+set_target_properties(${TESTAPP} PROPERTIES
+    CXX_STANDARD 17
+    CXX_STANDARD_REQUIRED YES
 )
 
 add_custom_command(
@@ -84,3 +78,35 @@ add_custom_command(
         COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_BINARY_DIR}/${TESTAPP} ${CMAKE_BINARY_DIR}/${FIREBOLT_NAMESPACE}/usr/bin
 )
 
+if(ENABLE_UNIT_TESTS)
+    set(UNIT_TESTS_APP FireboltCoreUnitTests)
+
+    message("Setup ${UNIT_TESTS_APP}")
+
+    add_definitions(-DUNIT_TEST)
+
+    file(GLOB UNIT_TESTS "unit/*")
+
+    add_executable(${UNIT_TESTS_APP} 
+        CoreSDKTest.cpp
+        Unit.cpp
+        ${UNIT_TESTS}
+    )
+    
+    link_directories(${CMAKE_SOURCE_DIR}/../../Thunder/install/usr/lib/)
+    target_link_libraries(${UNIT_TESTS_APP}
+        PRIVATE
+            ${NAMESPACE}Core::${NAMESPACE}Core
+            ${FIREBOLT_NAMESPACE}SDK::${FIREBOLT_NAMESPACE}SDK
+            nlohmann_json_schema_validator
+            gtest_main
+    )
+
+    target_include_directories(${UNIT_TESTS_APP}
+        PRIVATE
+            $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include/>
+    )
+
+    include(GoogleTest)
+    gtest_discover_tests(${UNIT_TESTS_APP})
+endif()
