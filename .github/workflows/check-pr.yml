@@ -26,3 +26,16 @@ jobs:
         run: npm ci
       - name: Run validation and tests
         run: npm pack
+  trigger_repo_b_workflow:
+    name: Trigger Firebolt API Workflow
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger MFOS Workflow
+        uses: benc-uk/workflow-dispatch@v1
+        with:
+          workflow: MFOS standalone sanity report - CORE,MANAGE,DISCOVERY  # Workflow in Repo B
+          token: ${{ secrets.GITHUB_TOKEN }}
+          repo:  rdkcentral/firebolt-apis  
+          inputs:
+            PR_NAME: ${{ github.event.pull_request.head.ref }}  # Pass Repo A PR branch name to Repo B
+
