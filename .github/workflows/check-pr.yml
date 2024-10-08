@@ -33,9 +33,8 @@ jobs:
       - name: Trigger MFOS Workflow
         uses: benc-uk/workflow-dispatch@v1
         with:
-          workflow: MFOS standalone sanity report - CORE,MANAGE,DISCOVERY  # Workflow in Repo B
+          workflow: 'MFOS standalone sanity report - CORE,MANAGE,DISCOVERY'  # Workflow in Repo B
           token: ${{ secrets.GITHUB_TOKEN }}
-          repo:  rdkcentral/firebolt-apis  
-          inputs:
-            PR_NAME: ${{ github.event.pull_request.head.ref }}  # Pass Repo A PR branch name to Repo B
-
+          repo: rdkcentral/firebolt-apis
+          inputs: 
+            OPENRPC_PR_BRANCH: ${{ github.event.pull_request.head.ref }}
