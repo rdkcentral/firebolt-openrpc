@@ -1,6 +1,8 @@
 name: Check Pull Request
 on:
   workflow_dispatch:
+   inputs: 
+     OPENRPC_PR_BRANCH: ${{ github.event.pull_request.head.ref }}
   pull_request:
     types:
       - 'ready_for_review'
@@ -36,5 +38,4 @@ jobs:
           workflow: 'MFOS standalone sanity report - CORE,MANAGE,DISCOVERY'  # Workflow in Repo B
           token: ${{ secrets.GITHUB_TOKEN }}
           repo: rdkcentral/firebolt-apis
-          inputs: 
-            OPENRPC_PR_BRANCH: ${{ github.event.pull_request.head.ref }}
+          
