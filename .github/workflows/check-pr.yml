@@ -30,7 +30,7 @@ jobs:
       - name: Trigger Workflow in Another Repository
         run: 
             # Set the required variables
-            repo_owner=" rdkcentral" 
+            repo_owner="rdkcentral" 
             repo_name="firebolt-apis"  
             event_type="trigger-workflow" 
             OPENRPC_PR_BRANCH="${{ github.event.pull_request.head.ref }}"
