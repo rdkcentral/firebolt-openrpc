@@ -38,6 +38,6 @@ jobs:
             curl -X POST https://api.github.com/repos/$repo_owner/$repo_name/dispatches \
               -H 'Accept:application/vnd.github.everest-preview+json' \
               -u "username:${{ secrets.SEMANTIC_RELEASE_BOT_PAT }}" \
-              -d "{\"event_type\":\"$event_type\", \"client_payload\":{\"OPENRPC_PR_BRANCH\":\"$OPENRPC_PR_BRANCH\"}}"
+              -d "{\"event_type\":\"$event_type\", \"client_payload\":{\"OPENRPC_PR_BRANCH\":\"$OPENRPC_PR_BRANCH\", \"unit\":false, \"integration\":true}}"
           
           
