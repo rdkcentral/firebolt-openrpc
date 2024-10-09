@@ -26,17 +26,19 @@ jobs:
         run: npm ci
       - name: Run validation and tests
         run: npm pack
-  trigger_repo_b_workflow:
-    name: Trigger Firebolt API Workflow
-    runs-on: ubuntu-latest
-    steps:
-      - name: Trigger MFOS Workflow
-        uses: benc-uk/workflow-dispatch@v1
-        with:
-          workflow: 'MFOS standalone sanity report - CORE,MANAGE,DISCOVERY'  # Workflow in Repo B
-          token: ${{ secrets.GITHUB_TOKEN }}
-          repo: rdkcentral/firebolt-apis
-          inputs:
-            OPENRPC_PR_BRANCH:'${{ github.event.pull_request.head.ref }}'
-            
+  
+      - name: Trigger Workflow in Another Repository
+        run: 
+            # Set the required variables
+            repo_owner=" rdkcentral" 
+            repo_name="firebolt-apis"  
+            event_type="trigger-workflow" 
+            OPENRPC_PR_BRANCH="${{ github.event.pull_request.head.ref }}"
+    
+            curl -X POST https://api.github.com/repos/$repo_owner/$repo_name/dispatches \
+              -H 'Accept:application/vnd.github.everest-preview+json' \
+              -u "username:${{ secrets.SEMANTIC_RELEASE_BOT_PAT }}" \
+              -d "{\"event_type\":\"$event_type\", \"client_payload\":{\"OPENRPC_PR_BRANCH\":\"$OPENRPC_PR_BRANCH\"}}"
+
+          
           
