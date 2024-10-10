@@ -36,4 +36,4 @@ jobs:
             OPENRPC_PR_BRANCH="${{ github.event.pull_request.head.ref }}"
     
            curl -H "Authorization:token ${{ secrets.WORKFLOW_TRIGGER_SECRET }}" -X POST https://api.github.com/repos/rdkcentral/firebolt-apis/dispatches /
-           -d "{\"event_type\":\"$event_type\", \"client_payload\":{\"OPENRPC_PR_BRANCH\":\"$OPENRPC_PR_BRANCH\"}
+           -d "{\"event_type\":\"$event_type\", \"client_payload\":{\"OPENRPC_PR_BRANCH\":\"$OPENRPC_PR_BRANCH\"}}"
