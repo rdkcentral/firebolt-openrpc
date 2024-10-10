@@ -35,4 +35,4 @@ jobs:
             event_type="trigger-workflow" 
             OPENRPC_PR_BRANCH="${{ github.event.pull_request.head.ref }}"
     
-           curl -H "Authorization:token ${{ secrets.WORKFLOW_TRIGGER_SECRET }}" -X GET https://api.github.com/repos/kdivya153/Repo1
+           curl -H "Authorization:token ${{ secrets.WORKFLOW_TRIGGER_SECRET }}" -X GET https://api.github.com/repos/rdkcentral/firebolt-apis
