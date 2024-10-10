@@ -37,4 +37,4 @@ jobs:
             event_type="trigger-workflow" 
             OPENRPC_PR_BRANCH="${{ github.event.pull_request.head.ref }}"
     
-           curl -H "Authorization:token $Token" -X POST https://api.github.com/repos/rdkcentral/firebolt-apis -d "{\"event_type\":\"$event_type\", \"client_payload\":{\"OPENRPC_PR_BRANCH\":\"$OPENRPC_PR_BRANCH\"}}"
+           curl -H "Authorization:token $Token" -X POST https://api.github.com/repos/rdkcentral/firebolt-apis/actions/.github/workflows/run-standalone-mfos-tests.yml/dispatches  -d "{\"event_type\":\"$event_type\", \"client_payload\":{\"OPENRPC_PR_BRANCH\":\"$OPENRPC_PR_BRANCH\"}}"
