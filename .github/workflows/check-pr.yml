@@ -27,10 +27,11 @@ jobs:
         run: npm pack
 
       - name: Trigger workflow in another repository
-        uses: peter-evans/repository-dispatch@v2
+        uses: peter-evans/repository-dispatch@v3
         with:
+          token: ${{ secrets.GITHUB_TOKEN }}
           repository: rdkcentral/firebolt-apis
           event-type: trigger-workflow
           client-payload: '{"OPENRPC_PR_BRANCH": "${{ github.event.pull_request.head.ref }}"}'
-          token: ${{ secrets.GITHUB_TOKEN }}
+          
   
