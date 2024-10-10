@@ -29,8 +29,8 @@ jobs:
       - name: Trigger workflow in another repository
         uses: peter-evans/repository-dispatch@v2
         with:
-          token: ${{ secrets.SEMANTIC_RELEASE_BOT_PAT }}  # or use a custom token with proper permissions
           repository: rdkcentral/firebolt-apis
           event-type: trigger-workflow
           client-payload: '{"OPENRPC_PR_BRANCH": "${{ github.event.pull_request.head.ref }}"}'
+          token: ${{ secrets.WORKFLOW_TRIGGER_SECRET }}
   
