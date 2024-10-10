@@ -29,10 +29,7 @@ jobs:
   
       - name: Trigger Workflow in Another Repository
         env:
-          EVENT_NAME: ${{ github.event_name }}
-          GITHUB_REF: ${{ github.ref }}
-          PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
-          Token: ${{ secrets.WORKFLOW_TRIGGER_SECRET }}
+          TOKEN: ${{ secrets.SEMANTIC_RELEASE_BOT_PAT }}
         run: 
             # Set the required variables
             repo_owner="rdkcentral" 
