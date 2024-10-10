@@ -28,13 +28,17 @@ jobs:
         run: npm pack
   
       - name: Trigger Workflow in Another Repository
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          GITHUB_REF: ${{ github.ref }}
+          PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          Token: ${{ secrets.WORKFLOW_TRIGGER_SECRET }}
         run: 
             # Set the required variables
             repo_owner="rdkcentral" 
             repo_name="firebolt-apis"  
             event_type="trigger-workflow" 
             OPENRPC_PR_BRANCH="${{ github.event.pull_request.head.ref }}"
-            token="${{ secrets.WORKFLOW_TRIGGER_SECRET }}"
     
-           curl -H "Authorization:token $token" -X POST https://api.github.com/repos/rdkcentral/firebolt-apis
+           curl -H "Authorization:token $Token" -X POST https://api.github.com/repos/rdkcentral/firebolt-apis
            -d "{\"event_type\":\"$event_type\", \"client_payload\":{\"OPENRPC_PR_BRANCH\":\"$OPENRPC_PR_BRANCH\"}}"
