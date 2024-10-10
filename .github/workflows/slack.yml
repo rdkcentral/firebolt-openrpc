@@ -1,0 +1,19 @@
+name: Capture Repo B Status
+on:
+  workflow_run:
+    workflows: ["MFOS standalone sanity report - CORE,MANAGE,DISCOVERY"] 
+    types:
+      - completed
+jobs:
+  check_repo_b_status:
+    name: Firebolt API  Workflow Status
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check if the workflow Succeeded
+        run: |
+          if [[ "${{ github.event.workflow_run.conclusion }}" != "success" ]]; then
+            echo "SDK generation failed so failing this PR"
+            exit 1
+          else
+            echo "SDK generated successfully."
+          fi
