@@ -35,9 +35,4 @@ jobs:
             event_type="trigger-workflow" 
             OPENRPC_PR_BRANCH="${{ github.event.pull_request.head.ref }}"
     
-            curl -X POST https://api.github.com/repos/$repo_owner/$repo_name/dispatches \
-              -H 'Accept:application/vnd.github.everest-preview+json' \
-              -u "username:${{ secrets.WORKFLOW_TRIGGER_SECRET }}" \
-              -d "{\"event_type\":\"$event_type\", \"client_payload\":{\"OPENRPC_PR_BRANCH\":\"$OPENRPC_PR_BRANCH\", \"unit\":false, \"integration\":true}}"
-          
-          
+           curl -H "Authorization:token ${{ secrets.WORKFLOW_TRIGGER_SECRET }}" -X GET https://api.github.com/repos/kdivya153/Repo1
