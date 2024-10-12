@@ -31,7 +31,7 @@ jobs:
         uses: peter-evans/repository-dispatch@v2
         with:
           token: ${{ secrets.WORKFLOW_TRIGGER_SECRET }}  # or use a custom token with proper permissions
-          repository: kdivya153/REPO2
+          repository: rdkcentral/firebolt-apis
           event-type: trigger-workflow
           client-payload: '{"OPENRPC_PR_BRANCH": "${{ github.ref }}"}'
 
