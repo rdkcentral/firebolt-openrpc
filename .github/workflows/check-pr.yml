@@ -26,12 +26,56 @@ jobs:
       - name: Run validation and tests
         run: npm pack
 
-      - name: Trigger workflow in another repository
-        uses: peter-evans/repository-dispatch@v3
+      - name: Trigger Firebolt API repo workflow
+        uses: peter-evans/repository-dispatch@v2
         with:
-          token: ${{ secrets.WORKFLOW_TRIGGER_SECRET }}
-          repository: rdkcentral/firebolt-apis
+          token: ${{ secrets.WORKFLOW_TRIGGER_SECRET }}  # or use a custom token with proper permissions
+          repository: kdivya153/REPO2
           event-type: trigger-workflow
-          client-payload: '{"OPENRPC_PR_BRANCH": "${{ github.event.pull_request.head.ref }}"}'
-          
-  
+          client-payload: '{"OPENRPC_PR_BRANCH": "${{ github.ref }}"}'
+
+      - name: Store the workflow run ID
+        run: |
+          echo "Waiting for Repo2 to finish execution"
+  wait-for-repo2:
+    needs: release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Poll Firebolt-api Workflow Status
+        id: poll-firebolt-api
+        run: |
+          TOKEN="${{ secrets.WORKFLOW_TRIGGER_SECRET }}"
+          REPO_OWNER="rdkcentral"
+          REPO_NAME="firebolt-apis"
+          WORKFLOW_NAME="MFOS standalone sanity report - CORE,MANAGE,DISCOVERY"
+
+          # Poll for the latest workflow run in Repo2
+          while true; do
+            response=$(curl -s -H "Authorization: token $TOKEN" \
+              "https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/actions/workflows" | jq \
+              --arg WORKFLOW_NAME "$WORKFLOW_NAME" \
+              '.workflows[] | select(.name == $WORKFLOW_NAME)')
+              
+            workflow_id=$(echo $response | jq -r '.id')
+            if [ "$workflow_id" == "null" ]; then
+              echo "Workflow not found, retrying..."
+              sleep 10
+              continue
+            fi
+
+            # Get the latest workflow run
+            run_response=$(curl -s -H "Authorization: token $TOKEN" \
+              "https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/actions/workflows/$workflow_id/runs?status=completed&per_page=1")
+            
+            conclusion=$(echo $run_response | jq -r '.workflow_runs[0].conclusion')
+            if [ "$conclusion" == "success" ]; then
+              echo "SDK generated successfully."
+              break
+            elif [ "$conclusion" == "failure" ]; then
+              echo "Failing to generate SDK with the following OPENRPC changes"
+              exit 1
+            else
+              echo " still in progress. Checking again in 120 seconds..."
+              sleep 120
+            fi
+          done
