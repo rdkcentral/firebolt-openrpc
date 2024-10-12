@@ -33,7 +33,7 @@ jobs:
           token: ${{ secrets.WORKFLOW_TRIGGER_SECRET }}  # or use a custom token with proper permissions
           repository: rdkcentral/firebolt-apis
           event-type: trigger-workflow
-          client-payload: '{"OPENRPC_PR_BRANCH": "${{ github.ref }}"}'
+          client-payload: '{"OPENRPC_PR_BRANCH": "${{ github.event.pull_request.head.ref }}"}'
 
       - name: Store the workflow run ID
         run: |
