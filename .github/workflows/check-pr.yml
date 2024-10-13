@@ -87,18 +87,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Send Slack notification
+        env:
+          EVENT_NAME: ${{ github.event_name }}
         run: |
           # Determine the branch name based on the event type
           if [ "$EVENT_NAME" == "repository_dispatch" ]; then
             BRANCH_NAME=$OPENRPC_PR_BRANCH
           elif [ "$EVENT_NAME" == "pull_request" ]; then
-            BRANCH_NAME=$PR_HEAD_REF
+            BRANCH_NAME=${{ github.event.pull_request.head.ref }}
           elif [ "$EVENT_NAME" == "push" ]; then
             BRANCH_NAME=${GITHUB_REF#refs/heads/}  # Extract branch name from GITHUB_REF for push events
           else
             BRANCH_NAME="unknown"
           fi
-          
+
           # Send the Slack notification with the branch name
           curl -X POST -H 'Content-type: application/json' \
           --data '{"text": "Failed to generate SDK artifact with the latest changes in the Branch: '$BRANCH_NAME'."}' \
