@@ -22,6 +22,7 @@ import Settings, { initSettings } from '../Settings/index.mjs'
 import LegacyTransport from './LegacyTransport.mjs'
 import WebsocketTransport from './WebsocketTransport.mjs'
 import Results from '../Results/index.mjs'
+import IframeTransport from './IframeTransport.mjs'
 
 const LEGACY_TRANSPORT_SERVICE_NAME = 'com.comcast.BridgeObject_1'
 let moduleInstance = null
@@ -62,7 +63,10 @@ export default class Transport {
   constructTransportLayer () {
     let transport
     const endpoint = this._endpoint()
-    if (endpoint && (endpoint.startsWith('ws://') || endpoint.startsWith('wss://'))) {
+    if (IframeTransport.inIframe()) {
+      transport = new IframeTransport()
+      transport.receive(this.receiveHandler.bind(this))
+    } else if (endpoint && (endpoint.startsWith('ws://') || endpoint.startsWith('wss://'))) {
       transport = new WebsocketTransport(endpoint)
       transport.receive(this.receiveHandler.bind(this))
     } else if (
