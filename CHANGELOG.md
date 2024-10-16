@@ -1,3 +1,10 @@
+# [3.2.0-next.4](https://github.com/rdkcentral/firebolt-openrpc/compare/v3.2.0-next.3...v3.2.0-next.4) (2024-10-16)
+
+
+### Bug Fixes
+
+* Native SDK unit tests support framework ([#223](https://github.com/rdkcentral/firebolt-openrpc/issues/223)) ([819cc21](https://github.com/rdkcentral/firebolt-openrpc/commit/819cc210a53d80fefe547b41c463620cb668624d))
+
 # [3.2.0-next.3](https://github.com/rdkcentral/firebolt-openrpc/compare/v3.2.0-next.2...v3.2.0-next.3) (2024-09-17)
 
 
