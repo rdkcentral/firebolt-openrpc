@@ -930,6 +930,10 @@ function generateSchemas(json, templates, options) {
     else {
       content = content.replace(/\$\{if\.description\}(.*?)\{end\.if\.description\}/gms, '$1')
     }
+
+    // Schema title is requuired for proper documentation generation
+    if (!schema.title) schema.title = name
+
     const schemaShape = types.getSchemaShape(schema, json, { templateDir: state.typeTemplateDir, destination: state.destination, section: options.section, primitive: config.primitives ? Object.keys(config.primitives).length > 0 : false })
 
     content = content
@@ -939,6 +943,12 @@ function generateSchemas(json, templates, options) {
 
     if (schema.examples) {
       content = content.replace(/\$\{schema.example\}/, schema.examples.map(ex => JSON.stringify(ex, null, '  ')).join('\n\n'))
+    }
+
+    if (schema.additionalProperties) {
+      content = content.replace(/\$\{schema.additionalProperties\}/, JSON.stringify(schema.additionalProperties, null, '  '))
+    } else {
+      content = content.replace(/.*\$\{schema.additionalProperties\}/, '')
     }
 
     let seeAlso = getRelatedSchemaLinks(schema, json, templates, options)
