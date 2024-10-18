@@ -6,6 +6,8 @@ ${schema.description}
 ${schema.shape}
 ```
 
+Additional properties: ${schema.additionalProperties}
+
 See also: ${schema.seeAlso}
 
 ---
