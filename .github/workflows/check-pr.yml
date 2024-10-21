@@ -10,6 +10,7 @@ on:
       - next
 env:
   HUSKY: 0
+  
 jobs:
   release:
     name: Run npm pack
