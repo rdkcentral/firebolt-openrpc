@@ -89,14 +89,21 @@ jobs:
           REPO_OWNER="rdkcentral"
           REPO_NAME="firebolt-apis"
           PR_NUMBER="${{ github.event.pull_request.number }}"
-          WORKFLOW_NAME="CXX Build"
+          WORKFLOW_NAME="CXX build"
 
+          # Debugging workflow names
+          echo "Polling workflow: $WORKFLOW_NAME"
+
+          # Poll for the latest workflow run in Repo2
           while true; do
+            # Fetch the list of workflows
             response=$(curl -s -H "Authorization: token $TOKEN" \
               "https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/actions/workflows" | jq \
               --arg WORKFLOW_NAME "$WORKFLOW_NAME" \
               '.workflows[] | select(.name == $WORKFLOW_NAME)')
-            
+
+            echo "Workflow response: $response"
+
             workflow_id=$(echo $response | jq -r '.id')
             if [ "$workflow_id" == "null" ]; then
               echo "Workflow not found, retrying in 10 seconds..."
@@ -106,7 +113,9 @@ jobs:
 
             # Get the latest workflow run
             run_response=$(curl -s -H "Authorization: token $TOKEN" \
-              "https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/actions/workflows/$workflow_id/runs?status=completed&per_page=1")
+              "https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/actions/workflows/$workflow_id/runs?per_page=1")
+
+            echo "Raw run response: $run_response"
 
             run_id=$(echo $run_response | jq -r '.workflow_runs[0].id')
             conclusion=$(echo $run_response | jq -r '.workflow_runs[0].conclusion')
@@ -115,8 +124,9 @@ jobs:
             # Echo the run_id and conclusion for debugging
             echo "Current run ID: $run_id"
             echo "Current workflow conclusion: $conclusion"
+            echo "Current workflow status: $status"
 
-            # Check if workflow run is still in progress
+            # Check if the workflow run is still in progress
             if [ "$status" != "completed" ]; then
               echo "CPP SDK generation still in progress. Checking again in 120 seconds..."
               sleep 120
