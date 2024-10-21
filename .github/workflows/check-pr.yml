@@ -70,7 +70,10 @@ jobs:
 
             status=$(echo $run_response | jq -r '.workflow_runs[0].status')
             conclusion=$(echo $run_response | jq -r '.workflow_runs[0].conclusion')
-
+            
+            # Store conclusion if available
+            echo "JS_SDK_CONCLUSION=$conclusion" >> $GITHUB_ENV
+            
             if [ "$status" == "completed" ] && [ "$conclusion" == "success" ]; then
               echo "JavaScript SDK generated successfully."
               break
@@ -121,6 +124,9 @@ jobs:
             continue
             fi
 
+            # Store conclusion if available
+            echo "CPP_SDK_CONCLUSION=$conclusion" >> $GITHUB_ENV
+
             # Check if the workflow completed successfully or failed
             if [ "$conclusion" == "success" ]; then
               echo "CPP SDK generated successfully."
@@ -133,31 +139,36 @@ jobs:
           done
 
       - name: Post comments on PR
+        if: env.JS_SDK_CONCLUSION != 'unknown' || env.CPP_SDK_CONCLUSION != 'unknown'  # Only run if at least one SDK ran
         run: |
           TOKEN="${{ secrets.WORKFLOW_TRIGGER_SECRET }}"
           REPO_OWNER="${{ github.repository_owner }}"
           REPO_NAME="${{ github.event.repository.name }}"
           PR_NUMBER="${{ github.event.pull_request.number }}"
       
-          # Check JavaScript SDK generation status
-          if [[ "${{ steps.poll-javascript-sdk.outputs.conclusion }}" == "success" ]]; then
-            JS_COMMENT="JavaScript SDK generation succeeded."
-          elif [[ "${{ steps.poll-javascript-sdk.outputs.conclusion }}" == "failure" ]]; then
-            JS_COMMENT="JavaScript SDK generation failed."
+          # Construct comment body based on conclusions
+          COMMENT_BODY=""
+      
+          # JavaScript SDK status
+          if [[ "$JS_SDK_CONCLUSION" == "success" ]]; then
+            COMMENT_BODY+="JavaScript SDK generation succeeded.\\n"
+          elif [[ "$JS_SDK_CONCLUSION" == "failure" ]]; then
+            COMMENT_BODY+="JavaScript SDK generation failed.\\n"
           fi
       
-          # Check CPP SDK generation status
-          if [[ "${{ steps.poll-cpp-sdk.outputs.conclusion }}" == "success" ]]; then
-            CPP_COMMENT="C++ SDK generation succeeded."
-          elif [[ "${{ steps.poll-cpp-sdk.outputs.conclusion }}" == "failure" ]]; then
-            CPP_COMMENT="Warning: C++ SDK generation failed."
+          # C++ SDK status
+          if [[ "$CPP_SDK_CONCLUSION" == "success" ]]; then
+            COMMENT_BODY+="C++ SDK generation succeeded."
+          elif [[ "$CPP_SDK_CONCLUSION" == "failure" ]]; then
+            COMMENT_BODY+="C++ SDK generation failed."
           fi
-  
-          # Combine comments
-          COMMENT_BODY="${JS_COMMENT} \\n ${CPP_COMMENT}"
-    
-          # Post comments to the current repo's PR
-          curl -s -H "Authorization: token $TOKEN" \
-            -X POST \
-            -d "{\"body\": \"$COMMENT_BODY\"}" \
-            "https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/issues/$PR_NUMBER/comments"
+      
+          # Check if comment body is not empty before posting
+          if [ -n "$COMMENT_BODY" ]; then
+            curl -s -H "Authorization: token $TOKEN" \
+              -X POST \
+              -d "{\"body\": \"$COMMENT_BODY\"}" \
+              "https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/issues/$PR_NUMBER/comments"
+          else
+            echo "No SDKs were generated, no comment will be posted."
+          fi
