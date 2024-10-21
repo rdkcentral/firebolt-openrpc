@@ -91,9 +91,6 @@ jobs:
           PR_NUMBER="${{ github.event.pull_request.number }}"
           WORKFLOW_NAME="CXX build"
 
-          # Debugging workflow names
-          echo "Polling workflow: $WORKFLOW_NAME"
-
           # Poll for the latest workflow run in Repo2
           while true; do
             # Fetch the list of workflows
@@ -101,8 +98,6 @@ jobs:
               "https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/actions/workflows" | jq \
               --arg WORKFLOW_NAME "$WORKFLOW_NAME" \
               '.workflows[] | select(.name == $WORKFLOW_NAME)')
-
-            echo "Workflow response: $response"
 
             workflow_id=$(echo $response | jq -r '.id')
             if [ "$workflow_id" == "null" ]; then
@@ -115,44 +110,53 @@ jobs:
             run_response=$(curl -s -H "Authorization: token $TOKEN" \
               "https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/actions/workflows/$workflow_id/runs?per_page=1")
 
-            echo "Raw run response: $run_response"
-
             run_id=$(echo $run_response | jq -r '.workflow_runs[0].id')
             conclusion=$(echo $run_response | jq -r '.workflow_runs[0].conclusion')
             status=$(echo $run_response | jq -r '.workflow_runs[0].status')
 
-            # Echo the run_id and conclusion for debugging
-            echo "Current run ID: $run_id"
-            echo "Current workflow conclusion: $conclusion"
-            echo "Current workflow status: $status"
-
             # Check if the workflow run is still in progress
             if [ "$status" != "completed" ]; then
-              echo "CPP SDK generation still in progress. Checking again in 120 seconds..."
-              sleep 120
-              continue
+            echo "CPP SDK generation still in progress. Checking again in 60 seconds..."
+            sleep 60
+            continue
             fi
 
             # Check if the workflow completed successfully or failed
             if [ "$conclusion" == "success" ]; then
               echo "CPP SDK generated successfully."
-
-              # Post a comment on the PR with success message
-              curl -s -H "Authorization: token $TOKEN" \
-              -X POST \
-              -d "{\"body\": \"CPP SDK generation succeeded for PR #$PR_NUMBER.\"}" \
-              "https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/issues/$PR_NUMBER/comments"
-
-              break
+              # Optionally, you can add comments or further steps here
+              break  # Exit the loop on success
             elif [ "$conclusion" == "failure" ]; then
-              echo "CPP SDK generation failed."
-
-              # Post a comment on the PR with failure message
-              curl -s -H "Authorization: token $TOKEN" \
-              -X POST \
-              -d "{\"body\": \"CPP SDK generation failed for PR #$PR_NUMBER.\"}" \
-              "https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/issues/$PR_NUMBER/comments"
-
-              exit 1
+              echo "Warning: CPP SDK generation failed."
+              break  # Fail the job if the SDK generation fails
             fi
           done
+
+      - name: Post comments on PR
+        run: |
+          TOKEN="${{ secrets.WORKFLOW_TRIGGER_SECRET }}"
+          REPO_OWNER="rdkcentral"
+          REPO_NAME="firebolt-apis"
+          PR_NUMBER="${{ github.event.pull_request.number }}"
+          
+          # Check JavaScript SDK generation status
+          if [ "${{ steps.poll-js-sdk.outputs.conclusion }}" == "success" ]; then
+            JS_COMMENT="JavaScript SDK generation succeeded."
+          elif [ "${{ steps.poll-js-sdk.outputs.conclusion }}" == "failure" ]; then
+            JS_COMMENT="JavaScript SDK generation failed."
+          fi
+
+          # Check CPP SDK generation status
+          if [ "${{ steps.poll-cpp-sdk.outputs.conclusion }}" == "success" ]; then
+            CPP_COMMENT="C++ SDK generation succeeded."
+          elif [ "${{ steps.poll-cpp-sdk.outputs.conclusion }}" == "failure" ]; then
+            CPP_COMMENT="Warning: C++ SDK generation failed."
+          else
+            CPP_COMMENT="C++ SDK generation status unknown."
+          fi
+
+          # Post comments
+          curl -s -H "Authorization: token $TOKEN" \
+            -X POST \
+            -d "{\"body\": \"${JS_COMMENT} \\n ${CPP_COMMENT}\"}" \
+            "https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/issues/$PR_NUMBER/comments"
