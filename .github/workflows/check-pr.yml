@@ -135,28 +135,29 @@ jobs:
       - name: Post comments on PR
         run: |
           TOKEN="${{ secrets.WORKFLOW_TRIGGER_SECRET }}"
-          REPO_OWNER="rdkcentral"
-          REPO_NAME="firebolt-apis"
+          REPO_OWNER="${{ github.repository_owner }}"
+          REPO_NAME="${{ github.event.repository.name }}"
           PR_NUMBER="${{ github.event.pull_request.number }}"
-          
+      
           # Check JavaScript SDK generation status
-          if [ "${{ steps.poll-js-sdk.outputs.conclusion }}" == "success" ]; then
+          if [[ "${{ steps.poll-javascript-sdk.outputs.conclusion }}" == "success" ]]; then
             JS_COMMENT="JavaScript SDK generation succeeded."
-          elif [ "${{ steps.poll-js-sdk.outputs.conclusion }}" == "failure" ]; then
+          elif [[ "${{ steps.poll-javascript-sdk.outputs.conclusion }}" == "failure" ]]; then
             JS_COMMENT="JavaScript SDK generation failed."
           fi
-
+      
           # Check CPP SDK generation status
-          if [ "${{ steps.poll-cpp-sdk.outputs.conclusion }}" == "success" ]; then
+          if [[ "${{ steps.poll-cpp-sdk.outputs.conclusion }}" == "success" ]]; then
             CPP_COMMENT="C++ SDK generation succeeded."
-          elif [ "${{ steps.poll-cpp-sdk.outputs.conclusion }}" == "failure" ]; then
+          elif [[ "${{ steps.poll-cpp-sdk.outputs.conclusion }}" == "failure" ]]; then
             CPP_COMMENT="Warning: C++ SDK generation failed."
-          else
-            CPP_COMMENT="C++ SDK generation status unknown."
           fi
-
-          # Post comments
+  
+          # Combine comments
+          COMMENT_BODY="${JS_COMMENT} \\n ${CPP_COMMENT}"
+    
+          # Post comments to the current repo's PR
           curl -s -H "Authorization: token $TOKEN" \
             -X POST \
-            -d "{\"body\": \"${JS_COMMENT} \\n ${CPP_COMMENT}\"}" \
+            -d "{\"body\": \"$COMMENT_BODY\"}" \
             "https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/issues/$PR_NUMBER/comments"
