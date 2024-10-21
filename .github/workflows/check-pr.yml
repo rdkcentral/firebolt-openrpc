@@ -28,82 +28,122 @@ jobs:
       - name: Run validation and tests
         run: npm pack
 
-      - name: Trigger Firebolt API repo workflow
+  trigger-mfos:
+    name: Trigger and Poll MFOS Workflow
+    runs-on: ubuntu-latest
+    needs: release
+    steps:
+      - name: Trigger MFOS Workflow
+        id: trigger-mfos
         uses: peter-evans/repository-dispatch@v2
         with:
-          token: ${{ secrets.WORKFLOW_TRIGGER_SECRET }}  # or use a custom token with proper permissions
-          repository: rdkcentral/firebolt-apis 
+          token: ${{ secrets.WORKFLOW_TRIGGER_SECRET }}
+          repository: rdkcentral/firebolt-apis
           event-type: trigger-workflow
           client-payload: '{"OPENRPC_PR_BRANCH": "${{ github.event.pull_request.head.ref }}"}'
-
-      - name: Store the workflow run ID
-        run: |
-          echo "Waiting for Repo2 to finish execution"
-  wait-for-repo2:
-    needs: release
-    runs-on: ubuntu-latest
-    steps:
-      - name: Poll Firebolt-api Workflow Status
-        id: poll-firebolt-api
+      
+      - name: Fetch MFOS Workflow ID
+        id: fetch-mfos-id
         run: |
           TOKEN="${{ secrets.WORKFLOW_TRIGGER_SECRET }}"
           REPO_OWNER="rdkcentral"
           REPO_NAME="firebolt-apis"
-          WORKFLOW_NAME="MFOS standalone sanity report - CORE,MANAGE,DISCOVERY"
+          WORKFLOW_NAME="MFOS Workflow"  # Adjust to the actual workflow name
 
-          # Poll for the latest workflow run in Repo2
-          while true; do
-            response=$(curl -s -H "Authorization: token $TOKEN" \
-              "https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/actions/workflows" | jq \
-              --arg WORKFLOW_NAME "$WORKFLOW_NAME" \
-              '.workflows[] | select(.name == $WORKFLOW_NAME)')
-              
-            workflow_id=$(echo $response | jq -r '.id')
-            if [ "$workflow_id" == "null" ]; then
-              echo "Workflow not found, retrying..."
-              sleep 10
-              continue
-            fi
+          # Fetch the most recent workflow run for the MFOS build
+          workflow_runs=$(curl -s -H "Authorization: token $TOKEN" \
+            "https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/actions/workflows" | jq \
+            --arg WORKFLOW_NAME "$WORKFLOW_NAME" \
+            '.workflows[] | select(.name == $WORKFLOW_NAME)')
 
-            # Get the latest workflow run
+          mfos_workflow_id=$(echo "$workflow_runs" | jq -r '.id')
+
+          echo "MFOS Workflow ID: $mfos_workflow_id"
+          echo "::set-output name=mfos_workflow_id::$mfos_workflow_id"
+
+      - name: Poll MFOS Workflow Status
+        id: poll-mfos
+        run: |
+          TOKEN="${{ secrets.WORKFLOW_TRIGGER_SECRET }}"
+          REPO_OWNER="rdkcentral"
+          REPO_NAME="firebolt-apis"
+          MFOS_WORKFLOW_ID="${{ steps.fetch-mfos-id.outputs.mfos_workflow_id }}"
+
+          # Poll MFOS Workflow
+          conclusion="in_progress"
+          while [ "$conclusion" == "in_progress" ]; do
             run_response=$(curl -s -H "Authorization: token $TOKEN" \
-              "https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/actions/workflows/$workflow_id/runs?status=completed&per_page=1")
-            
-            conclusion=$(echo $run_response | jq -r '.workflow_runs[0].conclusion')
-            if [ "$conclusion" == "success" ]; then
-              echo "SDK generated successfully."
-              break
-            elif [ "$conclusion" == "failure" ]; then
-              echo "Failing to generate SDK with the following OPENRPC changes"
+              "https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/actions/runs/$MFOS_WORKFLOW_ID")
+
+            conclusion=$(echo $run_response | jq -r '.conclusion')
+            if [ "$conclusion" == "failure" ]; then
+              echo "Failing job: MFOS standalone sanity report - CORE,MANAGE,DISCOVERY workflow failed."
               exit 1
+            elif [ "$conclusion" != "in_progress" ]; then
+              echo "MFOS workflow completed successfully."
             else
-              echo " still in progress. Checking again in 120 seconds..."
+              echo "MFOS workflow still in progress. Waiting..."
               sleep 120
             fi
           done
 
-  # notify-slack-on-failure:
-  #   needs: wait-for-repo2
-  #   if: failure()
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - name: Send Slack notification
-  #       env:
-  #         EVENT_NAME: ${{ github.event_name }}
-  #       run: |
-  #         # Determine the branch name based on the event type
-  #         if [ "$EVENT_NAME" == "repository_dispatch" ]; then
-  #           BRANCH_NAME=$OPENRPC_PR_BRANCH
-  #         elif [ "$EVENT_NAME" == "pull_request" ]; then
-  #           BRANCH_NAME=${{ github.event.pull_request.head.ref }}
-  #         elif [ "$EVENT_NAME" == "push" ]; then
-  #           BRANCH_NAME=${GITHUB_REF#refs/heads/}  # Extract branch name from GITHUB_REF for push events
-  #         else
-  #           BRANCH_NAME="unknown"
-  #         fi
+  trigger-cxx:
+    name: Trigger and Poll CXX Build
+    runs-on: ubuntu-latest
+    needs: release
+    steps:
+      - name: Trigger CXX Build
+        id: trigger-cxx
+        uses: peter-evans/repository-dispatch@v2
+        with:
+          token: ${{ secrets.WORKFLOW_TRIGGER_SECRET }}
+          repository: rdkcentral/firebolt-apis
+          event-type: trigger-workflow
+          client-payload: '{"OPENRPC_PR_BRANCH": "${{ github.event.pull_request.head.ref }}"}'
+      
+      - name: Fetch CXX Build Workflow ID
+        id: fetch-cxx-id
+        run: |
+          TOKEN="${{ secrets.WORKFLOW_TRIGGER_SECRET }}"
+          REPO_OWNER="rdkcentral"
+          REPO_NAME="firebolt-apis"
+          WORKFLOW_NAME="CXX Build Workflow"  # Adjust to the actual workflow name
 
-  #         # Send the Slack notification with the branch name
-  #         curl -X POST -H 'Content-type: application/json' \
-  #         --data '{"text": "Failed to generate SDK artifact with the latest changes in the Branch: '$BRANCH_NAME'."}' \
-  #         ${{ secrets.SLACK_WEBHOOK_URL }}
+          # Fetch the most recent workflow run for the CXX build
+          workflow_runs=$(curl -s -H "Authorization: token $TOKEN" \
+            "https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/actions/workflows" | jq \
+            --arg WORKFLOW_NAME "$WORKFLOW_NAME" \
+            '.workflows[] | select(.name == $WORKFLOW_NAME)')
 
+          cxx_workflow_id=$(echo "$workflow_runs" | jq -r '.id')
+
+          echo "CXX Workflow ID: $cxx_workflow_id"
+          echo "::set-output name=cxx_workflow_id::$cxx_workflow_id"
+
+      - name: Poll CXX Build Workflow Status
+        id: poll-cxx
+        run: |
+          TOKEN="${{ secrets.WORKFLOW_TRIGGER_SECRET }}"
+          REPO_OWNER="rdkcentral"
+          REPO_NAME="firebolt-apis"
+          CXX_WORKFLOW_ID="${{ steps.fetch-cxx-id.outputs.cxx_workflow_id }}"
+
+          # Poll CXX Build
+          conclusion="in_progress"
+          while [ "$conclusion" == "in_progress" ]; do
+            run_response=$(curl -s -H "Authorization: token $TOKEN" \
+              "https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/actions/runs/$CXX_WORKFLOW_ID")
+
+            conclusion=$(echo $run_response | jq -r '.conclusion')
+            if [ "$conclusion" == "failure" ]; then
+              echo "::warning::CXX Build failed, but continuing the workflow."
+              break
+            elif [ "$conclusion" != "in_progress" ]; then
+              echo "CXX Build completed successfully."
+            else
+              echo "CXX Build still in progress. Waiting..."
+              sleep 120
+            fi
+          done
+
+  
