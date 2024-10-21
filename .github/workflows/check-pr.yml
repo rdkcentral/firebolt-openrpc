@@ -3,7 +3,9 @@ on:
   workflow_dispatch:
   pull_request:
     types:
+      - 'ready_for_review'
       - 'opened'
+      - 'reopened'
       - 'synchronize'
   push:
     branches:
@@ -39,7 +41,7 @@ jobs:
       - name: Store the workflow run ID
         run: |
           echo "Waiting for Repo2 to finish execution"
-  wait-for-repo2:
+  wait-for-sdk-generation:
     needs: release
     runs-on: ubuntu-latest
     steps:
@@ -75,10 +77,10 @@ jobs:
             echo "JS_SDK_CONCLUSION=$conclusion" >> $GITHUB_ENV
             
             if [ "$status" == "completed" ] && [ "$conclusion" == "success" ]; then
-              echo "JavaScript SDK generated successfully."
+              echo "JavaScript SDK generated successfully for the OpenRPC changes."
               break
             elif [ "$status" == "completed" ] && [ "$conclusion" == "failure" ]; then
-              echo "Failed to generate JavaScript SDK."
+              echo "Failed to generate JavaScript SDK for the OpenRPC changes."
               exit 1
             else
               echo "Still in progress. Checking again in 120 seconds..."
@@ -129,11 +131,11 @@ jobs:
 
             # Check if the workflow completed successfully or failed
             if [ "$conclusion" == "success" ]; then
-              echo "CPP SDK generated successfully."
+              echo "CPP SDK generated successfully for the OpenRPC changes."
               # Optionally, you can add comments or further steps here
               break  # Exit the loop on success
             elif [ "$conclusion" == "failure" ]; then
-              echo "Warning: CPP SDK generation failed."
+              echo "Warning: CPP SDK generation failed for the OpenRPC changes."
               break  # Fail the job if the SDK generation fails
             fi
           done
@@ -151,16 +153,16 @@ jobs:
       
           # JavaScript SDK status
           if [[ "$JS_SDK_CONCLUSION" == "success" ]]; then
-            COMMENT_BODY+="JavaScript SDK generation succeeded.\\n"
+            COMMENT_BODY+="JavaScript SDK generation succeeded for the OpenRPC changes.\\n"
           elif [[ "$JS_SDK_CONCLUSION" == "failure" ]]; then
-            COMMENT_BODY+="JavaScript SDK generation failed.\\n"
+            COMMENT_BODY+="JavaScript SDK generation failed for the OpenRPC changes.\\n"
           fi
       
           # C++ SDK status
           if [[ "$CPP_SDK_CONCLUSION" == "success" ]]; then
-            COMMENT_BODY+="C++ SDK generation succeeded."
+            COMMENT_BODY+="C++ SDK generation succeeded for the OpenRPC changes."
           elif [[ "$CPP_SDK_CONCLUSION" == "failure" ]]; then
-            COMMENT_BODY+="C++ SDK generation failed."
+            COMMENT_BODY+="C++ SDK generation failed for the OpenRPC changes."
           fi
       
           # Check if comment body is not empty before posting
