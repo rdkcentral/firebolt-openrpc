@@ -73,3 +73,24 @@ They all have the same arguments and are all implemented using shared code for m
 ## OpenRPC Validation
 
 Indicated by `--task validate`. Reads and validates a corpus of individual OpenRPC documents and validates the result of assembling them together into a single OpenRPC document.
+
+### Pull Request Guidelines for the Firebolt-OpenRPC Repository
+
+When submitting a Pull Request (PR) to the `next` branch of the Firebolt-OpenRPC repository, please adhere to the following process:
+
+1. **Branch Naming Convention**:
+   - It is **advised** to use the **same branch name** for the PR in Firebolt-OpenRPC if there are changes in the `firebolt-api` repository. This ensures that if the branch names match, the OpenRPC workflow will be triggered again for that branch.
+   - If the branch names do not match, the OpenRPC PR will be tested against the `next` branch of the `firebolt-api`.
+
+2. **Workflow Triggering**:
+   - Upon opening the PR in Firebolt-OpenRPC, it will trigger the workflow in Firebolt-APIs to generate the C++ SDK and JavaScript SDK.
+
+4. **JavaScript Validation**: 
+   - If the PR branch causes **Generation** or **Testing** failures for JavaScript, the PR will be **blocked**.
+
+5. **C++ Validation**:
+   - If the PR branch causes **Generation**, **Testing**, or **Compilation** failures for C++, a **warning** will be added as a comment on the PR in a **visibly striking manner**. However, the PR will **not be blocked**.
+
+Please ensure to follow these guidelines to maintain the integrity of the codebase and refer to the attached flow diagram for guidance on the process.  
+
+![Flow Diagram](images/Firebolt%20SDK.png)
