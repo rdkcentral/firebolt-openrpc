@@ -7,11 +7,14 @@ on:
       - 'opened'
       - 'reopened'
       - 'synchronize'
+  push:
+    branches:
+      - next
 env:
   HUSKY: 0
 jobs:
   release:
-    name: Run npm pack
+    name: Trigger Workflows
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -26,3 +29,148 @@ jobs:
         run: npm ci
       - name: Run validation and tests
         run: npm pack
+
+      - name: Trigger Workflows
+        uses: peter-evans/repository-dispatch@v2
+        with:
+          token: ${{ secrets.WORKFLOW_TRIGGER_SECRET }}  # or use a custom token with proper permissions
+          repository: rdkcentral/firebolt-apis 
+          event-type: trigger-workflow
+          client-payload: '{"OPENRPC_PR_BRANCH": "${{ github.event.pull_request.head.ref }}"}'
+
+      - name: Store the workflow run ID
+        run: |
+          echo "Waiting for Repo2 to finish execution"
+  wait-for-sdk-generation:
+    needs: release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Poll Firebolt-api for JavaScript SDK generation
+        id: poll-javascript-sdk
+        run: |
+          TOKEN="${{ secrets.WORKFLOW_TRIGGER_SECRET }}"
+          REPO_OWNER="rdkcentral"
+          REPO_NAME="firebolt-apis"
+          WORKFLOW_NAME="MFOS standalone sanity report - CORE,MANAGE,DISCOVERY"
+
+          while true; do
+            response=$(curl -s -H "Authorization: token $TOKEN" \
+              "https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/actions/workflows" | jq \
+              --arg WORKFLOW_NAME "$WORKFLOW_NAME" \
+              '.workflows[] | select(.name == $WORKFLOW_NAME)')
+            
+            workflow_id=$(echo $response | jq -r '.id')
+            if [ "$workflow_id" == "null" ]; then
+              echo "Workflow not found, retrying in 10 seconds..."
+              sleep 10
+              continue
+            fi
+
+            # Get the latest workflow run
+            run_response=$(curl -s -H "Authorization: token $TOKEN" \
+              "https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/actions/workflows/$workflow_id/runs?per_page=1")
+
+            status=$(echo $run_response | jq -r '.workflow_runs[0].status')
+            conclusion=$(echo $run_response | jq -r '.workflow_runs[0].conclusion')
+            
+            # Store conclusion if available
+            echo "JS_SDK_CONCLUSION=$conclusion" >> $GITHUB_ENV
+            
+            if [ "$status" == "completed" ] && [ "$conclusion" == "success" ]; then
+              echo "JavaScript SDK generated successfully for the OpenRPC changes."
+              break
+            elif [ "$status" == "completed" ] && [ "$conclusion" == "failure" ]; then
+              echo "Failed to generate JavaScript SDK for the OpenRPC changes."
+              exit 1
+            else
+              echo "Still in progress. Checking again in 120 seconds..."
+              sleep 120
+            fi
+          done
+      - name: Poll Firebolt-api for CPP SDK generation
+        id: poll-cpp-sdk
+        run: |
+          TOKEN="${{ secrets.WORKFLOW_TRIGGER_SECRET }}"
+          REPO_OWNER="rdkcentral"
+          REPO_NAME="firebolt-apis"
+          PR_NUMBER="${{ github.event.pull_request.number }}"
+          WORKFLOW_NAME="CXX build"
+
+          # Poll for the latest workflow run in Repo2
+          while true; do
+            # Fetch the list of workflows
+            response=$(curl -s -H "Authorization: token $TOKEN" \
+              "https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/actions/workflows" | jq \
+              --arg WORKFLOW_NAME "$WORKFLOW_NAME" \
+              '.workflows[] | select(.name == $WORKFLOW_NAME)')
+
+            workflow_id=$(echo $response | jq -r '.id')
+            if [ "$workflow_id" == "null" ]; then
+              echo "Workflow not found, retrying in 10 seconds..."
+              sleep 10
+              continue
+            fi
+
+            # Get the latest workflow run
+            run_response=$(curl -s -H "Authorization: token $TOKEN" \
+              "https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/actions/workflows/$workflow_id/runs?per_page=1")
+
+            run_id=$(echo $run_response | jq -r '.workflow_runs[0].id')
+            conclusion=$(echo $run_response | jq -r '.workflow_runs[0].conclusion')
+            status=$(echo $run_response | jq -r '.workflow_runs[0].status')
+
+            # Check if the workflow run is still in progress
+            if [ "$status" != "completed" ]; then
+            echo "CPP SDK generation still in progress. Checking again in 60 seconds..."
+            sleep 60
+            continue
+            fi
+
+            # Store conclusion if available
+            echo "CPP_SDK_CONCLUSION=$conclusion" >> $GITHUB_ENV
+
+            # Check if the workflow completed successfully or failed
+            if [ "$conclusion" == "success" ]; then
+              echo "CPP SDK generated successfully for the OpenRPC changes."
+              # Optionally, you can add comments or further steps here
+              break  # Exit the loop on success
+            elif [ "$conclusion" == "failure" ]; then
+              echo "Warning: CPP SDK generation failed for the OpenRPC changes."
+              break  # Fail the job if the SDK generation fails
+            fi
+          done
+
+      - name: Post comments on PR
+        if: env.JS_SDK_CONCLUSION != 'unknown' || env.CPP_SDK_CONCLUSION != 'unknown'  # Only run if at least one SDK ran
+        run: |
+          TOKEN="${{ secrets.WORKFLOW_TRIGGER_SECRET }}"
+          REPO_OWNER="${{ github.repository_owner }}"
+          REPO_NAME="${{ github.event.repository.name }}"
+          PR_NUMBER="${{ github.event.pull_request.number }}"
+      
+          # Construct comment body based on conclusions
+          COMMENT_BODY=""
+      
+          # JavaScript SDK status
+          if [[ "$JS_SDK_CONCLUSION" == "success" ]]; then
+            COMMENT_BODY+="JavaScript SDK generation succeeded for the OpenRPC changes.\\n"
+          elif [[ "$JS_SDK_CONCLUSION" == "failure" ]]; then
+            COMMENT_BODY+="JavaScript SDK generation failed for the OpenRPC changes.\\n"
+          fi
+      
+          # C++ SDK status
+          if [[ "$CPP_SDK_CONCLUSION" == "success" ]]; then
+            COMMENT_BODY+="C++ SDK generation succeeded for the OpenRPC changes."
+          elif [[ "$CPP_SDK_CONCLUSION" == "failure" ]]; then
+            COMMENT_BODY+="C++ SDK generation failed for the OpenRPC changes."
+          fi
+      
+          # Check if comment body is not empty before posting
+          if [ -n "$COMMENT_BODY" ]; then
+            curl -s -H "Authorization: token $TOKEN" \
+              -X POST \
+              -d "{\"body\": \"$COMMENT_BODY\"}" \
+              "https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/issues/$PR_NUMBER/comments"
+          else
+            echo "No SDKs were generated, no comment will be posted."
+          fi
