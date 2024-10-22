@@ -93,4 +93,4 @@ When submitting a Pull Request (PR) to the `next` branch of the Firebolt-OpenRPC
 
 Please ensure to follow these guidelines to maintain the integrity of the codebase and refer to the attached flow diagram for guidance on the process.  
 
-![Flow Diagram](images/Firebolt%20SDK.png)
+![Flow Diagram](images/GithubActions.png)
