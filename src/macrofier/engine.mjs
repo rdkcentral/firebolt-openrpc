@@ -1525,10 +1525,15 @@ function insertMethodMacros(template, methodObj, json, templates, type = '', exa
 
 
   if (method.deprecated) {
+    if (method.alternative) {
+      template = template.replace(/\$\{if\.method\.alternative\}(.*?)\$\{end\.if\.method\.alternative\}/gms, '$1')
+    }
     template = template.replace(/\$\{if\.deprecated\}(.*?)\$\{end\.if\.deprecated\}/gms, '$1')
+    template = template.replace(/\$\{if\.not\.deprecated\}(.*?)\$\{end\.if\.not\.deprecated\}/gms, '')
   }
   else {
     template = template.replace(/\$\{if\.deprecated\}(.*?)\$\{end\.if\.deprecated\}/gms, '')
+    template = template.replace(/\$\{if\.not\.deprecated\}(.*?)\$\{end\.if\.not\.deprecated\}/gms, '$1')
   }
 
   // method.params[n].xxx macros
