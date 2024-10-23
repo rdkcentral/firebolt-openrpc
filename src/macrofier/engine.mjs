@@ -945,12 +945,6 @@ function generateSchemas(json, templates, options) {
       content = content.replace(/\$\{schema.example\}/, schema.examples.map(ex => JSON.stringify(ex, null, '  ')).join('\n\n'))
     }
 
-    if (schema.additionalProperties) {
-      content = content.replace(/\$\{schema.additionalProperties\}/, JSON.stringify(schema.additionalProperties, null, '  '))
-    } else {
-      content = content.replace(/.*\$\{schema.additionalProperties\}/, '')
-    }
-
     let seeAlso = getRelatedSchemaLinks(schema, json, templates, options)
     if (seeAlso) {
       content = content.replace(/\$\{schema.seeAlso\}/, '\n\n' + seeAlso)
