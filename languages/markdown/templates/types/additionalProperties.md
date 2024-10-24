@@ -1,1 +1,1 @@
- [property: string]: ${type}
+[property: string]: ${type}
