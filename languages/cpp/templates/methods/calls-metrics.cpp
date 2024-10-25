@@ -1,7 +1,7 @@
     /* ${method.name} - ${method.description} */
    static void ${method.name}Dispatcher(const void* result) {
         // Accessing Metrics methods using singleton Instance
-        Firebolt::IFireboltAccessor::Instance().MetricsInterface().${method.name}(${if.result.nonboolean}${if.result.nonvoid}(static_cast<${method.result.json.type}>(const_cast<void*>(result)))${end.if.result.nonvoid}${end.if.result.nonboolean});
+        Metrics::MetricsImpl::${method.name}(${if.result.nonboolean}${if.result.nonvoid}(static_cast<${method.result.json.type}>(const_cast<void*>(result)))${end.if.result.nonvoid}${end.if.result.nonboolean});
     }
     /* ${method.name} - ${method.description} */
     ${method.signature.result} ${info.Title}Impl::${method.name}( ${method.signature.params}${if.params}, ${end.if.params}Firebolt::Error *err ) ${if.result.nonvoid}${if.params.empty} const${end.if.params.empty}${end.if.result.nonvoid}
