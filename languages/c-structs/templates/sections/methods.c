@@ -1,4 +1,0 @@
-
-// Methods
-
-${method.list}

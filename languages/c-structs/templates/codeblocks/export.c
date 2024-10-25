@@ -1,1 +1,0 @@
-export { default as ${info.title} } from './${info.title}/index.mjs'
