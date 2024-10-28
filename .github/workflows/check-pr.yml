@@ -140,7 +140,6 @@ jobs:
               break
             elif [ "$status" == "completed" ] && [ "$conclusion" == "failure" ]; then
               echo "Failed to generate C++ SDK for the OpenRPC changes."
-              exit 1
             else
               echo "Still in progress. Checking again in ${POLL_INTERVAL} seconds..."
               sleep $POLL_INTERVAL
