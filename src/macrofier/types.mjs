@@ -17,9 +17,11 @@
  */
 
 import deepmerge from 'deepmerge'
-import { getPath, localizeDependencies, getSafeEnumKeyName } from '../shared/json-schema.mjs'
+import { getPath, localizeDependencies, getSafeEnumKeyName, getSafeKeyName } from '../shared/json-schema.mjs'
 import path from "path"
+import { getConfig } from '../shared/configLoader.mjs'
 
+const config = getConfig()
 let convertTuplesToArraysOrObjects = false
 const templates = {}
 const state = {}
@@ -315,6 +317,8 @@ const insertObjectPatternPropertiesMacros = (content, schema, module, title, opt
 }
 
 const getIndents = level => level ? '    ' : ''
+const wrapProp = name => name.match(/[/\.\+]/) ? `"${name}"` : name
+const safePropName = name => config.enableStringPropertyKeys ? wrapProp(name) : getSafeKeyName(name)
 const insertObjectMacros = (content, schema, module, title, property, options) => {
   const options2 = options ? JSON.parse(JSON.stringify(options)) : {}
   options2.parent = title
@@ -346,8 +350,10 @@ const insertObjectMacros = (content, schema, module, title, property, options) =
           const description = getSchemaDescription(prop, module)
           let replacedTemplate  = template
           .replace(/(^\s+)/g, '$1'.repeat(options2.level))
-          .replace(/\$\{property\}/g, name)
-          .replace(/\$\{Property\}/g, capitalize(name))
+          .replace(/\$\{property.raw\}/g, name) //Gives the raw RPC propery name, even if it's unsafe
+          .replace(/\$\{Property.raw\}/g, capitalize(name))
+          .replace(/\$\{property\}/g, safePropName(name))
+          .replace(/\$\{Property\}/g, capitalize(safePropName(name)))
           .replace(/\$\{parent\.title\}/g, title)
           .replace(/\$\{title\}/g, type)
           .replace(/\$\{shape\}/g, schemaShape)
@@ -360,7 +366,7 @@ const insertObjectMacros = (content, schema, module, title, property, options) =
           .replace(/\$\{if\.base\.optional\}(.*?)\$\{end\.if\.base\.optional\}/gms, options.required ? '' : '$1')
           .replace(/\$\{if\.non\.object\}(.*?)\$\{end\.if\.non\.object\}/gms, isObject(localizedProp) ? '' : '$1')
           .replace(/\$\{if\.non\.array\}(.*?)\$\{end\.if\.non\.array\}/gms, (localizedProp.type === 'array') ? '' : '$1')
-          .replace(/\$\{if\.non\.anyOf\}(.*?)\$\{end\.if\.non\.anyOf\}/gms, (localizedProp.anyOf || localizedProp.anyOneOf) ? '' : '$1')
+          .replace(/\$\{if\.non\.anyOf\}(.*?)\$\{end\.if\.non\.anyOf\}/gms, (localizedProp.anyOf || localizedProp.oneOf) ? '' : '$1')
           .replace(/\$\{if\.non\.const\}(.*?)\$\{end\.if\.non\.const\}/gms, (typeof localizedProp.const === 'string') ? '' : '$1')
           let baseTitle = options.property
 
@@ -724,7 +730,11 @@ function getSchemaType(schema, module, { destination, templateDir = 'types', lin
   const theTitle = insertSchemaMacros(namespaceStr + getTemplate(path.join(templateDir, 'title' + suffix)), schema, module, { name: schema.title, parent: getXSchemaGroup(schema, module), recursive: false })
   const allocatedProxy = event || result
 
-  const title = schema.type === "object" || schema.anyOf || schema.oneOf || Array.isArray(schema.type) && schema.type.includes("object") || schema.enum ? true : false
+  let title = schema.type === "object" || schema.anyOf || schema.oneOf || Array.isArray(schema.type) && schema.type.includes("object") || schema.enum ? true : false
+  
+  if (config?.enableUnionTypes === false) {
+    title = schema.type === "object" || Array.isArray(schema.type) && schema.type.includes("object") || schema.enum ? true : false
+  }
 
   if (schema['$ref']) {
     if (schema['$ref'][0] === '#') {
@@ -929,5 +939,6 @@ export default {
   getMethodSignatureResult,
   getSchemaShape,
   getSchemaType,
-  getSchemaInstantiation
+  getSchemaInstantiation,
+  getXSchemaGroup
 }

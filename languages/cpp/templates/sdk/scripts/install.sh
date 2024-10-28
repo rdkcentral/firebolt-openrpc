@@ -5,6 +5,7 @@ usage()
    echo "    -i install path"
    echo "    -s sdk path"
    echo "    -m module name. i.e, core/manage"
+   echo "    -v sdk version. i.e, 1.3.0"
    echo
    echo "usage: "
    echo "    ./install.sh -i path -s sdk path -m core"
@@ -13,12 +14,15 @@ usage()
 SdkPath=".."
 InstallPath=".."
 ModuleName="core"
-while getopts i:s:m:h flag
+Version=1.3.0-next.1
+
+while getopts i:s:m:v:h flag
 do
     case "${flag}" in
         i) InstallPath="${OPTARG}";;
         s) SdkPath="${OPTARG}";;
         m) ModuleName="${OPTARG}";;
+        v) Version="${OPTARG}";;
         h) usage && exit 1;;
     esac
 done
@@ -40,8 +44,7 @@ GetVersion()
   Version=${array[2]}
 }
 
-Version=0.0
-GetVersion
+#GetVersion
 ReleaseName=firebolt-${ModuleName}-native-sdk-${Version}
 ReleasePath=${InstallPath}/${ReleaseName}
 
@@ -52,6 +55,7 @@ cp -aR ${SdkPath}/include ${ReleasePath}
 cp -aR ${SdkPath}/cmake ${ReleasePath}
 cp -aR ${SdkPath}/scripts/build.sh ${ReleasePath}
 cp -aR ${SdkPath}/CMakeLists.txt ${ReleasePath}
+mv ${SdkPath}/firebolt-*open-rpc.json ${ReleasePath}
 cp -aR ${SdkPath}/cpptest ${ReleasePath}/test
 
 sed -i'' -e '/EnableTest="ON";;/d' ${ReleasePath}/build.sh

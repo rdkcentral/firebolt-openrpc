@@ -28,7 +28,7 @@ import isEmpty from 'crocks/core/isEmpty.js'
 const { and, not } = logic
 import isString from 'crocks/core/isString.js'
 import predicates from 'crocks/predicates/index.js'
-import { getExternalSchemaPaths, isDefinitionReferencedBySchema, isNull, localizeDependencies, isSchema, getLocalSchemaPaths, replaceRef, getPropertySchema } from './json-schema.mjs'
+import { getExternalSchemaPaths, isDefinitionReferencedBySchema, isNull, localizeDependencies, isSchema, getLocalSchemaPaths, replaceRef, getPropertySchema, dereferenceAndMergeAllOfs } from './json-schema.mjs'
 import { getPath as getRefDefinition } from './json-schema.mjs'
 const { isObject, isArray, propEq, pathSatisfies, hasProp, propSatisfies } = predicates
 
@@ -91,8 +91,8 @@ const getProviderInterfaceMethods = (capability, json) => {
 
 function getProviderInterface(capability, module, extractProviderSchema = false) {
     module = JSON.parse(JSON.stringify(module))
-    const iface = getProviderInterfaceMethods(capability, module)//.map(method => localizeDependencies(method, module, null, { mergeAllOfs: true }))
-  
+    const iface = getProviderInterfaceMethods(capability, module).map(method => dereferenceAndMergeAllOfs(method, module))
+    
     iface.forEach(method => {
       const payload = getPayloadFromEvent(method)
       const focusable = method.tags.find(t => t['x-allow-focus'])
@@ -157,7 +157,7 @@ function getProviderInterface(capability, module, extractProviderSchema = false)
         method.tags = method.tags.filter(tag => tag.name !== 'event')
       }
     })
-  
+
     return iface
   }
   
