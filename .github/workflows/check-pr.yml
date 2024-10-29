@@ -110,11 +110,6 @@ jobs:
           echo "JavaScript Workflow ID: ${{ env.JS_RUN_ID }}"
           echo "C++ Workflow ID: ${{ env.CPP_RUN_ID }}"
 
-
-  wait-for-sdk-generation:
-    needs: release
-    runs-on: ubuntu-latest
-    steps:
       - name: Print Environment Variables
         run: printenv
 
