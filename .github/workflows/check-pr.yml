@@ -67,7 +67,6 @@ jobs:
 
             if [ "$js_run_id" != "null" ]; then
               echo "JS_RUN_ID=$js_run_id" >> $GITHUB_ENV
-              echo "JavaScript Workflow ID: ${{ env.JS_RUN_ID }}"
               break
             else
               echo "Waiting for JavaScript workflow to start..."
@@ -116,6 +115,9 @@ jobs:
     needs: release
     runs-on: ubuntu-latest
     steps:
+      - name: Print Environment Variables
+        run: printenv
+
       - name: Poll Firebolt-api for JavaScript SDK generation
         id: poll-javascript-sdk
         run: |
