@@ -129,9 +129,10 @@ jobs:
             # Use the same response to get the latest run
             run_response=$(curl -s -H "Authorization: token $TOKEN" \
               "https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/actions/workflows/$workflow_id/runs?per_page=1")
-
+              
             status=$(echo $run_response | jq -r '.workflow_runs[0].status')
-            conclusion=$(echo $run_response | jq -r '.workflow_runs[0].conclusion
+            conclusion=$(echo $run_response | jq -r '.workflow_runs[0].conclusion')
+            
             # Store conclusion if available
             echo "CPP_SDK_CONCLUSION=$conclusion" >> $GITHUB_ENV
 
