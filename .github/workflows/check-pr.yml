@@ -38,98 +38,43 @@ jobs:
           event-type: trigger-workflow
           client-payload: '{"OPENRPC_PR_BRANCH": "${{ github.event.pull_request.head.ref }}"}'
 
-      - name: Get JS Workflow Run ID
-        run: |
-          TOKEN="${{ secrets.WORKFLOW_TRIGGER_SECRET }}"
-          REPO_OWNER="rdkcentral"
-          REPO_NAME="firebolt-apis"
-          WORKFLOW_NAME="MFOS standalone sanity report - CORE,MANAGE,DISCOVERY"
-          MAX_RETRIES=20
-          SLEEP_TIME=15  # seconds
-
-          for ((i=0; i<MAX_RETRIES; i++)); do
-            # Fetch workflows
-            response=$(curl -s -H "Authorization: token $TOKEN" \
-              "https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/actions/workflows")
-
-            echo "Workflows Response: $response"  # Log entire response
-            
-            # Capture workflow ID
-            js_workflow_id=$(echo "$response" | jq --arg WORKFLOW_NAME "$WORKFLOW_NAME" '.workflows[] | select(.name == $WORKFLOW_NAME).id')
-
-            # Capture the specific run ID for the workflow
-            js_run_id=$(curl -s -H "Authorization: token $TOKEN" \
-              "https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/actions/workflows/$js_workflow_id/runs?per_page=1" | \
-              jq -r '.workflow_runs[0].id')
-
-            echo "JavaScript Workflow ID: $js_workflow_id"
-            echo "JavaScript Workflow Run ID: $js_run_id"
-
-            if [ "$js_run_id" != "null" ]; then
-              echo "JS_RUN_ID=$js_run_id" >> $GITHUB_ENV
-              break
-            else
-              echo "Waiting for JavaScript workflow to start..."
-              sleep $SLEEP_TIME
-            fi
-          done
-            
-      # Poll until the C++ SDK workflow run is available
-      - name: Get CPP Workflow Run ID
-        run: |
-          TOKEN="${{ secrets.WORKFLOW_TRIGGER_SECRET }}"
-          REPO_OWNER="rdkcentral"
-              REPO_NAME="firebolt-apis"
-              WORKFLOW_NAME="CXX build"
-              MAX_RETRIES=20
-              SLEEP_TIME=15  # seconds
-
-              for ((i=0; i<MAX_RETRIES; i++)); do
-                # Fetch workflow ID
-                cpp_workflow_id=$(curl -s -H "Authorization: token $TOKEN" \
-                  "https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/actions/workflows" | jq \
-                  --arg WORKFLOW_NAME "$WORKFLOW_NAME" '.workflows[] | select(.name == $WORKFLOW_NAME).id')
-
-                # Capture the specific run ID for the workflow
-                cpp_run_id=$(curl -s -H "Authorization: token $TOKEN" \
-                  "https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/actions/workflows/$cpp_workflow_id/runs?per_page=1" | \
-                  jq -r '.workflow_runs[0].id')
-
-                if [ "$cpp_run_id" != "null" ]; then
-                  echo "CPP_RUN_ID=$cpp_run_id" >> $GITHUB_ENV
-                  break
-                else
-                  echo "Waiting for C++ workflow to start..."
-                  sleep $SLEEP_TIME
-                fi
-              done
-
-
-      - name: Debugging JS Workflow ID and Run ID
-        run: |
-          echo "JavaScript Workflow ID: ${{ env.JS_RUN_ID }}"
-          echo "C++ Workflow ID: ${{ env.CPP_RUN_ID }}"
-
-      - name: Print Environment Variables
-        run: printenv
-
+  wait-for-sdk-generation:
+    needs: release
+    runs-on: ubuntu-latest
+    steps:
       - name: Poll Firebolt-api for JavaScript SDK generation
         id: poll-javascript-sdk
         run: |
           TOKEN="${{ secrets.WORKFLOW_TRIGGER_SECRET }}"
           REPO_OWNER="rdkcentral"
           REPO_NAME="firebolt-apis"
-          RUN_ID="${{ env.JS_RUN_ID }}"
+          WORKFLOW_NAME="MFOS standalone sanity report - CORE,MANAGE,DISCOVERY"
           MAX_POLLS=30  # Max polls before timeout
           POLL_INTERVAL=50  # In seconds
 
-           # Poll the specific run ID for status
+          # Fetch the workflow ID once
+          response=$(curl -s -H "Authorization: token $TOKEN" \
+            "https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/actions/workflows" | jq \
+             --arg WORKFLOW_NAME "$WORKFLOW_NAME" \
+            '.workflows[] | select(.name == $WORKFLOW_NAME)')
+
+          workflow_id=$(echo $response | jq -r '.id')
+          if [ "$workflow_id" == "null" ]; then
+            echo "Workflow not found."
+            sleep 10
+            continue
+          fi
+
+          # Start polling for the workflow run
           for ((i=0; i<MAX_POLLS; i++)); do
             run_response=$(curl -s -H "Authorization: token $TOKEN" \
-              "https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/actions/runs/$RUN_ID")
+              "https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/actions/workflows/$workflow_id/runs?per_page=1")
 
-            status=$(echo $run_response | jq -r '.status')
-            conclusion=$(echo $run_response | jq -r '.conclusion')
+            status=$(echo $run_response | jq -r '.workflow_runs[0].status')
+            conclusion=$(echo $run_response | jq -r '.workflow_runs[0].conclusion')
+
+            # Store conclusion if available
+            echo "JS_SDK_CONCLUSION=$conclusion" >> $GITHUB_ENV
 
             if [ "$status" == "completed" ] && [ "$conclusion" == "success" ]; then
               echo "JavaScript SDK generated successfully for the OpenRPC changes."
@@ -143,46 +88,67 @@ jobs:
             fi
           done
 
+          # Final check after loop
           if [ "$i" -eq "$MAX_POLLS" ]; then
             echo "Timeout reached while waiting for JavaScript SDK generation."
             exit 1
+          else
+            echo "Polling completed successfully."
           fi
-          
       - name: Poll Firebolt-api for CPP SDK generation
         id: poll-cpp-sdk
         run: |
           TOKEN="${{ secrets.WORKFLOW_TRIGGER_SECRET }}"
           REPO_OWNER="rdkcentral"
           REPO_NAME="firebolt-apis"
-          RUN_ID="${{ env.CPP_RUN_ID }}"
+          PR_NUMBER="${{ github.event.pull_request.number }}"
+          WORKFLOW_NAME="CXX build"
           MAX_POLLS=30  # Max polls before timeout
           POLL_INTERVAL=50  # In seconds
+          PR_NUMBER="${{ github.event.pull_request.number }}"
 
+          # Fetch the workflow ID once
+          response=$(curl -s -H "Authorization: token $TOKEN" \
+            "https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/actions/workflows" | jq \
+             --arg WORKFLOW_NAME "$WORKFLOW_NAME" \
+            '.workflows[] | select(.name == $WORKFLOW_NAME)')
 
-          # Poll the specific run ID for status
+          workflow_id=$(echo $response | jq -r '.id')
+          if [ "$workflow_id" == "null" ]; then
+            echo "Workflow not found."
+            sleep 10
+            continue
+          fi
+
+          # Start polling for the workflow run
           for ((i=0; i<MAX_POLLS; i++)); do
             run_response=$(curl -s -H "Authorization: token $TOKEN" \
-              "https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/actions/runs/$RUN_ID")
-
-            status=$(echo $run_response | jq -r '.status')
-            conclusion=$(echo $run_response | jq -r '.conclusion')
+              "https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/actions/workflows/$workflow_id/runs?per_page=1")
+              
+            status=$(echo $run_response | jq -r '.workflow_runs[0].status')
+            conclusion=$(echo $run_response | jq -r '.workflow_runs[0].conclusion')
+            
+            # Store conclusion if available
+            echo "CPP_SDK_CONCLUSION=$conclusion" >> $GITHUB_ENV
 
             if [ "$status" == "completed" ] && [ "$conclusion" == "success" ]; then
-              echo "JavaScript SDK generated successfully for the OpenRPC changes."
+              echo "C++ SDK generated successfully for the OpenRPC changes."
               break
             elif [ "$status" == "completed" ] && [ "$conclusion" == "failure" ]; then
-              echo "Failed to generate JavaScript SDK for the OpenRPC changes."
+              echo "Failed to generate C++ SDK for the OpenRPC changes."
             else
               echo "Still in progress. Checking again in ${POLL_INTERVAL} seconds..."
               sleep $POLL_INTERVAL
             fi
           done
 
+          # Final check after loop
           if [ "$i" -eq "$MAX_POLLS" ]; then
-            echo "Timeout reached while waiting for JavaScript SDK generation."
+            echo "Timeout reached while waiting for C++ SDK generation."
             exit 1
+          else
+            echo "Polling completed successfully."
           fi
-
       - name: Post comments on PR
         if: env.JS_SDK_CONCLUSION != 'unknown' || env.CPP_SDK_CONCLUSION != 'unknown'  # Only run if at least one SDK ran
         run: |
