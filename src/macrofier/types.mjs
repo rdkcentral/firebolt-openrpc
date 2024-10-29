@@ -888,7 +888,7 @@ function getSchemaType(schema, module, { destination, templateDir = 'types', lin
     }
     
     template = getTemplate(path.join(templateDir, 'patternProperties'))
-    if (schema.paternProperties && template ) {
+    if (schema.patternProperties && template ) {
       return insertSchemaMacros(getTemplate(path.join(templateDir, 'Title')), schema, module, { name: theTitle, recursive: false })
     } else {
       // TODO: this assumes that when type is an array of types, that it's one other primative & 'null', which isn't necessarily true.
