@@ -37,10 +37,6 @@ jobs:
           repository: rdkcentral/firebolt-apis 
           event-type: trigger-workflow
           client-payload: '{"OPENRPC_PR_BRANCH": "${{ github.event.pull_request.head.ref }}"}'
-
-      - name: Store the workflow run ID
-        run: |
-          echo "Waiting for Repo2 to finish execution"
   wait-for-sdk-generation:
     needs: release
     runs-on: ubuntu-latest
