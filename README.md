@@ -91,6 +91,5 @@ When submitting a Pull Request (PR) to the `next` branch of the Firebolt-OpenRPC
 5. **C++ Validation**:
    - If the PR branch causes **Generation**, **Testing**, or **Compilation** failures for C++, a **warning** will be added as a comment on the PR in a **visibly striking manner**. However, the PR will **not be blocked**.
 
-Please ensure to follow these guidelines to maintain the integrity of the codebase and refer to the attached flow diagram for guidance on the process.  
+Please ensure to follow these guidelines to maintain the integrity of the codebase. For further clarification, refer to the flow diagram [here](images/GithubActions.png).
 
-![Flow Diagram](images/GithubActions.png)
