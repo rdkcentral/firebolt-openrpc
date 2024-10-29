@@ -76,6 +76,14 @@ jobs:
           echo "CPP_RUN_ID=$cpp_run_id" >> $GITHUB_ENV
 
 
+      - name: Debugging JS Workflow ID and Run ID
+        run: |
+          echo "JavaScript Workflow ID: $js_workflow_id"
+          echo "JavaScript Workflow Run ID: $js_run_id"
+          echo "C++ Workflow ID: $cpp_workflow_id"
+          echo "C++ Workflow Run ID: $cpp_run_id"
+
+
   wait-for-sdk-generation:
     needs: release
     runs-on: ubuntu-latest
