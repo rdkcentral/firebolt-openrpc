@@ -67,6 +67,7 @@ jobs:
 
             if [ "$js_run_id" != "null" ]; then
               echo "JS_RUN_ID=$js_run_id" >> $GITHUB_ENV
+              echo "JavaScript Workflow ID: ${{ env.JS_RUN_ID }}"
               break
             else
               echo "Waiting for JavaScript workflow to start..."
@@ -107,10 +108,8 @@ jobs:
 
       - name: Debugging JS Workflow ID and Run ID
         run: |
-          echo "JavaScript Workflow ID: $js_workflow_id"
-          echo "JavaScript Workflow Run ID: $js_run_id"
-          echo "C++ Workflow ID: $cpp_workflow_id"
-          echo "C++ Workflow Run ID: $cpp_run_id"
+          echo "JavaScript Workflow ID: ${{ env.JS_RUN_ID }}"
+          echo "C++ Workflow ID: ${{ env.CPP_RUN_ID }}"
 
 
   wait-for-sdk-generation:
