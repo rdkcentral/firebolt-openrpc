@@ -57,8 +57,6 @@ jobs:
             # Fetch workflows
             response=$(curl -s -H "Authorization: token $TOKEN" \
               "https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/actions/workflows")
-
-            echo "Workflows Response: $response"  # Log entire response
             
             # Capture workflow ID
             js_workflow_id=$(echo "$response" | jq --arg WORKFLOW_NAME "$WORKFLOW_NAME" '.workflows[] | select(.name == $WORKFLOW_NAME).id')
@@ -109,15 +107,6 @@ jobs:
                   sleep $SLEEP_TIME
                 fi
               done
-
-
-      - name: Debugging JS Workflow ID and Run ID
-        run: |
-          echo "JavaScript Workflow ID: ${{ env.JS_RUN_ID }}"
-          echo "C++ Workflow ID: ${{ env.CPP_RUN_ID }}"
-
-      - name: Print Environment Variables
-        run: printenv
 
       - name: Poll Firebolt-api for JavaScript SDK generation
         id: poll-javascript-sdk
