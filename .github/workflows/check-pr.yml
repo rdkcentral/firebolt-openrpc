@@ -37,8 +37,8 @@ jobs:
           repository: rdkcentral/firebolt-apis 
           event-type: trigger-workflow
           client-payload: '{"OPENRPC_PR_BRANCH": "${{ github.event.pull_request.head.ref }}"}'
-          
-      - name: Get JS Workflow Run ID
+
+       - name: Get JS Workflow Run ID
         run: |
           TOKEN="${{ secrets.WORKFLOW_TRIGGER_SECRET }}"
           REPO_OWNER="rdkcentral"
@@ -48,15 +48,22 @@ jobs:
           SLEEP_TIME=15  # seconds
 
           for ((i=0; i<MAX_RETRIES; i++)); do
-            # Fetch workflow ID
-            js_workflow_id=$(curl -s -H "Authorization: token $TOKEN" \
-              "https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/actions/workflows" | jq \
-              --arg WORKFLOW_NAME "$WORKFLOW_NAME" '.workflows[] | select(.name == $WORKFLOW_NAME).id')
+            # Fetch workflows
+            response=$(curl -s -H "Authorization: token $TOKEN" \
+              "https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/actions/workflows")
+
+            echo "Workflows Response: $response"  # Log entire response
+            
+            # Capture workflow ID
+            js_workflow_id=$(echo "$response" | jq --arg WORKFLOW_NAME "$WORKFLOW_NAME" '.workflows[] | select(.name == $WORKFLOW_NAME).id')
 
             # Capture the specific run ID for the workflow
             js_run_id=$(curl -s -H "Authorization: token $TOKEN" \
               "https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/actions/workflows/$js_workflow_id/runs?per_page=1" | \
               jq -r '.workflow_runs[0].id')
+
+            echo "JavaScript Workflow ID: $js_workflow_id"
+            echo "JavaScript Workflow Run ID: $js_run_id"
 
             if [ "$js_run_id" != "null" ]; then
               echo "JS_RUN_ID=$js_run_id" >> $GITHUB_ENV
@@ -66,7 +73,7 @@ jobs:
               sleep $SLEEP_TIME
             fi
           done
-
+          
       # Poll until the C++ SDK workflow run is available
       - name: Get CPP Workflow Run ID
         run: |
