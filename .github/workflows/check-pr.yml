@@ -33,7 +33,7 @@ jobs:
       - name: Trigger Workflows
         uses: peter-evans/repository-dispatch@v2
         with:
-          token: ${{ secrets.WORKFLOW_TRIGGER_SECRET }}  # or use a custom token with proper permissions
+          token: ${{ secrets.WORKFLOW_TRIGGER_SECRET }} 
           repository: rdkcentral/firebolt-apis 
           event-type: trigger-workflow
           client-payload: '{"OPENRPC_PR_BRANCH": "${{ github.event.pull_request.head.ref }}"}'
@@ -41,8 +41,7 @@ jobs:
       - name: Wait for Triggered Workflow to Initialize
         run: |
           echo "Waiting for the workflow to initialize..."
-          sleep 40  # Adjust sleep time based on typical workflow initialization time
-
+          sleep 40  
 
       - name: Get JS Workflow Run ID
         run: |
@@ -66,7 +65,7 @@ jobs:
               "https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/actions/workflows/$js_workflow_id/runs?per_page=1" | \
               jq -r '.workflow_runs[0].id')
 
-            echo "JavaScript Workflow ID: $js_workflow_id"
+    
             echo "JavaScript Workflow Run ID: $js_run_id"
 
             if [ "$js_run_id" != "null" ]; then
@@ -186,7 +185,6 @@ jobs:
           REPO_NAME="${{ github.event.repository.name }}"
           PR_NUMBER="${{ github.event.pull_request.number }}"
       
-          # Construct comment body based on conclusions
           COMMENT_BODY=""
       
           # JavaScript SDK status
