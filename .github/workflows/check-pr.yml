@@ -38,6 +38,12 @@ jobs:
           event-type: trigger-workflow
           client-payload: '{"OPENRPC_PR_BRANCH": "${{ github.event.pull_request.head.ref }}"}'
 
+      - name: Wait for Triggered Workflow to Initialize
+        run: |
+          echo "Waiting for the workflow to initialize..."
+          sleep 40  # Adjust sleep time based on typical workflow initialization time
+
+
       - name: Get JS Workflow Run ID
         run: |
           TOKEN="${{ secrets.WORKFLOW_TRIGGER_SECRET }}"
