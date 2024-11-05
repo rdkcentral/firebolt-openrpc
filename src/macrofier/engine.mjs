@@ -930,6 +930,10 @@ function generateSchemas(json, templates, options) {
     else {
       content = content.replace(/\$\{if\.description\}(.*?)\{end\.if\.description\}/gms, '$1')
     }
+
+    // Schema title is requuired for proper documentation generation
+    if (!schema.title) schema.title = name
+
     const schemaShape = types.getSchemaShape(schema, json, { templateDir: state.typeTemplateDir, destination: state.destination, section: options.section, primitive: config.primitives ? Object.keys(config.primitives).length > 0 : false })
 
     content = content
@@ -1521,10 +1525,15 @@ function insertMethodMacros(template, methodObj, json, templates, type = '', exa
 
 
   if (method.deprecated) {
+    if (method.alternative) {
+      template = template.replace(/\$\{if\.method\.alternative\}(.*?)\$\{end\.if\.method\.alternative\}/gms, '$1')
+    }
     template = template.replace(/\$\{if\.deprecated\}(.*?)\$\{end\.if\.deprecated\}/gms, '$1')
+    template = template.replace(/\$\{if\.not\.deprecated\}(.*?)\$\{end\.if\.not\.deprecated\}/gms, '')
   }
   else {
     template = template.replace(/\$\{if\.deprecated\}(.*?)\$\{end\.if\.deprecated\}/gms, '')
+    template = template.replace(/\$\{if\.not\.deprecated\}(.*?)\$\{end\.if\.not\.deprecated\}/gms, '$1')
   }
 
   // method.params[n].xxx macros
