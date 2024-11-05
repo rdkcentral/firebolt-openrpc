@@ -1,3 +1,10 @@
+# [3.2.0-next.8](https://github.com/rdkcentral/firebolt-openrpc/compare/v3.2.0-next.7...v3.2.0-next.8) (2024-11-05)
+
+
+### Bug Fixes
+
+* Do not hard-code SDK Version in CI processes ([#228](https://github.com/rdkcentral/firebolt-openrpc/issues/228)) ([45b513e](https://github.com/rdkcentral/firebolt-openrpc/commit/45b513e415ced4a6e0dc18b7724bd832b54a8f77))
+
 # [3.2.0-next.7](https://github.com/rdkcentral/firebolt-openrpc/compare/v3.2.0-next.6...v3.2.0-next.7) (2024-11-05)
 
 
