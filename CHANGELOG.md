@@ -1,3 +1,10 @@
+# [3.2.0-next.7](https://github.com/rdkcentral/firebolt-openrpc/compare/v3.2.0-next.6...v3.2.0-next.7) (2024-11-05)
+
+
+### Bug Fixes
+
+* Documentation generation enhancements ([#227](https://github.com/rdkcentral/firebolt-openrpc/issues/227)) ([7fe212b](https://github.com/rdkcentral/firebolt-openrpc/commit/7fe212ba3ce862739f1ece79b7722a65ec9fdc13))
+
 # [3.2.0-next.6](https://github.com/rdkcentral/firebolt-openrpc/compare/v3.2.0-next.5...v3.2.0-next.6) (2024-11-05)
 
 
