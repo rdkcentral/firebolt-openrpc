@@ -1,3 +1,17 @@
+# [3.2.0-next.6](https://github.com/rdkcentral/firebolt-openrpc/compare/v3.2.0-next.5...v3.2.0-next.6) (2024-11-05)
+
+
+### Bug Fixes
+
+* Generate full SDKs in CI for tooling changes ([#226](https://github.com/rdkcentral/firebolt-openrpc/issues/226)) ([953f533](https://github.com/rdkcentral/firebolt-openrpc/commit/953f533ad89044c10bd09737205deda89f510fb5))
+
+# [3.2.0-next.5](https://github.com/rdkcentral/firebolt-openrpc/compare/v3.2.0-next.4...v3.2.0-next.5) (2024-10-28)
+
+
+### Bug Fixes
+
+* For C++ Capabilities.info ([#224](https://github.com/rdkcentral/firebolt-openrpc/issues/224)) ([c21e49a](https://github.com/rdkcentral/firebolt-openrpc/commit/c21e49ab1591301b1c3e5adaa5d6e0fb2edd2517))
+
 # [3.2.0-next.4](https://github.com/rdkcentral/firebolt-openrpc/compare/v3.2.0-next.3...v3.2.0-next.4) (2024-10-16)
 
 
