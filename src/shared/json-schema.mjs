@@ -42,7 +42,7 @@ const objectPaths = obj => {
         return isObject(value) ?
             product.concat(paths(value, fullPath))
         : product.concat(fullPath)
-      }, []) : [] 
+      }, []) : []
   }
   return paths(obj);
 }
@@ -100,7 +100,7 @@ const replaceUri = (existing, replacement, schema) => {
     Object.keys(schema).forEach(key => {
       replaceUri(existing, replacement, schema[key])
     })
-  }  
+  }
 }
 
 const replaceRef = (existing, replacement, schema) => {
@@ -206,7 +206,7 @@ const getPropertiesInSchema = (json, document) => {
 
     return props
   }
-  
+
   return null
 }
 
@@ -244,7 +244,7 @@ function getSchemaConstraints(schema, module, options = { delimiter: '\n' }) {
     typeof schema.exclusiveMinimum === 'number' ? constraints.push(`exclusiveMinimum: ${schema.exclusiveMinimum}`) : null
     typeof schema.multipleOf === 'number'       ? constraints.push(`multipleOf: ${schema.multipleOf}`) : null
 
-    return constraints.join(options.delimiter)    
+    return constraints.join(options.delimiter)
   }
   else if (schema.type === 'array' && schema.items) {
     let constraints = []
@@ -256,7 +256,7 @@ function getSchemaConstraints(schema, module, options = { delimiter: '\n' }) {
       constraints = [getSchemaConstraints(schema.items, module, options)]
     }
 
-    return constraints.join(options.delimiter)    
+    return constraints.join(options.delimiter)
   }
   else if (schema.oneOf || schema.anyOf) {
     return '' //See OpenRPC Schema for `oneOf` and `anyOf` details'
@@ -524,12 +524,19 @@ const getSafeKeyName = (value) => value.split(':').pop()
                                         .replace(/[\.\-]/g, '_')                       // replace dots and dashes
                                         .replace(/\+/g, '_plus')                       // change + to _plus
 
-const getSafeEnumKeyName = (value) => value.split(':').pop()                           // use last portion of urn:style:values
-                                        .replace(/[\.\-]/g, '_')                       // replace dots and dashes
-                                        .replace(/\+/g, '_plus')                       // change + to _plus
-                                        .replace(/([a-z])([A-Z0-9])/g, '$1_$2')        // camel -> snake case
-                                        .replace(/^([0-9]+(\.[0-9]+)?)/, 'v$1')        // insert `v` in front of things that look like version numbers
-                                        .toUpperCase()                 
+const getSafeEnumKeyName = function(value, keyPrefix = '') {
+  if (keyPrefix != '') {
+    value = keyPrefix + '_' + value
+  }
+
+  let key = value.split(':').pop()          // use last portion of urn:style:values
+    .replace(/\+/g, '_plus')                // change + to _plus
+    .replace(/[\.\-\/\;]/g, '_')            // replace special characters
+    .replace(/([a-z])([A-Z0-9])/g, '$1_$2') // camel -> snake case
+    .replace(/^([0-9]+\_([0-9]+)?)/, 'v$1') // insert `v` in front of things that look like version numbers
+
+  return key.toUpperCase()
+}
 
 export {
   getSchemaConstraints,
@@ -552,4 +559,4 @@ export {
   mergeAnyOf,
   mergeOneOf,
   dereferenceAndMergeAllOfs
-} 
+}

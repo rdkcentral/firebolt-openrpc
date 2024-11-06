@@ -434,7 +434,7 @@ const promoteAndNameSubSchemas = (obj) => {
       }
     })
     if (isSubSchema(method.result.schema)) {
-      addContentDescriptorSubSchema(method.result, '', obj)    
+      addContentDescriptorSubSchema(method.result, '', obj)
     }
     else if (isEventMethod(method) && isSubSchema(getPayloadFromEvent(method))) {
       // TODO: the `1` below is brittle... should find the index of the non-ListenResponse schema
@@ -618,7 +618,7 @@ const insertAggregateMacros = (fContents = '', aggregateMacros = {}) => {
   fContents = fContents.replace(/[ \t]*\/\* \$\{MOCK_OBJECTS\} \*\/[ \t]*\n/, aggregateMacros.mockObjects)
   fContents = fContents.replace(/\$\{readable\}/g, aggregateMacros.version.readable)
   fContents = fContents.replace(/\$\{package.name\}/g, aggregateMacros.library)
-  
+
   return fContents
 }
 
@@ -1323,7 +1323,7 @@ function insertMethodMacros(template, methodObj, json, templates, type = '', exa
       const subscriberName = subscriber.name.toLowerCase();
       return subscriberName && strippedEventName === subscriberName;
     })
-    
+
     result.schema = JSON.parse(JSON.stringify(getPayloadFromEvent(methodObj)))
     event.result.schema = getPayloadFromEvent(event)
     event.params = event.params.filter(p => p.name !== 'listen')
@@ -1392,7 +1392,7 @@ function insertMethodMacros(template, methodObj, json, templates, type = '', exa
   const pullsForParamType = pullsParams ? types.getSchemaType(pullsParams, json, { destination: state.destination, section: state.section }) : ''
   const pullsForJsonType = pullsResult ? types.getSchemaType(pullsResult, json, { templateDir: 'json-types' }) : ''
   const pullsForParamJsonType = pullsParams ? types.getSchemaType(pullsParams, json, { templateDir: 'json-types' }) : ''
-  
+
   const pullsEventParamName = event ? types.getSchemaInstantiation(event.result, json, event.name, { instantiationType: 'pull.param.name' }) : ''
 
   let seeAlso = ''
@@ -1411,7 +1411,7 @@ function insertMethodMacros(template, methodObj, json, templates, type = '', exa
   }
 
   let signature
-  
+
   if (Object.keys(languages).length && template.indexOf('${method.signature}') >= 0) {
     const lang = languages[Object.keys(languages)[0]]
     signature = getTemplateForDeclaration(methodObj, templates, 'declarations')
@@ -1700,7 +1700,7 @@ function generateResultParams(result, json, templates, { name = '' } = {}) {
     return Object.entries(result.properties).map( ([name, type]) => template
                                                                       .replace(/\$\{method\.param\.name\}/g, name)
                                                                       .replace(/\$\{method\.param\.type\}/g, types.getSchemaType(type, json, { moduleTitle: moduleTitle, result: true, namespace: true}))
-    ).join(', ') // most languages separate params w/ a comma, so leaving this here for now  
+    ).join(', ') // most languages separate params w/ a comma, so leaving this here for now
   }
   // tuples get unwrapped
   else if (config.unwrapResultObjects && result.type && result.type === 'array' && Array.isArray(result.items)) {
@@ -1758,7 +1758,7 @@ function insertParameterMacros(template, param, method, module) {
     .replace(/\$\{method.param.constraints\}/g, constraints) //getType(param))
 
     return template
-  
+
   }
 
 function insertCapabilityMacros(template, capabilities, method, module) {
@@ -1892,9 +1892,9 @@ function insertProviderInterfaceMacros(template, capability, moduleJson = {}, te
   let name = getProviderInterfaceName(iface, capability, moduleJson)
   let xValues
   const suffix = state.destination ? state.destination.split('.').pop() : ''
-  
+
   // Determine if any method has the 'x-allow-focus' tag set to true
-  const hasFocusableMethods = iface.some(method => 
+  const hasFocusableMethods = iface.some(method =>
     method.tags.some(tag => tag['x-allow-focus'] === true)
   )
 
