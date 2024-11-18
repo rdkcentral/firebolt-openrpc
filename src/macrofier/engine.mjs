@@ -1577,17 +1577,62 @@ function insertExampleMacros(template, examples, method, json, templates) {
 
       first = false
 
-      const formatParams = (params, delimit, pretty = false) => params.map(p => JSON.stringify((example.json.params.find(x => x.name === p.name) || { value: null }).value, null, pretty ? '  ' : null)).join(delimit)
-      let indent = ' '.repeat(json.info.title.length + method.name.length + 2)
-      let params = formatParams(method.params, ', ')
-      if (params.length + indent > 80) {
-        params = formatParams(method.params, ',\n', true)
-        params = params.split('\n')
-        let first = params.shift()
-        params = params.map(p => indent + p)
-        params.unshift(first)
-        params = params.join('\n')
+      /**
+       * Formats method parameters into a string, replacing optional empty values with `undefined`
+       * and removing trailing empty values.
+       * 
+       * @param {Array<Object>} params - The parameters to format.
+       * @param {string} delimit - The delimiter to use between parameters.
+       * @param {boolean} [pretty=false] - Whether to format output with pretty indentation.
+       * @returns {string} - A formatted string of parameters.
+       */
+      const formatParams = (params, delimit, pretty = false) => {
+        const formattedParams = params.map((p, index) => {
+          // Retrieve parameter value or default to empty string if not found
+          const param = example.json.params.find(x => x.name === p.name) || { value: '' };
+          let value = param.value === '' ? (index === params.length - 1 ? null : "undefined") : param.value;
+          
+          // Remove trailing parameter if empty
+          if (index === params.length - 1 && value === null) {
+            return null;
+          }
+          
+          // Return "undefined" as a literal or format the value as JSON
+          return value === "undefined" ? "undefined" : JSON.stringify(value, null, pretty ? '  ' : null);
+        });
+
+        // Join parameters, filtering out trailing empty parameters
+        return formattedParams.filter(p => p !== null).join(delimit);
       }
+
+      /**
+       * Generates formatted parameters for documentation, adjusting line indentation
+       * for readability if it exceeds a given line length.
+       * 
+       * @param {Object} method - The method containing parameters to format.
+       * @param {string} [delimit=', '] - The delimiter between parameters.
+       * @param {number} [maxLineLength=80] - The maximum line length before wrapping.
+       * @returns {string} - A formatted and indented string of method parameters.
+       */
+      const generateParamsWithIndentation = (method, delimit = ', ', maxLineLength = 80) => {
+        const indent = ' '.repeat(json.info.title.length + method.name.length + 2);
+        let params = formatParams(method.params, delimit);
+
+        // Reformat parameters if they exceed max line length
+        if (params.length + indent > maxLineLength) {
+          params = formatParams(method.params, ',\n', true);
+          params = params.split('\n');
+
+          let first = params.shift()
+          params = params.map(p => indent + p)
+          params.unshift(first)
+          params = params.join('\n')
+        }
+        
+        return params;
+      }
+      
+      const params = generateParamsWithIndentation(method);
 
       languageContent = languageContent
         .replace(/\$\{example\.code\}/g, language.code)
