@@ -1,3 +1,10 @@
+# [3.2.0-next.9](https://github.com/rdkcentral/firebolt-openrpc/compare/v3.2.0-next.8...v3.2.0-next.9) (2024-11-18)
+
+
+### Bug Fixes
+
+* Remove optional params as null in documentation ([#229](https://github.com/rdkcentral/firebolt-openrpc/issues/229)) ([95808ef](https://github.com/rdkcentral/firebolt-openrpc/commit/95808ef281711f5fed298bc3406606d3a7cee421))
+
 # [3.2.0-next.8](https://github.com/rdkcentral/firebolt-openrpc/compare/v3.2.0-next.7...v3.2.0-next.8) (2024-11-05)
 
 
