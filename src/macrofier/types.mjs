@@ -345,7 +345,10 @@ const insertObjectMacros = (content, schema, module, title, property, options) =
         }
         const schemaShape = indent + getSchemaShape(localizedProp, module, options2).replace(/\n/gms, '\n' + indent)
 
-        const type = localizedProp.type === 'object' ? getSchemaShape(localizedProp, module, { ...options2, type: true }): getSchemaType(localizedProp, module, options2)
+        let type = getSchemaType(localizedProp, module, options2)
+        if (type === 'object') {
+          type = getSchemaShape(localizedProp, module, { ...options2, type: true })
+        }
         // don't push properties w/ unsupported types
         if (type) {
           const description = getSchemaDescription(prop, module)
