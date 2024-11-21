@@ -1,3 +1,10 @@
+# [3.2.0-next.10](https://github.com/rdkcentral/firebolt-openrpc/compare/v3.2.0-next.9...v3.2.0-next.10) (2024-11-21)
+
+
+### Bug Fixes
+
+* Make nested objects show in typescript .d.ts file and in the doc… ([#231](https://github.com/rdkcentral/firebolt-openrpc/issues/231)) ([31217ce](https://github.com/rdkcentral/firebolt-openrpc/commit/31217ceef01b23ede632015472caa1f12b5a17d4))
+
 # [3.2.0-next.9](https://github.com/rdkcentral/firebolt-openrpc/compare/v3.2.0-next.8...v3.2.0-next.9) (2024-11-18)
 
 
