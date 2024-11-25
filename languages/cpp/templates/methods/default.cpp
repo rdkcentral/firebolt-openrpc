@@ -9,7 +9,7 @@ ${if.result.nonvoid}${method.result.initialization}${end.if.result.nonvoid}
             JsonObject jsonParameters;
     ${method.params.serialization.with.indent}
             ${method.result.json.type} jsonResult;
-            statusError = transport->Invoke("${info.title.lowercase}.${method.name}", jsonParameters, jsonResult);
+            statusError = transport->Invoke("${info.title}.${method.name}", jsonParameters, jsonResult);
             if (statusError == Firebolt::Error::None) {
                 FIREBOLT_LOG_INFO(FireboltSDK::Logger::Category::OpenRPC, FireboltSDK::Logger::Module<FireboltSDK::Accessor>(), "${info.Title}.${method.name} is successfully invoked");
     ${if.result.nonvoid}${method.result.instantiation.with.indent}${end.if.result.nonvoid}

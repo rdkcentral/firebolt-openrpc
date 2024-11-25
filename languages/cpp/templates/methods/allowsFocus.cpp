@@ -24,7 +24,7 @@ ${if.result.nonvoid}${method.result.instantiation}${end.if.result.nonvoid}
         JsonObject jsonParameters;
 ${method.params.serialization}
 
-        Firebolt::Error status = FireboltSDK::Async::Instance().Invoke<${method.result.json.type}>(_T("${info.title.lowercase}.${method.name}"), jsonParameters, ${method.name}AsyncResponseInnerCallback, reinterpret_cast<void*>(&response));
+        Firebolt::Error status = FireboltSDK::Async::Instance().Invoke<${method.result.json.type}>(_T("${info.title}.${method.name}"), jsonParameters, ${method.name}AsyncResponseInnerCallback, reinterpret_cast<void*>(&response));
         if (status == Firebolt::Error::None) {
                 FIREBOLT_LOG_INFO(FireboltSDK::Logger::Category::OpenRPC, FireboltSDK::Logger::Module<FireboltSDK::Accessor>(), "${info.Title}.${method.name} is successfully invoked");
         } else {
@@ -38,7 +38,7 @@ ${method.params.serialization}
     }
     void ${info.Title}Impl::abort${method.Name}(I${info.Title}AsyncResponse& response, Firebolt::Error *err)
     {
-        Firebolt::Error status = FireboltSDK::Async::Instance().Abort(_T("${info.title.lowercase}.${method.name}"), reinterpret_cast<void*>(&response));
+        Firebolt::Error status = FireboltSDK::Async::Instance().Abort(_T("${info.title}.${method.name}"), reinterpret_cast<void*>(&response));
 	if (err != nullptr) {
             *err = status;
         }
