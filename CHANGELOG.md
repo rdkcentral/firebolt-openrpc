@@ -1,3 +1,10 @@
+# [3.2.0-next.11](https://github.com/rdkcentral/firebolt-openrpc/compare/v3.2.0-next.10...v3.2.0-next.11) (2024-11-27)
+
+
+### Bug Fixes
+
+* C++ Pascal casing method name ([#233](https://github.com/rdkcentral/firebolt-openrpc/issues/233)) ([ed1106f](https://github.com/rdkcentral/firebolt-openrpc/commit/ed1106f8b608364078998fca87ee853fb4c54224))
+
 # [3.2.0-next.10](https://github.com/rdkcentral/firebolt-openrpc/compare/v3.2.0-next.9...v3.2.0-next.10) (2024-11-21)
 
 
