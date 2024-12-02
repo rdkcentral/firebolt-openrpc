@@ -51,9 +51,11 @@ namespace Firebolt {
 
         static FireboltAccessorImpl& Instance()
         {
-            static FireboltAccessorImpl* instance = new FireboltAccessorImpl();
-            ASSERT(instance != nullptr);
-            return *instance;
+            if (_singleton == nullptr) {
+                _singleton = new FireboltAccessorImpl();
+                ASSERT(_singleton != nullptr);
+            }
+            return *_singleton;
         }
 
         static void Dispose()
@@ -67,6 +69,7 @@ namespace Firebolt {
             ASSERT(_singleton != nullptr);
             if (_singleton != nullptr) {
                 delete _singleton;
+                singleton = nullptr;
             }
         }
 
