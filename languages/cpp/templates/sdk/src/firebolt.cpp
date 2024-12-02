@@ -89,6 +89,21 @@ namespace Firebolt {
             return _accessor->Connect(listener);
         }
 
+        void RegisterConnectionChangeListener( OnConnectionChanged listener ) override
+        {
+            return _accessor->RegisterConnectionChangeListener(listener);
+        }
+
+        void UnregisterConnnectionChangeListener() override
+        {
+            _accessor->UnregisterConnnectionChangeListener();
+        }
+
+        bool IsConnected() const override
+        {
+            return _accessor->IsConnected();
+        }
+
         Firebolt::Error Disconnect() override
         {
             return _accessor->Disconnect();
