@@ -118,6 +118,23 @@ const replaceRef = (existing, replacement, schema) => {
   }
 }
 
+const namespaceRefs = (uri, namespace, schema) => {
+  if (schema) {
+    if (schema.hasOwnProperty('$ref') && (typeof schema['$ref'] === 'string')) {
+      const parts = schema.$ref.split('#')
+      if (parts[0] === uri && parts[1].indexOf('.') === -1) {
+        const old = schema.$ref
+        schema['$ref'] = schema['$ref'].split('#').map( x => x === uri ? uri : x.split('/').map((y, i, arr) => i===arr.length-1 ? namespace + '.' + y : y).join('/')).join('#')
+      }
+    }
+    else if (typeof schema === 'object') {
+      Object.keys(schema).forEach(key => {
+        namespaceRefs(uri, namespace, schema[key])
+      })
+    }
+  }
+}
+
 const getPath = (uri = '', moduleJson = {}) => {
   const [mainPath, subPath] = (uri || '').split('#')
   let result
@@ -448,6 +465,57 @@ const isDefinitionReferencedBySchema = (name = '', moduleJson = {}) => {
   return (refs.length > 0)
 }
 
+const flattenMultipleOfs = (document, type, pointer, path) => {
+  if (!pointer) {
+    pointer = document
+    path = ''
+  }
+
+  if ((typeof pointer) !== 'object' || !pointer) {
+    return
+  }
+
+  if (pointer !== document && schemaReferencesItself(pointer, path.split('.'))) {
+    console.warn(`Skipping recursive schema: ${pointer.title}`)
+    return
+  }
+
+  Object.keys(pointer).forEach(key => {
+
+    if (Array.isArray(pointer) && key === 'length') {
+      return
+    }
+    if ( (pointer.$id && pointer !== document) || ((key !== type) && (typeof pointer[key] === 'object') && (pointer[key] != null))) {
+      flattenMultipleOfs(document, type, pointer[key], path + '.' + key)
+    }
+    else if (key === type && Array.isArray(pointer[key])) {
+
+      try {
+        const schemas = pointer[key]
+        if (schemas.find(schema => schema.$ref?.endsWith("/ListenResponse"))) {
+          // ignore the ListenResponse parent anyOf, but dive into it's sibling
+          const sibling = schemas.find(schema => !schema.$ref?.endsWith("/ListenResponse"))
+          const n = schemas.indexOf(sibling)
+          flattenMultipleOfs(document, type, schemas[n], path + '.' + key + '.' + n)
+        }        
+        else {
+          const title = pointer.title
+          let debug = false
+          Object.assign(pointer, combineSchemas(pointer[key], document, path, type === 'allOf'))
+          if (title) {
+            pointer.title = title
+          }          
+          delete pointer[key]
+        }
+      }
+      catch(error) {
+        console.warn(` - Unable to flatten ${type} in ${path}`)
+        console.log(error)
+      }
+    }
+  })
+}  
+
 function union(schemas) {
 
   const result = {};
@@ -551,5 +619,7 @@ export {
   removeIgnoredAdditionalItems,
   mergeAnyOf,
   mergeOneOf,
-  dereferenceAndMergeAllOfs
+  dereferenceAndMergeAllOfs,
+  flattenMultipleOfs,
+  namespaceRefs,
 } 
