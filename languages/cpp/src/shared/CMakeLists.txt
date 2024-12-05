@@ -26,7 +26,7 @@ set(FIREBOLT_LOGLEVEL "Info" CACHE STRING  "Log level to be enabled")
 option(FIREBOLT_ENABLE_STATIC_LIB "Create Firebolt library as Static library" OFF)
 option(ENABLE_TESTS "Build openrpc native test" ON)
 option(ENABLE_UNIT_TESTS "Enable unit test" ON)
-option(ENABLE_COVERAGE "Enable code coverage build." OFF)
+option(ENABLE_COVERAGE "Enable code coverage build." ON)
 
 if (FIREBOLT_ENABLE_STATIC_LIB)
     set(FIREBOLT_LIBRARY_TYPE STATIC)
@@ -100,14 +100,14 @@ message("CMAKE_PREFIX_PATH: " ${CMAKE_PREFIX_PATH})
 
 find_package(WPEFramework CONFIG REQUIRED)
 
-if (ENABLE_TESTS AND ENABLE_COVERAGE)
+if (ENABLE_UNIT_TESTS AND ENABLE_COVERAGE)
     include(CodeCoverage)
     append_coverage_compiler_flags()
 endif()
 
 add_subdirectory(src)
 
-if (ENABLE_TESTS)
+if (ENABLE_TESTS OR ENABLE_UNIT_TESTS)
     enable_testing()
     add_subdirectory(test)
 endif()
