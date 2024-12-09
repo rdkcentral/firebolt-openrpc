@@ -1133,7 +1133,7 @@ const generateEventListenResponse = json => {
         // only want or and xor here (might even remove xor)
         const anyOf = event.result.schema.oneOf || event.result.schema.anyOf
         const ref = {
-            "$ref": "https://meta.comcast.com/firebolt/types#/definitions/ListenResponse"
+            "$ref": "https://meta.rdkcentral.com/firebolt/schemas/types#/definitions/ListenResponse"
         }
 
         if (anyOf) {

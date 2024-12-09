@@ -13,8 +13,8 @@ import url from 'url'
 const knownOpts = {
   'input': [path],
   'output': [path],
-  'app-api': [path],
-  'platform-api': [path],
+  'appApi': [path],
+  'platformApi': [path],
   'sdk': [path],
   'schemas': [path, Array],
   'template': [path],

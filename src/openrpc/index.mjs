@@ -20,12 +20,12 @@ import { readJson, readFiles, readDir, writeJson } from "../shared/filesystem.mj
 import { addExternalMarkdown, addExternalSchemas, fireboltize } from "../shared/modules.mjs"
 import path from "path"
 import { logHeader, logSuccess } from "../shared/io.mjs"
-import { flattenMultipleOfs, namespaceRefs } from "../shared/json-schema.mjs"
+import { namespaceRefs } from "../shared/json-schema.mjs"
 
 const run = async ({
   input: input,
-  'app-api': appApi,
-  'platform-api': platformApi,
+  appApi: appApi,
+  platformApi: platformApi,
   template: template,
   schemas: schemas,
   argv: {
@@ -34,7 +34,7 @@ const run = async ({
 }) => {
 
   let platformApiOpenRpc = await readJson(template)
-  let appApiOpenRpc = platformApi && await readJson(template)
+  let appApiOpenRpc = appApi && await readJson(template)
   let mergedOpenRpc = await readJson(template)
 
   const sharedSchemaList = schemas ? (await Promise.all(schemas.map(d => readDir(d, { recursive: true })))).flat() : []
@@ -67,7 +67,7 @@ const run = async ({
   const isNotifier = method => method.tags.find(t => t.name === 'notifier')
   const isProvider = method => method.tags.find(t => t.name === 'capabilities')['x-provides'] && !method.tags.find(t => t.name === 'event') && !method.tags.find(t => t.name === 'polymorphic-pull') && !method.tags.find(t => t.name === 'registration')
 
-  const isAppApi = method => platformApi && (isNotifier(method) || isProvider(method))
+  const isAppApi = method => appApi && (isNotifier(method) || isProvider(method))
   const isPlatformApi = method => !isAppApi(method)
 
   Object.values(modules).map(JSON.parse).filter(m => moduleWhitelist.length ? moduleWhitelist.includes(m.info.title) : true).forEach(json => {
@@ -111,7 +111,7 @@ const run = async ({
   })
 
     // Fireboltize!
-    mergedOpenRpc = fireboltize(mergedOpenRpc, !!platformApi)
+    mergedOpenRpc = fireboltize(mergedOpenRpc, !!appApi)
 
   // make sure all provided-by APIs point to a real provider method
   const appProvided = mergedOpenRpc.methods.filter(m => m.tags.find(t=>t['x-provided-by'])) || []
@@ -140,8 +140,11 @@ const run = async ({
   platformApiOpenRpc = addExternalSchemas(platformApiOpenRpc, sharedSchemas)
   appApiOpenRpc && (appApiOpenRpc = addExternalSchemas(appApiOpenRpc, sharedSchemas))
 
+  await writeJson(platformApi, platformApiOpenRpc)
+  appApiOpenRpc && await writeJson(appApi, appApiOpenRpc)
+
   logSuccess(`Wrote file ${path.relative('.', platformApi)}`)
-  client && logSuccess(`Wrote file ${path.relative('.', appApi)}`)
+  appApi && logSuccess(`Wrote file ${path.relative('.', appApi)}`)
 
   return Promise.resolve()
 }
