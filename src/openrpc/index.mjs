@@ -134,7 +134,7 @@ const run = async ({
 
   // Add schemas
   mergedOpenRpc.components && Object.assign(platformApiOpenRpc.components.schemas, mergedOpenRpc.components.schemas)
-  appApiOpenRpc.components && Object.assign(appApiOpenRpc.components.schemas, mergedOpenRpc.components.schemas)
+  appApiOpenRpc?.components && Object.assign(appApiOpenRpc.components.schemas, mergedOpenRpc.components.schemas)
 
   // Add externally referenced schemas that are in our shared schemas path
   platformApiOpenRpc = addExternalSchemas(platformApiOpenRpc, sharedSchemas)

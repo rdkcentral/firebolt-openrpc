@@ -22,6 +22,7 @@ const knownOpts = {
   'language': [path],
   'examples': [path, Array],
   'as-path': [Boolean],
+  'bidirectional': [Boolean],
   'pass-throughs': [Boolean]
 }
 

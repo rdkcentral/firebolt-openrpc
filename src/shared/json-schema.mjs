@@ -24,7 +24,29 @@ const isNull = schema => {
   return (schema.type === 'null' || schema.const === null)
 }
 
-const isSchema = element => element.$ref || element.type || element.const || element.oneOf || element.anyOf || element.allOf
+const isSchema = element => element.$ref || element.type || element.const || element.oneOf || element.anyOf || element.allOf || element.$id
+
+const pathToArray = (ref, json) => {
+  //let path = ref.split('#').pop().substr(1).split('/')
+
+  const ids = []
+  if (json) {
+    ids.push(...getAllValuesForName("$id", json)) // add all $ids but the first one
+  }
+
+  const subschema = ids.find(id => ref.indexOf(id) >= 0)
+
+  let path = ref.split('#').pop().substring(1)
+
+  if (subschema) {
+    path = [].concat(...path.split('/'+subschema+'/').map(n => [n.split('/'), subschema])).slice(0, -1).flat()
+  }
+  else {
+    path = path.split('/')
+  }
+
+  return path.map(x => x.match(/^[0-9]+$/) ? parseInt(x) : x)
+}
 
 const refToPath = ref => {
   let path = ref.split('#').pop().substr(1).split('/')
@@ -36,6 +58,9 @@ const objectPaths = obj => {
   const addDelimiter = (a, b) => a ? `${a}/${b}` : b;
 
   const paths = (obj = {}, head = '#') => {
+    if (obj && isObject(obj) && obj.$id && head !== '#') {
+      head = obj.$id
+    }
     return obj ? Object.entries(obj)
       .reduce((product, [key, value]) => {
         let fullPath = addDelimiter(head, key)
@@ -47,17 +72,37 @@ const objectPaths = obj => {
   return paths(obj);
 }
 
+const getAllValuesForName = (name, obj) => {
+  const isObject = val => typeof val === 'object'
+
+  const values = (name, obj = {}) => {
+    return obj ? Object.entries(obj)
+      .reduce((product, [key, value]) => {
+        if (isObject(value)) {
+          return product.concat(values(name, value))
+        }
+        else if (key === name) {
+          return product.concat(value)
+        }
+        else {
+          return product
+        }
+      }, []) : [] 
+  }
+  return [...new Set(values(name, obj))];
+}
+
 const getExternalSchemaPaths = obj => {
   return objectPaths(obj)
     .filter(x => /\/\$ref$/.test(x))
-    .map(refToPath)
+    .map(x => pathToArray(x, obj))
     .filter(x => !/^#/.test(getPathOr(null, x, obj)))
 }
 
 const getLocalSchemaPaths = obj => {
   return objectPaths(obj)
     .filter(x => /\/\$ref$/.test(x))
-    .map(refToPath)
+    .map(x => pathToArray(x, obj))
     .filter(x => /^#.+/.test(getPathOr(null, x, obj)))
 }
 
@@ -456,11 +501,16 @@ const getLocalSchemas = (json = {}) => {
 }
 
 const isDefinitionReferencedBySchema = (name = '', moduleJson = {}) => {
+  let subSchema = false
+  if (name.indexOf("/https://") >= 0) {
+    name = name.substring(name.indexOf('/https://')+1)
+    subSchema = true
+  }
   const refs = objectPaths(moduleJson)
                 .filter(x => /\/\$ref$/.test(x))
-                .map(refToPath)
+                .map(x => pathToArray(x, moduleJson))
                 .map(x => getPathOr(null, x, moduleJson))
-                .filter(x => x === name)
+                .filter(x => subSchema ? x.startsWith(name) : x === name)
 
   return (refs.length > 0)
 }
@@ -622,4 +672,5 @@ export {
   dereferenceAndMergeAllOfs,
   flattenMultipleOfs,
   namespaceRefs,
+  getAllValuesForName,
 } 
