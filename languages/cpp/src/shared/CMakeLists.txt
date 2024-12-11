@@ -27,6 +27,12 @@ option(FIREBOLT_ENABLE_STATIC_LIB "Create Firebolt library as Static library" OF
 option(ENABLE_TESTS "Build openrpc native test" ON)
 option(ENABLE_UNIT_TESTS "Enable unit test" ON)
 option(ENABLE_COVERAGE "Enable code coverage build." ON)
+option(FIREBOLT_PLAIN_LOG "Disable log coloring" OFF)
+
+if (FIREBOLT_PLAIN_LOG)
+    add_compile_definitions(LOGGER_NO_COLOR)
+endif ()
+
 
 if (FIREBOLT_ENABLE_STATIC_LIB)
     set(FIREBOLT_LIBRARY_TYPE STATIC)

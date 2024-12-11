@@ -73,12 +73,22 @@ namespace FireboltSDK {
             char formattedMsg[Logger::MaxBufSize];
             const string time = WPEFramework::Core::Time::Now().ToTimeOnly(true);
             const string categoryName =  WPEFramework::Core::EnumerateType<Logger::Category>(category).Data();
+            const string levelName =     WPEFramework::Core::EnumerateType<Logger::LogLevel>(logLevel).Data();
+
+#ifdef LOGGER_NO_COLOR
+            char colorOn[]  = "";
+            char colorOff[] = "";
+#else
+            char colorOn[]  = "\033[1;32m";
+            char colorOff[] = "\033[0m";
+#endif
+
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wformat-truncation"
             if (categoryName.empty() != true) {
-                snprintf(formattedMsg, sizeof(formattedMsg), "--->\033[1;32m[%s]:[%s]:[%s][%s:%d](%s)<PID:%d><TID:%ld> : %s\n", time.c_str(), categoryName.c_str(), module.c_str(), WPEFramework::Core::File::FileName(file).c_str(), line, function.c_str(), TRACE_PROCESS_ID, TRACE_THREAD_ID, msg);
+                snprintf(formattedMsg, sizeof(formattedMsg), "%s%s: [%s][%s]:[%s][%s:%d](%s)<PID:%d><TID:%ld> : %s%s\n", colorOn, time.c_str(), levelName.c_str(), categoryName.c_str(), module.c_str(), WPEFramework::Core::File::FileName(file).c_str(), line, function.c_str(), TRACE_PROCESS_ID, TRACE_THREAD_ID, msg, colorOff);
             } else {
-                snprintf(formattedMsg, sizeof(formattedMsg), "--->\033[1;32m[%s]:[%s][%s:%d](%s)<PID:%d><TID:%ld> : %s\n", time.c_str(), module.c_str(), WPEFramework::Core::File::FileName(file).c_str(), line, function.c_str(), TRACE_PROCESS_ID, TRACE_THREAD_ID, msg);
+                snprintf(formattedMsg, sizeof(formattedMsg), "%s%s: [%s][%s][%s:%d](%s)<PID:%d><TID:%ld> : %s%s\n", colorOn, time.c_str(), levelName.c_str(), module.c_str(), WPEFramework::Core::File::FileName(file).c_str(), line, function.c_str(), TRACE_PROCESS_ID, TRACE_THREAD_ID, msg, colorOff);
             }
 #pragma GCC diagnostic pop
             LOG_MESSAGE(formattedMsg);
