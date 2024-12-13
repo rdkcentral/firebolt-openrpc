@@ -86,10 +86,4 @@ namespace FireboltSDK {
         return Firebolt::Error::None;
     }
 
-    Transport<WPEFramework::Core::JSON::IElement>* Accessor::GetTransport()
-    {
-        ASSERT(_transport != nullptr);
-        return _transport;
-    }
-
 }

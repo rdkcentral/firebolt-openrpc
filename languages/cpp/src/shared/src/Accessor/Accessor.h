@@ -23,6 +23,7 @@
 #include "Transport/Transport.h"
 #include "Async/Async.h"
 #include "Event/Event.h"
+#include "Gateway/Gateway.h"
 #include "Logger/Logger.h"
 
 namespace FireboltSDK {
@@ -109,6 +110,7 @@ namespace FireboltSDK {
         {
             Firebolt::Error status = CreateTransport(_config.WsUrl.Value().c_str(), listener, _config.WaitTime.Value());
             if (status == Firebolt::Error::None) {
+                Gateway::Instance().Configure(_transport);
                 Async::Instance().Configure(_transport);
                 status = CreateEventHandler();
             }
@@ -118,16 +120,14 @@ namespace FireboltSDK {
         Firebolt::Error Disconnect()
         {
             Firebolt::Error status = Firebolt::Error::None;
+            DestroyEventHandler();
+            Async::Dispose();
+            Gateway::Dispose();
             status = DestroyTransport();
-            if (status == Firebolt::Error::None) {
-                Async::Dispose();
-                status = DestroyEventHandler();
-            }
             return status;
         }
 
         Event& GetEventManager();
-        Transport<WPEFramework::Core::JSON::IElement>* GetTransport();
 
     private:
         Firebolt::Error CreateEventHandler();

@@ -25,6 +25,7 @@ file(GLOB SOURCES *.cpp)
 add_library(${TARGET} ${FIREBOLT_LIBRARY_TYPE}
     ${SOURCES}
     Logger/Logger.cpp
+    Gateway/Gateway.cpp
     Transport/Transport.cpp
     Accessor/Accessor.cpp
     Event/Event.cpp
