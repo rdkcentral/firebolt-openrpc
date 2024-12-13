@@ -8,13 +8,13 @@
         {
             "name": "rpc.discover",
             "summary": "The OpenRPC schema for this JSON-RPC API",
+            "params": [],
             "tags": [
                 {
                     "name": "capabilities",
                     "x-uses": [ "xrn:firebolt:capability:rpc:discover" ]
                 }
             ],
-            "params": [],
             "result": {
                 "name": "OpenRPC Schema",
                 "schema": {
