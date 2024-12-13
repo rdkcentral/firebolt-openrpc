@@ -1,2 +1,0 @@
-// Accessors
-${schema.list}
