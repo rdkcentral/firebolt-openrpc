@@ -18,6 +18,8 @@
 
 #include "Accessor.h"
 
+#include <chrono>
+
 namespace FireboltSDK {
 
     Accessor* Accessor::_singleton = nullptr;
@@ -65,13 +67,16 @@ namespace FireboltSDK {
         return Event::Instance();
     }
 
-    Firebolt::Error Accessor::CreateTransport(const string& url, const Transport<WPEFramework::Core::JSON::IElement>::Listener& listener, const uint32_t waitTime = DefaultWaitTime)
+    Firebolt::Error Accessor::CreateTransport(const string& url, const uint32_t waitTime = DefaultWaitTime)
     {
         if (_transport != nullptr) {
             delete _transport;
         }
 
-        _transport = new Transport<WPEFramework::Core::JSON::IElement>(static_cast<WPEFramework::Core::URL>(url), waitTime, listener);
+        _transport = new Transport<WPEFramework::Core::JSON::IElement>(
+                static_cast<WPEFramework::Core::URL>(url),
+                waitTime,
+                std::bind(&Accessor::ConnectionChanged, this, std::placeholders::_1, std::placeholders::_2));
 
         ASSERT(_transport != nullptr);
         return ((_transport != nullptr) ? Firebolt::Error::None : Firebolt::Error::Timedout);
@@ -86,9 +91,38 @@ namespace FireboltSDK {
         return Firebolt::Error::None;
     }
 
+    void Accessor::ConnectionChanged(const bool connected, const Firebolt::Error error)
+    {
+        _connectionChangeSync.signal(); // Signal waiting thread that the connection changed
+        _connected = connected;
+        if (_connectionChangeListener != nullptr) { // Notify a listener about the connection change
+             _connectionChangeListener(connected, error);
+        }
+    }
+
     Transport<WPEFramework::Core::JSON::IElement>* Accessor::GetTransport()
     {
-        ASSERT(_transport != nullptr);
+        if (_transport == nullptr || ! _connected) { // Try to connect if not connected: application has not yet connected or connection has been lost
+            DestroyTransport(); // Clean the transport if necessary
+
+            _connectionChangeSync.reset();
+            Firebolt::Error status = CreateTransport( // Recreate the transport with the configuration passed to CTor
+                _config.WsUrl.Value().c_str(),
+                _config.WaitTime.Value());
+
+            bool ret = _connectionChangeSync.wait_for(_config.WaitTime.Value()); // Wait for the signal that the connection has changed, but no more than `WaitTime`
+
+            if (ret) { // Check if the connection successfully established
+                ASSERT(_transport != nullptr);
+                if (status == Firebolt::Error::None) { // If yes, proceed with the configuration of Async and Event-Handler
+                    Async::Instance().Configure(_transport);
+                    status = CreateEventHandler();
+                }
+            } else { // If the connection cannot be established, clean the transport
+                DestroyTransport();
+            }
+        }
+
         return _transport;
     }
 
