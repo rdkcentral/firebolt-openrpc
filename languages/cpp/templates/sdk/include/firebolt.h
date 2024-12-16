@@ -89,6 +89,29 @@ struct IFireboltAccessor {
     virtual Firebolt::Error Connect ( OnConnectionChanged listener ) = 0;
 
     /**
+     * @brief Register a callback for any changes in the connection to the endpoint. Only a single callback is supported.
+     *
+     * @param listener Connection status listener
+     *
+     * @return None
+     */
+    virtual void RegisterConnectionChangeListener ( OnConnectionChanged listener ) = 0;
+
+    /**
+     * @brief Unregister previously registered callback.
+     *
+     * @return None
+     */
+    virtual void UnregisterConnnectionChangeListener ( ) = 0;
+
+    /**
+     * @brief Returs whether there is a connection to the endpoint
+     *
+     * @return bool
+     */
+    virtual bool IsConnected ( ) const = 0;
+
+    /**
      * @brief Disconnects from the Websocket endpoint.
      * 
      * @return Firebolt::Error
