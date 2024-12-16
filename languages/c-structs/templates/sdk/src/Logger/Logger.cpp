@@ -72,10 +72,11 @@ namespace FireboltSDK {
             const string time = WPEFramework::Core::Time::Now().ToTimeOnly(true);
             const string categoryName =  WPEFramework::Core::EnumerateType<Logger::Category>(category).Data();
             if (categoryName.empty() != true) {
-                sprintf(formattedMsg, "--->\033[1;32m[%s]:[%s]:[%s][%s:%d](%s)<PID:%d><TID:%ld> : %s\n", time.c_str(), categoryName.c_str(), module.c_str(), WPEFramework::Core::File::FileName(file).c_str(), line, function.c_str(), TRACE_PROCESS_ID, TRACE_THREAD_ID, msg);
+                snprintf(formattedMsg, sizeof(formattedMsg), "--->\033[1;32m[%s]:[%s]:[%s][%s:%d](%s)<PID:%d><TID:%ld> : %s\033[0m\n", time.c_str(), categoryName.c_str(), module.c_str(), WPEFramework::Core::File::FileName(file).c_str(), line, function.c_str(), TRACE_PROCESS_ID, TRACE_THREAD_ID, msg);
             } else {
-                sprintf(formattedMsg, "--->\033[1;32m[%s]:[%s][%s:%d](%s)<PID:%d><TID:%ld> : %s\n", time.c_str(), module.c_str(), WPEFramework::Core::File::FileName(file).c_str(), line, function.c_str(), TRACE_PROCESS_ID, TRACE_THREAD_ID, msg);
+                snprintf(formattedMsg, sizeof(formattedMsg), "--->\033[1;32m[%s]:[%s][%s:%d](%s)<PID:%d><TID:%ld> : %s\033[0m\n", time.c_str(), module.c_str(), WPEFramework::Core::File::FileName(file).c_str(), line, function.c_str(), TRACE_PROCESS_ID, TRACE_THREAD_ID, msg);
             }
+
             LOG_MESSAGE(formattedMsg);
         }
     }
