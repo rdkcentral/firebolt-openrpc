@@ -1,3 +1,10 @@
+# [3.2.0-next.12](https://github.com/rdkcentral/firebolt-openrpc/compare/v3.2.0-next.11...v3.2.0-next.12) (2024-12-16)
+
+
+### Bug Fixes
+
+* C++ Auto-Reconnect ([#237](https://github.com/rdkcentral/firebolt-openrpc/issues/237)) ([dde6753](https://github.com/rdkcentral/firebolt-openrpc/commit/dde67533121d147db373c2c46c4d53e4bb467cd1))
+
 # [3.2.0-next.11](https://github.com/rdkcentral/firebolt-openrpc/compare/v3.2.0-next.10...v3.2.0-next.11) (2024-11-27)
 
 

@@ -24,7 +24,29 @@ const isNull = schema => {
   return (schema.type === 'null' || schema.const === null)
 }
 
-const isSchema = element => element.$ref || element.type || element.const || element.oneOf || element.anyOf || element.allOf
+const isSchema = element => element.$ref || element.type || element.const || element.oneOf || element.anyOf || element.allOf || element.$id
+
+const pathToArray = (ref, json) => {
+  //let path = ref.split('#').pop().substr(1).split('/')
+
+  const ids = []
+  if (json) {
+    ids.push(...getAllValuesForName("$id", json)) // add all $ids but the first one
+  }
+
+  const subschema = ids.find(id => ref.indexOf(id) >= 0)
+
+  let path = ref.split('#').pop().substring(1)
+
+  if (subschema) {
+    path = [].concat(...path.split('/'+subschema+'/').map(n => [n.split('/'), subschema])).slice(0, -1).flat()
+  }
+  else {
+    path = path.split('/')
+  }
+
+  return path.map(x => x.match(/^[0-9]+$/) ? parseInt(x) : x)
+}
 
 const refToPath = ref => {
   let path = ref.split('#').pop().substr(1).split('/')
@@ -36,6 +58,9 @@ const objectPaths = obj => {
   const addDelimiter = (a, b) => a ? `${a}/${b}` : b;
 
   const paths = (obj = {}, head = '#') => {
+    if (obj && isObject(obj) && obj.$id && head !== '#') {
+      head = obj.$id
+    }
     return obj ? Object.entries(obj)
       .reduce((product, [key, value]) => {
         let fullPath = addDelimiter(head, key)
@@ -47,17 +72,37 @@ const objectPaths = obj => {
   return paths(obj);
 }
 
+const getAllValuesForName = (name, obj) => {
+  const isObject = val => typeof val === 'object'
+
+  const values = (name, obj = {}) => {
+    return obj ? Object.entries(obj)
+      .reduce((product, [key, value]) => {
+        if (isObject(value)) {
+          return product.concat(values(name, value))
+        }
+        else if (key === name) {
+          return product.concat(value)
+        }
+        else {
+          return product
+        }
+      }, []) : [] 
+  }
+  return [...new Set(values(name, obj))];
+}
+
 const getExternalSchemaPaths = obj => {
   return objectPaths(obj)
     .filter(x => /\/\$ref$/.test(x))
-    .map(refToPath)
+    .map(x => pathToArray(x, obj))
     .filter(x => !/^#/.test(getPathOr(null, x, obj)))
 }
 
 const getLocalSchemaPaths = obj => {
   return objectPaths(obj)
     .filter(x => /\/\$ref$/.test(x))
-    .map(refToPath)
+    .map(x => pathToArray(x, obj))
     .filter(x => /^#.+/.test(getPathOr(null, x, obj)))
 }
 
@@ -113,6 +158,23 @@ const replaceRef = (existing, replacement, schema) => {
     else if (typeof schema === 'object') {
       Object.keys(schema).forEach(key => {
         replaceRef(existing, replacement, schema[key])
+      })
+    }
+  }
+}
+
+const namespaceRefs = (uri, namespace, schema) => {
+  if (schema) {
+    if (schema.hasOwnProperty('$ref') && (typeof schema['$ref'] === 'string')) {
+      const parts = schema.$ref.split('#')
+      if (parts[0] === uri && parts[1].indexOf('.') === -1) {
+        const old = schema.$ref
+        schema['$ref'] = schema['$ref'].split('#').map( x => x === uri ? uri : x.split('/').map((y, i, arr) => i===arr.length-1 ? namespace + '.' + y : y).join('/')).join('#')
+      }
+    }
+    else if (typeof schema === 'object') {
+      Object.keys(schema).forEach(key => {
+        namespaceRefs(uri, namespace, schema[key])
       })
     }
   }
@@ -439,14 +501,70 @@ const getLocalSchemas = (json = {}) => {
 }
 
 const isDefinitionReferencedBySchema = (name = '', moduleJson = {}) => {
+  let subSchema = false
+  if (name.indexOf("/https://") >= 0) {
+    name = name.substring(name.indexOf('/https://')+1)
+    subSchema = true
+  }
   const refs = objectPaths(moduleJson)
                 .filter(x => /\/\$ref$/.test(x))
-                .map(refToPath)
+                .map(x => pathToArray(x, moduleJson))
                 .map(x => getPathOr(null, x, moduleJson))
-                .filter(x => x === name)
+                .filter(x => subSchema ? x.startsWith(name) : x === name)
 
   return (refs.length > 0)
 }
+
+const flattenMultipleOfs = (document, type, pointer, path) => {
+  if (!pointer) {
+    pointer = document
+    path = ''
+  }
+
+  if ((typeof pointer) !== 'object' || !pointer) {
+    return
+  }
+
+  if (pointer !== document && schemaReferencesItself(pointer, path.split('.'))) {
+    console.warn(`Skipping recursive schema: ${pointer.title}`)
+    return
+  }
+
+  Object.keys(pointer).forEach(key => {
+
+    if (Array.isArray(pointer) && key === 'length') {
+      return
+    }
+    if ( (pointer.$id && pointer !== document) || ((key !== type) && (typeof pointer[key] === 'object') && (pointer[key] != null))) {
+      flattenMultipleOfs(document, type, pointer[key], path + '.' + key)
+    }
+    else if (key === type && Array.isArray(pointer[key])) {
+
+      try {
+        const schemas = pointer[key]
+        if (schemas.find(schema => schema.$ref?.endsWith("/ListenResponse"))) {
+          // ignore the ListenResponse parent anyOf, but dive into it's sibling
+          const sibling = schemas.find(schema => !schema.$ref?.endsWith("/ListenResponse"))
+          const n = schemas.indexOf(sibling)
+          flattenMultipleOfs(document, type, schemas[n], path + '.' + key + '.' + n)
+        }        
+        else {
+          const title = pointer.title
+          let debug = false
+          Object.assign(pointer, combineSchemas(pointer[key], document, path, type === 'allOf'))
+          if (title) {
+            pointer.title = title
+          }          
+          delete pointer[key]
+        }
+      }
+      catch(error) {
+        console.warn(` - Unable to flatten ${type} in ${path}`)
+        console.log(error)
+      }
+    }
+  })
+}  
 
 function union(schemas) {
 
@@ -551,5 +669,8 @@ export {
   removeIgnoredAdditionalItems,
   mergeAnyOf,
   mergeOneOf,
-  dereferenceAndMergeAllOfs
+  dereferenceAndMergeAllOfs,
+  flattenMultipleOfs,
+  namespaceRefs,
+  getAllValuesForName,
 } 

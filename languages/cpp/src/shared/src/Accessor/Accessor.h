@@ -26,6 +26,9 @@
 #include "Gateway/Gateway.h"
 #include "Logger/Logger.h"
 
+#include <condition_variable>
+#include <mutex>
+
 namespace FireboltSDK {
     class Accessor {
     private:
@@ -108,7 +111,8 @@ namespace FireboltSDK {
 
         Firebolt::Error Connect(const Transport<WPEFramework::Core::JSON::IElement>::Listener& listener)
         {
-            Firebolt::Error status = CreateTransport(_config.WsUrl.Value().c_str(), listener, _config.WaitTime.Value());
+            RegisterConnectionChangeListener(listener);
+            Firebolt::Error status = CreateTransport(_config.WsUrl.Value().c_str(), _config.WaitTime.Value());
             if (status == Firebolt::Error::None) {
                 Gateway::Instance().Configure(_transport);
                 Async::Instance().Configure(_transport);
@@ -117,8 +121,21 @@ namespace FireboltSDK {
             return status;
         }
 
+        void RegisterConnectionChangeListener(const Transport<WPEFramework::Core::JSON::IElement>::Listener& listener)
+        {
+            _connectionChangeListener = listener;
+        }
+
+        void UnregisterConnnectionChangeListener()
+        {
+            _connectionChangeListener = nullptr;
+        }
+
         Firebolt::Error Disconnect()
         {
+            if (_transport == nullptr) {
+                return Firebolt::Error::None;
+            }
             Firebolt::Error status = Firebolt::Error::None;
             DestroyEventHandler();
             Async::Dispose();
@@ -127,18 +144,48 @@ namespace FireboltSDK {
             return status;
         }
 
+        bool IsConnected() const
+        {
+            return _connected;
+        }
+
         Event& GetEventManager();
 
     private:
         Firebolt::Error CreateEventHandler();
         Firebolt::Error DestroyEventHandler();
-        Firebolt::Error CreateTransport(const string& url, const Transport<WPEFramework::Core::JSON::IElement>::Listener& listener, const uint32_t waitTime);
+        Firebolt::Error CreateTransport(const string& url, const uint32_t waitTime);
         Firebolt::Error DestroyTransport();
+
+        void ConnectionChanged(const bool connected, const Firebolt::Error error);
 
     private:
         WPEFramework::Core::ProxyType<WorkerPoolImplementation> _workerPool;
         Transport<WPEFramework::Core::JSON::IElement>* _transport;
         static Accessor* _singleton;
         Config _config;
+        struct {
+            std::mutex m;
+            std::condition_variable cv;
+            bool ready = false;
+            void reset() {
+                std::lock_guard lk(m);
+                ready = false;
+            }
+            bool wait_for(unsigned duration_ms) {
+                std::unique_lock lk(m);
+                bool ret = cv.wait_for(lk, std::chrono::milliseconds(duration_ms), [&]{ return ready; });
+                lk.unlock();
+                return ret;
+            }
+            void signal() {
+                std::lock_guard lk(m);
+                ready = true;
+                cv.notify_one();
+            }
+        } _connectionChangeSync; // Synchronize a thread that is waiting for a connection if that one that is notified about connection changes
+
+        bool _connected = false;
+        Transport<WPEFramework::Core::JSON::IElement>::Listener _connectionChangeListener = nullptr;
     };
 }

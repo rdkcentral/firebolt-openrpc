@@ -13,6 +13,8 @@ import url from 'url'
 const knownOpts = {
   'input': [path],
   'output': [path],
+  'appApi': [path],
+  'platformApi': [path],
   'sdk': [path],
   'schemas': [path, Array],
   'template': [path],
@@ -20,6 +22,7 @@ const knownOpts = {
   'language': [path],
   'examples': [path, Array],
   'as-path': [Boolean],
+  'bidirectional': [Boolean],
   'pass-throughs': [Boolean]
 }
 
@@ -49,20 +52,28 @@ const parsedArgs = Object.assign({}, defaults, nopt(knownOpts, shortHands, proce
 const task = process.argv[2]
 const signOff = () => console.log('\nThis has been a presentation of \x1b[38;5;202mFirebolt\x1b[0m \u{1F525} \u{1F529}\n')
 
-if (task === 'slice') {
-  slice(parsedArgs).then(signOff)
-}
-else if (task === 'sdk') {
-  sdk(parsedArgs).then(signOff)
-}
-else if (task === 'docs') {
-  docs(parsedArgs).then(signOff)
-}
-else if (task === 'validate') {
-  validate(parsedArgs).then(signOff)
-}
-else if (task === 'openrpc') {
-  openrpc(parsedArgs).then(signOff)
-} else {
-  console.log("Invalid build type")
+try {
+  switch(task) {
+    case 'slice':
+      await slice(parsedArgs);
+      break;
+    case 'sdk':
+      await sdk(parsedArgs);
+      break;
+    case 'docs':  
+      await docs(parsedArgs);
+      break;
+    case 'validate':
+      await validate(parsedArgs);
+      break;
+    case 'openrpc':
+      await openrpc(parsedArgs);
+      break;
+    default:
+      console.log('Invalid task: ' + task);
+  }
+  signOff();
+} catch (error) {
+  console.dir(error)
+  throw error
 }
