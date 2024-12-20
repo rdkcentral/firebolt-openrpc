@@ -17,7 +17,7 @@
  */
 
 import deepmerge from 'deepmerge'
-import { getPath, localizeDependencies, getSafeEnumKeyName, getSafeKeyName } from '../shared/json-schema.mjs'
+import { getReferencedSchema, localizeDependencies, getSafeEnumKeyName, getSafeKeyName } from '../shared/json-schema.mjs'
 import path from "path"
 import { getConfig } from '../shared/configLoader.mjs'
 
@@ -176,7 +176,7 @@ function getSchemaDescription(schema, module) {
     schema = schema.items
   }
   if (schema['$ref'] && (schema['$ref'][0] === '#')) {
-    const refSchema = getPath(schema['$ref'], module)
+    const refSchema = getReferencedSchema(schema['$ref'], module)
     description = (refSchema && refSchema.description) || description
   }
   return description
@@ -542,7 +542,7 @@ const sanitize = (schema) => {
   return result
 }
 
-function getSchemaShape(schema = {}, module = {}, { templateDir = 'types', parent = '', property = '', required = false, parentLevel = 0, level = 0, summary, descriptions = true, destination, section, enums = true, skipTitleOnce = false, array = false, primitive = false, type = false } = {}) {
+function getSchemaShape(schema = {}, module = {}, { templateDir = 'types', parent = '', property = '', required = false, parentLevel = 0, level = 0, summary, descriptions = true, destination, section, enums = true, skipTitleOnce = false, array = false, primitive = false, type = false, namespace = true } = {}) {
   schema = sanitize(schema)
   state.destination = destination
   state.section = section
@@ -552,6 +552,7 @@ function getSchemaShape(schema = {}, module = {}, { templateDir = 'types', paren
 
   const suffix = destination && ('.' + destination.split('.').pop()) || ''
   const theTitle = insertSchemaMacros(getTemplate(path.join(templateDir, 'title' + suffix)), schema, module, { name: schema.title, parent, property, required, recursive: false })
+  const moduleTitle = module.info ? module.info.title : module.title
 
   let result = !type && getTemplate(path.join(templateDir, 'default' + suffix)) || '${shape}'
 
@@ -562,11 +563,11 @@ function getSchemaShape(schema = {}, module = {}, { templateDir = 'types', paren
   }
 
   if (schema['$ref']) {
-    const someJson = getPath(schema['$ref'], module)
+    const someJson = getReferencedSchema(schema['$ref'], module)
     if (someJson) {
-      return getSchemaShape(someJson, module, { templateDir, parent, property, required, parentLevel, level, summary, descriptions, destination, enums, array, primitive })
+      return getSchemaShape(someJson, module, { templateDir, parent, property, required, parentLevel, level, summary, descriptions, destination, enums, array, primitive, namespace })
     }
-    throw "Unresolvable $ref: " + schema['ref'] + ", in " + module.info.title
+    throw "Unresolvable $ref: " + schema['ref'] + ", in " + moduleTitle
   }
   else if (schema.hasOwnProperty('const')) {
     const shape = insertConstMacros(getTemplate(path.join(templateDir, 'const' + suffix)) || genericTemplate, schema, module, theTitle)
@@ -575,7 +576,7 @@ function getSchemaShape(schema = {}, module = {}, { templateDir = 'types', paren
   else if (!skipTitleOnce && (level > 0) && schema.title) {
     let enumType = (schema.type === 'string' && Array.isArray(schema.enum))
     // TODO: allow the 'ref' template to actually insert the shape using getSchemaShape
-    const innerShape = getSchemaShape(schema, module, { skipTitleOnce: true, templateDir, parent, property, required, parentLevel, level, summary, descriptions, destination, enums: enumType, array, primitive })
+    const innerShape = getSchemaShape(schema, module, { skipTitleOnce: true, templateDir, parent, property, required, parentLevel, level, summary, descriptions, destination, enums: enumType, array, primitive, namespace })
 
     const shape = getTemplate(path.join(templateDir, 'ref' + suffix))
       .replace(/\$\{shape\}/g, innerShape)
@@ -639,7 +640,7 @@ function getSchemaShape(schema = {}, module = {}, { templateDir = 'types', paren
       }
     }
 
-    let union = deepmerge.all([...schema.allOf.map(x => x['$ref'] ? getPath(x['$ref'], module) || x : x).reverse()], {
+    let union = deepmerge.all([...schema.allOf.map(x => x['$ref'] ? getReferencedSchema(x['$ref'], module) || x : x).reverse()], {
       customMerge: merger
     })
 
@@ -648,7 +649,7 @@ function getSchemaShape(schema = {}, module = {}, { templateDir = 'types', paren
     }
     delete union['$ref']
 
-    return getSchemaShape(union, module, { templateDir, parent, property, required, parentLevel, level, summary, descriptions, destination, enums: false, array, primitive })
+    return getSchemaShape(union, module, { templateDir, parent, property, required, parentLevel, level, summary, descriptions, destination, enums: false, array, primitive, namespace })
   }
   else if (schema.type === "array" && schema.items && isSupportedTuple(schema)) {
     // tuple
@@ -658,7 +659,7 @@ function getSchemaShape(schema = {}, module = {}, { templateDir = 'types', paren
   }
   else if (schema.type === "array" && schema.items && !Array.isArray(schema.items)) {
     // array
-    const items = getSchemaShape(schema.items, module, { templateDir, parent, property, required, parentLevel: parentLevel + 1, level, summary, descriptions, destination, enums: false, array: true, primitive })
+    const items = getSchemaShape(schema.items, module, { templateDir, parent, property, required, parentLevel: parentLevel + 1, level, summary, descriptions, destination, enums: false, array: true, primitive, namespace })
     const shape = insertArrayMacros(getTemplate(path.join(templateDir, 'array' + suffix)) || genericTemplate, schema, module, level, items, Array.isArray(required) ? required.includes(property) : required)
     result = result.replace(/\$\{shape\}/g, shape)
               .replace(/\$\{if\.object\}(.*?)\$\{end\.if\.object\}/gms, isObject(schema.items) ? '$1' : '')
@@ -732,6 +733,7 @@ function getSchemaType(schema, module, { destination, templateDir = 'types', lin
 
   schema = sanitize(schema)
 
+  const moduleTitle = module.info ? module.info.title : module.title
   const suffix = destination && ('.' + destination.split('.').pop()) || ''
   const namespaceStr = namespace ? getTemplate(path.join(templateDir, 'namespace' + suffix)) : ''
   const theTitle = insertSchemaMacros(namespaceStr + getTemplate(path.join(templateDir, 'title' + suffix)), schema, module, { name: schema.title, parent: getXSchemaGroup(schema, module), recursive: false })
@@ -745,7 +747,7 @@ function getSchemaType(schema, module, { destination, templateDir = 'types', lin
 
   if (schema['$ref']) {
     if (schema['$ref'][0] === '#') {
-      const refSchema = getPath(schema['$ref'], module)
+      const refSchema = getReferencedSchema(schema['$ref'], module)
       const includeNamespace = (module.info.title !== getXSchemaGroup(refSchema, module))
       return getSchemaType(refSchema, module, {destination, templateDir, link, code, asPath, event, result, expandEnums, baseUrl, namespace:includeNamespace })// { link: link, code: code, destination })
     }
@@ -803,7 +805,7 @@ function getSchemaType(schema, module, { destination, templateDir = 'types', lin
   else if ((schema.type === 'object' || (schema.type === 'array')) && schema.title) {
     const maybeGetPath = (path, json) => {
       try {
-        return getPath(path, json)
+        return getReferencedSchema(path, json)
       }
       catch (e) {
         return null
@@ -823,7 +825,7 @@ function getSchemaType(schema, module, { destination, templateDir = 'types', lin
     let firstItem
     if (Array.isArray(schema.items)) {
       if (!isHomogenous(schema.items)) {
-        console.log(`Non-homogenous tuples not supported: ${schema.items} in ${module.info.title}, ${theTitle}`)
+        console.log(`Non-homogenous tuples not supported: ${schema.items} in ${moduleTitle}, ${theTitle}`)
         return ''
       }
       firstItem = schema.items[0]
@@ -855,7 +857,7 @@ function getSchemaType(schema, module, { destination, templateDir = 'types', lin
     return template
   }
   else if (schema.allOf) {
-    let union = deepmerge.all([...schema.allOf.map(x => x['$ref'] ? getPath(x['$ref'], module) || x : x)])
+    let union = deepmerge.all([...schema.allOf.map(x => x['$ref'] ? getReferencedSchema(x['$ref'], module) || x : x)])
     if (schema.title) {
       union.title = schema.title
     }
@@ -899,7 +901,7 @@ function getSchemaType(schema, module, { destination, templateDir = 'types', lin
       const schemaType = !Array.isArray(schema.type) ? schema.type : schema.type.find(t => t !== 'null')
       const baseDir = (templateDir !== 'json-types' ? 'types': templateDir)
       let primitive = getPrimitiveType(schemaType, baseDir, schema.title ? true: false)
-      primitive = primitive ? primitive.replace(/\$\{title\}/g, schema.title) : primitive
+      primitive = primitive ? primitive.replace(/\$\{title\}/g, theTitle) : primitive
       const type = allocatedProxy ? allocatedPrimitiveProxies[schemaType] || primitive : primitive
 
       return wrap(type, code ? '`' : '')
@@ -925,7 +927,7 @@ function getJsonType(schema, module, { destination, link = false, title = false,
     if (schema['$ref'][0] === '#') {
       //Ref points to local schema
       //Get Path to ref in this module and getSchemaType
-      let definition = getPath(schema['$ref'], module)
+      let definition = getReferencedSchema(schema['$ref'], module)
       type = getJsonType(definition, schema, {destination})
     }
   }

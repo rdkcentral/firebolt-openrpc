@@ -155,7 +155,19 @@ function getProviderInterface(capability, module, extractProviderSchema = false)
     })
 
     return iface
+}
+
+function getUnidirectionalProviderInterfaceName(_interface, capability, document = {}) {
+  const iface = getProviderInterface(_interface, document)
+  const [ module, method ] = iface[0].name.split('.')
+  const uglyName = capability.split(":").slice(-2).map(capitalize).reverse().join('') + "Provider"
+  let name = iface.length === 1 ? method.charAt(0).toUpperCase() + method.substr(1) + "Provider" : uglyName
+
+  if (document.info['x-interface-names']) {
+    name = document.info['x-interface-names'][capability] || name
   }
+  return name
+}
   
 
 const addMissingTitles = ([k, v]) => {
@@ -318,10 +330,25 @@ const getParamsFromMethod = compose(
     getPath(['params'])
 )
 
-const getPayloadFromEvent = (event) => {
-    const choices = (event.result.schema.oneOf || event.result.schema.anyOf)
-    const choice = choices.find(schema => schema.title !== 'ListenResponse' && !(schema['$ref'] || '').endsWith('/ListenResponse'))
-    return choice
+const getPayloadFromEvent = (event, appApi) => {
+  try {
+    if (event.result) {
+      const choices = (event.result.schema.oneOf || event.result.schema.anyOf)
+      if (choices) {
+        const choice = choices.find(schema => schema.title !== 'ListenResponse' && !(schema['$ref'] || '').endsWith('/ListenResponse'))
+        return choice        
+      }
+      else if (appApi) {
+        const payload = getNotifier(event, appApi).params.slice(-1)[0].schema
+        return payload
+      }
+      else {
+        return event.result.schema
+      }
+    }
+  } catch (error) {
+    throw error
+  }
 }
 
 const getSetterFor = (property, json) => json.methods && json.methods.find(m => m.tags && m.tags.find(t => t['x-setter-for'] === property))
@@ -1801,73 +1828,23 @@ const removeUnusedBundles = (json) => {
 } 
 
 const getModule = (name, json, copySchemas, extractSubSchemas) => {
-    let openrpc = JSON.parse(JSON.stringify(json))
-    openrpc.methods = openrpc.methods
-                        .filter(method => method.name.toLowerCase().startsWith(name.toLowerCase() + '.'))
-                        .map(method => Object.assign(method, { name: method.name.split('.').pop() }))
-    openrpc.info.title = name
-    if (json.info['x-module-descriptions'] && json.info['x-module-descriptions'][name]) {
-        openrpc.info.description = json.info['x-module-descriptions'][name]
-    }
-    delete openrpc.info['x-module-descriptions']
-    const copy = JSON.parse(JSON.stringify(openrpc))
+    
+  // TODO: extractSubschemas was added by cpp branch, but that code is short-circuited out here...
+  
+  let openrpc = JSON.parse(JSON.stringify(json))
+  openrpc.methods = openrpc.methods
+                      .filter(method => method.name.toLowerCase().startsWith(name.toLowerCase() + '.'))
+                      .filter(method => method.name !== 'rpc.discover') 
+//                        .map(method => Object.assign(method, { name: method.name.split('.').pop() }))
+  openrpc.info.title = name
+  openrpc.components.schemas = Object.fromEntries(Object.entries(openrpc.components.schemas).filter( ([key, schema]) => key.startsWith('http') || key.split('.')[0] === name))
+  if (json.info['x-module-descriptions'] && json.info['x-module-descriptions'][name]) {
+      openrpc.info.description = json.info['x-module-descriptions'][name]
+  }
+  delete openrpc.info['x-module-descriptions']
 
-    // zap all of the schemas
-    openrpc.components.schemas = {}
-    openrpc['x-schemas'] = {}
-
-    // and recursively search in the copy for referenced schemas until we have them all
-    let searching = true
-    while (searching) {
-        searching = false
-        getLocalSchemaPaths(openrpc).forEach(path => {
-            const ref = getPathOr(null, path, copy) || getPathOr(null, path, openrpc)
-            const parts = ref.substring(2).split('/')
-            const schema = getPathOr(null, parts, copy)
-            const uri = getPathOr(null, parts.filter((p, i, array) => i < array.length-1), copy).uri
-            const destination = ref.substring(2).split('/')
-
-            // Readability note - Value of destination[] is typically something like:
-            //
-            //   [ 'components', 'schemas', '<schema>' ] OR
-            //   [ 'x-schemas', '<schema's document.title>', '<schema>' ]
-            //
-            // The code below uses destination[0] + destination[1] etc... so the names aren't hard coded
-
-            // copy embedded schemas to the local schemas area if the flag is set
-            if (uri && copySchemas) {
-                // use '#/components/schemas/<name>' instead of '#/x-schemas/<group>/<name>'
-                destination[0] = 'components'
-                destination[1] = 'schemas'
-                replaceRef(ref, ref.replace(/\/x-schemas\/[a-zA-Z]+\//, '/components/schemas/'), openrpc)
-            }
-
-            // only copy things that aren't already there
-            if (schema && !getPathOr(null, destination, openrpc)) {
-                // if we move over a schema, then we need at least one more run of the while loop
-                searching = true
-                // if copySchemas is off, then make sure we also grab the x-schema URI
-                if (uri && !copySchemas) {
-                    openrpc[destination[0]][destination[1]] = openrpc[destination[0]][destination[1]] || {}
-                    openrpc[destination[0]][destination[1]][destination[2]] = {
-                        uri: uri,
-                        ...(openrpc[destination[0]][destination[1]][destination[2]] || {})
-                    }    
-                }
-                const capitalize = str => str[0].toUpperCase() + str.substr(1)
-                if (!schema.title) {
-                    schema.title = capitalize(parts.pop())
-                }
-
-                openrpc = setPath(destination, schema, openrpc)
-                if (extractSubSchemas) {
-                    openrpc = promoteAndNameXSchemas(openrpc)
-                }
-            }
-        })
-    }
-
-    return removeUnusedSchemas(openrpc)
+  openrpc = promoteAndNameXSchemas(openrpc)
+  return removeUnusedSchemas(openrpc)
 }
 
 const getSemanticVersion = json => {
@@ -1908,6 +1885,26 @@ const getSemanticVersion = json => {
     return version
 }
 
+const getAppApiModule = (name, appApi, platformApi) => {
+  const notifierFor = m => (m.tags.find(t => t['x-event']) || {})['x-event']
+  const interfaces = platformApi.methods.filter(m => m.tags.find(t => t['x-interface']))
+                                      .map(m => m.tags.find(t => t['x-interface'])['x-interface'])
+
+  let openrpc = JSON.parse(JSON.stringify(appApi))
+
+  openrpc.methods = openrpc.methods
+                      .filter(method => (notifierFor(method) && notifierFor(method).startsWith(name + '.') || interfaces.find(name => method.name.startsWith(name + '.'))))
+  openrpc.info.title = name
+  openrpc.components.schemas = Object.fromEntries(Object.entries(openrpc.components.schemas).filter( ([key, schema]) => key.startsWith('http') || key.split('.')[0] === name))
+  if (appApi.info['x-module-descriptions'] && appApi.info['x-module-descriptions'][name]) {
+      openrpc.info.description = appApi.info['x-module-descriptions'][name]
+  }
+  delete openrpc.info['x-module-descriptions']
+
+  openrpc = promoteAndNameXSchemas(openrpc)
+  return removeUnusedBundles(removeUnusedSchemas(openrpc))
+}
+
 export {
     isEnum,
     isEventMethod,
@@ -1945,9 +1942,13 @@ export {
     providerHasNoParameters,
     removeUnusedSchemas,
     getModule,
+    getAppApiModule,
     getSemanticVersion,
     addExternalMarkdown,
     addExternalSchemas,
     getExternalMarkdownPaths,
-    createPolymorphicMethods
+    createPolymorphicMethods,
+    getInterfaces,
+    getUnidirectionalProviderInterfaceName,
+    removeUnusedBundles,
 }

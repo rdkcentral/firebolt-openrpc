@@ -21,17 +21,19 @@
 import { emptyDir, readDir, readFiles, readFilesPermissions, readJson,
          writeFiles, writeFilesPermissions, writeText } from '../shared/filesystem.mjs'
 import { getTemplate, getTemplateForModule } from '../shared/template.mjs'
-import { getModule, hasPublicAPIs } from '../shared/modules.mjs'
+import { getAppApiModule, getModule, hasPublicAPIs } from '../shared/modules.mjs'
 import { logHeader, logSuccess } from '../shared/io.mjs'
+import Types from './types.mjs'
 import path from 'path'
 import engine from './engine.mjs'
-import { getLocalSchemas, replaceRef } from '../shared/json-schema.mjs'
+import { flattenMultipleOfs, replaceUri } from '../shared/json-schema.mjs'
 
 /************************************************************************************************/
 /******************************************** MAIN **********************************************/
 /************************************************************************************************/
 const macrofy = async (
-  input,
+  platformApi,
+  appApi,
   template,
   output,
   options
@@ -45,8 +47,10 @@ const macrofy = async (
         templatesPerSchema,
         persistPermission,
         createPolymorphicMethods,
+        enableUnionTypes,
         createModuleDirectories,
         copySchemasIntoModules,
+        mergeOnTitle,
         extractSubSchemas,
         unwrapResultObjects,
         allocatedPrimitiveProxies,
@@ -68,29 +72,19 @@ const macrofy = async (
         libraryName,
         treeshakePattern = null,
         treeshakeEntry = null,
-        treeshakeTypes = []
+        treeshakeTypes = [],
+        moduleWhitelist = []
     } = options
 
     return new Promise( async (resolve, reject) => {
-        const openrpc = await readJson(input)
+        const platformApiOpenRpc = await readJson(platformApi)
+        const appApiOpenRpc = appApi && await readJson(appApi) || null
 
-        logHeader(`Generating ${headline} for version ${openrpc.info.title} ${openrpc.info.version}`)
+        logHeader(`Generating ${headline} for version ${platformApiOpenRpc.info.title} ${platformApiOpenRpc.info.version}`)
 
-        let typer
-
-        try {
-//            const typerModule = await import(path.join(sharedTemplates, '..', 'Types.mjs'))
-//            typer = typerModule.default
-        }
-        catch (_) {
-//            typer = (await import('../shared/typescript.mjs')).default
-        }
-
-        typer = (await import('./types.mjs')).default
-
-        engine.setTyper(typer)
         engine.setConfig({
             copySchemasIntoModules,
+            mergeOnTitle,
             createModuleDirectories,
             extractSubSchemas,
             unwrapResultObjects,
@@ -104,7 +98,7 @@ const macrofy = async (
             operators
         })
 
-        const moduleList = [...(new Set(openrpc.methods.map(method => method.name.split('.').shift())))]
+        const moduleList = [...(new Set(platformApiOpenRpc.methods.map(method => method.name.split('.').shift())))]
         const sdkTemplateList = template ? await readDir(template, { recursive: true }) : []
         const sharedTemplateList = await readDir(sharedTemplates, { recursive: true })
         const templates = Object.assign(await readFiles(sharedTemplateList, sharedTemplates),
@@ -130,32 +124,50 @@ const macrofy = async (
 
         // check if this is a "real" language or just documentation broiler-plate, e.g. markdown
         if (Object.keys(templates).find(key => key.startsWith('/types/primitive'))) {
-            typer.setTemplates && typer.setTemplates(templates)
-            typer.setPrimitives(primitives)
+            Types.setTemplates && Types.setTemplates(templates)
+            Types.setPrimitives(primitives)
         }
         else {
             const lang = Object.entries(exampleTemplates)[0][1]
             const prims = Object.entries(exampleTemplates)[0][1]['__config'].primitives
             // add the templates from the first example language and the wrapper langauage
-            typer.setTemplates && typer.setTemplates(lang)
-            typer.setTemplates && typer.setTemplates(templates)
-            typer.setPrimitives(prims)
+            Types.setTemplates && Types.setTemplates(lang)
+            Types.setTemplates && Types.setTemplates(templates)
+            Types.setPrimitives(prims)
         }
-        typer.setAllocatedPrimitiveProxies(allocatedPrimitiveProxies)
-        typer.setConvertTuples(convertTuplesToArraysOrObjects)
+        Types.setAllocatedPrimitiveProxies(allocatedPrimitiveProxies)
+        Types.setConvertTuples(convertTuplesToArraysOrObjects)
 
         const staticCodeList = staticContent ? await readDir(staticContent, { recursive: true }) : []
         const staticModules = staticModuleNames.map(name => ( { info: { title: name } } ))
 
         let modules
+
         if (hidePrivate) {
-            modules = moduleList.map(name => getModule(name, openrpc, copySchemasIntoModules, extractSubSchemas)).filter(hasPublicAPIs)
-        }
-        else {
-            modules = moduleList.map(name => getModule(name, openrpc, copySchemasIntoModules, extractSubSchemas))
+            modules = moduleList.map(name => getModule(name, platformApiOpenRpc, copySchemasIntoModules, extractSubSchemas)).filter(hasPublicAPIs)
+        } else {
+            modules = moduleList.map(name => getModule(name, platformApiOpenRpc, copySchemasIntoModules, extractSubSchemas))
         }
 
-        const aggregateMacros = engine.generateAggregateMacros(openrpc, modules.concat(staticModules), templates, libraryName)
+        // Grab all schema groups w/ a URI string. These came from some external json-schema that was bundled into the OpenRPC
+        const externalSchemas = {}
+        platformApiOpenRpc.components && platformApiOpenRpc.components.schemas
+            && Object.entries(platformApiOpenRpc.components.schemas).filter(([_, schema]) => schema.$id).forEach(([name, schema]) => {
+                    const id = schema.$id
+                    externalSchemas[id] = JSON.parse(JSON.stringify(schema))
+                    replaceUri(id, '', externalSchemas[id])
+                    Object.values(platformApiOpenRpc.components.schemas).forEach(schema => {
+                        if (schema.$id && schema.$id !== id) {
+                            externalSchemas[id].definitions[schema.$id] = schema
+                        }
+                    })
+            })
+
+        const aggregatedExternalSchemas = mergeOnTitle ? Object.values(externalSchemas).filter(s => !modules.find(m => m.info.title === s.title)) : Object.values(externalSchemas)
+
+        const aggregateMacros = engine.generateAggregateMacros(platformApiOpenRpc, appApiOpenRpc, modules.concat(staticModules).concat(copySchemasIntoModules ? [] : Object.values(aggregatedExternalSchemas)), templates, libraryName)
+        logSuccess(`Generated aggregate macros`)
+
 
         const outputFiles = Object.fromEntries(Object.entries(await readFiles( staticCodeList, staticContent))
                                 .map( ([n, v]) => [path.join(output, n), v]))
@@ -181,7 +193,7 @@ const macrofy = async (
                 if (persistPermission) {
                     templatesPermission[path.join(output, outputFile)] = templatesPermission[file]
                 }
-                logSuccess(`Generated macros for file ${path.relative(output, path.join(output, outputFile))}`)
+                logSuccess(`Inserted aggregate macros for file ${path.relative(output, path.join(output, outputFile))}`)
             }
             if (persistPermission) {
                 delete templatesPermission[file]
@@ -191,10 +203,14 @@ const macrofy = async (
         let append = false
 
         modules.forEach(module => {
-
+            const appApiOpenRpc2 = appApiOpenRpc && getAppApiModule(module.info.title, appApiOpenRpc, module)
+            logSuccess(` - gotAppApiModule`)
+            
+            const macros = engine.generateMacros(module, appApiOpenRpc2, templates, exampleTemplates, {hideExcluded: hideExcluded, copySchemasIntoModules: copySchemasIntoModules, createPolymorphicMethods: createPolymorphicMethods, type: 'methods'})
+            logSuccess(`Generated macros for module ${module.info.title}`)
+            
             // Pick the index and defaults templates for each module.
             templatesPerModule.forEach(t => {
-                const macros = engine.generateMacros(module, templates, exampleTemplates, {hideExcluded: hideExcluded, copySchemasIntoModules: copySchemasIntoModules, createPolymorphicMethods: createPolymorphicMethods, destination: t, type: 'methods'})
                 let content = getTemplateForModule(module.info.title, t, templates)
                 
                 // NOTE: whichever insert is called first also needs to be called again last, so each phase can insert recursive macros from the other
@@ -205,13 +221,13 @@ const macrofy = async (
                 const location = createModuleDirectories ? path.join(output, module.info.title, t) : path.join(output, t.replace(/module/, module.info.title.toLowerCase()).replace(/index/, module.info.title))
                 
                 outputFiles[location] = content
-                logSuccess(`Generated macros for module ${path.relative(output, location)}`)
+                logSuccess(` - Inserted ${module.info.title} macros for template ${path.relative(output, location)}`)            
             })
 
             primaryOutput.forEach(output => {
-                const macros = engine.generateMacros(module, templates, exampleTemplates, {hideExcluded: hideExcluded, copySchemasIntoModules: copySchemasIntoModules, createPolymorphicMethods: createPolymorphicMethods, destination: output})
                 macros.append = append
                 outputFiles[output] = engine.insertMacros(outputFiles[output], macros)
+                logSuccess(` - Inserted ${module.info.title} macros for template ${output}`)
             })
 
             append = true
@@ -237,8 +253,7 @@ const macrofy = async (
                     imports = imports.map(imp => Array.from(new Set([imp, ...treeShake(imp, path.dirname(imp).substring(output.length), checked)]))).flat()
 
                     return Array.from(new Set([entry, ...imports]))
-                }
-                else {
+                } else {
                     return []
                 }
             }
@@ -251,60 +266,32 @@ const macrofy = async (
                 }
             })
         }
-
-        // Grab all schema groups w/ a URI string. These came from some external json-schema that was bundled into the OpenRPC
-        const externalSchemas = {}
-        openrpc['x-schemas']
-            && Object.entries(openrpc['x-schemas']).forEach(([name, schema]) => {                
-                if (schema.uri) {
-                    const id = schema.uri
-                    externalSchemas[id] = externalSchemas[id] || { $id: id, info: {title: name }, methods: []}
-                    externalSchemas[id].components = externalSchemas[id].components || {}
-                    externalSchemas[id].components.schemas = externalSchemas[id].components.schemas || {}
-                    externalSchemas[id]['x-schemas'] = JSON.parse(JSON.stringify(openrpc['x-schemas']))
-
-                    const schemas = JSON.parse(JSON.stringify(schema))
-                    delete schemas.uri
-                    Object.assign(externalSchemas[id].components.schemas, schemas)
-                }
-        })
-
-        // update the refs
-        Object.values(externalSchemas).forEach( document => {
-            getLocalSchemas(document).forEach((path) => {
-                const parts = path.split('/')
-                // Drop the grouping path element, since we've pulled this schema out into it's own document
-                if (parts.length === 4 && path.startsWith('#/x-schemas/' + document.info.title + '/')) {
-                    replaceRef(path, ['#/components/schemas', parts[3]].join('/'), document)
-                }
-                // Add the fully qualified URI for any schema groups other than this one
-                else if (parts.length === 4 && path.startsWith('#/x-schemas/')) {
-                    const uri = openrpc['x-schemas'][parts[2]].uri
-                    // store the case-senstive group title for later use
-                    document.info['x-uri-titles'] = document.info['x-uri-titles'] || {}
-                    document.info['x-uri-titles'][uri] = document.info.title
-                    openrpc.info['x-uri-titles'] = openrpc.info['x-uri-titles'] || {}
-                    openrpc.info['x-uri-titles'][uri] = document.info.title
-                    replaceRef(path, '#/x-schemas/' + parts[2] + '/' + parts[3], document)
-                }
-            })
-        })
                 
         // Output any schema templates for each bundled external schema document
-        Object.values(externalSchemas).forEach( document => {
-            if (templatesPerSchema) {
-                templatesPerSchema.forEach( t => {
-                    const macros = engine.generateMacros(document, templates, exampleTemplates, {hideExcluded: hideExcluded, createPolymorphicMethods: createPolymorphicMethods, destination: t})
+        !copySchemasIntoModules && Object.values(externalSchemas).forEach( document => {
+          if (mergeOnTitle && modules.find(m => m.info.title === document.title)) {
+              return // skip this one, it was already merged into the module w/ the same name
+          }
+
+          const macros = engine.generateMacros(document, null, templates, exampleTemplates, {hideExcluded: hideExcluded, copySchemasIntoModules: copySchemasIntoModules, createPolymorphicMethods: createPolymorphicMethods })
+
+          if (templatesPerSchema || primaryOutput.length) {
+              templatesPerSchema && templatesPerSchema.forEach( t => {
                     let content = getTemplate('/schemas', t, templates)
-        
-                    // NOTE: whichever insert is called first also needs to be called again last, so each phase can insert recursive macros from the other
                     content = engine.insertMacros(content, macros)
         
-                    const location = createModuleDirectories ? path.join(output, document.info.title, t) : path.join(output, t.replace(/module/, document.info.title.toLowerCase()).replace(/index/, document.info.title))
+                    const location = createModuleDirectories ? path.join(output, document.title, t) : path.join(output, t.replace(/module/, document.title.toLowerCase()).replace(/index/, document.title))
         
                     outputFiles[location] = content
                     logSuccess(`Generated macros for schema ${path.relative(output, location)}`)
                 })
+
+                primaryOutput && primaryOutput.forEach(output => {
+                  macros.append = append
+                  outputFiles[output] = engine.insertMacros(outputFiles[output], macros)
+                })
+
+              append = true
             }
         })
 
@@ -315,7 +302,8 @@ const macrofy = async (
 
         await writeFiles(outputFiles)
         if (persistPermission) {
-            await writeFilesPermissions(templatesPermission)
+            // Need to take a closer look at why this was commented out
+            // await writeFilesPermissions(templatesPermission)
         }
         logSuccess(`Wrote ${Object.keys(outputFiles).length} files.`)
 

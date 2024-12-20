@@ -28,11 +28,15 @@ import { loadConfig, getConfig } from '../shared/configLoader.mjs';
 /************************************************************************************************/
 // destructure well-known cli args and alias to variables expected by script
 const run = async ({
-  input: input,
+  platformApi: platformApi,
+  appApi: appApi,
   template: template,
   output: output,
   language: language,
-  'static-module': staticModuleNames
+  'static-module': staticModuleNames,
+  argv: {
+    remain: moduleWhitelist
+  }
 }) => {
   
   let mainFilename
@@ -53,7 +57,7 @@ const run = async ({
   await loadConfig(language)
   const config = getConfig()
 
-  return macrofy(input, template, output, {
+  return macrofy(platformApi, appApi, template, output, {
     headline: 'SDK code',
     outputDirectory:    'sdk',
     sharedTemplates:    path.join(language, 'templates'),
@@ -61,7 +65,8 @@ const run = async ({
     templatesPerModule: config.templatesPerModule,
     templatesPerSchema: config.templatesPerSchema,
     persistPermission: config.persistPermission,
-    createPolymorphicMethods: config.createPolymorphicMethods,
+    createPolymorphicMethods: config.createPolymorphicMethods || false,
+    enableUnionTypes: config.enableUnionTypes || false,
     operators: config.operators,
     primitives: config.primitives,
     createModuleDirectories: config.createModuleDirectories,
@@ -77,6 +82,7 @@ const run = async ({
     extractProviderSchema: config.extractProviderSchema,
     staticModuleNames: staticModuleNames,
     hideExcluded: true,
+    moduleWhitelist: moduleWhitelist,
     aggregateFiles: config.aggregateFiles,
     rename: mainFilename ? { '/index.mjs': mainFilename, '/index.d.ts': declarationsFilename } : {},
     treeshakePattern: config.treeshakePattern ? new RegExp(config.treeshakePattern, "g") : undefined,
