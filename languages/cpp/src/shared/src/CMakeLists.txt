@@ -22,15 +22,21 @@ set(TARGET ${PROJECT_NAME})
 message("Setup ${TARGET} v${PROJECT_VERSION}")
 
 file(GLOB SOURCES *.cpp)
-add_library(${TARGET} ${FIREBOLT_LIBRARY_TYPE}
-    ${SOURCES}
+list(APPEND SOURCES
     Logger/Logger.cpp
     Gateway/Gateway.cpp
     Transport/Transport.cpp
     Accessor/Accessor.cpp
-    Event/Event.cpp
     Async/Async.cpp
 )
+
+if (ENABLE_BIDRECTIONAL)
+    list(APPEND SOURCES Event/bidi/Event.cpp)
+else ()
+    list(APPEND SOURCES Event/unidi/Event.cpp)
+endif ()
+
+add_library(${TARGET} ${FIREBOLT_LIBRARY_TYPE} ${SOURCES})
 
 if(ENABLE_UNIT_TESTS)
     target_compile_definitions(FireboltSDK PRIVATE UNIT_TEST)

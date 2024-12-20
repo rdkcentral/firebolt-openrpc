@@ -27,6 +27,11 @@ namespace FireboltSDK
 {
     using namespace WPEFramework::Core::TypeTraits;
 
+    class ITransportReceiver {
+    public:
+        virtual void Receive(const WPEFramework::Core::JSONRPC::Message& message) = 0;
+    };
+
     class IEventHandler
     {
     public:
@@ -123,7 +128,7 @@ namespace FireboltSDK
         Transport(const Transport &) = delete;
         Transport &operator=(Transport &) = delete;
         Transport(const WPEFramework::Core::URL &url, const uint32_t waitTime, const Listener listener)
-            : _adminLock(), _connectId(WPEFramework::Core::NodeId(url.Host().Value().c_str(), url.Port().Value())), _channel(Channel::Instance(_connectId, ((url.Path().Value().rfind(PathPrefix, 0) == 0) ? url.Path().Value() : string(PathPrefix + url.Path().Value())), url.Query().Value(), true)), _eventHandler(nullptr), _pendingQueue(), _scheduledTime(0), _waitTime(waitTime), _listener(listener), _connected(false), _status(Firebolt::Error::NotConnected)
+            : _adminLock(), _connectId(WPEFramework::Core::NodeId(url.Host().Value().c_str(), url.Port().Value())), _channel(Channel::Instance(_connectId, ((url.Path().Value().rfind(PathPrefix, 0) == 0) ? url.Path().Value() : string(PathPrefix + url.Path().Value())), url.Query().Value(), true)), _pendingQueue(), _scheduledTime(0), _waitTime(waitTime), _listener(listener), _connected(false), _status(Firebolt::Error::NotConnected)
         {
             _channel->Register(*this);
             WPEFramework::Core::ProxyType<WPEFramework::Core::IDispatch> job = WPEFramework::Core::ProxyType<WPEFramework::Core::IDispatch>(WPEFramework::Core::ProxyType<Transport::ConnectionJob>::Create(this));
@@ -152,7 +157,7 @@ namespace FireboltSDK
         inline bool IsOpen()
         {
             return _channel->IsOpen();
-        } 
+        }
 #endif
 
         void Revoke(const string &eventName)
@@ -168,7 +173,11 @@ namespace FireboltSDK
 
         void SetEventHandler(IEventHandler *eventHandler)
         {
-            _eventHandler = eventHandler;
+        }
+
+        void SetTransportReceiver(ITransportReceiver *transportReceiver)
+        {
+            _transportReceiver = transportReceiver;
         }
 
 // Invoke method is overriden for unit testing to call MockResponse method from JSON engine
@@ -254,6 +263,11 @@ namespace FireboltSDK
             slot.Abort(id);
         }
 
+        uint32_t GetNextMessageID()
+        {
+            return _channel->Sequence();
+        }
+
         template <typename RESPONSE>
         Firebolt::Error Subscribe(const string& eventName, const string& parameters, RESPONSE& response, bool updateInternal = false)
         {
@@ -312,6 +326,47 @@ namespace FireboltSDK
                 waiting -= (waiting == WPEFramework::Core::infinite ? 0 : sleepSlot);
             }
             return (((waiting == 0) || (IsOpen() == true)) ? Firebolt::Error::None : Firebolt::Error::Timedout);
+        }
+
+        template <typename PARAMETERS>
+        Firebolt::Error Send(const string &method, const PARAMETERS &parameters, const uint32_t &id)
+        {
+            int32_t result = WPEFramework::Core::ERROR_UNAVAILABLE;
+
+            if ((_channel.IsValid() == true) && (_channel->IsSuspended() == true))
+            {
+                result = WPEFramework::Core::ERROR_ASYNC_FAILED;
+            }
+            else if (_channel.IsValid() == true)
+            {
+
+                result = WPEFramework::Core::ERROR_ASYNC_FAILED;
+
+                WPEFramework::Core::ProxyType<WPEFramework::Core::JSONRPC::Message> message(Channel::Message());
+                message->Id = id;
+                message->Designator = method;
+                ToMessage(parameters, message);
+
+                _adminLock.Lock();
+
+                typename std::pair<typename PendingMap::iterator, bool> newElement =
+                    _pendingQueue.emplace(std::piecewise_construct,
+                                          std::forward_as_tuple(id),
+                                          std::forward_as_tuple());
+                ASSERT(newElement.second == true);
+
+                if (newElement.second == true)
+                {
+
+                    _adminLock.Unlock();
+
+                    _channel->Submit(WPEFramework::Core::ProxyType<INTERFACE>(message));
+
+                    message.Release();
+                    result = WPEFramework::Core::ERROR_NONE;
+                }
+            }
+            return FireboltErrorValue(result);
         }
 
     private:
@@ -416,160 +471,14 @@ namespace FireboltSDK
 
             ASSERT(inbound.IsValid() == true);
 
-            if ((inbound->Id.IsSet() == true) && (inbound->Result.IsSet() || inbound->Error.IsSet()))
-            {
-                // Looks like this is a response..
-                ASSERT(inbound->Parameters.IsSet() == false);
-                ASSERT(inbound->Designator.IsSet() == false);
-
-                _adminLock.Lock();
-
-                // See if we issued this..
-                typename PendingMap::iterator index = _pendingQueue.find(inbound->Id.Value());
-
-                if (index != _pendingQueue.end())
-                {
-
-                    if (index->second.Signal(inbound) == true)
-                    {
-                        _pendingQueue.erase(index);
-                    }
-
-                    result = WPEFramework::Core::ERROR_NONE;
-                    _adminLock.Unlock();
-                }
-                else
-                {
-                    _adminLock.Unlock();
-                    string eventName;
-                    if (IsEvent(inbound->Id.Value(), eventName))
-                    {
-                        _eventHandler->Dispatch(eventName, inbound);
-                    }
-                }
+            if (_transportReceiver != nullptr) {
+                _transportReceiver->Receive(*inbound);
             }
 
             return (result);
         }
 
-        template <typename PARAMETERS>
-        Firebolt::Error Send(const string &method, const PARAMETERS &parameters, const uint32_t &id)
-        {
-            int32_t result = WPEFramework::Core::ERROR_UNAVAILABLE;
-
-            if ((_channel.IsValid() == true) && (_channel->IsSuspended() == true))
-            {
-                result = WPEFramework::Core::ERROR_ASYNC_FAILED;
-            }
-            else if (_channel.IsValid() == true)
-            {
-
-                result = WPEFramework::Core::ERROR_ASYNC_FAILED;
-
-                WPEFramework::Core::ProxyType<WPEFramework::Core::JSONRPC::Message> message(Channel::Message());
-                message->Id = id;
-                message->Designator = method;
-                ToMessage(parameters, message);
-
-                _adminLock.Lock();
-
-                typename std::pair<typename PendingMap::iterator, bool> newElement =
-                    _pendingQueue.emplace(std::piecewise_construct,
-                                          std::forward_as_tuple(id),
-                                          std::forward_as_tuple());
-                ASSERT(newElement.second == true);
-
-                if (newElement.second == true)
-                {
-
-                    _adminLock.Unlock();
-
-                    _channel->Submit(WPEFramework::Core::ProxyType<INTERFACE>(message));
-
-                    message.Release();
-                    result = WPEFramework::Core::ERROR_NONE;
-                }
-            }
-            return FireboltErrorValue(result);
-        }
-#ifdef UNIT_TEST
-template <typename RESPONSE>
-        Firebolt::Error WaitForEventResponse(const uint32_t &id, const string &eventName, RESPONSE &response, const uint32_t waitTime, EventMap& _eventMap)
-        {
-            std::cout << "Inside Mock Transport WaitForEventResponse function" << std::endl;
-            std::cout << "Mock Transport WaitForEventResponse eventName: " << eventName << std::endl;
-            /*  Since there is no return value for event subscription, error would be the only validation for now.
-                Returning a mock event response from open rpc would mean that the logic in WaitForEventResponse to check a queue is not used.
-                At which point, the function would no longer be validating the SDK functionality.
-                If the queue find functionality is to be tested, the _pendingQueue could be mocked in upcoming iterations.
-            */
-            return Firebolt::Error::None;
-        }
-#else
         static constexpr uint32_t WAITSLOT_TIME = 100;
-        template <typename RESPONSE>
-        Firebolt::Error WaitForEventResponse(const uint32_t &id, const string &eventName, RESPONSE &response, const uint32_t waitTime, EventMap& _eventMap)
-        {
-            std::cout << "Inside Transport WaitForEventResponse function" << std::endl;
-            Firebolt::Error result = Firebolt::Error::Timedout;
-            _adminLock.Lock();
-            typename PendingMap::iterator index = _pendingQueue.find(id);
-            Entry &slot(index->second);
-            _adminLock.Unlock();
-
-            uint8_t waiting = waitTime;
-            do
-            {
-                uint32_t waitSlot = (waiting > WAITSLOT_TIME ? WAITSLOT_TIME : waiting);
-                if (slot.WaitForResponse(waitSlot) == true)
-                {
-                    WPEFramework::Core::ProxyType<WPEFramework::Core::JSONRPC::Message> jsonResponse = slot.Response();
-
-                    // See if we have a jsonResponse, maybe it was just the connection
-                    // that closed?
-                    if (jsonResponse.IsValid() == true)
-                    {
-                        if (jsonResponse->Error.IsSet() == true)
-                        {
-                            result = FireboltErrorValue(jsonResponse->Error.Code.Value());
-                        }
-                        else
-                        {
-                            if ((jsonResponse->Result.IsSet() == true) && (jsonResponse->Result.Value().empty() == false))
-                            {
-                                bool enabled;
-                                result = _eventHandler->ValidateResponse(jsonResponse, enabled);
-                                if (result == Firebolt::Error::None)
-                                {
-                                    FromMessage((INTERFACE *)&response, *jsonResponse);
-                                    if (enabled)
-                                    {
-                                        _adminLock.Lock();
-                                        typename EventMap::iterator index = _eventMap.find(eventName);
-                                        if (index != _eventMap.end())
-                                        {
-                                            index->second = id;
-                                        }
-                                        _adminLock.Unlock();
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                else
-                {
-                    result = Firebolt::Error::Timedout;
-                }
-                waiting -= (waiting == WPEFramework::Core::infinite ? 0 : waitSlot);
-            } while ((result != Firebolt::Error::None) && (waiting > 0));
-            _adminLock.Lock();
-            _pendingQueue.erase(id);
-            _adminLock.Unlock();
-
-            return result;
-        }
-#endif
     public:
         void FromMessage(WPEFramework::Core::JSON::IElement *response, const WPEFramework::Core::JSONRPC::Message &message) const
         {
@@ -648,7 +557,7 @@ template <typename RESPONSE>
         WPEFramework::Core::CriticalSection _adminLock;
         WPEFramework::Core::NodeId _connectId;
         WPEFramework::Core::ProxyType<Channel> _channel;
-        IEventHandler *_eventHandler;
+        ITransportReceiver *_transportReceiver;
         PendingMap _pendingQueue;
         EventMap _internalEventMap;
         EventMap _externalEventMap;

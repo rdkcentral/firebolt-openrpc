@@ -20,40 +20,40 @@
 
 namespace FireboltSDK {
 
-Gateway* Gateway::_instance = nullptr;
+Gateway* Gateway::instance = nullptr;
 
 Gateway& Gateway::Instance()
 {
-    if (_instance == nullptr) {
-        _instance = new Gateway(new GatewayImpl());
-        ASSERT(_instance != nullptr);
+    if (instance == nullptr) {
+        instance = new Gateway(std::make_unique<GatewayImpl>());
+        ASSERT(instance != nullptr);
     }
-    return *_instance;
+    return *instance;
 }
 
 void Gateway::Dispose()
 {
-    ASSERT(_instance != nullptr);
-    if (_instance != nullptr) {
-        delete _instance;
-        _instance = nullptr;
+    ASSERT(instance != nullptr);
+    if (instance != nullptr) {
+        delete instance;
+        instance = nullptr;
     }
 }
 
-Gateway::Gateway(GatewayImpl *implementation)
-    : _implementation(implementation)
+Gateway::Gateway(std::unique_ptr<GatewayImpl> implementation)
+    : implementation(implementation.release())
 {
-    _instance = this;
+    instance = this;
 }
 
 Gateway::~Gateway()
 {
-    delete _implementation;
+    implementation.reset();
 }
 
 void Gateway::TransportUpdated(Transport<WPEFramework::Core::JSON::IElement>* transport)
 {
-    _implementation->TransportUpdated(transport);
+    implementation->TransportUpdated(transport);
 }
 }
 

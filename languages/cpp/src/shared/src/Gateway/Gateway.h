@@ -25,32 +25,32 @@
 
 #include "Transport/Transport.h"
 
+#include "common.h"
+
 #include <functional>
 #include <string>
 
 #ifdef GATEWAY_BIDIRECTIONAL
-#include "gateway_impl_bidi.h"
+#include "bidi/gateway_impl.h"
 #else
-#include "gateway_impl_unidi.h"
+#include "unidi/gateway_impl.h"
 #endif
 
 namespace FireboltSDK
 {
-    using EventCallback = std::function<void(const std::string & /* eventName */, const JsonObject & /* parameters */, Firebolt::Error /* error */)>;
-
     class Gateway
     {
-        static Gateway *_instance;
+        static Gateway *instance;
 
-        GatewayImpl *_implementation;
+        std::unique_ptr<GatewayImpl> implementation;
 
     private:
-        Gateway(GatewayImpl *implementation);
+        Gateway(std::unique_ptr<GatewayImpl> implementation);
 
     public:
         Gateway(const Gateway&) = delete;
         Gateway& operator=(const Gateway&) = delete;
-        ~Gateway();
+        virtual ~Gateway();
 
         static Gateway& Instance();
         static void Dispose();
@@ -60,20 +60,36 @@ namespace FireboltSDK
         template <typename RESPONSETYPE>
         Firebolt::Error Request(const std::string &method, const JsonObject &parameters, RESPONSETYPE &response)
         {
-            return _implementation->Request(method, parameters, response);
+            return implementation->Request(method, parameters, response);
         }
 
+#ifdef GATEWAY_BIDIRECTIONAL
+        template <typename RESULT, typename CALLBACK>
+        Firebolt::Error Subscribe(const string& event, JsonObject& parameters, const CALLBACK& callback, void* usercb, const void* userdata, bool prioritize = false)
+        {
+            return implementation->Subscribe<RESULT>(event, parameters, callback, usercb, userdata, prioritize);
+        }
+
+        Firebolt::Error Unsubscribe(const std::string& event)
+        {
+            return implementation->Unsubscribe(event);
+        }
+#else
         template <typename RESPONSETYPE>
         Firebolt::Error Subscribe(const string& event, const string& parameters, RESPONSETYPE& response)
         {
-            return _implementation->Subscribe(event, parameters, response);
+            return implementation->Subscribe(event, parameters, response);
         }
 
         Firebolt::Error Unsubscribe(const string& event, const string& parameters)
         {
-            return _implementation->Unsubscribe(event, parameters);
+            return implementation->Unsubscribe(event, parameters);
         }
-
+#endif
+        Firebolt::Error RegisterProviderInterface(const std::string &capability, const std::string &interface, const std::string &method, const JsonObject &parameters, const ProviderCallback& callback)
+        {
+            return implementation->RegisterProviderInterface(capability, interface, method, parameters, callback);
+        }
     };
 }
 

@@ -387,7 +387,7 @@ namespace FireboltSDK
         }
 
 // Send requests to JSON engine's mockRequest method for unit testing instead of channel's submit method
-#ifdef UNIT_TEST
+#if defined(UNIT_TEST)
         void Submit(const WPEFramework::Core::ProxyType<INTERFACE> &message)
         {
             const WPEFramework::Core::JSONRPC::Message *jsonRpcMessage = dynamic_cast<const WPEFramework::Core::JSONRPC::Message *>(message.operator->());
@@ -415,19 +415,18 @@ namespace FireboltSDK
         }
 
 // Always return true for unit testing
-#ifdef UNIT_TEST
+#if defined(UNIT_TEST)
         bool IsOpen()
         {
             return true;
         }
-        
 #else
         bool IsOpen()
         {
-            return (_channel.IsOpen() == true);
+            return _channel.IsOpen();
         }
 #endif
-        
+
     protected:
         void StateChange()
         {
@@ -449,7 +448,7 @@ namespace FireboltSDK
         }
 
 // Always return true for unit testing       
-#ifdef UNIT_TEST
+#if defined(UNIT_TEST)
         bool Open(const uint32_t waitTime)
         {
             return true;

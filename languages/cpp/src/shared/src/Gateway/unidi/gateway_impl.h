@@ -23,6 +23,8 @@
 #include <core/core.h>
 #include "error.h"
 
+#include "../common.h"
+
 #include "Transport/Transport.h"
 
 #include <string>
@@ -36,7 +38,7 @@ namespace FireboltSDK
     class GatewayImpl
     {
 
-        Transport<WPEFramework::Core::JSON::IElement>* _transport;
+        Transport<WPEFramework::Core::JSON::IElement>* transport;
 
     public:
         GatewayImpl()
@@ -46,39 +48,39 @@ namespace FireboltSDK
     public:
         void TransportUpdated(Transport<WPEFramework::Core::JSON::IElement>* transport)
         {
-           _transport = transport;
+           this->transport = transport;
         }
 
         template <typename RESPONSETYPE>
         Firebolt::Error Request(const std::string &method, const JsonObject &parameters, RESPONSETYPE &response)
         {
-            if (_transport == nullptr) {
+            if (transport == nullptr) {
                 return Firebolt::Error::NotConnected;
             }
-            return _transport->Invoke(method, parameters, response);
+            return transport->Invoke(method, parameters, response);
         }
 
         template <typename RESPONSETYPE>
         Firebolt::Error Subscribe(const string& event, const string& parameters, RESPONSETYPE& response)
         {
-            if (_transport == nullptr) {
+            if (transport == nullptr) {
                 return Firebolt::Error::NotConnected;
             }
-            return _transport->Subscribe(event, parameters, response);
+            return transport->Subscribe(event, parameters, response);
         }
 
         Firebolt::Error Unsubscribe(const string& event, const string& parameters)
         {
-            if (_transport == nullptr) {
+            if (transport == nullptr) {
                 return Firebolt::Error::NotConnected;
             }
-            return _transport->Unsubscribe(event, parameters);
+            return transport->Unsubscribe(event, parameters);
         }
 
-        // virtual Firebolt::Error Provide(const std::string &interfaceName, const Provider &provider)
-        // {
-        //     return Firebolt::Error::None;
-        // }
+        Firebolt::Error RegisterProviderInterface(const std::string &capability, const std::string &interface, const std::string &method, const JsonObject &parameters, const ProviderCallback& callback)
+        {
+            return Firebolt::Error::General;
+        }
     };
 }
 
