@@ -1371,7 +1371,7 @@ function insertMethodMacros(template, methodObj, platformApi, appApi, templates,
   const temporalItemName = isTemporalSetMethod(methodObj) ? methodObj.result.schema.items && methodObj.result.schema.items.title || 'Item' : ''
   const temporalAddName = isTemporalSetMethod(methodObj) ? `on${temporalItemName}Available` : ''
   const temporalRemoveName = isTemporalSetMethod(methodObj) ? `on${temporalItemName}Unvailable` : ''
-  const params = methodObj.params && methodObj.params.length ? getTemplate('/sections/parameters', templates) + methodObj.params.map(p => insertParameterMacros(getTemplate('/parameters/default', templates), p, methodObj, json)).join(paramDelimiter) : ''
+  const params = methodObj.params && methodObj.params.length ? getTemplate('/sections/parameters', templates) + methodObj.params.map(p => insertParameterMacros(getTemplate('/parameters/default', templates), p, methodObj, platformApi)).join(paramDelimiter) : ''
   const paramsRows = methodObj.params && methodObj.params.length ? methodObj.params.map(p => insertParameterMacros(getTemplate('/parameters/default', templates), p, methodObj, platformApi)).join('') : ''
   const paramsAnnotations = methodObj.params && methodObj.params.length ? methodObj.params.map(p => insertParameterMacros(getTemplate('/parameters/annotations', templates), p, methodObj, platformApi)).join('') : ''
   const paramsJson = methodObj.params && methodObj.params.length ? methodObj.params.map(p => insertParameterMacros(getTemplate('/parameters/json', templates), p, methodObj, platformApi)).join('') : ''
@@ -1429,7 +1429,7 @@ function insertMethodMacros(template, methodObj, platformApi, appApi, templates,
   const pullsForType = pullsResult && Types.getSchemaType(pullsResult, platformApi, { destination: state.destination, templateDir: state.typeTemplateDir, section: state.section })
   const pullsParamsType = (pullsParams && (type === 'methods')) ? Types.getSchemaShape(pullsParams, platformApi, { destination: state.destination, templateDir: state.typeTemplateDir, section: state.section }) : ''
   const pullsForParamTitle = pullsParams ? pullsParams.title.charAt(0).toLowerCase() + pullsParams.title.substring(1) : ''
-  const pullsForResultTitle = pullsResult ? pullsResult.title.charAt(0).toLowerCase() + pullsResult.title.substring(1) : ''
+  const pullsForResultTitle = (pullsResult && pullsResult.title) ? pullsResult.title.charAt(0).toLowerCase() + pullsResult.title.substring(1) : ''
   const pullsResponseInit = (pullsParams && (type === 'methods')) ? Types.getSchemaShape(pullsParams, platformApi, { templateDir: 'result-initialization', property: pullsForParamTitle, required: pullsParams.required, destination: state.destination, section: state.section, primitive: true, skipTitleOnce: true }) : ''
   const pullsResponseInst = (pullsParams && (type === 'methods')) ? Types.getSchemaShape(pullsParams, platformApi, { templateDir: 'result-instantiation', property: pullsForParamTitle, required: pullsParams.required, destination: state.destination, section: state.section, primitive: true, skipTitleOnce: true }) : ''
   const pullsResultSerialize = (pullsResult && (type === 'methods')) ? Types.getSchemaShape(pullsResult, platformApi, { templateDir: 'parameter-serialization/sub-property', property: pullsForResultTitle, required: pullsResult.required, destination: state.destination, section: state.section, primitive: true, skipTitleOnce: true }) : ''
@@ -1649,120 +1649,118 @@ function insertExampleMacros(template, examples, method, json, templates) {
   }
 
   let index = -1
-  console.log('+++++++++++++++++++++++++++++++++++')
-  console.log(typeof examples)
-  console.log(JSON.stringify(examples))
-  examples.forEach(example => {
+  Object.keys(examples).forEach(key => {
+    examples[key].forEach(example => {
     index++
-    let code = getTemplate('/codeblocks/example', templates)
-    let first = true
-    let languages = ''
-    Object.entries(example.languages).forEach(([name, language]) => {
-      let languageContent = language.template //getTemplateForExample(method, templates)
-      // wrap example in collapsible HTML if not first
-      if (!first) {
-        languageContent = '<details>\n' + languageContent.replace(/\$\{example\.language\}(.*?)\n/, '<summary>$${example.language}$1</summary>') + '</details>'
-      }
+      let code = getTemplate('/codeblocks/example', templates)
+      let first = true
+      let languages = ''
+      Object.entries(example.languages).forEach(([name, language]) => {
+        let languageContent = language.template //getTemplateForExample(method, templates)
+        // wrap example in collapsible HTML if not first
+        if (!first) {
+          languageContent = '<details>\n' + languageContent.replace(/\$\{example\.language\}(.*?)\n/, '<summary>$${example.language}$1</summary>') + '</details>'
+        }
 
-      first = false
+        first = false
 
-      /**
-       * Formats method parameters into a string, replacing optional empty values with `undefined`
-       * and removing trailing empty values.
-       * 
-       * @param {Array<Object>} params - The parameters to format.
-       * @param {string} delimit - The delimiter to use between parameters.
-       * @param {boolean} [pretty=false] - Whether to format output with pretty indentation.
-       * @returns {string} - A formatted string of parameters.
-       */
-      const formatParams = (params, delimit, pretty = false) => {
-        const formattedParams = params.map((p, index) => {
-          // Retrieve parameter value or default to empty string if not found
-          const param = example.json.params.find(x => x.name === p.name) || { value: '' };
-          let value = param.value === '' ? (index === params.length - 1 ? null : "undefined") : param.value;
-          
-          // Remove trailing parameter if empty
-          if (index === params.length - 1 && value === null) {
-            return null;
+        /**
+         * Formats method parameters into a string, replacing optional empty values with `undefined`
+         * and removing trailing empty values.
+         * 
+         * @param {Array<Object>} params - The parameters to format.
+         * @param {string} delimit - The delimiter to use between parameters.
+         * @param {boolean} [pretty=false] - Whether to format output with pretty indentation.
+         * @returns {string} - A formatted string of parameters.
+         */
+        const formatParams = (params, delimit, pretty = false) => {
+          const formattedParams = params.map((p, index) => {
+            // Retrieve parameter value or default to empty string if not found
+            const param = example.json.params.find(x => x.name === p.name) || { value: '' };
+            let value = param.value === '' ? (index === params.length - 1 ? null : "undefined") : param.value;
+            
+            // Remove trailing parameter if empty
+            if (index === params.length - 1 && value === null) {
+              return null;
+            }
+            
+            // Return "undefined" as a literal or format the value as JSON
+            return value === "undefined" ? "undefined" : JSON.stringify(value, null, pretty ? '  ' : null);
+          });
+
+          // Join parameters, filtering out trailing empty parameters
+          return formattedParams.filter(p => p !== null).join(delimit);
+        }
+
+        /**
+         * Generates formatted parameters for documentation, adjusting line indentation
+         * for readability if it exceeds a given line length.
+         * 
+         * @param {Object} method - The method containing parameters to format.
+         * @param {string} [delimit=', '] - The delimiter between parameters.
+         * @param {number} [maxLineLength=80] - The maximum line length before wrapping.
+         * @returns {string} - A formatted and indented string of method parameters.
+         */
+        const generateParamsWithIndentation = (method, delimit = ', ', maxLineLength = 80) => {
+          const indent = ' '.repeat(json.info.title.length + method.name.length + 2);
+          let params = formatParams(method.params, delimit);
+
+          // Reformat parameters if they exceed max line length
+          if (params.length + indent > maxLineLength) {
+            params = formatParams(method.params, ',\n', true);
+            params = params.split('\n');
+
+            let first = params.shift()
+            params = params.map(p => indent + p)
+            params.unshift(first)
+            params = params.join('\n')
           }
           
-          // Return "undefined" as a literal or format the value as JSON
-          return value === "undefined" ? "undefined" : JSON.stringify(value, null, pretty ? '  ' : null);
-        });
-
-        // Join parameters, filtering out trailing empty parameters
-        return formattedParams.filter(p => p !== null).join(delimit);
-      }
-
-      /**
-       * Generates formatted parameters for documentation, adjusting line indentation
-       * for readability if it exceeds a given line length.
-       * 
-       * @param {Object} method - The method containing parameters to format.
-       * @param {string} [delimit=', '] - The delimiter between parameters.
-       * @param {number} [maxLineLength=80] - The maximum line length before wrapping.
-       * @returns {string} - A formatted and indented string of method parameters.
-       */
-      const generateParamsWithIndentation = (method, delimit = ', ', maxLineLength = 80) => {
-        const indent = ' '.repeat(json.info.title.length + method.name.length + 2);
-        let params = formatParams(method.params, delimit);
-
-        // Reformat parameters if they exceed max line length
-        if (params.length + indent > maxLineLength) {
-          params = formatParams(method.params, ',\n', true);
-          params = params.split('\n');
-
-          let first = params.shift()
-          params = params.map(p => indent + p)
-          params.unshift(first)
-          params = params.join('\n')
+          return params;
         }
         
-        return params;
-      }
-      
-      const params = generateParamsWithIndentation(method);
+        const params = generateParamsWithIndentation(method);
 
-      languageContent = languageContent
-        .replace(/\$\{example\.code\}/g, language.code)
-        .replace(/\$\{example\.name\}/g, example.json.name)
-        .replace(/\$\{example\.language\}/g, name)
-        .replace(/\$\{example\.langcode\}/g, language.langcode)
+        languageContent = languageContent
+          .replace(/\$\{example\.code\}/g, language.code)
+          .replace(/\$\{example\.name\}/g, example.json.name)
+          .replace(/\$\{example\.language\}/g, name)
+          .replace(/\$\{example\.langcode\}/g, language.langcode)
 
-        .replace(/\$\{method\.result\.name\}/g, method.result.name)
-        .replace(/\$\{method\.name\}/g, method.name)
-        .replace(/\$\{example\.params\}/g, params)
-        .replace(/\$\{example\.result\}/g, language.result)
-        .replace(/\$\{example\.result\.item\}/g, Array.isArray(example.json.result.value) ? JSON.stringify(example.json.result.value[0], null, '\t') : '')
-        .replace(/\$\{module\}/g, json.info.title)
+          .replace(/\$\{method\.result\.name\}/g, method.result.name)
+          .replace(/\$\{method\.name\}/g, method.name)
+          .replace(/\$\{example\.params\}/g, params)
+          .replace(/\$\{example\.result\}/g, language.result)
+          .replace(/\$\{example\.result\.item\}/g, Array.isArray(example.json.result.value) ? JSON.stringify(example.json.result.value[0], null, '\t') : '')
+          .replace(/\$\{module\}/g, json.info.title)
 
-      const matches = [...languageContent.matchAll(/\$\{method\.params\[([0-9]+)\]\.example\.value\}/g)]
-      matches.forEach(match => {
-        const paramIndex = parseInt(match[1])
-        let indent = 0
-        while (match.index - indent >= 0 && match.input[match.index - indent] !== '\n') {
-          indent++
-        }
-        const value = JSON.stringify(method.examples[index].params[paramIndex].value, null, '\t').split('\n').map((line, i) => i > 0 ? ' '.repeat(indent) + line : line).join('\n')
-        languageContent = languageContent.replace(/\$\{method\.params\[([0-9]+)\]\.example\.value\}/g, value)
-      })
-
-
-      if (originator) {
-        const originalExample = originator.examples.length > index ? originator.examples[index] : originator.examples[0]
-        const matches = [...languageContent.matchAll(/\$\{originator\.params\[([0-9]+)\]\.example\.value\}/g)]
+        const matches = [...languageContent.matchAll(/\$\{method\.params\[([0-9]+)\]\.example\.value\}/g)]
         matches.forEach(match => {
           const paramIndex = parseInt(match[1])
           let indent = 0
           while (match.index - indent >= 0 && match.input[match.index - indent] !== '\n') {
             indent++
           }
-          const value = JSON.stringify(originalExample.params[paramIndex].value, null, '\t').split('\n').map((line, i) => i > 0 ? ' '.repeat(indent) + line : line).join('\n')
-          languageContent = languageContent.replace(/\$\{originator\.params\[([0-9]+)\]\.example\.value\}/g, value)
+          const value = JSON.stringify(method.examples[index].params[paramIndex].value, null, '\t').split('\n').map((line, i) => i > 0 ? ' '.repeat(indent) + line : line).join('\n')
+          languageContent = languageContent.replace(/\$\{method\.params\[([0-9]+)\]\.example\.value\}/g, value)
         })
-      }
 
-      languages += languageContent
+
+        if (originator) {
+          const originalExample = originator.examples.length > index ? originator.examples[index] : originator.examples[0]
+          const matches = [...languageContent.matchAll(/\$\{originator\.params\[([0-9]+)\]\.example\.value\}/g)]
+          matches.forEach(match => {
+            const paramIndex = parseInt(match[1])
+            let indent = 0
+            while (match.index - indent >= 0 && match.input[match.index - indent] !== '\n') {
+              indent++
+            }
+            const value = JSON.stringify(originalExample.params[paramIndex].value, null, '\t').split('\n').map((line, i) => i > 0 ? ' '.repeat(indent) + line : line).join('\n')
+            languageContent = languageContent.replace(/\$\{originator\.params\[([0-9]+)\]\.example\.value\}/g, value)
+          })
+        }
+
+        languages += languageContent
     })
 
     code = code
@@ -1772,7 +1770,9 @@ function insertExampleMacros(template, examples, method, json, templates) {
       .replace(/\$\{example\.languages\}/g, languages)
 
     content += code
+    })
   })
+
 
   return template.replace(/\$\{method\.examples\}/g, content)
 }

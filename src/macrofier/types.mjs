@@ -149,24 +149,26 @@ const getXSchemaGroupFromProperties = (schema, title, properties, group) => {
   return group
 }
 
-// TODO: this assumes the same title doesn't exist in multiple x-schema groups!
 const getXSchemaGroup = (schema, module) => {
-  let group = module.info.title
-
-  if (schema.title && module['x-schemas']) {
-    Object.entries(module['x-schemas']).forEach(([title, module]) => {
-      Object.values(module).forEach(moduleSchema => {
+  let group = module.info ? module.info.title : module.title
+  let bundles = module.definitions || module.components.schemas
+  
+  if (schema.title && bundles) {
+    Object.entries(bundles).filter(([key, s]) => s.$id).forEach(([id, bundle]) => {
+      const title = bundle.title
+      Object.values(bundle.definitions).forEach(moduleSchema => {
         let schemas = moduleSchema.allOf ? moduleSchema.allOf : [moduleSchema]
         schemas.forEach((s) => {
           if (schema.title === s.title || schema.title === moduleSchema.title) {
             group = title
           } else {
             group = getXSchemaGroupFromProperties(schema, title, s.properties, group)
-	  }
+	        }
         })
       })
     })
   }
+
   return group
 }
 
@@ -184,7 +186,8 @@ function getSchemaDescription(schema, module) {
 
 function insertSchemaMacros(content, schema, module, { name = '', parent = '', property = '', required = false, recursive = true, templateDir = 'types'}) {
   const title = name || schema.title || ''
-  const moduleTitle = getXSchemaGroup(schema, module)
+  const parentTitle = getXSchemaGroup(schema, module)
+  const moduleTitle = module.info ? module.info.title : module.title
   const description = getSchemaDescription(schema, module)
 
   content = content
@@ -193,9 +196,9 @@ function insertSchemaMacros(content, schema, module, { name = '', parent = '', p
     .replace(/\$\{TITLE\}/g, title.toUpperCase())
     .replace(/\$\{property\}/g, property)
     .replace(/\$\{Property\}/g, capitalize(property))
-    .replace(/\$\{if\.namespace\.notsame}(.*?)\$\{end\.if\.namespace\.notsame\}/g, (module.info.title !== (parent || moduleTitle)) ? '$1' : '')
-    .replace(/\$\{parent\.title\}/g, parent || moduleTitle)
-    .replace(/\$\{parent\.Title\}/g, capitalize(parent || moduleTitle))
+    .replace(/\$\{if\.namespace\.notsame}(.*?)\$\{end\.if\.namespace\.notsame\}/g, (moduleTitle !== (parent || parentTitle)) ? '$1' : '')
+    .replace(/\$\{parent\.title\}/g, parent || parentTitle)
+    .replace(/\$\{parent\.Title\}/g, capitalize(parent || parentTitle))
     .replace(/\$\{description\}/g, description)
     .replace(/\$\{if\.optional\}(.*?)\$\{end\.if\.optional\}/gms, (Array.isArray(required) ? required.includes(property) : required) ? '' : '$1')
     .replace(/\$\{if\.non.optional\}(.*?)\$\{end\.if\.non.optional\}/gms, (Array.isArray(required) ? required.includes(property) : required) ? '$1' : '')
@@ -203,9 +206,9 @@ function insertSchemaMacros(content, schema, module, { name = '', parent = '', p
     .replace(/\$\{summary\}/g, description ? description.split('\n')[0] : '')
     .replace(/\$\{name\}/g, title)
     .replace(/\$\{NAME\}/g, title.toUpperCase())
-    .replace(/\$\{info.title\}/g, moduleTitle)
-    .replace(/\$\{info.Title\}/g, capitalize(moduleTitle))
-    .replace(/\$\{info.TITLE\}/g, moduleTitle.toUpperCase())
+    .replace(/\$\{info.title\}/g, parentTitle)
+    .replace(/\$\{info.Title\}/g, capitalize(parentTitle))
+    .replace(/\$\{info.TITLE\}/g, parentTitle.toUpperCase())
 
   if (recursive) {
     content = content.replace(/\$\{type\}/g, getSchemaType(schema, module, { templateDir: templateDir, destination: state.destination, section: state.section, code: false, namespace: true }))

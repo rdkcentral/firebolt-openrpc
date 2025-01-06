@@ -71,8 +71,9 @@ const getProvidedCapabilities = (json) => {
     return Array.from(new Set([...getMethods(json).filter(isProviderInterfaceMethod).map(method => method.tags.find(tag => tag['x-provides'])['x-provides'])]))
 }
 
-const getProviderInterfaceMethods = (capability, json) => {
-    return getMethods(json).filter(method => method.name.startsWith("onRequest") && method.tags && method.tags.find(tag => tag['x-provides'] === capability))
+const getProviderInterfaceMethods = (_interface, json, prefix) => {
+  return json.methods.filter(method => method.name.split('.')[0] === _interface).filter(isProviderInterfaceMethod)
+  //return getMethods(json).filter(method => methodName(method).startsWith(prefix) && method.tags && method.tags.find(tag => tag['x-provides'] === _interface))
 }
   
 const getInterfaces = (json) => {
@@ -85,16 +86,39 @@ const getInterfaces = (json) => {
     return list    
 }
   
-function getProviderInterface(capability, module, extractProviderSchema = false) {
-    module = JSON.parse(JSON.stringify(module))
-    const iface = getProviderInterfaceMethods(capability, module).map(method => dereferenceAndMergeAllOfs(method, module))
-    
-    iface.forEach(method => {
+function getProviderInterface(_interface, module) {
+  module = JSON.parse(JSON.stringify(module))
+
+  // TODO: localizeDependencies??
+  const iface = getProviderInterfaceMethods(_interface, module).map(method => localizeDependencies(method, module, null, { mergeAllOfs: true }))
+  
+  if (iface.length && iface.every(method => methodName(method).startsWith('onRequest'))) {
+      console.log(`Transforming legacy provider interface ${_interface}`)
+      updateUnidirectionalProviderInterface(iface, module)
+  }
+  
+  return iface
+}
+
+function getUnidirectionalProviderInterfaceName(_interface, capability, document = {}) {
+  const iface = getProviderInterface(_interface, document)
+  const [ module, method ] = iface[0].name.split('.')
+  const uglyName = capability.split(":").slice(-2).map(capitalize).reverse().join('') + "Provider"
+  let name = iface.length === 1 ? method.charAt(0).toUpperCase() + method.substr(1) + "Provider" : uglyName
+
+  if (document.info['x-interface-names']) {
+    name = document.info['x-interface-names'][capability] || name
+  }
+  return name
+}
+
+function updateUnidirectionalProviderInterface(iface, module) {
+  iface.forEach(method => {
       const payload = getPayloadFromEvent(method)
       const focusable = method.tags.find(t => t['x-allow-focus'])
   
       // remove `onRequest`
-      method.name = method.name.charAt(9).toLowerCase() + method.name.substr(10)
+      method.name = methodRename(method, name => name.charAt(9).toLowerCase() + name.substr(10))
 
       const schema = getPropertySchema(payload, 'properties.parameters', module)
       
@@ -106,7 +130,8 @@ function getProviderInterface(capability, module, extractProviderSchema = false)
         }
       ]
   
-      if (!extractProviderSchema) {
+      // TODO: we used to say !extractProviderSchema, which CPP sets to true and therefor skips this. not sure why...
+      if (true) {
         let exampleResult = null
 
         if (method.tags.find(tag => tag['x-response'])) {
@@ -153,20 +178,6 @@ function getProviderInterface(capability, module, extractProviderSchema = false)
         method.tags = method.tags.filter(tag => tag.name !== 'event')
       }
     })
-
-    return iface
-}
-
-function getUnidirectionalProviderInterfaceName(_interface, capability, document = {}) {
-  const iface = getProviderInterface(_interface, document)
-  const [ module, method ] = iface[0].name.split('.')
-  const uglyName = capability.split(":").slice(-2).map(capitalize).reverse().join('') + "Provider"
-  let name = iface.length === 1 ? method.charAt(0).toUpperCase() + method.substr(1) + "Provider" : uglyName
-
-  if (document.info['x-interface-names']) {
-    name = document.info['x-interface-names'][capability] || name
-  }
-  return name
 }
   
 
@@ -339,6 +350,7 @@ const getPayloadFromEvent = (event, appApi) => {
         return choice        
       }
       else if (appApi) {
+
         const payload = getNotifier(event, appApi).params.slice(-1)[0].schema
         return payload
       }
