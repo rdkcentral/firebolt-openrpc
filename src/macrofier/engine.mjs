@@ -520,11 +520,11 @@ const generateMacros = (platformApi, appApi, templates, languages, options = {})
     macros.callsMetrics = true
   }
 
-  // const unique = list => list.map((item, i) => Object.assign(item, { index: i })).filter( (item, i, list) => !(list.find(x => x.name === item.name) && list.find(x => x.name === item.name).index < item.index))
+  const unique = list => list.map((item, i) => Object.assign(item, { index: i })).filter( (item, i, list) => !(list.find(x => x.name === item.name) && list.find(x => x.name === item.name).index < item.index))
 
   Array.from(new Set(['types'].concat(config.additionalSchemaTemplates))).filter(dir => dir).forEach(dir => {
     state.typeTemplateDir = dir
-    const schemasArray = generateSchemas(platformApi, templates, { baseUrl: '', section: 'schemas' }).filter(s => (options.copySchemasIntoModules || !s.uri))
+    const schemasArray = unique(generateSchemas(platformApi, templates, { baseUrl: '' }).concat(generateSchemas(appApi, templates, { baseUrl: '' })))
     macros.schemas[dir] = getTemplate('/sections/schemas', templates).replace(/\$\{schema.list\}/g, schemasArray.map(s => s.body).filter(body => body).join('\n'))
     macros.types[dir] = getTemplate('/sections/types', templates).replace(/\$\{schema.list\}/g, schemasArray.filter(x => !x.enum).map(s => s.body).filter(body => body).join('\n'))
     macros.enums[dir] = getTemplate('/sections/enums', templates).replace(/\$\{schema.list\}/g, schemasArray.filter(x => x.enum).map(s => s.body).filter(body => body).join('\n'))
@@ -572,11 +572,10 @@ const generateMacros = (platformApi, appApi, templates, languages, options = {})
   const providerClasses = generateProviderInterfaces(platformApi, appApi, templates, 'class', 'classes', !!appApi)
   const defaults = generateDefaults(platformApi, appApi, templates)
 
-  const suffix = options.destination ? options.destination.split('.').pop().trim() : ''
   const module = getTemplate('/codeblocks/module', templates)
-  const moduleInclude = getTemplate(suffix ? `/codeblocks/module-include.${suffix}` : '/codeblocks/module-include', templates)
-  const moduleIncludePrivate = getTemplate(suffix ? `/codeblocks/module-include-private.${suffix}` : '/codeblocks/module-include-private', templates)
-  const moduleInit = getTemplate(suffix ? `/codeblocks/module-init.${suffix}` : '/codeblocks/module-init', templates)
+  const moduleInclude = getTemplate('/codeblocks/module-include', templates)
+  const moduleIncludePrivate = getTemplate('/codeblocks/module-include-private', templates)
+  const moduleInit = Object.fromEntries(Array.from(new Set(Object.keys(templates).filter(key => key.startsWith('/imports/')).map(key => key.split('.').pop()))).map(key => [key, getTemplate(`/codeblocks/module-init.${key}`, templates)]))
 
   Object.assign(macros, {
     imports,
@@ -694,6 +693,12 @@ const insertMacros = (fContents = '', macros = {}) => {
       fContents = fContents.replace(regex, macros[type.toLowerCase()][dir])
     })
   })
+
+  // Output all imports with all dynamically configured templates
+  Object.keys(macros.imports).forEach(key => {
+    const regex = new RegExp('[ \\t]*\\/\\* \\$\\{IMPORTS\\:' + key + '\\} \\*\\/[ \\t]*\\n', 'g')
+    fContents = fContents.replace(regex, macros.imports[key])
+  })  
 
   fContents = fContents.replace(/[ \t]*\/\* \$\{PROVIDERS\} \*\/[ \t]*\n/, macros.providerInterfaces)
   fContents = fContents.replace(/[ \t]*\/\* \$\{PROVIDER_INTERFACES\} \*\/[ \t]*\n/, macros.providerInterfaces)
@@ -828,16 +833,15 @@ const enumFinder = compose(
   filter(([_key, val]) => isObject(val))
 )
 
-const generateEnums = (json, templates, options = { destination: '' }) => {
-  const suffix = options.destination.split('.').pop()
+const generateEnums = (json, templates, template = 'enum') => {
   return compose(
     option(''),
     map(val => {
-      let template = val ? getTemplate(`/sections/enum.${suffix}`, templates) : val
-      return template ? template.replace(/\$\{schema.list\}/g, val.trimEnd()) : val
+      let output = val ? getTemplate(`/sections/enum`, templates) : val
+      return output ? output.replace(/\$\{schema.list\}/g, val.trimEnd()) : val
     }),
     map(reduce((acc, val) => acc.concat(val).concat('\n'), '')),
-    map(map((schema) => convertEnumTemplate(schema, suffix ? `/types/enum.${suffix}` : '/types/enum', templates))),
+    map(map((schema) => convertEnumTemplate(schema, `/types/${template}`, templates))),
     map(enumFinder),
     getSchemas
   )(json)
@@ -1263,43 +1267,15 @@ function generateMethods(platformApi = {}, appApi = null, examples = {}, templat
       examples: generateExamples(methodObj, templates, languages)
     }
 
-
-    /**
-     * Extracts the suffix from a given file path.
-     *
-     * The suffix is determined by the last underscore or period in the filename.
-     * If the filename contains an underscore, the portion after the last underscore
-     * is considered the suffix. If no underscore is found but there is a period,
-     * the portion after the last period (typically the file extension) is considered the suffix.
-     * If neither an underscore nor a period is found, an empty string is returned.
-     *
-     * @param {string} path - The full file path from which to extract the suffix.
-     * @returns {string} - The extracted suffix or an empty string if no suffix is found.
-     */
-    const getSuffix = (path) => {
-      // Extract the last part of the path (the filename)
-      const filename = path.split('/').pop() // Get the last part of the path
-      // Check for underscores or periods in the filename and handle accordingly
-      if (filename.includes('_')) {
-        return filename.split('_').pop() // Return the last part after the last underscore
-      } else if (filename.includes('.')) {
-        return filename.split('.').pop() // Return the extension after the last period
-      } else {
-        return '' // Return empty if no suffix can be determined
-      }
-    }
-
-    const suffix = state.destination && config.templateExtensionMap ? getSuffix(state.destination) : ''
-
     // Generate implementation of methods/events for both dynamic and static configured templates
     Array.from(new Set(['methods'].concat(config.additionalMethodTemplates))).filter(dir => dir).forEach(dir => {
-      if (dir.includes('declarations') && (suffix && config.templateExtensionMap[dir] ? config.templateExtensionMap[dir].includes(suffix) : true)) {
+      if (dir.includes('declarations')) {
         const template = getTemplateForDeclaration(methodObj, templates, dir)
         if (template && template.length) {
           result.declaration[dir] = insertMethodMacros(template, methodObj, platformApi, appApi, templates, '', examples)
         }
       }
-      else if (dir.includes('methods') && (suffix && config.templateExtensionMap[dir] ? config.templateExtensionMap[dir].includes(suffix) : true)) {
+      else if (dir.includes('methods')) {
         const template = getTemplateForMethod(methodObj, templates, dir)
         if (template && template.length) {
           result.body[dir] = insertMethodMacros(template, methodObj, platformApi, appApi, templates, type, examples, languages)
@@ -1916,46 +1892,31 @@ function insertCapabilityMacros(template, capabilities, method, module) {
 function generateXUsesInterfaces(json, templates) {
   let template = ''
   if (hasAllowFocusMethods(json)) {
-    const suffix = state.destination ? state.destination.split('.').pop() : ''
-    template = getTemplate(suffix ? `/sections/xuses-interfaces.${suffix}` : '/sections/xuses-interfaces', templates)
-    if (!template) {
-      template = getTemplate('/sections/xuses-interfaces', templates)
-    }
+    template = getTemplate('/sections/xuses-interfaces', templates)
   }
   return template
 }
 
-function generateProviderSubscribe(platformApi, appApi, templates, bidirectional) {
-  const interfaces = getProvidedCapabilities(platformApi)
-  const suffix = state.destination ? state.destination.split('.').pop() : ''
-  let template = getTemplate(suffix ? `/sections/provider-subscribe.${suffix}` : '/sections/provider-subscribe', templates)
+function generateProviderSubscribe(server, client, templates, bidirectional) {
+  const interfaces = getProvidedCapabilities(server)
+  let template = getTemplate(`/sections/provider-subscribe`, templates)
   const providers = reduce((acc, capability) => {
-    const template = insertProviderSubscribeMacros(getTemplate(suffix ? `/codeblocks/provider-subscribe.${suffix}` : '/codeblocks/provider-subscribe', templates), capability, platformApi, appApi, templates, bidirectional)
+    const template = insertProviderSubscribeMacros(getTemplate('/codeblocks/provider-subscribe', templates), capability, server, client, templates, bidirectional)
     return acc + template
   }, '', interfaces)
 
   return interfaces.length ? template.replace(/\$\{providers\.list\}/g, providers) : ''
 }
 
-function generateProviderInterfaces(platformApi, appApi, templates, codeblock, directory, bidirectional) {
-  const interfaces = getInterfaces(appApi || platformApi)
-  const suffix = state.destination ? state.destination.split('.').pop() : ''
-
-  let template
-  if (suffix) {
-    template = getTemplate(`/sections/provider-interfaces.${suffix}`, templates)
-  }
-  if (!template) {
-    template = getTemplate('/sections/provider-interfaces', templates)
-  }
+function generateProviderInterfaces(server, client, templates, codeblock, directory, bidirectional) {
+  const interfaces = getProvidedInterfaces(client || server)
+  
+  let template = getTemplate('/sections/provider-interfaces', templates)
 
   const providers = reduce((acc, _interface) => {
-    let providerTemplate = getTemplate(suffix ? `/codeblocks/provider.${suffix}` : '/codeblocks/provider', templates)
-    if (!providerTemplate) {
-      providerTemplate = getTemplate('/codeblocks/provider', templates)
-    }
+    let providerTemplate = getTemplate('/codeblocks/provider', templates)
 
-    const template = insertProviderInterfaceMacros(providerTemplate, _interface, platformApi, appApi, codeblock, directory, templates, bidirectional)
+    const template = insertProviderInterfaceMacros(providerTemplate, _interface, server, client, codeblock, directory, templates, bidirectional)
     return acc + template
   }, '', interfaces)
 

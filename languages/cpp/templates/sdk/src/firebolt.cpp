@@ -113,7 +113,7 @@ namespace Firebolt {
         {
         }
 
-${module.init}
+${module.init:cpp}
     private:
         FireboltSDK::Accessor* _accessor;
         static FireboltAccessorImpl* _singleton;
