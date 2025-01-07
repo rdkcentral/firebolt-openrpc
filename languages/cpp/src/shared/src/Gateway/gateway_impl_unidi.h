@@ -44,8 +44,7 @@ namespace FireboltSDK
         }
 
     public:
-
-        void Configure(Transport<WPEFramework::Core::JSON::IElement>* transport)
+        void TransportUpdated(Transport<WPEFramework::Core::JSON::IElement>* transport)
         {
            _transport = transport;
         }

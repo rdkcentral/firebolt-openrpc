@@ -70,6 +70,10 @@ namespace FireboltSDK
         }
 
     public:
+        void TransportUpdated(Transport<WPEFramework::Core::JSON::IElement>* transport)
+        {
+        }
+
         Firebolt::Error Request(const std::string &method, const JsonObject &parameters, JsonObject &response)
         {
             return _client.Request(method, parameters);

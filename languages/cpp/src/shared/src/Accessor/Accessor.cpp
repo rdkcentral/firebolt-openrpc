@@ -93,37 +93,38 @@ namespace FireboltSDK {
 
     void Accessor::ConnectionChanged(const bool connected, const Firebolt::Error error)
     {
-        _connectionChangeSync.signal(); // Signal waiting thread that the connection changed
         _connected = connected;
         if (_connectionChangeListener != nullptr) { // Notify a listener about the connection change
              _connectionChangeListener(connected, error);
         }
+#if 0
+        if (!_connected) {
+            _connectionChangeSync.signal(); // Signal to reconnect
+        }
+#endif
     }
 
-    Transport<WPEFramework::Core::JSON::IElement>* Accessor::GetTransport()
+    void Accessor::Reconnector()
     {
-        if (_transport == nullptr || ! _connected) { // Try to connect if not connected: application has not yet connected or connection has been lost
+        while (running) {
+            _connectionChangeSync.wait(); // Wait for the signal that the connection has changed
+            if (!running) {
+                break;
+            }
+#if 0
+            Gateway::Instance().TransportUpdated(nullptr);
             DestroyTransport(); // Clean the transport if necessary
 
-            _connectionChangeSync.reset();
             Firebolt::Error status = CreateTransport( // Recreate the transport with the configuration passed to CTor
                 _config.WsUrl.Value().c_str(),
                 _config.WaitTime.Value());
-
-            bool ret = _connectionChangeSync.wait_for(_config.WaitTime.Value()); // Wait for the signal that the connection has changed, but no more than `WaitTime`
-
-            if (ret) { // Check if the connection successfully established
-                ASSERT(_transport != nullptr);
-                if (status == Firebolt::Error::None) { // If yes, proceed with the configuration of Async and Event-Handler
-                    Async::Instance().Configure(_transport);
-                    status = CreateEventHandler();
-                }
-            } else { // If the connection cannot be established, clean the transport
-                DestroyTransport();
+            if (status == Firebolt::Error::None) { // Proceed with the configuration of Async and Event-Handler
+                Async::Instance().Configure(_transport);
+                Gateway::Instance().TransportUpdated(_transport);
+                status = CreateEventHandler();
             }
+#endif
         }
-
-        return _transport;
     }
 
 }

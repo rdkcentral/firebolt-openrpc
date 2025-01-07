@@ -55,7 +55,7 @@ namespace FireboltSDK
         static Gateway& Instance();
         static void Dispose();
 
-        void Configure(Transport<WPEFramework::Core::JSON::IElement>* transport);
+        void TransportUpdated(Transport<WPEFramework::Core::JSON::IElement>* transport);
 
         template <typename RESPONSETYPE>
         Firebolt::Error Request(const std::string &method, const JsonObject &parameters, RESPONSETYPE &response)

@@ -51,10 +51,9 @@ Gateway::~Gateway()
     delete _implementation;
 }
 
-void Gateway::Configure(Transport<WPEFramework::Core::JSON::IElement>* transport)
+void Gateway::TransportUpdated(Transport<WPEFramework::Core::JSON::IElement>* transport)
 {
-    _implementation->Configure(transport);
+    _implementation->TransportUpdated(transport);
 }
-
 }
 
