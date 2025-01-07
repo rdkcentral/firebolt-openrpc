@@ -700,7 +700,7 @@ const insertMacros = (fContents = '', macros = {}) => {
   fContents = fContents.replace(/[ \t]*\/\* \$\{PROVIDER_CLASSES\} \*\/[ \t]*\n/, macros.providerClasses)
   fContents = fContents.replace(/[ \t]*\/\* \$\{XUSES\} \*\/[ \t]*\n/, macros.xusesInterfaces)
   fContents = fContents.replace(/[ \t]*\/\* \$\{PROVIDERS_SUBSCRIBE\} \*\/[ \t]*\n/, macros.providerSubscribe)
-  fContents = fContents.replace(/[ \t]*\/\* \$\{IMPORTS\} \*\/[ \t]*\n/, macros.imports)
+  fContents = fContents.replace(/[ \t]*\/\* \$\{IMPORTS\} \*\/[ \t]*\n/, Object.values(macros.imports)[0])
   fContents = fContents.replace(/[ \t]*\/\* \$\{INITIALIZATION\} \*\/[ \t]*\n/, macros.initialization)
   fContents = fContents.replace(/[ \t]*\/\* \$\{DEFAULTS\} \*\/[ \t]*\n/, macros.defaults)
   fContents = fContents.replace(/\$\{events.array\}/g, JSON.stringify(macros.eventList))
