@@ -303,7 +303,6 @@ const insertObjectPatternPropertiesMacros = (content, schema, module, title, opt
   if (patternSchema) {
     const shape = getSchemaShape(patternSchema, module, options2)
     let type = getSchemaType(patternSchema, module, options2).trimEnd()
-    const propertyNames = localizeDependencies(schema, module).propertyNames
 
     content = content
       .replace(/\$\{shape\}/g, shape)
@@ -322,10 +321,11 @@ const insertObjectPatternPropertiesMacros = (content, schema, module, title, opt
 const getIndents = level => level ? '    ' : ''
 const wrapProp = name => name.match(/[/\.\+]/) ? `"${name}"` : name
 const safePropName = name => config.enableStringPropertyKeys ? wrapProp(name) : getSafeKeyName(name)
+
 const insertObjectMacros = (content, schema, module, title, property, options) => {
   const options2 = options ? JSON.parse(JSON.stringify(options)) : {}
   options2.parent = title
-  options2.parentLevel = options.parentLevel
+  options2.parentLevel = options.level
   options2.level = options.level + 1
   options2.templateDir = options.templateDir
   ;(['properties', 'properties.register', 'properties.assign']).forEach(macro => {
@@ -457,12 +457,13 @@ const insertObjectMacros = (content, schema, module, title, property, options) =
       }
     }
   })
+
   return content
 }
 
 const insertArrayMacros = (content, schema, module, level = 0, items, required = false) => {
   content = content
-    .replace(/\$\{json\.type\}/g, getSchemaType(schema.items, module, { templateDir: 'json-types', section: state.section, code: false, namespace: true }))
+    .replace(/\$\{json\.type\}/g, getSchemaType(schema.items, module, { templateDir: 'json-types', code: false, namespace: true }))
     .replace(/\$\{items\}/g, items)
     .replace(/\$\{items\.with\.indent\}/g, required ? indent(items, '    ') : indent(items, '        '))
     .replace(/\$\{if\.impl.array.optional\}(.*?)\$\{end\.if\.impl.array.optional\}/gms, required ? '' : '$1')
@@ -501,7 +502,7 @@ const insertTupleMacros = (content, schema, module, title, options) => {
 
   content = content.replace(/\$\{properties\}/g, schema.items.map((prop, i) => doMacroWork(propTemplate, prop, i, propIndent)).join(tupleDelimiter))
   content = content.replace(/\$\{items\}/g, schema.items.map((prop, i) => doMacroWork(itemsTemplate, prop, i, itemsIndent)).join(tupleDelimiter))
-  content = content.replace(/\$\{json\.type\}/g, getSchemaType(schema.items[0], module, { templateDir: 'json-types', section: state.section, code: false, namespace: true }))
+  content = content.replace(/\$\{json\.type\}/g, getSchemaType(schema.items[0], module, { templateDir: 'json-types', code: false, namespace: true }))
   return content
 }
 
