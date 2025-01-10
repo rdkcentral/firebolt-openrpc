@@ -61,6 +61,12 @@ namespace FireboltSDK
         Server server;
         Transport<WPEFramework::Core::JSON::IElement>* transport;
 
+        std::string jsonObject2String(const JsonObject &obj) {
+            std::string s;
+            obj.ToString(s);
+            return s;
+        }
+
     public:
         GatewayImpl()
           : client(config)
@@ -79,11 +85,9 @@ namespace FireboltSDK
 
         virtual void Receive(const WPEFramework::Core::JSONRPC::Message& message) override
         {
-            std::string out;
-            message.ToString(out);
             if (message.Designator.IsSet()) { // designator -> method
                 if (message.Id.IsSet()) {
-                    server.Request(message);
+                    server.Request(message.Id.Value(), message.Designator.Value(), message.Parameters.Value());
                 } else {
                     server.Notify(message.Designator.Value(), message.Parameters.Value());
                 }
@@ -113,12 +117,9 @@ namespace FireboltSDK
                 return status;
             }
 
+            parameters.Set(_T("listen"), WPEFramework::Core::JSON::Variant(true));
             ListeningResponse response;
-            WPEFramework::Core::JSON::Variant Listen = true;
-            parameters.Set(_T("listen"), Listen);
-            std::string params;
-            parameters.ToString(params);
-            status = client.Request(event, params, response);
+            status = client.Request(event, jsonObject2String(parameters), response);
             if (status == Firebolt::Error::None && (!response.Listening.IsSet() || !response.Listening.Value())) {
                 status == Firebolt::Error::General;
             }
@@ -134,14 +135,11 @@ namespace FireboltSDK
             if (status != Firebolt::Error::None) {
                 return status;
             }
-            ListeningResponse response;
-            WPEFramework::Core::JSON::Variant Listen = false;
             JsonObject parameters;
-            parameters.Set(_T("listen"), Listen);
-            std::string params;
-            parameters.ToString(params);
-            status = client.Request(event, params, response);
-            if (status == Firebolt::Error::None && (!response.Listening.IsSet() || !response.Listening.Value())) {
+            parameters.Set(_T("listen"), WPEFramework::Core::JSON::Variant(false));
+            ListeningResponse response;
+            status = client.Request(event, jsonObject2String(parameters), response);
+            if (status == Firebolt::Error::None && (!response.Listening.IsSet() || response.Listening.Value())) {
                 status == Firebolt::Error::General;
             }
             return status;

@@ -30,7 +30,7 @@ list(APPEND SOURCES
     Async/Async.cpp
 )
 
-if (ENABLE_BIDRECTIONAL)
+if (ENABLE_BIDIRECTIONAL)
     list(APPEND SOURCES Event/bidi/Event.cpp)
 else ()
     list(APPEND SOURCES Event/unidi/Event.cpp)

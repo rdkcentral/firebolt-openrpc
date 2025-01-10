@@ -131,18 +131,14 @@ namespace FireboltSDK
             }
         }
 
-        void Request(const WPEFramework::Core::JSONRPC::Message& message)
+        void Request(unsigned id, const std::string &method, const JsonObject &parameters)
         {
-        }
-
-        void Request(const std::string &methodFullName, const JsonObject &parameters)
-        {
-            size_t dotPos = methodFullName.find('.');
+            size_t dotPos = method.find('.');
             if (dotPos == std::string::npos) {
                 return;
             }
-            std::string interface = methodFullName.substr(0, dotPos);;
-            std::string methodName = methodFullName.substr(dotPos + 1);
+            std::string interface = method.substr(0, dotPos);;
+            std::string methodName = method.substr(dotPos + 1);
             std::lock_guard lck(providers_mtx);
             auto provider = providers.find(interface);
             if (provider == providers.end()) {
@@ -151,10 +147,13 @@ namespace FireboltSDK
             auto& methods = provider->second.methods;
             auto it = methods.begin();
             while (it != methods.end()) {
-                if ((it = std::find_if(it, methods.end(), [&methodName](const Method &m) { return m.name == methodName; })) != methods.end()) {
-                    auto& m = *it;
-                    m.callback(parameters);
+                it = std::find_if(it, methods.end(), [&methodName](const Method &m) { return m.name == methodName; });
+                if (it == methods.end()) {
+                    break;
                 }
+                auto& m = *it;
+                m.callback(parameters);
+                it++;
             }
         }
 
@@ -167,14 +166,19 @@ namespace FireboltSDK
                     .capability = capability,
                     .name = interface,
                 };
-            } else {
-                i = providers[interface];
-            }
-            i.methods.push_back({
+                i.methods.push_back({
                     .name = method,
                     .parameters = parameters,
                     .callback = callback
-                    });
+                });
+                providers[interface] = i;
+            } else {
+                providers[interface].methods.push_back({
+                    .name = method,
+                    .parameters = parameters,
+                    .callback = callback
+                });
+            }
             return Firebolt::Error::None;
         }
     };
