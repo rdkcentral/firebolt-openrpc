@@ -306,7 +306,7 @@ function getSchemaConstraints(schema, module, options = { delimiter: '\n' }) {
 
   if (schema['$ref']) {
     if (schema['$ref'][0] === '#') {
-      return getSchemaConstraints(getPath(schema['$ref'], module), module, options)
+      return getSchemaConstraints(getReferencedSchema(schema['$ref'], module), module, options)
     }
     else {
       return ''
@@ -396,7 +396,7 @@ const dereferenceSchema = (refs, definition, document, unresolvedRefs, externalO
 
       let resolvedSchema = cloneDeep(getPathOr(null, refToPath(ref), document))
 
-      if (schemaReferencesItself(resolvedSchema, refToPath(ref))) {
+      if (schemaReferencesItself(resolvedSchema, pathToArray(ref, document))) {
         resolvedSchema = null
       }
 

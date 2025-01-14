@@ -89,8 +89,7 @@ const getInterfaces = (json) => {
 function getProviderInterface(_interface, module) {
   module = JSON.parse(JSON.stringify(module))
 
-  // TODO: localizeDependencies??
-  const iface = getProviderInterfaceMethods(_interface, module).map(method => localizeDependencies(method, module, null, { mergeAllOfs: true }))
+  const iface = getProviderInterfaceMethods(_interface, module).map(method => dereferenceAndMergeAllOfs(method, module))
   
   if (iface.length && iface.every(method => methodName(method).startsWith('onRequest'))) {
       console.log(`Transforming legacy provider interface ${_interface}`)
@@ -1766,78 +1765,118 @@ const addExternalSchemas = (json, sharedSchemas) => {
       })
   }
 
-//    json = removeUnusedSchemas(json)
   return json
 }
 
-// TODO: make this recursive, and check for group vs schema
 const removeUnusedSchemas = (json) => {
-  const schema = JSON.parse(JSON.stringify(json))
-  const components = schema.components
-  schema.components = { schemas: {} }
+  const schema = JSON.parse(JSON.stringify(json));
+  const components = schema.components;
+  schema.components = { schemas: {} };
 
-  const refs = getAllValuesForName('$ref', schema)
+  const refs = getAllValuesForName('$ref', schema);
 
   const addSchemas = (schema, refs) => {
-    let added = false
-    refs.forEach(ref => {
+    let added = false;
+    refs.forEach((ref) => {
       if (ref.startsWith("https://")) {
-        const [uri, fragment] = ref.split("#")
-        if (!schema.components.schemas[uri]) {
-          schema.components.schemas[uri] = components.schemas[uri]
-          console.log(`Adding ${uri}`)
-          added = true                    
+        const [uri] = ref.split("#");
+        if (!schema.components.schemas[uri] && components.schemas[uri]) {
+          // If the top-level schema with that URI is found in the original
+          schema.components.schemas[uri] = components.schemas[uri];
+          console.log(`Adding schema for: ${uri}`);
+          added = true;
+        }
+      } else {
+        // local ref: e.g. "#/components/schemas/SomeSchema" -> last part "SomeSchema"
+        const key = ref.split("/").pop();
+        if (!schema.components.schemas[key] && components.schemas[key]) {
+          schema.components.schemas[key] = components.schemas[key];
+          console.log(`Adding schema for: ${key}`);
+          added = true;
         }
       }
-      else {
-        const key = ref.split("/").pop()
-        if (!schema.components.schemas[key]) {
-          schema.components.schemas[key] = components.schemas[key]
-          console.log(`Adding ${key}`)
-          added = true                    
-        }
-      }
-    })
-    return added
-  }
+    });
+    return added;
+  };
 
   if (schema.components.schemas) {
-    while(addSchemas(schema, refs)) {
-      refs.length = 0
-      refs.push(...getAllValuesForName('$ref', schema))
+    // Repeatedly pull in schemas that appear in $ref
+    while (addSchemas(schema, refs)) {
+      refs.length = 0;
+      refs.push(...getAllValuesForName('$ref', schema));
     }
   }
 
-  return schema
-}
+  return schema;
+};
 
 const removeUnusedBundles = (json) => {
-  json = JSON.parse(JSON.stringify(json))
-  // remove all the shared schemas
-  const sharedSchemas = {}
-  Object.keys(json.components.schemas).forEach (key => {
-    if (key.startsWith('https://')) {
-      sharedSchemas[key] = json.components.schemas[key]
-      delete json.components.schemas[key]
-    }
-  })
+  json = JSON.parse(JSON.stringify(json));
 
-  // and only add back in the ones that are still referenced
-  let found = true
-  while(found) {
-    found = false
-    const ids = [ ...new Set(getAllValuesForName('$ref', json).map(ref => ref.split('#').shift()))]
+  // Extract all 'https://' schemas
+  const sharedSchemas = {};
+  Object.keys(json.components.schemas).forEach(key => {
+    if (key.startsWith('https://')) {
+      sharedSchemas[key] = json.components.schemas[key];
+      delete json.components.schemas[key];
+    }
+  });
+
+  // Add back only those that are actually referenced
+  let found = true;
+  while (found) {
+    found = false;
+    const ids = [...new Set(getAllValuesForName('$ref', json)
+      .map(ref => ref.split('#').shift()))];
     Object.keys(sharedSchemas).forEach(key => {
       if (ids.includes(key)) {
-        json.components.schemas[key] = sharedSchemas[key]
-        delete sharedSchemas[key]
-        found = true
+        json.components.schemas[key] = sharedSchemas[key];
+        delete sharedSchemas[key];
+        found = true;
       }
-    })  
+    });
   }
 
-  return json
-} 
+  return json;
+};
+
+function pruneNestedDefinitionsRecursively(doc) {
+  // We’ll loop until no more definitions are removed in a pass
+  let changed = true;
+
+  while (changed) {
+    changed = false;
+
+    // Gather all $ref from the current doc
+    const allRefs = getAllValuesForName('$ref', doc);
+
+    // For each schema in components.schemas
+    for (const [schemaKey, schemaObj] of Object.entries(doc.components.schemas)) {
+      // Skip if no definitions
+      if (!schemaObj.definitions || typeof schemaObj.definitions !== 'object') {
+        continue;
+      }
+
+      // Base ID: either from $id or fallback to something like #/components/schemas/MySchema
+      const baseId = schemaObj.$id || `#/components/schemas/${schemaKey}`;
+
+      // For each definition key
+      for (const defKey of Object.keys(schemaObj.definitions)) {
+        // The full ref would look like: baseId#/definitions/defKey
+        const fullRef = `${baseId}#/definitions/${defKey}`;
+
+        // If that ref is not in the doc, remove it
+        if (!allRefs.includes(fullRef)) {
+          console.log(`Pruning unused definition: ${fullRef}`);
+          delete schemaObj.definitions[defKey];
+          changed = true;
+        }
+      }
+    }
+  }
+
+  return doc;
+}
 
 const getModule = (name, json, copySchemas, extractSubSchemas) => {
     
@@ -1963,4 +2002,5 @@ export {
     getInterfaces,
     getUnidirectionalProviderInterfaceName,
     removeUnusedBundles,
+    pruneNestedDefinitionsRecursively,
 }
