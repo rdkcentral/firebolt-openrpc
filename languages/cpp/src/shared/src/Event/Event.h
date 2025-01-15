@@ -19,6 +19,7 @@
 #pragma once
 
 #include "Module.h"
+#include "Gateway/Gateway.h"
 
 namespace FireboltSDK {
 
@@ -84,25 +85,23 @@ namespace FireboltSDK {
         {
             Firebolt::Error status = Firebolt::Error::General;
 
-            if (_transport != nullptr) {
-                EventMap& eventMap = prioritize ? _internalEventMap : _externalEventMap;
-                
-                status = Assign<RESULT, CALLBACK>(eventMap, eventName, callback, usercb, userdata);
+            EventMap& eventMap = prioritize ? _internalEventMap : _externalEventMap;
+            
+            status = Assign<RESULT, CALLBACK>(eventMap, eventName, callback, usercb, userdata);
 
-                if (status == Firebolt::Error::None) {
-                    Response response;
-                    WPEFramework::Core::JSON::Variant Listen = true;
-                    jsonParameters.Set(_T("listen"), Listen);
-                    string parameters;
-                    jsonParameters.ToString(parameters);
+            if (status == Firebolt::Error::None) {
+                Response response;
+                WPEFramework::Core::JSON::Variant Listen = true;
+                jsonParameters.Set(_T("listen"), Listen);
+                string parameters;
+                jsonParameters.ToString(parameters);
 
-                    status = _transport->Subscribe<Response>(eventName, parameters, response, prioritize);
+                status = Gateway::Instance().Subscribe<Response>(eventName, parameters, response);
 
-                    if (status != Firebolt::Error::None) {
-                        Revoke(eventName, usercb);
-                    } else if (response.Listening.IsSet() && response.Listening.Value()) {
-                        status = Firebolt::Error::None;
-                    }
+                if (status != Firebolt::Error::None) {
+                    Revoke(eventName, usercb);
+                } else if (response.Listening.IsSet() && response.Listening.Value()) {
+                    status = Firebolt::Error::None;
                 }
             }
         return status;
@@ -169,7 +168,6 @@ namespace FireboltSDK {
         EventMap _internalEventMap;
         EventMap _externalEventMap;
         WPEFramework::Core::CriticalSection _adminLock;
-        Transport<WPEFramework::Core::JSON::IElement>* _transport;
 
         static Event* _singleton;
     };
