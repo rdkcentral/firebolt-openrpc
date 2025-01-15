@@ -16,22 +16,4 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-export default class Queue {
-  constructor () {
-    this._callback = null
-    this._queue = []
-  }
-
-  send (messsage) {
-    this._queue.push(messsage)
-  }
-
-  receive (_callback) {
-    this._callback = _callback
-  }
-
-  flush (transport) {
-    transport.receive(this._callback)
-    this._queue.forEach(item => transport.send(item))
-  }
-}
+export { default } from './Bidirectional.mjs';

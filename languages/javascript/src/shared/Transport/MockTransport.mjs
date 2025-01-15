@@ -16,6 +16,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import Gateway from "../Gateway/index.mjs"
 
 const win = typeof window !== 'undefined' ? window : {}
 
@@ -24,7 +25,6 @@ export const setMockListener = func => { listener = func }
 
 let mock
 const pending = []
-const eventMap = {}
 
 let callback
 let testHarness
@@ -34,38 +34,35 @@ if (win.__firebolt && win.__firebolt.testHarness) {
 }
 
 function send(message) {
-  console.debug('Sending message to transport: ' + message)
-  let json = JSON.parse(message)
-
+  const json = JSON.parse(message)
   // handle bulk sends
   if (Array.isArray(json)) {
-    json.forEach(j => send(JSON.stringify(j)))
+    json.forEach(json => send(JSON.stringify(json)))
     return
   }
 
-  let [module, method] = json.method.split('.')
+  if (json.method) {
+    let [module, method] = json.method.split('.')
 
-  if (testHarness && testHarness.onSend) {
-    testHarness.onSend(module, method, json.params, json.id)
+    if (testHarness && testHarness.onSend) {
+      testHarness.onSend(module, method, json.params, json.id)
+    }
+  
+    if (mock)
+      handle(json)
+    else
+      pending.push(json)  
   }
-
-  // store the ID of the first listen for each event
-  if (method.match(/^on[A-Z]/)) {
-    if (json.params.listen) {
-      eventMap[json.id] = module.toLowerCase() + '.' + method[2].toLowerCase() + method.substr(3)
-    } else {
-      Object.keys(eventMap).forEach(key => {
-        if (eventMap[key] === module.toLowerCase() + '.' + method[2].toLowerCase() + method.substr(3)) {
-          delete eventMap[key]
-        }
-      })
+  else if (json.id !== undefined && requests[json.id]) {
+    const promise = requests[json.id]
+    if (json.result !== undefined) {
+      promise.resolve(json.result)
+    }
+    else {
+      promise.reject(json.error)
     }
   }
 
-  if (mock)
-    handle(json)
-  else
-    pending.push(json)
 }
 
 function handle(json) {
@@ -96,22 +93,42 @@ function receive(_callback) {
 
   if (testHarness && (typeof testHarness.initialize === 'function')) {
     testHarness.initialize({
-      emit: event,
+      emit: (module, method, value) => {
+        Gateway.simulate(`${module}.${method}`, value)
+      },
       listen: function(...args) { listener(...args) },
     })
   }
 }
 
 function event(module, event, value) {
- const listener = Object.entries(eventMap).find(([k, v]) => v.toLowerCase() === module.toLowerCase() + '.' + event.toLowerCase())
-  if (listener) {
-    let message = JSON.stringify({
-      jsonrpc: '2.0',
-      id: parseInt(listener[0]),
-      result: value
-    })
-    callback(message)
-  }
+  callback(JSON.stringify({
+    jsonrpc: '2.0',
+    method: `${module}.${event}`,
+    params: [
+      {
+        name: 'value',
+        value: value
+      }
+    ]
+  }))
+}
+
+let id = 0
+const requests = []
+
+function request(method, params) {
+  const promise = new Promise( (resolve, reject) => {
+    requests[id] = { resolve, reject }
+  })
+  callback(JSON.stringify({ 
+    jsonrpc: '2.0',
+    id: id,
+    method: `${method}`,
+    params: params
+  }))
+
+  return promise
 }
 
 function dotGrab(obj = {}, key) {
@@ -134,7 +151,11 @@ function getResult(method, params) {
   }
 
   if (typeof api === 'function') {
-    return params == null ? api() : api(params)
+    let result = params == null ? api() : api(params)
+    if (result === undefined) {
+      result = null
+    }
+    return result
   } else return api
 }
 
@@ -148,6 +169,6 @@ export function setMockResponses(m) {
 export default {
   send: send,
   receive: receive,
-  event: event
+  event: event,
+  request: request
 }
-

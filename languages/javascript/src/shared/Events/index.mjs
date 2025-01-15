@@ -16,8 +16,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import Transport from '../Transport/index.mjs'
-import { setMockListener } from '../Transport/MockTransport.mjs'
+import Gateway from '../Gateway/index.mjs'
 
 let listenerId = 0
 
@@ -82,41 +81,30 @@ const listeners = {
   }
 }
 
-// holds a map of RPC Ids => Context Key, e.g. the RPC id of an onEvent call mapped to the corresponding context parameters key for that RPC call
-const keys = {}
-
 // holds a map of ${module}.${event} => Transport.send calls (only called once per event)
 // note that the keys here MUST NOT contain wild cards
 const oncers = []
 const validEvents = {}
 const validContext = {}
 
-let transportInitialized = false
-
-export const emit = (id, value) => {
-  callCallbacks(listeners.internal[keys[id]], [value])
-  callCallbacks(listeners.external[keys[id]], [value])
-}
-
 export const registerEvents = (module, events) => {
-  validEvents[module.toLowerCase()] = events.concat()
+  validEvents[module] = events.concat()
 }
 
 export const registerEventContext = (module, event, context) => {
-  validContext[module.toLowerCase()] = validContext[module.toLowerCase()] || {}
-  validContext[module.toLowerCase()][event] = context.concat()
+  validContext[module] = validContext[module] || {}
+  validContext[module][event] = context.concat()
 }
 
-const callCallbacks = (cbs, args) => {
-  cbs &&
-    Object.keys(cbs).forEach(listenerId => {
-      let callback = cbs[listenerId]
-      if (oncers.indexOf(parseInt(listenerId)) >= 0) {
-        oncers.splice(oncers.indexOf(parseInt(listenerId)), 1)
-        delete cbs[listenerId]
-      }
-      callback.apply(null, args)
-    })
+const callCallbacks = (key, args) => {
+  const callbacks = Object.entries(listeners.internal[key] || {}).concat(Object.entries(listeners.external[key] || {}))
+  callbacks.forEach( ([listenerId, callback]) => {
+    if (oncers.indexOf(parseInt(listenerId)) >= 0) {
+      oncers.splice(oncers.indexOf(parseInt(listenerId)), 1)
+      delete listeners.external[key][listenerId]
+    }
+    callback.apply(null, [args])
+  })
 }
 
 const doListen = function(module, event, callback, context, once, internal=false) {
@@ -146,8 +134,15 @@ const doListen = function(module, event, callback, context, once, internal=false
 
       if (Object.values(listeners.get(key)).length === 0) {
         const args = Object.assign({ listen: true }, context)
-        const { id, promise } = Transport.listen(module, 'on' + event[0].toUpperCase() + event.substring(1), args)
-        keys[id] = key
+
+        // TODO: Is subscriber -> notifer required to be a simple transform (drop 'on'?)
+        const subscriber = module + '.on' + event[0].toUpperCase() + event.substring(1)
+        const notifier = module + '.' + event
+
+        Gateway.subscribe(notifier, (params) => {
+          callCallbacks(key, params)
+        })
+        const promise = Gateway.request(subscriber, args)
         promises.push(promise)
       }
 
@@ -177,9 +172,6 @@ const doListen = function(module, event, callback, context, once, internal=false
           resolve(listenerId)
         }
         else {
-          // Remove the listener from external list on failure to subscribe
-          // TODO: Instead of removing, the failed subscription shouldn't be put into the external list
-          listeners.remove(listenerId)
           reject(error)
         }
       })
@@ -187,6 +179,7 @@ const doListen = function(module, event, callback, context, once, internal=false
     else {
       resolve(listenerId)
     }
+
     return p
   }
 }
@@ -199,7 +192,7 @@ const getListenArgs = function(...args) {
 }
 
 const getClearArgs = function(...args) {
-  const module = (args.shift() || '*').toLowerCase()
+  const module = (args.shift() || '*')
   const event = args.shift() || '*'
   const context = {}
   
@@ -242,7 +235,8 @@ export const prioritize = function(...args) {
 const unsubscribe = (key, context) => {
   const [module, event] = key.split('.').slice(0, 2)
   const args = Object.assign({ listen: false }, context)
-  Transport.send(module, 'on' + event[0].toUpperCase() + event.substr(1), args)
+  Gateway.request(module + '.on' + event[0].toUpperCase() + event.substr(1), args)
+  Gateway.unsubscribe(`${module}.${event}`)
 }
 
 
@@ -272,7 +266,7 @@ const doClear = function (moduleOrId = false, event = false, context) {
       })
     } else if (!event) {
       listeners.keys().forEach(key => {
-        if (key.indexOf(moduleOrId.toLowerCase()) === 0) {
+        if (key.indexOf(moduleOrId) === 0) {
           listeners.removeKey(key)
           unsubscribe(key)
         }
@@ -289,18 +283,10 @@ const doClear = function (moduleOrId = false, event = false, context) {
 }
 
 const init = () => {
-  if (!transportInitialized) {
-    Transport.addEventEmitter(emit)
-    setMockListener(listen)
-    transportInitialized = true
-  }
 }
 
 export default {
   listen: listen,
   once: once,
-  clear: clear,
-  broadcast(event, value) {
-    emit(Object.entries(keys).find( ([k, v]) => v === 'app.'+event)[0], value)
-  },
+  clear: clear
 }

@@ -16,18 +16,24 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import Transport from '../Transport/index.mjs'
 import Events from '../Events/index.mjs'
+import Gateway from '../Gateway/index.mjs'
+
+// NOTE: this class only used by Unidirectional SDKs Gateway/index.mjs provides this capability to Bidirectional SDKs
 
 const providerInterfaces = {}
 
-export const registerProviderInterface = (capability, module, methods) => {
-  if (providerInterfaces[capability]) {
-    throw `Capability ${capability} has multiple provider interfaces registered.`
+export const registerProviderInterface = (capability, _interface, method, params, response, focusable) => {
+  if (!providerInterfaces[capability]) {
+    providerInterfaces[capability] = []
   }
 
-  methods.forEach(m => m.name = `${module}.${m.name}`)
-  providerInterfaces[capability] = methods.concat()
+  providerInterfaces[capability].push({
+    name: `${_interface}.${method}`,
+    parameters: params && params.length,
+    response,
+    focusable
+  })
 }
 
 const provide = function(capability, provider) {
@@ -42,7 +48,7 @@ const provide = function(capability, provider) {
   }
 
   if (!iface) {
-    throw "Ignoring unknown provider capability."
+    throw "Ignoring unknown provider interface."
   }
 
   // make sure every interfaced method exists in the providers methods list
@@ -51,6 +57,8 @@ const provide = function(capability, provider) {
   if (!valid) {
     throw `Provider that does not fully implement ${capability}:\n\t${iface.map(m=>m.name.split('.').pop()).join('\n\t')}`
   }
+
+  // Gateway.provide(iface[0].name.split('.')[0], provider)
 
   iface.forEach(imethod => {
     const parts = imethod.name.split('.')
@@ -82,7 +90,7 @@ const provide = function(capability, provider) {
       // only pass in the focus handshake if needed
       if (imethod.focus) {
         session.focus = () => {
-          Transport.send(module, `${method}Focus`, {
+          Gateway.request(`${module}.${method}Focus`, {
             correlationId: request.correlationId
           })
         }
@@ -103,7 +111,7 @@ const provide = function(capability, provider) {
           response.error.data = JSON.parse(JSON.stringify(error.data))
         }
 
-        Transport.send(module, `${method}Error`, response)
+        Gateway.request(`${module}.${method}Error`, response)
       }
 
       try {
@@ -119,7 +127,7 @@ const provide = function(capability, provider) {
             response.result = result == null ? null : result
           }
 
-          Transport.send(module, `${method}Response`, response)
+          Gateway.request(`${module}.${method}Response`, response)
         }).catch(err => handleError(err))
       }
       catch(error) {
