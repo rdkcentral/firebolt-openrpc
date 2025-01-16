@@ -1574,45 +1574,115 @@ const isSubEnumOfArraySchema = (schema) => (schema.type === 'array' && schema.it
 
 const addComponentSubSchemasNameForProperties = (key, schema) => {
   if ((schema.type === "object") && schema.properties) {
-    Object.entries(schema.properties).forEach(([name, propSchema]) => {
-      if (isSubSchema(propSchema)) {
-        key = key + name.charAt(0).toUpperCase() + name.substring(1)
-        if (!propSchema.title) {
-          propSchema.title = key
-        }
-        propSchema = addComponentSubSchemasNameForProperties(key, propSchema)
-      }
-      else if (isSubEnumOfArraySchema(propSchema)) {
-        key = key + name.charAt(0).toUpperCase() + name.substring(1)
-        if (!propSchema.items.title) {
-          propSchema.items.title = key
-        }
-      }
-    })
+      Object.entries(schema.properties).forEach(([name, propSchema]) => {
+          if (isSubSchema(propSchema)) {
+              const newKey = key + name.charAt(0).toUpperCase() + name.substring(1)
+              if (!propSchema.title) {
+                  propSchema.title = newKey
+              }
+              propSchema = addComponentSubSchemasNameForProperties(newKey, propSchema)
+          }
+          else if (isSubEnumOfArraySchema(propSchema)) {
+              const newKey = key + name.charAt(0).toUpperCase() + name.substring(1)
+              if (!propSchema.items.title) {
+                  propSchema.items.title = newKey
+              }
+          }
+      })
   }
 
   return schema
 }
 
-const addComponentSubSchemasName = (obj, schemas) => {
-    Object.entries(schemas).forEach(([key, schema]) => {
+const addComponentSubSchemasName = (schemas, baseUrl = '') => {
+  const processedSchemas = {}
+  
+  Object.entries(schemas).forEach(([key, schema]) => {
       let componentSchemaProperties = schema.allOf ? schema.allOf : [schema]
+      const processedKey = key.charAt(0).toUpperCase() + key.substring(1)
+      
       componentSchemaProperties.forEach((componentSchema) => {
-        key = key.charAt(0).toUpperCase() + key.substring(1)
-        componentSchema = addComponentSubSchemasNameForProperties(key, componentSchema)
+          const processedSchema = addComponentSubSchemasNameForProperties(processedKey, componentSchema)
+          
+          // Add $id if it doesn't exist
+          if (baseUrl && !processedSchema.$id) {
+              processedSchema.$id = `${baseUrl}#/definitions/${key}`
+          }
+          
+          processedSchemas[key] = processedSchema
       })
-    })
+  })
 
-  return schemas
+  return processedSchemas
 }
 
-const promoteAndNameXSchemas = (obj) => {
-  obj = JSON.parse(JSON.stringify(obj))
-  if (obj['x-schemas']) {
-    Object.entries(obj['x-schemas']).forEach(([name, schemas]) => {
-      schemas = addComponentSubSchemasName(obj, schemas)
-    })
+const updateSchemaReferences = (schema, baseUrl, definitions) => {
+  if (typeof schema !== 'object' || schema === null) return schema
+
+  if (schema.$ref && schema.$ref.includes('#/definitions/')) {
+      const refName = schema.$ref.split('#/definitions/')[1]
+      if (definitions[refName]) {
+          schema.$ref = `${baseUrl}#/definitions/${refName}`
+      }
   }
+
+  Object.entries(schema).forEach(([key, value]) => {
+      if (typeof value === 'object' && value !== null) {
+          schema[key] = updateSchemaReferences(value, baseUrl, definitions)
+      }
+  })
+
+  return schema
+}
+
+const promoteAndNameSubSchemas = (obj) => {
+  obj = JSON.parse(JSON.stringify(obj))
+  
+  if (obj.components && obj.components.schemas) {
+      const newSchemas = {}
+      
+      Object.entries(obj.components.schemas).forEach(([schemaUrl, schema]) => {
+          // Add the main schema
+          newSchemas[schemaUrl] = schema
+          
+          if (schema.definitions) {
+              // Process the definitions
+              const processedDefinitions = addComponentSubSchemasName(
+                  schema.definitions,
+                  schemaUrl
+              )
+              
+              // Update references within the definitions
+              Object.entries(processedDefinitions).forEach(([defKey, defSchema]) => {
+                  processedDefinitions[defKey] = updateSchemaReferences(
+                      defSchema,
+                      schemaUrl,
+                      schema.definitions
+                  )
+              })
+              
+              // Update the main schema's references
+              newSchemas[schemaUrl] = updateSchemaReferences(
+                  schema,
+                  schemaUrl,
+                  schema.definitions
+              )
+              
+              // Add processed definitions to components.schemas
+              Object.entries(processedDefinitions).forEach(([defKey, defSchema]) => {
+                  const fullKey = `${schemaUrl}#/definitions/${defKey}`
+                  newSchemas[fullKey] = defSchema
+              })
+              
+              // Clean up original definitions if needed
+              // Uncomment the following line if you want to remove the original definitions
+              // delete newSchemas[schemaUrl].definitions
+          }
+      })
+      
+      obj.components.schemas = newSchemas
+  }
+  
   return obj
 }
 
@@ -1879,22 +1949,82 @@ function pruneNestedDefinitionsRecursively(doc) {
 }
 
 const getModule = (name, json, copySchemas, extractSubSchemas) => {
-    
-  // TODO: extractSubschemas was added by cpp branch, but that code is short-circuited out here...
-  
   let openrpc = JSON.parse(JSON.stringify(json))
   openrpc.methods = openrpc.methods
-                      .filter(method => method.name.toLowerCase().startsWith(name.toLowerCase() + '.'))
-                      .filter(method => method.name !== 'rpc.discover') 
-//                        .map(method => Object.assign(method, { name: method.name.split('.').pop() }))
+      .filter(method => method.name.toLowerCase().startsWith(name.toLowerCase() + '.'))
+      .map(method => Object.assign(method, { name: method.name.split('.').pop() }))
   openrpc.info.title = name
-  openrpc.components.schemas = Object.fromEntries(Object.entries(openrpc.components.schemas).filter( ([key, schema]) => key.startsWith('http') || key.split('.')[0] === name))
   if (json.info['x-module-descriptions'] && json.info['x-module-descriptions'][name]) {
       openrpc.info.description = json.info['x-module-descriptions'][name]
   }
   delete openrpc.info['x-module-descriptions']
+  const copy = JSON.parse(JSON.stringify(openrpc))
+  
+  // Initialize schemas object if it doesn't exist
+  openrpc.components.schemas = openrpc.components.schemas || {}
 
-  openrpc = promoteAndNameXSchemas(openrpc)
+  // Extract definitions from each schema in components.schemas
+  Object.entries(copy.components.schemas).forEach(([schemaUrl, schema]) => {
+      if (schema.definitions) {
+          Object.entries(schema.definitions).forEach(([defName, definition]) => {
+              // Create a new schema entry using the definition
+              const schemaKey = `${schemaUrl}#/definitions/${defName}`
+              openrpc.components.schemas[schemaKey] = {
+                  ...definition,
+                  $id: schemaKey
+              }
+
+              // Update references in the definition to point to the new location
+              function updateReferences(obj) {
+                  if (typeof obj !== 'object' || obj === null) return obj
+                  
+                  if (obj.$ref && obj.$ref.startsWith(schemaUrl)) {
+                      // Update internal references to point to the flattened structure
+                      const refPath = obj.$ref.split('#/definitions/')[1]
+                      if (refPath) {
+                          obj.$ref = `#/components/schemas/${schemaUrl}#/definitions/${refPath}`
+                      }
+                  }
+
+                  Object.values(obj).forEach(value => updateReferences(value))
+                  return obj
+              }
+
+              updateReferences(openrpc.components.schemas[schemaKey])
+          })
+      }
+  })
+
+  let searching = true
+  while (searching) {
+      searching = false
+      getLocalSchemaPaths(openrpc).forEach(path => {
+          const ref = getPathOr(null, path, copy) || getPathOr(null, path, openrpc)
+          if (!ref) return
+
+          const parts = ref.substring(2).split('/')
+          const schema = getPathOr(null, parts, copy)
+          const destination = parts
+
+          // Only copy things that aren't already there
+          if (schema && !getPathOr(null, destination, openrpc)) {
+              searching = true
+              const capitalize = str => str[0].toUpperCase() + str.substr(1)
+              if (!schema.title) {
+                  schema.title = capitalize(parts[parts.length - 1])
+              }
+              openrpc = setPath(destination, schema, openrpc)
+              if (extractSubSchemas) {
+                  openrpc = promoteAndNameSubSchemas(openrpc)
+              }
+          }
+      })
+  }
+
+  console.log('GETTING MODULE')
+  console.log('==========================================')
+  console.log(removeUnusedSchemas(openrpc))
+
   return removeUnusedSchemas(openrpc)
 }
 
@@ -1952,7 +2082,7 @@ const getAppApiModule = (name, appApi, platformApi) => {
   }
   delete openrpc.info['x-module-descriptions']
 
-  openrpc = promoteAndNameXSchemas(openrpc)
+  openrpc = promoteAndNameSubSchemas(openrpc)
   return removeUnusedBundles(removeUnusedSchemas(openrpc))
 }
 

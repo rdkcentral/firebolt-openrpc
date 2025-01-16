@@ -336,22 +336,58 @@ const insertObjectMacros = (content, schema, module, title, property, options) =
     if (schema.properties) {
       Object.entries(schema.properties).forEach(([name, prop], i) => {
         let localizedProp = localizeDependencies(prop, module)
+        
+        if (localizedProp['$ref']) {
+          localizedProp = getReferencedSchema(localizedProp['$ref'], module)
+        }
+
+        if (title === 'Intent' && name === 'context') {
+          console.log("template: ", template)
+          console.log('++++++++++++++++++++++++++++++')
+          console.log('Name: ', name)
+          console.log('++++++++++++++++++++++++++++++')
+          console.log("prop: ", prop)
+          console.log('++++++++++++++++++++++++++++++')
+          console.log("LOCALIZED: ", localizedProp)
+          // if (options.templateDir === 'types') {
+            // console.log('++++++++++++++++++++++++++++++')
+            // console.log("Options: ", options)
+            console.log('++++++++++++++++++++++++++++++')
+            console.log("Options2: ", options2)
+          // }
+        }
+
         const subProperty = getTemplate(path.join(options2.templateDir, 'sub-property/object'))
         options2.templateDir += subProperty ? '/sub-property' : ''
         const objSeparator = getTemplate(path.join(options2.templateDir, 'object-separator'))
+        
         if (localizedProp.type === 'array' || localizedProp.anyOf || localizedProp.oneOf || (typeof localizedProp.const === 'string')) {
-           options2.property = name
-           options2.required = schema.required
+          options2.property = name
+          options2.required = schema.required
         } else {
-           options2.property = options.property
-           options2.required = schema.required && schema.required.includes(name)
+          options2.property = options.property
+          options2.required = schema.required && schema.required.includes(name)
         }
+        
         const schemaShape = indent + getSchemaShape(localizedProp, module, options2).replace(/\n/gms, '\n' + indent)
+        
+        // if (!prop.title) {
+        //   prop.title = name
+        // }
+        let type = getSchemaType(prop, module, options2)
 
-        let type = getSchemaType(localizedProp, module, options2)
-        if (type === 'object') {
-          type = getSchemaShape(localizedProp, module, { ...options2, type: true })
+        if (title === 'Intent' && name === 'context') {
+          console.log('++++++++++++++++++++++++++++++')
+          console.log("Type: ", type)
+          console.log('++++++++++++++++++++++++++++++')
+          console.log("Schema Shape: ", schemaShape)
         }
+
+
+        // if (type === 'object') {
+        //   type = getSchemaShape(prop, module, { ...options2, type: true })
+        // }
+
         // don't push properties w/ unsupported types
         if (type) {
           const description = getSchemaDescription(prop, module)
@@ -546,7 +582,7 @@ const sanitize = (schema) => {
   return result
 }
 
-function getSchemaShape(schema = {}, module = {}, { templateDir = 'types', parent = '', property = '', required = false, parentLevel = 0, level = 0, summary, descriptions = true, enums = true, enumImpl = false, skipTitleOnce = false, array = false, primitive = false, type = false, namespace=true } = {}) {  
+function getSchemaShape(schema = {}, module = {}, { templateDir = 'types', parent = '', property = '', required = false, parentLevel = 0, level = 0, summary, descriptions = true, enums = true, enumImpl = false, skipTitleOnce = false, array = false, primitive = false, type = false, namespace = true } = {}) {  
   schema = sanitize(schema)
   if (level === 0 && !schema.title && !primitive) {
     return ''
@@ -740,6 +776,7 @@ function getSchemaType(schema, module, { templateDir = 'types', link = false, co
   if (schema['$ref']) {
     const refSchema = getReferencedSchema(schema['$ref'], module)
     if (refSchema) {
+      refSchema.title = schema['$ref'].split('/').pop()
       return getSchemaType(refSchema, module, { templateDir, link, code, asPath, event, result, expandEnums, baseUrl, namespace })
     } else {
       // TODO: This never happens... but might be worth keeping in case we link to an opaque external schema at some point?
