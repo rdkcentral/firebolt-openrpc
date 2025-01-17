@@ -18,7 +18,7 @@
 #pragma once
 
 #ifdef GATEWAY_BIDIRECTIONAL
-#include "Transport_bidi.h"
+#include "bidi/Transport.h"
 #else
-#include "Transport_unidi.h"
+#include "unidi/Transport.h"
 #endif

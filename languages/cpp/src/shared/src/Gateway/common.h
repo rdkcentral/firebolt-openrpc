@@ -24,12 +24,12 @@ namespace FireboltSDK
 {
     using Timestamp = std::chrono::time_point<std::chrono::steady_clock>;
     using MessageID = uint32_t;
-    using ProviderCallback = std::function<void(const JsonObject &parameter)>;
 
     struct Config
     {
-        uint64_t watchdogThreshold_ms = 3000;
-        uint64_t watchdogCycle_ms = 500;
+        static constexpr uint64_t watchdogThreshold_ms = 3000;
+        static constexpr uint64_t watchdogCycle_ms = 500;
+        static constexpr uint32_t DefaultWaitTime = WPEFramework::Core::infinite;
     };
 }
 

@@ -57,8 +57,8 @@ namespace FireboltSDK
 
         void TransportUpdated(Transport<WPEFramework::Core::JSON::IElement>* transport);
 
-        template <typename RESPONSETYPE>
-        Firebolt::Error Request(const std::string &method, const JsonObject &parameters, RESPONSETYPE &response)
+        template <typename RESPONSE>
+        Firebolt::Error Request(const std::string &method, const JsonObject &parameters, RESPONSE &response)
         {
             return implementation->Request(method, parameters, response);
         }
@@ -75,8 +75,8 @@ namespace FireboltSDK
             return implementation->Unsubscribe(event);
         }
 #else
-        template <typename RESPONSETYPE>
-        Firebolt::Error Subscribe(const string& event, const string& parameters, RESPONSETYPE& response)
+        template <typename RESPONSE>
+        Firebolt::Error Subscribe(const string& event, const string& parameters, RESPONSE& response)
         {
             return implementation->Subscribe(event, parameters, response);
         }
@@ -86,9 +86,15 @@ namespace FireboltSDK
             return implementation->Unsubscribe(event, parameters);
         }
 #endif
-        Firebolt::Error RegisterProviderInterface(const std::string &capability, const std::string &interface, const std::string &method, const JsonObject &parameters, const ProviderCallback& callback)
+        template <typename RESPONSE, typename PARAMETERS, typename CALLBACK>
+        Firebolt::Error RegisterProviderInterface(const std::string &capability, const std::string &interface, const std::string &method, const PARAMETERS &parameters, const CALLBACK& callback, void* usercb)
         {
-            return implementation->RegisterProviderInterface(capability, interface, method, parameters, callback);
+            return implementation->RegisterProviderInterface<RESPONSE>(capability, interface, method, parameters, callback, usercb);
+        }
+
+        Firebolt::Error UnregisterProviderInterface(const std::string &interface, const std::string &method, void* usercb)
+        {
+            return implementation->UnregisterProviderInterface(interface, method, usercb);
         }
     };
 }

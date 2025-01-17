@@ -34,23 +34,26 @@ namespace FireboltSDK
 {
     class Server
     {
-        using DispatchFunction = std::function<Firebolt::Error(void*, const void*, const string& parameters)>;
+        using DispatchFunctionEvent = std::function<void(void*, const void*, const string& parameters)>;
 
-        struct CallbackData {
-            const DispatchFunction lambda;
+        struct CallbackDataEvent {
+            const DispatchFunctionEvent lambda;
             void* usercb;
             const void* userdata;
         };
 
-        using EventMap = std::map<std::string, CallbackData>;
+        using EventMap = std::map<std::string, CallbackDataEvent>;
 
         EventMap eventMap;
         mutable std::mutex eventMap_mtx;
 
+        using DispatchFunctionProvider = std::function<void(const std::string &parameters, void*)>;
+
         struct Method {
             std::string name;
             JsonObject parameters;
-            ProviderCallback callback;
+            DispatchFunctionProvider lambda;
+            void* usercb;
         };
 
         struct Interface {
@@ -93,14 +96,13 @@ namespace FireboltSDK
             Firebolt::Error status = Firebolt::Error::General;
 
             std::function<void(void* usercb, const void* userdata, void* parameters)> actualCallback = callback;
-            DispatchFunction implementation = [actualCallback](void* usercb, const void* userdata, const string& parameters) -> Firebolt::Error {
+            DispatchFunctionEvent implementation = [actualCallback](void* usercb, const void* userdata, const string& parameters) {
                 WPEFramework::Core::ProxyType<RESULT>* inbound = new WPEFramework::Core::ProxyType<RESULT>();
                 *inbound = WPEFramework::Core::ProxyType<RESULT>::Create();
                 (*inbound)->FromString(parameters);
                 actualCallback(usercb, userdata, static_cast<void*>(inbound));
-                return (Firebolt::Error::None);
             };
-            CallbackData callbackData = {implementation, usercb, userdata};
+            CallbackDataEvent callbackData = {implementation, usercb, userdata};
 
             std::string key = getKeyFromEvent(event);
 
@@ -126,12 +128,12 @@ namespace FireboltSDK
             std::lock_guard lck(eventMap_mtx);
             EventMap::iterator eventIt = eventMap.find(method);
             if (eventIt != eventMap.end()) {
-                CallbackData& callback = eventIt->second;
+                CallbackDataEvent& callback = eventIt->second;
                 callback.lambda(callback.usercb, callback.userdata, parameters);
             }
         }
 
-        void Request(unsigned id, const std::string &method, const JsonObject &parameters)
+        void Request(unsigned id, const std::string &method, const std::string &parameters)
         {
             size_t dotPos = method.find('.');
             if (dotPos == std::string::npos) {
@@ -148,36 +150,60 @@ namespace FireboltSDK
             auto it = methods.begin();
             while (it != methods.end()) {
                 it = std::find_if(it, methods.end(), [&methodName](const Method &m) { return m.name == methodName; });
-                if (it == methods.end()) {
-                    break;
+                if (it != methods.end()) {
+                    it->lambda(parameters, it->usercb);
+                    it++;
                 }
-                auto& m = *it;
-                m.callback(parameters);
-                it++;
             }
         }
 
-        Firebolt::Error RegisterProviderInterface(const std::string &capability, const std::string &interface, const std::string &method, const JsonObject &parameters, const ProviderCallback &callback)
+        template <typename RESPONSE, typename PARAMETERS, typename CALLBACK>
+        Firebolt::Error RegisterProviderInterface(const std::string &capability, const std::string &interface, const std::string &method, const PARAMETERS &parameters, const CALLBACK &callback, void* usercb)
         {
-            Interface i;
+            uint32_t waitTime = config.DefaultWaitTime;
+            std::function<void(void* usercb, void* response, Firebolt::Error status)> actualCallback = callback;
+            DispatchFunctionProvider lambda = [actualCallback, method, waitTime](const std::string &response, void* usercb) {
+                WPEFramework::Core::ProxyType<RESPONSE>* jsonResponse = new WPEFramework::Core::ProxyType<RESPONSE>();
+                *jsonResponse = WPEFramework::Core::ProxyType<RESPONSE>::Create();
+                (*jsonResponse)->FromString(response);
+                actualCallback(usercb, jsonResponse, Firebolt::Error::None);
+            };
             std::lock_guard lck(providers_mtx);
             if (providers.find(interface) == providers.end()) {
-                i = {
+                Interface i = {
                     .capability = capability,
                     .name = interface,
                 };
                 i.methods.push_back({
                     .name = method,
-                    .parameters = parameters,
-                    .callback = callback
+                    .lambda = lambda,
+                    .usercb = usercb,
                 });
                 providers[interface] = i;
             } else {
-                providers[interface].methods.push_back({
-                    .name = method,
-                    .parameters = parameters,
-                    .callback = callback
-                });
+                auto &i = providers[interface];
+                auto it = std::find_if(i.methods.begin(), i.methods.end(), [&method, usercb](const Method &m) { return m.name == method && m.usercb == usercb; });
+                if (it == i.methods.end()) {
+                    i.methods.push_back({
+                        .name = method,
+                        .lambda = lambda,
+                        .usercb = usercb,
+                    });
+                }
+            }
+            return Firebolt::Error::None;
+        }
+
+        Firebolt::Error UnregisterProviderInterface(const std::string &interface, const std::string &method, void* usercb)
+        {
+            std::lock_guard lck(providers_mtx);
+            try {
+                Interface &i = providers.at(interface);
+                auto it = std::find_if(i.methods.begin(), i.methods.end(), [&method, usercb](const Method &m) { return m.name == method && m.usercb == usercb; });
+                if (it != i.methods.end()) {
+                    i.methods.erase(it);
+                }
+            } catch (const std::out_of_range &e) {
             }
             return Firebolt::Error::None;
         }

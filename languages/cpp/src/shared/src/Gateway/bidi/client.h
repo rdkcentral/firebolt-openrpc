@@ -113,8 +113,8 @@ namespace FireboltSDK
             }
         }
 
-        template <typename RESPONSETYPE>
-        Firebolt::Error Request(const std::string &method, const JsonObject &parameters, RESPONSETYPE &response)
+        template <typename RESPONSE>
+        Firebolt::Error Request(const std::string &method, const JsonObject &parameters, RESPONSE &response)
         {
             if (transport == nullptr) {
                 return Firebolt::Error::NotConnected;

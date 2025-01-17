@@ -51,8 +51,8 @@ namespace FireboltSDK
            this->transport = transport;
         }
 
-        template <typename RESPONSETYPE>
-        Firebolt::Error Request(const std::string &method, const JsonObject &parameters, RESPONSETYPE &response)
+        template <typename RESPONSE>
+        Firebolt::Error Request(const std::string &method, const JsonObject &parameters, RESPONSE &response)
         {
             if (transport == nullptr) {
                 return Firebolt::Error::NotConnected;
@@ -60,8 +60,8 @@ namespace FireboltSDK
             return transport->Invoke(method, parameters, response);
         }
 
-        template <typename RESPONSETYPE>
-        Firebolt::Error Subscribe(const string& event, const string& parameters, RESPONSETYPE& response)
+        template <typename RESPONSE>
+        Firebolt::Error Subscribe(const string& event, const string& parameters, RESPONSE& response)
         {
             if (transport == nullptr) {
                 return Firebolt::Error::NotConnected;
@@ -77,7 +77,13 @@ namespace FireboltSDK
             return transport->Unsubscribe(event, parameters);
         }
 
-        Firebolt::Error RegisterProviderInterface(const std::string &capability, const std::string &interface, const std::string &method, const JsonObject &parameters, const ProviderCallback& callback)
+        template <typename RESPONSE, typename CALLBACK>
+        Firebolt::Error RegisterProviderInterface(const std::string &capability, const std::string &interface, const std::string &method, const JsonObject &parameters, const CALLBACK& callback)
+        {
+            return Firebolt::Error::General;
+        }
+
+        Firebolt::Error UnregisterProviderInterface(const std::string &interface, const std::string &method, void* usercb)
         {
             return Firebolt::Error::General;
         }
