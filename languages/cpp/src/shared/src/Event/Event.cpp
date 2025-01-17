@@ -51,7 +51,10 @@ namespace FireboltSDK {
         }
     }
 
-    void Event::Configure(Transport<WPEFramework::Core::JSON::IElement>* transport){}
+    void Event::Configure(Transport<WPEFramework::Core::JSON::IElement>* transport)
+    {
+        transport->SetEventHandler(this);
+    }
 
     Firebolt::Error Event::Unsubscribe(const string& eventName, void* usercb)
     {
