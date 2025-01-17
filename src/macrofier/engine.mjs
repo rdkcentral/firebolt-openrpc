@@ -387,9 +387,9 @@ const generateAggregateMacros = (platformApi, appApi, additional, templates, lib
   })
 }
 
-const addContentDescriptorSubSchema = (descriptor, prefix, obj) => {
+const addContentDescriptorSubSchema = (descriptor, prefix, obj, destinationPath) => {
   const title = getPromotionNameFromContentDescriptor(descriptor, prefix)
-  promoteSchema(descriptor, 'schema', title, obj, "#/components/schemas")
+  promoteSchema(descriptor, 'schema', title, obj, destinationPath)
 }
 
 const getPromotionNameFromContentDescriptor = (descriptor, prefix) => {
@@ -415,25 +415,26 @@ const isSubEnumOfArraySchema = (schema) => (schema.type === 'array' && schema.it
 const promoteAndNameSubSchemas = (platformApi, appApi) => {
   const moduleTitle = platformApi.info ? platformApi.info.title : platformApi.title
 
-  // make a copy so we don't polute our inputs
+  // make a copy so we don't pollute our inputs
   platformApi = JSON.parse(JSON.stringify(platformApi))
+
   // find anonymous method param or result schemas and name/promote them
   platformApi.methods && platformApi.methods.forEach(method => {
     method.params && method.params.forEach(param => {
       if (isSubSchema(param.schema)) {
-        addContentDescriptorSubSchema(param, '', platformApi)
+        addContentDescriptorSubSchema(param, '', platformApi, '#/components/schemas')
       }
     })
     if (method.result && isSubSchema(method.result.schema)) {
-      addContentDescriptorSubSchema(method.result, '', platformApi)    
+      addContentDescriptorSubSchema(method.result, '', platformApi, '#/components/schemas')
     }
     else if (!appApi && isEventMethod(method) && isSubSchema(getPayloadFromEvent(method))) {
       // TODO: the `1` below is brittle... should find the index of the non-ListenResponse schema
       promoteSchema(method.result.schema.anyOf, 1, getPromotionNameFromContentDescriptor(method.result, ''), platformApi, '#/components/schemas')
-    } 
+    }
     else if (isEventMethod(method) && isSubSchema(getNotifier(method, appApi).params.slice(-1)[0])) {
       const notifier = getNotifier(method, appApi)
-      promoteSchema(notifier.params[notifier.params.length-1], 'schema', getPromotionNameFromContentDescriptor(notifier.params[notifier.params.length-1], ''), platformApi, '#/components/schemas')
+      promoteSchema(notifier.params[notifier.params.length - 1], 'schema', getPromotionNameFromContentDescriptor(notifier.params[notifier.params.length-1], ''), platformApi, '#/components/schemas')
     }
 
     if (method.tags.find(t => t['x-error'])) {
@@ -443,48 +444,71 @@ const promoteAndNameSubSchemas = (platformApi, appApi) => {
               name: moduleTitle + 'Error',
               schema: tag['x-error']
           }
-          addContentDescriptorSubSchema(descriptor, '', platformApi)
+          addContentDescriptorSubSchema(descriptor, '', platformApi, '#/components/schemas')
         }
       })
     }
   })
 
-  // find non-primitive sub-schemas of components.schemas and name/promote them
-  if (platformApi.components && platformApi.components.schemas) {
-    let more = true
+  // Processes schemas to promote and name subschemas, handling nested objects and arrays.
+  const processSchemas = (schemas, destinationPath) => {
+    let more = true;
     while (more) {
-      more = false
-      Object.entries(platformApi.components.schemas).forEach(([key, schema]) => {
-        let componentSchemaProperties = schema.allOf ? schema.allOf : [schema]
+      more = false;
+      Object.entries(schemas).forEach(([key, schema]) => {
+        let componentSchemaProperties = schema.allOf ? schema.allOf : [schema];
         componentSchemaProperties.forEach((componentSchema) => {
           if ((componentSchema.type === "object") && componentSchema.properties) {
             Object.entries(componentSchema.properties).forEach(([name, propSchema]) => {
               if (isSubSchema(propSchema)) {
-                more = true
+                more = true;
                 const descriptor = {
                   name: name,
                   schema: propSchema
-                }
-                addContentDescriptorSubSchema(descriptor, key, platformApi)
-                componentSchema.properties[name] = descriptor.schema
+                };
+                addContentDescriptorSubSchema(descriptor, key, platformApi, destinationPath);
+                componentSchema.properties[name] = descriptor.schema;
               }
               if (isSubEnumOfArraySchema(propSchema)) {
                 const descriptor = {
                   name: name,
                   schema: propSchema.items
-                }
-                addContentDescriptorSubSchema(descriptor, key, platformApi)
-                componentSchema.properties[name].items = descriptor.schema
+                };
+                addContentDescriptorSubSchema(descriptor, key, platformApi, destinationPath);
+                componentSchema.properties[name].items = descriptor.schema;
               }
-            })
+              if (propSchema.type === "array" && propSchema.items && propSchema.items.type === "object") {
+                more = true;
+                const descriptor = {
+                  name: name,
+                  schema: propSchema.items
+                };
+                addContentDescriptorSubSchema(descriptor, key, platformApi, destinationPath);
+                componentSchema.properties[name].items = descriptor.schema;
+              }
+            });
           }
-        })
-
+        });
+  
         if (!schema.title) {
-          schema.title = capitalize(key)
+          schema.title = capitalize(key);
         }
-      })
+      });
     }
+  };
+
+  // Process components.schemas
+  if (platformApi.components && platformApi.components.schemas) {
+    processSchemas(platformApi.components.schemas, '#/components/schemas')
+  }
+
+  // Process definitions
+  if (platformApi.definitions) {
+    processSchemas(platformApi.definitions, '#/definitions')
+  }
+
+  if (moduleTitle === "Intents") {
+    console.log('FOO')
   }
 
   return platformApi
@@ -516,6 +540,10 @@ const generateMacros = (platformApi, appApi, templates, languages, options = {})
 
   if (callsMetrics(platformApi)) {
     macros.callsMetrics = true
+  }
+
+  if (platformApi.title === 'Intents') {
+    console.log('FOOO')
   }
 
   const unique = list => list.map((item, i) => Object.assign(item, { index: i })).filter( (item, i, list) => !(list.find(x => x.name === item.name) && list.find(x => x.name === item.name).index < item.index))
@@ -594,6 +622,10 @@ const generateMacros = (platformApi, appApi, templates, languages, options = {})
   })
 
   Object.assign(macros, generateInfoMacros(platformApi))
+
+  if (platformApi.title === 'Intents') {
+    console.log('FOOBARR')
+  }
 
   return macros
 }
@@ -931,6 +963,10 @@ function generateSchemas(platformApi, templates, options) {
 
   const schemas = JSON.parse(JSON.stringify(platformApi.definitions || (platformApi.components && platformApi.components.schemas) || {}))
 
+  if (platformApi.title === "Intents") {
+    console.log("BAR")
+  }
+
   const generate = (name, schema, uri, { prefix = '' } = {}) => {
     // these are internal schemas used by the fireboltize-openrpc tooling, and not meant to be used in code/doc generation
     if (['ListenResponse', 'ProviderRequest', 'ProviderResponse', 'FederatedResponse', 'FederatedRequest'].includes(name)) {
@@ -1027,6 +1063,10 @@ function generateSchemas(platformApi, templates, options) {
       console.error(error)
     }
   })
+
+   if (platformApi.title === "Intents") {
+    console.log("BAR")
+  }
 
   return results
 }

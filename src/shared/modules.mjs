@@ -2021,11 +2021,7 @@ const getModule = (name, json, copySchemas, extractSubSchemas) => {
       })
   }
 
-  console.log('GETTING MODULE')
-  console.log('==========================================')
-  console.log(removeUnusedSchemas(openrpc))
-
-  return removeUnusedSchemas(openrpc)
+  return removeUnusedBundles(removeUnusedSchemas(openrpc))
 }
 
 const getSemanticVersion = json => {

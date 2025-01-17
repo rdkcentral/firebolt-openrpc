@@ -341,25 +341,28 @@ const insertObjectMacros = (content, schema, module, title, property, options) =
           localizedProp = getReferencedSchema(localizedProp['$ref'], module)
         }
 
-        if (title === 'Intent' && name === 'context') {
-          console.log("template: ", template)
-          console.log('++++++++++++++++++++++++++++++')
-          console.log('Name: ', name)
-          console.log('++++++++++++++++++++++++++++++')
-          console.log("prop: ", prop)
-          console.log('++++++++++++++++++++++++++++++')
-          console.log("LOCALIZED: ", localizedProp)
-          // if (options.templateDir === 'types') {
-            // console.log('++++++++++++++++++++++++++++++')
-            // console.log("Options: ", options)
-            console.log('++++++++++++++++++++++++++++++')
-            console.log("Options2: ", options2)
-          // }
-        }
+        // if (title === 'Intent' && name === 'context') {
+        //   console.log("template: ", template)
+        //   console.log('++++++++++++++++++++++++++++++')
+        //   console.log('Name: ', name)
+        //   console.log('++++++++++++++++++++++++++++++')
+        //   console.log("prop: ", prop)
+        //   console.log('++++++++++++++++++++++++++++++')
+        //   console.log("LOCALIZED: ", localizedProp)
+        //   // if (options.templateDir === 'types') {
+        //     // console.log('++++++++++++++++++++++++++++++')
+        //     // console.log("Options: ", options)
+        //     console.log('++++++++++++++++++++++++++++++')
+        //     console.log("Options2: ", options2)
+        //   // }
+        // }
 
         const subProperty = getTemplate(path.join(options2.templateDir, 'sub-property/object'))
         options2.templateDir += subProperty ? '/sub-property' : ''
         const objSeparator = getTemplate(path.join(options2.templateDir, 'object-separator'))
+        
+        // options2.property = name
+        // options2.required = schema.required && schema.required.includes(name) //schema.required
         
         if (localizedProp.type === 'array' || localizedProp.anyOf || localizedProp.oneOf || (typeof localizedProp.const === 'string')) {
           options2.property = name
@@ -371,18 +374,7 @@ const insertObjectMacros = (content, schema, module, title, property, options) =
         
         const schemaShape = indent + getSchemaShape(localizedProp, module, options2).replace(/\n/gms, '\n' + indent)
         
-        // if (!prop.title) {
-        //   prop.title = name
-        // }
-        let type = getSchemaType(prop, module, options2)
-
-        if (title === 'Intent' && name === 'context') {
-          console.log('++++++++++++++++++++++++++++++')
-          console.log("Type: ", type)
-          console.log('++++++++++++++++++++++++++++++')
-          console.log("Schema Shape: ", schemaShape)
-        }
-
+        let type = getSchemaType(localizedProp, module, options2)
 
         // if (type === 'object') {
         //   type = getSchemaShape(prop, module, { ...options2, type: true })
@@ -776,7 +768,7 @@ function getSchemaType(schema, module, { templateDir = 'types', link = false, co
   if (schema['$ref']) {
     const refSchema = getReferencedSchema(schema['$ref'], module)
     if (refSchema) {
-      refSchema.title = schema['$ref'].split('/').pop()
+      // refSchema.title = schema['$ref'].split('/').pop()
       return getSchemaType(refSchema, module, { templateDir, link, code, asPath, event, result, expandEnums, baseUrl, namespace })
     } else {
       // TODO: This never happens... but might be worth keeping in case we link to an opaque external schema at some point?
