@@ -17,7 +17,7 @@
  */
 
 import { readJson, writeJson } from '../shared/filesystem.mjs'
-import { removeUnusedBundles, removeUnusedSchemas, pruneNestedDefinitionsRecursively } from '../shared/modules.mjs'
+import { removeUnusedBundles, removeUnusedSchemas, pruneNestedDefinitionsRecursively, removeUnusedDefinitions} from '../shared/modules.mjs'
 
 // destructure well-known cli args and alias to variables expected by script
 const run = ({
@@ -78,6 +78,7 @@ const run = ({
       let temp = removeUnusedSchemas(openrpc)
       temp = removeUnusedBundles(temp)
       temp = pruneNestedDefinitionsRecursively(temp)
+      temp = removeUnusedDefinitions(temp)
 
       // Overwrite openrpc
       openrpc.components = temp.components;

@@ -27,7 +27,7 @@ import logic from 'crocks/logic/index.js'
 const { and, not } = logic
 import isString from 'crocks/core/isString.js'
 import predicates from 'crocks/predicates/index.js'
-import { getExternalSchemaPaths, isDefinitionReferencedBySchema, isNull, localizeDependencies, isSchema, getLocalSchemaPaths, replaceRef, getPropertySchema, dereferenceAndMergeAllOfs, getPath as getRefDefinition, getAllValuesForName, replaceUri } from './json-schema.mjs'
+import { getExternalSchemaPaths, isDefinitionReferencedBySchema, isNull, localizeDependencies, isSchema, getLocalSchemaPaths, replaceRef, getPropertySchema, dereferenceAndMergeAllOfs, getPath as getRefDefinition, getAllValuesForName, replaceUri, getReferencedSchema } from './json-schema.mjs'
 import { extension, getNotifier, isEvent, isNotifier, isPusher, isRegistration, name as methodName, rename as methodRename, provides } from './methods.mjs'
 const { isObject, isArray, propEq, pathSatisfies, hasProp, propSatisfies } = predicates
 
@@ -1910,7 +1910,98 @@ const removeUnusedBundles = (json) => {
   return json;
 };
 
-function pruneNestedDefinitionsRecursively(doc) {
+const collectChildRefs = (ref, json, collectedRefs = []) => {
+  // Get all refs from the initial ref
+  const initialRefs = getAllValuesForName('$ref', ref);
+  
+  // Process each ref found in the initial schema
+  initialRefs.forEach((currentRef) => {
+    // Skip if we've already processed this ref
+    if (!collectedRefs.includes(currentRef)) {
+      // Add the current ref to our collection
+      collectedRefs.push(currentRef);
+      
+      // Get the schema for this ref
+      const schema = getReferencedSchema(currentRef, json);
+      
+      // Get all refs from this schema
+      const childRefs = getAllValuesForName('$ref', schema);
+      
+      // Add each child ref to collectedRefs and process their schemas
+      childRefs.forEach((childRef) => {
+        if (!collectedRefs.includes(childRef)) {
+          // Add the child ref to collectedRefs
+          collectedRefs.push(childRef);
+          
+          // Get and process the child schema to find more refs
+          const childSchema = getReferencedSchema(childRef, json);
+          const moreRefs = getAllValuesForName('$ref', childSchema);
+          
+          if (moreRefs.length > 0) {
+            // Recursively process the child schema
+            collectChildRefs(childRef, json, collectedRefs);
+          }
+        }
+      });
+    }
+  });
+  
+  return collectedRefs;
+};
+
+
+const removeUnusedDefinitions = (json) => {
+  json = JSON.parse(JSON.stringify(json));
+  let collectedRefs = []
+
+  // Loop through each schema and remove definitions that are not used
+  Object.keys(json.components.schemas).forEach((schemaKey) => {
+    const schemaObj = json.components.schemas[schemaKey];
+
+    // First get all references to schemas outside of the actual schema
+    const doc = JSON.parse(JSON.stringify(json));
+    delete doc.components.schemas[schemaKey];
+    const outsideRefs = getAllValuesForName('$ref', doc);
+
+    // Filter the refs from the schema
+    const usedRefs = outsideRefs.filter((ref) => ref.startsWith(schemaKey));
+
+    // Now that we have a list of used refs, we can keep it along with any "child" refs
+    // All other definitions can be removed since they are not needed
+   // Process definitions if they exist
+   if (schemaObj.definitions && typeof schemaObj.definitions === 'object') {
+    // Collect all child refs first
+    Object.keys(schemaObj.definitions).forEach((defKey) => {
+      const isUsed = usedRefs.some((ref) => ref.endsWith(`/${defKey}`));
+      
+      if (isUsed) {
+        collectedRefs = collectChildRefs(schemaObj.definitions[defKey], json, collectedRefs);
+      }
+    });
+
+    // Now remove unused definitions
+    Object.keys(schemaObj.definitions).forEach((defKey) => {
+      // Check if this definition is referenced in collectedRefs
+      const isReferenced = collectedRefs.some(ref => ref.endsWith(`/${defKey}`)) || 
+                         usedRefs.some(ref => ref.endsWith(`/${defKey}`));
+      
+      if (!isReferenced) {
+        // If the definition is not referenced, delete it
+        delete schemaObj.definitions[defKey];
+      }
+    });
+
+    // If no definitions left, remove the definitions object
+    if (Object.keys(schemaObj.definitions).length === 0) {
+      delete schemaObj.definitions;
+    }
+  }
+});
+
+return json;
+}
+
+const pruneNestedDefinitionsRecursively = (doc) => {
   // We’ll loop until no more definitions are removed in a pass
   let changed = true;
 
@@ -1937,7 +2028,6 @@ function pruneNestedDefinitionsRecursively(doc) {
 
         // If that ref is not in the doc, remove it
         if (!allRefs.includes(fullRef)) {
-          console.log(`Pruning unused definition: ${fullRef}`);
           delete schemaObj.definitions[defKey];
           changed = true;
         }
@@ -2129,4 +2219,5 @@ export {
     getUnidirectionalProviderInterfaceName,
     removeUnusedBundles,
     pruneNestedDefinitionsRecursively,
+    removeUnusedDefinitions,
 }
