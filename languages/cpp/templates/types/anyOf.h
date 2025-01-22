@@ -1,1 +1,1 @@
-std::string ${title};
+std::string

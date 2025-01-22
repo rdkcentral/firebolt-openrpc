@@ -507,9 +507,6 @@ const promoteAndNameSubSchemas = (platformApi, appApi) => {
     processSchemas(platformApi.definitions, '#/definitions')
   }
 
-  if (moduleTitle === "Intents") {
-    console.log('FOO')
-  }
 
   return platformApi
 }
@@ -542,9 +539,6 @@ const generateMacros = (platformApi, appApi, templates, languages, options = {})
     macros.callsMetrics = true
   }
 
-  if (platformApi.title === 'Intents') {
-    console.log('FOOO')
-  }
 
   const unique = list => list.map((item, i) => Object.assign(item, { index: i })).filter( (item, i, list) => !(list.find(x => x.name === item.name) && list.find(x => x.name === item.name).index < item.index))
 
@@ -623,9 +617,6 @@ const generateMacros = (platformApi, appApi, templates, languages, options = {})
 
   Object.assign(macros, generateInfoMacros(platformApi))
 
-  if (platformApi.title === 'Intents') {
-    console.log('FOOBARR')
-  }
 
   return macros
 }
@@ -963,9 +954,6 @@ function generateSchemas(platformApi, templates, options) {
 
   const schemas = JSON.parse(JSON.stringify(platformApi.definitions || (platformApi.components && platformApi.components.schemas) || {}))
 
-  if (platformApi.title === "Intents") {
-    console.log("BAR")
-  }
 
   const generate = (name, schema, uri, { prefix = '' } = {}) => {
     // these are internal schemas used by the fireboltize-openrpc tooling, and not meant to be used in code/doc generation
@@ -1064,9 +1052,6 @@ function generateSchemas(platformApi, templates, options) {
     }
   })
 
-   if (platformApi.title === "Intents") {
-    console.log("BAR")
-  }
 
   return results
 }

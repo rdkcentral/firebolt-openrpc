@@ -341,21 +341,6 @@ const insertObjectMacros = (content, schema, module, title, property, options) =
           localizedProp = getReferencedSchema(localizedProp['$ref'], module)
         }
 
-        // if (title === 'Intent' && name === 'context') {
-        //   console.log("template: ", template)
-        //   console.log('++++++++++++++++++++++++++++++')
-        //   console.log('Name: ', name)
-        //   console.log('++++++++++++++++++++++++++++++')
-        //   console.log("prop: ", prop)
-        //   console.log('++++++++++++++++++++++++++++++')
-        //   console.log("LOCALIZED: ", localizedProp)
-        //   // if (options.templateDir === 'types') {
-        //     // console.log('++++++++++++++++++++++++++++++')
-        //     // console.log("Options: ", options)
-        //     console.log('++++++++++++++++++++++++++++++')
-        //     console.log("Options2: ", options2)
-        //   // }
-        // }
 
         const subProperty = getTemplate(path.join(options2.templateDir, 'sub-property/object'))
         options2.templateDir += subProperty ? '/sub-property' : ''
@@ -640,16 +625,25 @@ function getSchemaShape(schema = {}, module = {}, { templateDir = 'types', paren
     return insertSchemaMacros(result, schema, module, { name: theTitle, parent, property, required, templateDir })
   }
   else if (schema.anyOf || schema.oneOf) {
-    // borrow anyOf logic, note that schema is a copy, so we're not breaking it.
-    if (!schema.anyOf) {
-      schema.anyOf = schema.oneOf
+    const template = getTemplate(path.join(templateDir, 'anyOfSchemaShape'))
+    let shape
+    if (template) {
+      shape = insertAnyOfMacros(template, schema, module, theTitle)
+    } else {
+      // borrow anyOf logic, note that schema is a copy, so we're not breaking it.
+      if (!schema.anyOf) {
+        schema.anyOf = schema.oneOf
+      }
+
+      shape = insertAnyOfMacros(getTemplate(path.join(templateDir, 'anyOf')) || genericTemplate, schema, module, theTitle)
     }
 
-    let template = getTemplate(path.join(templateDir, 'anyOf')) || genericTemplate
-    template = insertAnyOfMacros(template, schema, module, namespace)
-
-    result = result.replace(/\$\{shape\}/g, template)
-    return insertSchemaMacros(result, schema, module, { name: theTitle, parent, property, required })
+    if (shape) {
+      result = result.replace(/\$\{shape\}/g, shape)
+      return insertSchemaMacros(result, schema, module, { name: theTitle, parent, property, required })
+    } else {
+      return ''
+    }
   }
   else if (schema.allOf) {
     const merger = (key) => function (a, b) {
