@@ -345,7 +345,6 @@ const insertObjectMacros = (content, schema, module, title, property, options) =
           localizedProp = getReferencedSchema(localizedProp['$ref'], module)
         }
 
-
         const subProperty = getTemplate(path.join(options2.templateDir, 'sub-property/object'))
         options2.templateDir += subProperty ? '/sub-property' : ''
         const objSeparator = getTemplate(path.join(options2.templateDir, 'object-separator'))
@@ -379,7 +378,7 @@ const insertObjectMacros = (content, schema, module, title, property, options) =
           .replace(/\$\{property\}/g, safePropName(name))
           .replace(/\$\{Property\}/g, capitalize(safePropName(name)))
           .replace(/\$\{parent\.title\}/g, title)
-          .replace(/\$\{title\}/g, type)
+          .replace(/\$\{title\}/g, localizedProp.anyOf ? 'std::string' : type)
           .replace(/\$\{shape\}/g, schemaShape)
           .replace(/\$\{description\}/g, description)
           .replace(/\$\{if\.summary\}(.*?)\$\{end\.if\.summary\}/gms, description ? '$1' : '')
