@@ -891,7 +891,7 @@ const generateEvents = (json, templates) => {
     return acc
   }, null)
 
-  return generateEnums(obj, templates)
+  return generateEnums(obj, templates, 'enum-implementation')
 }
 
 function generateDefaults(platformApi = {}, appApi, templates) {
