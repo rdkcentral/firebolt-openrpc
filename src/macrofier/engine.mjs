@@ -477,15 +477,16 @@ const promoteAndNameSubSchemas = (platformApi, appApi) => {
                 addContentDescriptorSubSchema(descriptor, key, platformApi, destinationPath);
                 componentSchema.properties[name].items = descriptor.schema;
               }
-              if (propSchema.type === "array" && propSchema.items && propSchema.items.type === "object") {
-                more = true;
-                const descriptor = {
-                  name: name,
-                  schema: propSchema.items
-                };
-                addContentDescriptorSubSchema(descriptor, key, platformApi, destinationPath);
-                componentSchema.properties[name].items = descriptor.schema;
-              }
+              // Will do an array of objects if required
+              // if (propSchema.type === "array" && propSchema.items && propSchema.items.type === "object") {
+              //   more = true;
+              //   const descriptor = {
+              //     name: name,
+              //     schema: propSchema.items
+              //   };
+              //   addContentDescriptorSubSchema(descriptor, key, platformApi, destinationPath);
+              //   componentSchema.properties[name].items = descriptor.schema;
+              // }
             });
           }
         });
@@ -926,7 +927,10 @@ function sortSchemasByReference(schemas = []) {
 
     let swapped = false
     for (let indexB = indexA + 1; indexB < schemas.length; ++indexB) {
-      const bInA = isDefinitionReferencedBySchema('#/components/schemas/' + schemas[indexB][0], schemas[indexA][1])
+      const schemaBPath = '#/components/schemas/' + schemas[indexB][0];
+      const schemaBDefinitionPath = '#/definitions/' + schemas[indexB][0];
+      const bInA = isDefinitionReferencedBySchema(schemaBPath, schemas[indexA][1]) || isDefinitionReferencedBySchema(schemaBDefinitionPath, schemas[indexA][1]);
+      
       if ((isEnum(schemas[indexB][1]) && !isEnum(schemas[indexA][1])) || (bInA === true))  {
         [schemas[indexA], schemas[indexB]] = [schemas[indexB], schemas[indexA]]
         swapped = true
@@ -1051,7 +1055,6 @@ function generateSchemas(platformApi, templates, options) {
       console.error(error)
     }
   })
-
 
   return results
 }
