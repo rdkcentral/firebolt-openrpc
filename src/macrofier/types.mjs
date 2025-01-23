@@ -185,10 +185,14 @@ function getSchemaDescription(schema, module) {
 }
 
 function insertSchemaMacros(content, schema, module, { name = '', parent = '', property = '', required = false, recursive = true, templateDir = 'types'}) {
-  const title = name || schema.title || ''
+  let title = name || schema.title || ''
   const parentTitle = getXSchemaGroup(schema, module)
   const moduleTitle = module.info ? module.info.title : module.title
   const description = getSchemaDescription(schema, module)
+
+  if (title.includes('.')) {
+    title = title.split('.').pop()
+  }
 
   content = content
     .replace(/\$\{title\}/g, title)
