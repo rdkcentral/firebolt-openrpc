@@ -1385,10 +1385,21 @@ const getNonNullSchema = (methodObj, platformApi) => {
         
         // Search in platformApi.definitions or platformApi.components.schemas
         const schemas = platformApi.definitions || (platformApi.components && platformApi.components.schemas) || {};
-        const schemaKey = Object.keys(schemas).find(key => key === value);
+        let schemaKey = Object.keys(schemas).find(key => key === value);
 
         if (schemaKey) {
           return schemas[schemaKey];
+        }
+
+        // If no match at the top level, check inside each schema's definitions
+        const valueAfterDot = value.split('.').pop();
+        for (const schema of Object.values(schemas)) {
+          if (schema.definitions) {
+            schemaKey = Object.keys(schema.definitions).find(key => key === valueAfterDot);
+            if (schemaKey) {
+              return schema.definitions[schemaKey];
+            }
+          }
         }
       }
     }
