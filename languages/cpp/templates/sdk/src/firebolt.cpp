@@ -69,7 +69,7 @@ namespace Firebolt {
             ASSERT(_singleton != nullptr);
             if (_singleton != nullptr) {
                 delete _singleton;
-                singleton = nullptr;
+                _singleton = nullptr;
             }
         }
 

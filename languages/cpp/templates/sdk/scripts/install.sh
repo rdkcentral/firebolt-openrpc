@@ -57,11 +57,13 @@ cp -aR ${SdkPath}/CMakeLists.txt ${ReleasePath}
 mv ${SdkPath}/firebolt-*open-rpc.json ${ReleasePath}
 cp -aR ${SdkPath}/cpptest ${ReleasePath}/test
 
-sed -i'' -e '/EnableTest="ON";;/d' ${ReleasePath}/build.sh
-sed -i'' -e 's/getopts p:s:tch/getopts p:s:ch/g' ${ReleasePath}/build.sh
-sed -i'' -e '/enable test/d' ${ReleasePath}/build.sh
-sed -i'' -e '/EnableTest="OFF"/d' ${ReleasePath}/build.sh
-sed -i'' -e 's/ -DENABLE_TESTS=${EnableTest}//g' ${ReleasePath}/build.sh
+sed -i'' \
+  -e '/-t enable test/d' \
+  -e '/EnableTest="\(ON\|OFF\)"/d' \
+  -e 's/getopts p:s:cltbih/getopts p:s:clbih/g' \
+  -e '/t) EnableTest=.*;;/d' \
+  -e '/-DENABLE_TESTS=${EnableTest}/d' \
+  ${ReleasePath}/build.sh
 
 cd ${ReleasePath}/../
 tar -cvzf ${ReleaseName}.tgz ${ReleaseName}/*
