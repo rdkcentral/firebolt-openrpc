@@ -19,7 +19,7 @@
 #pragma once
 
 #include "error.h"
-#include "${info.title.lowercase}.h"
+#include "common/${info.title.lowercase}.h"
 /* ${IMPORTS:h} */
 ${if.callsmetrics}#include "metrics.h"
 ${end.if.callsmetrics}
