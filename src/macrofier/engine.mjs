@@ -575,7 +575,6 @@ const generateMacros = (platformApi, appApi, templates, languages, options = {})
     macros.callsMetrics = true
   }
 
-
   const unique = list => list.map((item, i) => Object.assign(item, { index: i })).filter( (item, i, list) => !(list.find(x => x.name === item.name) && list.find(x => x.name === item.name).index < item.index))
 
   Array.from(new Set(['types'].concat(config.additionalSchemaTemplates))).filter(dir => dir).forEach(dir => {
@@ -1505,9 +1504,9 @@ function insertMethodMacros(template, methodObj, platformApi, appApi, templates,
   }
   // hmm... how is this different from callbackSerializedList? i guess they get merged?
   const callbackResponseInst = event && (type === 'methods') ? (eventHasOptionalParam(event) ? (event.params.map(param => isOptionalParam(param) ? Types.getSchemaShape(param.schema, document, { templateDir: 'callback-response-instantiation', property: param.name, required: param.required, primitive: true, skipTitleOnce: true, namespace: !config.copySchemasIntoModules  }) : '').filter(param => param).join(', ') + ', ') : '' ) + (Types.getSchemaShape(event.result.schema, document, { templateDir: 'callback-response-instantiation', property: result.name, primitive: true, skipTitleOnce: true })) : ''
-  const resultType = result.schema ? Types.getSchemaType(result.schema, platformApi, { templateDir: state.typeTemplateDir, namespace: !config.copySchemasIntoModules  }) : ''
+  const resultType = result.schema ? Types.getSchemaType(result.schema, platformApi, { templateDir: state.typeTemplateDir, namespace: false }) : ''
   const resultSchemaType = result.schema.type
-  const resultJsonType = result.schema ? Types.getSchemaType(result.schema, platformApi, { templateDir: 'json-types', namespace: !config.copySchemasIntoModules  }) : ''
+  const resultJsonType = result.schema ? Types.getSchemaType(result.schema, platformApi, { templateDir: 'json-types', namespace: false  }) : ''
   
   try {
     generateResultParams(result.schema, platformApi, templates, { name: result.name})
