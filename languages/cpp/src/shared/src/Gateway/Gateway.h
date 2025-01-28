@@ -63,6 +63,11 @@ namespace FireboltSDK
             return implementation->Request(method, parameters, response);
         }
 
+        Firebolt::Error Response(unsigned id, const std::string &method, const JsonObject &response)
+        {
+            return implementation->Response(id, method, response);
+        }
+
 #ifdef GATEWAY_BIDIRECTIONAL
         template <typename RESULT, typename CALLBACK>
         Firebolt::Error Subscribe(const string& event, JsonObject& parameters, const CALLBACK& callback, void* usercb, const void* userdata, bool prioritize = false)
@@ -87,9 +92,9 @@ namespace FireboltSDK
         }
 #endif
         template <typename RESPONSE, typename PARAMETERS, typename CALLBACK>
-        Firebolt::Error RegisterProviderInterface(const std::string &capability, const std::string &interface, const std::string &method, const PARAMETERS &parameters, const CALLBACK& callback, void* usercb)
+        Firebolt::Error RegisterProviderInterface(const std::string &method, const PARAMETERS &parameters, const CALLBACK& callback, void* usercb)
         {
-            return implementation->RegisterProviderInterface<RESPONSE>(capability, interface, method, parameters, callback, usercb);
+            return implementation->RegisterProviderInterface<RESPONSE>(method, parameters, callback, usercb);
         }
 
         Firebolt::Error UnregisterProviderInterface(const std::string &interface, const std::string &method, void* usercb)

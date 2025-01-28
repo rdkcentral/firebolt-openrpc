@@ -27,13 +27,12 @@ list(APPEND SOURCES
     Gateway/Gateway.cpp
     Transport/Transport.cpp
     Accessor/Accessor.cpp
+    Async/Async.cpp
 )
 
 if (ENABLE_BIDIRECTIONAL)
-    list(APPEND SOURCES Async/bidi/Async.cpp)
     list(APPEND SOURCES Event/bidi/Event.cpp)
 else ()
-    list(APPEND SOURCES Async/unidi/Async.cpp)
     list(APPEND SOURCES Event/unidi/Event.cpp)
 endif ()
 

@@ -23,6 +23,8 @@
 #include <core/core.h>
 #include "error.h"
 
+#include "Transport/Transport.h"
+
 #include "../common.h"
 
 #include <string>
@@ -47,7 +49,7 @@ namespace FireboltSDK
         EventMap eventMap;
         mutable std::mutex eventMap_mtx;
 
-        using DispatchFunctionProvider = std::function<void(const std::string &parameters, void*)>;
+        using DispatchFunctionProvider = std::function<void(const std::string &parameters, unsigned, void*)>;
 
         struct Method {
             std::string name;
@@ -57,7 +59,6 @@ namespace FireboltSDK
         };
 
         struct Interface {
-            std::string capability;
             std::string name;
             std::list<Method> methods;
         };
@@ -151,27 +152,43 @@ namespace FireboltSDK
             while (it != methods.end()) {
                 it = std::find_if(it, methods.end(), [&methodName](const Method &m) { return m.name == methodName; });
                 if (it != methods.end()) {
-                    it->lambda(parameters, it->usercb);
+                    it->lambda("{ \"parameters\":" + parameters + "}", id, it->usercb);
                     it++;
                 }
             }
         }
 
+        Firebolt::Error Response(Transport<WPEFramework::Core::JSON::IElement>* transport, unsigned id, const std::string &method, const JsonObject &response)
+        {
+            std::string s;
+            response.ToString(s);
+            Firebolt::Error status = transport->SendResponse(method, "\"" + std::string(response.Get(_T("result"))) + "\"", id);
+            return status;
+        }
+
         template <typename RESPONSE, typename PARAMETERS, typename CALLBACK>
-        Firebolt::Error RegisterProviderInterface(const std::string &capability, const std::string &interface, const std::string &method, const PARAMETERS &parameters, const CALLBACK &callback, void* usercb)
+        Firebolt::Error RegisterProviderInterface(const std::string &fullMethod, const PARAMETERS &parameters, const CALLBACK &callback, void* usercb)
         {
             uint32_t waitTime = config.DefaultWaitTime;
-            std::function<void(void* usercb, void* response, Firebolt::Error status)> actualCallback = callback;
-            DispatchFunctionProvider lambda = [actualCallback, method, waitTime](const std::string &response, void* usercb) {
+
+            size_t dotPos = fullMethod.find('.');
+            std::string interface = fullMethod.substr(0, dotPos);
+            std::string method = fullMethod.substr(dotPos + 1);
+            if (method.size() > 2 && method.substr(0, 2) == "on") {
+                method[2] = std::tolower(method[2]);
+                method.erase(0, 2); // erase "on"
+            }
+
+            std::function<void(void* usercb, const void* response, void*)> actualCallback = callback;
+            DispatchFunctionProvider lambda = [actualCallback, method, waitTime](const std::string &response, unsigned id, void* usercb) {
                 WPEFramework::Core::ProxyType<RESPONSE>* jsonResponse = new WPEFramework::Core::ProxyType<RESPONSE>();
                 *jsonResponse = WPEFramework::Core::ProxyType<RESPONSE>::Create();
                 (*jsonResponse)->FromString(response);
-                actualCallback(usercb, jsonResponse, Firebolt::Error::None);
+                actualCallback(usercb, &id, jsonResponse);
             };
             std::lock_guard lck(providers_mtx);
             if (providers.find(interface) == providers.end()) {
                 Interface i = {
-                    .capability = capability,
                     .name = interface,
                 };
                 i.methods.push_back({

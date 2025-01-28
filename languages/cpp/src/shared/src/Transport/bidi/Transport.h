@@ -328,6 +328,44 @@ namespace FireboltSDK
             return (((waiting == 0) || (IsOpen() == true)) ? Firebolt::Error::None : Firebolt::Error::Timedout);
         }
 
+        Firebolt::Error SendResponse(const string &method, const std::string &parameters, const uint32_t &id)
+        {
+            int32_t result = WPEFramework::Core::ERROR_UNAVAILABLE;
+
+            if ((_channel.IsValid() == true) && (_channel->IsSuspended() == true))
+            {
+                result = WPEFramework::Core::ERROR_ASYNC_FAILED;
+            }
+            else if (_channel.IsValid() == true)
+            {
+
+                result = WPEFramework::Core::ERROR_ASYNC_FAILED;
+
+                WPEFramework::Core::ProxyType<WPEFramework::Core::JSONRPC::Message> message(Channel::Message());
+                message->Id = id;
+                message->Result = parameters;
+
+                _adminLock.Lock();
+
+                typename std::pair<typename PendingMap::iterator, bool> newElement =
+                    _pendingQueue.emplace(std::piecewise_construct,
+                                          std::forward_as_tuple(id),
+                                          std::forward_as_tuple());
+                ASSERT(newElement.second == true);
+
+                if (newElement.second == true)
+                {
+
+                    _adminLock.Unlock();
+
+                    _channel->Submit(WPEFramework::Core::ProxyType<INTERFACE>(message));
+
+                    message.Release();
+                    result = WPEFramework::Core::ERROR_NONE;
+                }
+            }
+            return FireboltErrorValue(result);
+        }
         template <typename PARAMETERS>
         Firebolt::Error Send(const string &method, const PARAMETERS &parameters, const uint32_t &id)
         {

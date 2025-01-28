@@ -105,6 +105,14 @@ namespace FireboltSDK
             return client.Request(method, parameters, response);
         }
 
+        Firebolt::Error Response(unsigned id, const std::string &method, const JsonObject &response)
+        {
+            if (transport == nullptr) {
+                return Firebolt::Error::NotConnected;
+            }
+            return server.Response(transport, id, method, response);
+        }
+
         template <typename RESULT, typename CALLBACK>
         Firebolt::Error Subscribe(const string& event, JsonObject& parameters, const CALLBACK& callback, void* usercb, const void* userdata, bool prioritize = false)
         {
@@ -146,14 +154,12 @@ namespace FireboltSDK
         }
 
         template <typename RESPONSE, typename PARAMETERS, typename CALLBACK>
-        Firebolt::Error RegisterProviderInterface(const std::string &capability, const std::string &interface, const std::string &method, const PARAMETERS &parameters, const CALLBACK& callback, void* usercb)
+        Firebolt::Error RegisterProviderInterface(const std::string &method, const PARAMETERS &parameters, const CALLBACK& callback, void* usercb)
         {
-            Firebolt::Error status = server.RegisterProviderInterface<RESPONSE>(capability, interface, method, parameters, callback, usercb);
+            Firebolt::Error status = server.RegisterProviderInterface<RESPONSE>(method, parameters, callback, usercb);
             if (status != Firebolt::Error::None) {
                 return status;
             }
-            RESPONSE response;
-            status = client.Request(interface+"."+method, parameters, response);
             return status;
         }
 

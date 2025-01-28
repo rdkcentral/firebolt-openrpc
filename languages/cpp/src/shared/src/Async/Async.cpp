@@ -24,7 +24,6 @@ namespace FireboltSDK {
     Async::Async()
         : _methodMap()
         , _adminLock()
-        , _transport(nullptr)
     {
         ASSERT(_singleton == nullptr);
         _singleton = this;
@@ -33,7 +32,6 @@ namespace FireboltSDK {
     Async::~Async() /* override */
     {
         Clear();
-        _transport = nullptr;
         _singleton = nullptr;
     }
 
@@ -54,9 +52,7 @@ namespace FireboltSDK {
     }
 
     void Async::Configure(Transport<WPEFramework::Core::JSON::IElement>* transport)
-    {
-        _transport = transport;
-    }
+    { }
 
     void Async::Clear()
     {

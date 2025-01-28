@@ -119,7 +119,6 @@ namespace FireboltSDK
             if (transport == nullptr) {
                 return Firebolt::Error::NotConnected;
             }
-
             MessageID id = transport->GetNextMessageID();
             std::shared_ptr<Caller> c = std::make_shared<Caller>(id);
             {
