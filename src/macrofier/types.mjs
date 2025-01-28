@@ -364,7 +364,11 @@ const insertObjectMacros = (content, schema, module, title, property, options) =
         
         let type = getSchemaType(localizedProp, module, options2)
 
-        // if (type === 'object') {
+        if (localizedProp.anyOf) {
+          type = ''
+        }
+
+        // if (type === 'object' ) {
         //   type = getSchemaShape(prop, module, { ...options2, type: true })
         // }
 
@@ -378,7 +382,7 @@ const insertObjectMacros = (content, schema, module, title, property, options) =
           .replace(/\$\{property\}/g, safePropName(name))
           .replace(/\$\{Property\}/g, capitalize(safePropName(name)))
           .replace(/\$\{parent\.title\}/g, title)
-          .replace(/\$\{title\}/g, localizedProp.anyOf ? 'std::string' : type)
+          .replace(/\$\{title\}/g, type)
           .replace(/\$\{shape\}/g, schemaShape)
           .replace(/\$\{description\}/g, description)
           .replace(/\$\{if\.summary\}(.*?)\$\{end\.if\.summary\}/gms, description ? '$1' : '')
@@ -631,14 +635,14 @@ function getSchemaShape(schema = {}, module = {}, { templateDir = 'types', paren
     const template = getTemplate(path.join(templateDir, 'anyOfSchemaShape'))
     let shape
     if (template) {
-      shape = insertAnyOfMacros(template, schema, module, theTitle)
+      shape = insertAnyOfMacros(template, schema, module, namespace)
     } else {
       // borrow anyOf logic, note that schema is a copy, so we're not breaking it.
       if (!schema.anyOf) {
         schema.anyOf = schema.oneOf
       }
 
-      shape = insertAnyOfMacros(getTemplate(path.join(templateDir, 'anyOf')) || genericTemplate, schema, module, theTitle)
+      shape = insertAnyOfMacros(getTemplate(path.join(templateDir, 'anyOf')) || genericTemplate, schema, module, namespace)
     }
 
     if (shape) {

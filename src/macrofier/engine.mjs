@@ -148,24 +148,59 @@ const getLinkForSchema = (schema, json) => {
   return '#'
 }
 
-// const getComponentExternalSchema = (json) => {
-//   let refSchemas = []
-//   if (json.components && json.components.schemas) {
-//     Object.entries(json.components.schemas).forEach(([name, schema]) => {
-//       let refs = getLinkedSchemaPaths(schema).map(path => getPathOr(null, path, schema))
-//       refs.map(ref => {
-//         let title = ''
-//         if (ref.includes('x-schemas')) {
-//           if (ref.split('/')[2] !== json.info.title) {
-//             title = ref.split('/')[2]
-//           }
-//         }
-//         title && !refSchemas.includes(title) ? refSchemas.push(title) : null
-//       })
-//     })
-//   }
-//   return (refSchemas)
-// }
+const getComponentExternalSchema = (json) => {
+  const refSchemas = new Set();
+
+  let externalSchemas;
+  let isDefinitions = false;
+  let titleLowercase;
+
+  if (json.definitions) {
+    externalSchemas = json.definitions;
+    isDefinitions = true;
+    titleLowercase = json?.title?.toLowerCase();
+  } else if (json.components && json.components.schemas) {
+    externalSchemas = json.components.schemas;
+    titleLowercase = json?.info?.title?.toLowerCase();
+  } else {
+    externalSchemas = {};
+  }
+
+  // Function to process references
+  const processReferences = (schemas) => {
+    Object.entries(schemas).forEach(([name, schema]) => {
+      const refsFound = getAllValuesForName('$ref', schema);
+      refsFound.forEach(ref => {
+        if (ref.startsWith('https')) {
+          const baseUrl = ref.split('#')[0];
+          const schemaName = baseUrl.substring(baseUrl.lastIndexOf('/') + 1);
+          if (schemaName) {
+            refSchemas.add(schemaName);
+          }
+        }
+      });
+    });
+  };
+
+  if (isDefinitions) {
+    // Remove all external schemas that start with https
+    Object.keys(externalSchemas).forEach(name => {
+      if (name.startsWith('https')) {
+        delete externalSchemas[name];
+      }
+    });
+  }
+
+  // Process references for all schemas
+  processReferences(externalSchemas);
+
+  // Remove any value from refSchemas that matches json.info.title (lowercased)
+  if (titleLowercase) {
+    refSchemas.delete(titleLowercase);
+  }
+
+  return Array.from(refSchemas);
+};
 
 // Maybe methods array of objects
 const getMethods = compose(
@@ -987,7 +1022,7 @@ function generateSchemas(platformApi, templates, options) {
     const schemaShape = Types.getSchemaShape(schema, platformApi, { templateDir: state.typeTemplateDir, primitive: config.primitives ? Object.keys(config.primitives).length > 0 : false, namespace: !config.copySchemasIntoModules })
 
     const schemaImpl = Types.getSchemaShape(schema, platformApi, { templateDir: state.typeTemplateDir, enumImpl: true, primitive: config.primitives ? Object.keys(config.primitives).length > 0 : false, namespace: !config.copySchemasIntoModules })
-
+    
     content = content
       .replace(/\$\{schema.title\}/, (schema.title || name))
       .replace(/\$\{schema.description\}/, schema.description || '')
@@ -1137,20 +1172,29 @@ const generateImports = (platformApi, appApi, templates, options = { destination
   }
 
   let template = getTemplateFromDestination(options.destination, '/imports/default', templates)
-  const subschemas = getAllValuesForName("$id", platformApi)
-  const subschemaLocation = platformApi.definitions || platformApi.components && platformApi.components.schemas || {}
 
-  subschemas.shift() // remove main $id
+  let componentExternalSchema = getComponentExternalSchema(platformApi)
 
-  if (subschemas.length) {
-    imports += subschemas.map(id => subschemaLocation[id].title).map(shared => template.replace(/\$\{info.title.lowercase\}/g, shared.toLowerCase())).join('')
+  if (componentExternalSchema.length) {
+    imports += componentExternalSchema.map(shared => template.replace(/\$\{info.title.lowercase\}/g, shared.toLowerCase())).join('')
   }
 
-  // TODO: this does the same as above? am i missing something?
-  // let componentExternalSchema = getComponentExternalSchema(json)
-  // if (componentExternalSchema.length && json.info['x-uri-titles']) {
-  //   imports += componentExternalSchema.map(shared => template.replace(/\$\{info.title.lowercase\}/g, shared.toLowerCase())).join('')
+  
+  // const subschemas = getAllValuesForName("$id", platformApi)
+  // // const subschemas = findLinkedSchemas(platformApi)
+
+  // const subschemaLocation = platformApi.definitions || platformApi.components && platformApi.components.schemas || {}
+
+  // // Remove top level 
+  // subschemas.shift() // remove main $id
+
+  // if (subschemas.length) {
+  //   if (subschemas.length > 8) {
+  //     console.log('What')
+  //   }
+  //   imports += subschemas.map(id => subschemaLocation[id].title).map(shared => template.replace(/\$\{info.title.lowercase\}/g, shared.toLowerCase())).join('')
   // }
+
   return imports
 }
 
