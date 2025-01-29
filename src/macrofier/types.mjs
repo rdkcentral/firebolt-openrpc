@@ -329,7 +329,7 @@ const safePropName = name => config.enableStringPropertyKeys ? wrapProp(name) : 
 const insertObjectMacros = (content, schema, module, title, property, options) => {
   const options2 = options ? JSON.parse(JSON.stringify(options)) : {}
   options2.parent = title
-  options2.parentLevel = options.level
+  options2.parentLevel = options.parentLevel
   options2.level = options.level + 1
   options2.templateDir = options.templateDir
   ;(['properties', 'properties.register', 'properties.assign']).forEach(macro => {
