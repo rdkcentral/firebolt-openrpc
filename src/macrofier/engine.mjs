@@ -1376,9 +1376,9 @@ function generateMethods(platformApi = {}, appApi = null, examples = {}, templat
 
 const getNonNullSchema = (methodObj, platformApi) => {
   if (methodObj.tags) {
-    const tag = methodObj.tags.find(tag => tag['x-subscriber-for']);
+    const tag = methodObj.tags.find(tag => tag['x-subscriber-for'] || tag['x-notifier']);
     if (tag) {
-      let value = tag['x-subscriber-for'];
+      let value = tag['x-subscriber-for'] || tag['x-notifier'];
       // Capitalize the first letter after each dot
       if (value) {
         value = value.split('.').map(part => part.charAt(0).toUpperCase() + part.slice(1)).join('.');
