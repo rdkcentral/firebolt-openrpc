@@ -195,9 +195,9 @@ const getComponentExternalSchema = (json) => {
   processReferences(externalSchemas);
 
   // Remove any value from refSchemas that matches json.info.title (lowercased)
-  if (titleLowercase) {
-    refSchemas.delete(titleLowercase);
-  }
+  // if (titleLowercase) {
+  //   refSchemas.delete(titleLowercase);
+  // }
 
   return Array.from(refSchemas);
 };
@@ -1399,6 +1399,14 @@ const getNonNullSchema = (methodObj, platformApi) => {
             if (schemaKey) {
               return schema.definitions[schemaKey];
             }
+          }
+        }
+
+        // Check in platformApi.methods
+        if (platformApi.methods) {
+          const method = platformApi.methods.find(method => method.name.toLowerCase() === valueAfterDot.toLowerCase());
+          if (method && method.result && method.result.schema) {
+            return method.result.schema;
           }
         }
       }

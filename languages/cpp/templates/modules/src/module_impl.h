@@ -20,7 +20,6 @@
 
 #include "FireboltSDK.h"
 #include "IModule.h"
-#include "jsondata_${info.title.lowercase}.h"
 /* ${IMPORTS:impl} */
 ${if.callsmetrics}#include "metrics_impl.h"
 ${end.if.callsmetrics}
