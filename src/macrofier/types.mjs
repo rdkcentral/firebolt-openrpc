@@ -685,6 +685,10 @@ function getSchemaShape(schema = {}, module = {}, { templateDir = 'types', paren
   else if (schema.type === "array" && schema.items && !Array.isArray(schema.items)) {
     // array
     const items = getSchemaShape(schema.items, module, { templateDir, parent, property, required, parentLevel: parentLevel + 1, level, summary, descriptions, enums: false, array: true, primitive, namespace })
+    // Need to dereference any ref items
+    if (schema.items['$ref']) {
+      schema.items = getReferencedSchema(schema.items['$ref'], module)
+    }
     const shape = insertArrayMacros(getTemplate(path.join(templateDir, 'array')) || genericTemplate, schema, module, level, items, Array.isArray(required) ? required.includes(property) : required)
     result = result.replace(/\$\{shape\}/g, shape)
               .replace(/\$\{if\.object\}(.*?)\$\{end\.if\.object\}/gms, isObject(schema.items) ? '$1' : '')
