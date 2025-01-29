@@ -483,7 +483,7 @@ const insertObjectMacros = (content, schema, module, title, property, options) =
 
 const insertArrayMacros = (content, schema, module, level = 0, items, required = false) => {
   content = content
-    .replace(/\$\{json\.type\}/g, getSchemaType(schema.items, module, { templateDir: 'json-types', code: false, namespace: true }))
+    .replace(/\$\{json\.type\}/g, getSchemaType(schema.items, module, { templateDir: 'json-types', code: false, namespace: false }))
     .replace(/\$\{items\}/g, items)
     .replace(/\$\{items\.with\.indent\}/g, required ? indent(items, '    ') : indent(items, '        '))
     .replace(/\$\{if\.impl.array.optional\}(.*?)\$\{end\.if\.impl.array.optional\}/gms, required ? '' : '$1')
