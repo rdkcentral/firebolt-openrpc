@@ -179,6 +179,10 @@ const getComponentExternalSchema = (json) => {
           }
         }
       });
+      if (name.startsWith('https')) {
+        const schemaName = name.substring(name.lastIndexOf('/') + 1);
+        refSchemas.add(schemaName)
+      }
     });
   };
 
@@ -1538,9 +1542,9 @@ function insertMethodMacros(template, methodObj, platformApi, appApi, templates,
   const pullsResponseInst = (pullsParams && (type === 'methods')) ? Types.getSchemaShape(pullsParams, platformApi, { templateDir: 'result-instantiation', property: pullsForParamTitle, required: pullsParams.required, primitive: true, skipTitleOnce: true, namespace: false }) : ''
   const pullsResultSerialize = (pullsResult && (type === 'methods')) ? Types.getSchemaShape(pullsResult, platformApi, { templateDir: 'parameter-serialization/sub-property', property: pullsForResultTitle, required: pullsResult.required, primitive: true, skipTitleOnce: true, namespace: false }) : ''
 
-  const serializedParams = (type === 'methods') ? flattenedMethod.params.map(param => Types.getSchemaShape(param.schema, platformApi, { templateDir: 'parameter-serialization', property: param.name, required: param.required, primitive: true, skipTitleOnce: true, namespace: false })).join('\n') : ''
+  const serializedParams = (type === 'methods') ? flattenedMethod.params.map(param => Types.getSchemaShape(param.schema, platformApi, { templateDir: 'parameter-serialization', property: param.name, required: param.required, primitive: true, skipTitleOnce: true, namespace: true })).join('\n') : ''
   const resultInst = (type === 'methods') ? Types.getSchemaShape(flattenedMethod.result.schema, platformApi, { templateDir: 'result-instantiation', property: flattenedMethod.result.name, required: flattenedMethod.result.required, primitive: true, skipTitleOnce: true, namespace: false }) : '' // w/out primitive: true, getSchemaShape skips anonymous types, like primitives
-  const resultInit = (type === 'methods') ? Types.getSchemaShape(flattenedMethod.result.schema, platformApi, { templateDir: 'result-initialization', property: flattenedMethod.result.name, primitive: true, skipTitleOnce: true, namespace: false }) : '' // w/out primitive: true, getSchemaShape skips anonymous types, like primitives
+  const resultInit = (type === 'methods') ? Types.getSchemaShape(flattenedMethod.result.schema, platformApi, { templateDir: 'result-initialization', property: flattenedMethod.result.name, primitive: true, skipTitleOnce: true, namespace: true }) : '' // w/out primitive: true, getSchemaShape skips anonymous types, like primitives
   const serializedEventParams = event && (type === 'methods') ? flattenedMethod.params.filter(p => p.name !== 'listen').map(param => Types.getSchemaShape(param.schema, document, {templateDir: 'parameter-serialization', property: param.name, required: param.required, primitive: true, skipTitleOnce: true, namespace: false })).join('\n') : ''
   // this was wrong... check when we merge if it was fixed
   const callbackSerializedList = event && (type === 'methods') ? Types.getSchemaShape(event.result.schema, document, { templateDir: eventHasOptionalParam(event) && !event.tags.find(t => t.name === 'provider') ? 'callback-result-serialization' : 'callback-result-serialization', property: result.name, required: event.result.schema.required, primitive: true, skipTitleOnce: true, namespace: false }) : ''
@@ -1565,7 +1569,7 @@ function insertMethodMacros(template, methodObj, platformApi, appApi, templates,
   const callbackResponseInst = event && (type === 'methods') ? (eventHasOptionalParam(event) ? (event.params.map(param => isOptionalParam(param) ? Types.getSchemaShape(param.schema, document, { templateDir: 'callback-response-instantiation', property: param.name, required: param.required, primitive: true, skipTitleOnce: true, namespace: false  }) : '').filter(param => param).join(', ') + ', ') : '' ) + (Types.getSchemaShape(event.result.schema, document, { templateDir: 'callback-response-instantiation', property: result.name, primitive: true, skipTitleOnce: true })) : ''
   const resultType = result.schema ? Types.getSchemaType(result.schema, platformApi, { templateDir: state.typeTemplateDir, namespace: false }) : ''
   const resultSchemaType = result.schema.type
-  const resultJsonType = result.schema ? Types.getSchemaType(result.schema, platformApi, { templateDir: 'json-types', namespace: false  }) : ''
+  const resultJsonType = result.schema ? Types.getSchemaType(result.schema, platformApi, { templateDir: 'json-types', namespace: true  }) : ''
   
   try {
     generateResultParams(result.schema, platformApi, templates, { name: result.name})
@@ -1680,7 +1684,7 @@ function insertMethodMacros(template, methodObj, platformApi, appApi, templates,
     .replace(/\$\{method\.result\.summary\}/g, result.summary)
     .replace(/\$\{method\.result\.link\}/g, getLinkForSchema(result.schema, platformApi)) //, baseUrl: options.baseUrl
     .replace(/\$\{method\.result\.type\}/g, Types.getSchemaType(result.schema, platformApi, { templateDir: state.typeTemplateDir, title: true, asPath: false, result: true, namespace: false  })) //, baseUrl: options.baseUrl    
-    .replace(/\$\{method\.result\.json\}/g, Types.getSchemaType(result.schema.type === 'null' ? getNonNullSchema(methodObj, event, platformApi, document) : result.schema, platformApi, { templateDir: 'json-types', title: true, code: false, link: false, asPath: false, expandEnums: false, namespace: false  }))
+    .replace(/\$\{method\.result\.json\}/g, Types.getSchemaType(result.schema.type === 'null' ? getNonNullSchema(methodObj, event, platformApi, document) : result.schema, platformApi, { templateDir: 'json-types', title: true, code: false, link: false, asPath: false, expandEnums: false, namespace: true  }))
     // todo: what does prefix do?
     .replace(/\$\{event\.result\.type\}/g, isEventMethod(methodObj) ? Types.getMethodSignatureResult(event, document, { callback: true, namespace: false  }) : '')
     .replace(/\$\{event\.result\.json\.type\}/g, resultJsonType)

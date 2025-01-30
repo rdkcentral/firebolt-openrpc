@@ -18,6 +18,7 @@
 
 #pragma once
 
+#include "FireboltSDK.h"
 /* ${IMPORTS:jsondata} */
 #include "common/${info.title.lowercase}.h"
 
