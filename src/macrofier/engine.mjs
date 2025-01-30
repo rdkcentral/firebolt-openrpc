@@ -667,7 +667,8 @@ const generateInfoMacros = (document) => {
 const clearMacros = (fContents = '') => {
   fContents = fContents.replace(/\$\{module\.includes\}/g, "")
   fContents = fContents.replace(/\$\{module\.includes\.private\}/g, "")
-  fContents = fContents.replace(/\$\{module\.init\}/g, "")
+  fContents = fContents.replace(/\$\{module\.init:h\}/g, "")
+  fContents = fContents.replace(/\$\{module\.init:cpp\}/g, "")
 
   return fContents
 }
@@ -701,8 +702,13 @@ const insertMacros = (fContents = '', macros = {}) => {
   fContents = fContents.replace(/\$\{module\.list\}/g, macros.module)
   fContents = fContents.replace(/\$\{module\.includes\}/g, macros.moduleInclude)
   fContents = fContents.replace(/\$\{module\.includes\.private\}/g, macros.moduleIncludePrivate)
-  // MIGHT NEED TO UPDATE LINE BELOW
-  fContents = fContents.replace(/\$\{module\.init\}/g, Object.values(macros.moduleInit)[0])
+ 
+  Object.keys(macros.moduleInit).forEach(key => {
+    const regex = new RegExp('\\$\\{module\.init\\:' + key + '\\}', 'gms')
+    fContents = fContents.replace(/\$\{module\.init\}/g, Object.values(macros.moduleInit)[key])
+
+    fContents = fContents.replace(regex, macros.moduleInit[key])
+  })  
 
   let methods = ''
   Array.from(new Set(['methods'].concat(config.additionalMethodTemplates))).filter(dir => dir).every(dir => {
@@ -1178,7 +1184,7 @@ const generateImports = (platformApi, appApi, templates, options = { destination
     imports += componentExternalSchema.map(shared => template.replace(/\$\{info.title.lowercase\}/g, shared.toLowerCase())).join('')
   }
 
-  
+  // This just imports every module so not sure why it was included
   // const subschemas = getAllValuesForName("$id", platformApi)
   // // const subschemas = findLinkedSchemas(platformApi)
 
@@ -1188,9 +1194,6 @@ const generateImports = (platformApi, appApi, templates, options = { destination
   // subschemas.shift() // remove main $id
 
   // if (subschemas.length) {
-  //   if (subschemas.length > 8) {
-  //     console.log('What')
-  //   }
   //   imports += subschemas.map(id => subschemaLocation[id].title).map(shared => template.replace(/\$\{info.title.lowercase\}/g, shared.toLowerCase())).join('')
   // }
 

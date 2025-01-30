@@ -12,4 +12,4 @@ ${if.modules}        ${info.Title}::I${info.Title}& ${info.Title}Interface() con
             return *${info.title.lowercase};
         }
 
-${end.if.modules}${module.init}
+${end.if.modules}${module.init:cpp}
