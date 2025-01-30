@@ -18,6 +18,7 @@
 
 #pragma once
 
+#include <mutex>
 #include "Module.h"
 
 namespace FireboltSDK {
@@ -136,26 +137,30 @@ namespace FireboltSDK {
                 return (Firebolt::Error::None);
             };
             CallbackData callbackData = {implementation, userdata, State::IDLE};
-            _adminLock.Lock();
-            EventMap::iterator eventIndex = eventMap.find(eventName);
-            if (eventIndex != eventMap.end()) {
-                CallbackMap::iterator callbackIndex = eventIndex->second.find(usercb);
-               
-                if (callbackIndex == eventIndex->second.end()) {
-                     std::cout << "Registering new callback for event: " << eventName << std::endl;
-                    eventIndex->second.emplace(std::piecewise_construct, std::forward_as_tuple(usercb), std::forward_as_tuple(callbackData));
+
+            {
+                std::lock_guard<std::mutex> guard(_adminLock);
+                EventMap::iterator eventIndex = eventMap.find(eventName);
+                if (eventIndex != eventMap.end())
+                {
+                    CallbackMap::iterator callbackIndex = eventIndex->second.find(usercb);
+
+                    if (callbackIndex == eventIndex->second.end())
+                    {
+                        std::cout << "Registering new callback for event: " << eventName << std::endl;
+                        eventIndex->second.emplace(std::piecewise_construct, std::forward_as_tuple(usercb), std::forward_as_tuple(callbackData));
+                        status = Firebolt::Error::None;
+                    }
+                }
+                else
+                {
+
+                    CallbackMap callbackMap;
+                    callbackMap.emplace(std::piecewise_construct, std::forward_as_tuple(usercb), std::forward_as_tuple(callbackData));
+                    eventMap.emplace(std::piecewise_construct, std::forward_as_tuple(eventName), std::forward_as_tuple(callbackMap));
                     status = Firebolt::Error::None;
                 }
-            } else {
-
-                CallbackMap callbackMap;
-                callbackMap.emplace(std::piecewise_construct, std::forward_as_tuple(usercb), std::forward_as_tuple(callbackData));
-                eventMap.emplace(std::piecewise_construct, std::forward_as_tuple(eventName), std::forward_as_tuple(callbackMap));
-                status = Firebolt::Error::None;
-
             }
-
-            _adminLock.Unlock();
             return status;
         }
         Firebolt::Error Revoke(const string& eventName, void* usercb);
@@ -164,13 +169,13 @@ namespace FireboltSDK {
         void Clear();
         Firebolt::Error ValidateResponse(const WPEFramework::Core::ProxyType<WPEFramework::Core::JSONRPC::Message>& jsonResponse, bool& enabled) override;
         Firebolt::Error Dispatch(const string& eventName, const WPEFramework::Core::ProxyType<WPEFramework::Core::JSONRPC::Message>& jsonResponse) override;
- 
-    private: 
+
+    private:
         EventMap _internalEventMap;
         EventMap _externalEventMap;
-        WPEFramework::Core::CriticalSection _adminLock;
-        Transport<WPEFramework::Core::JSON::IElement>* _transport;
+        std::mutex _adminLock;
+        Transport<WPEFramework::Core::JSON::IElement> *_transport;
 
-        static Event* _singleton;
+        static Event *_singleton;
     };
 }

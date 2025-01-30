@@ -60,7 +60,7 @@ namespace FireboltSDK {
 
     void Async::Clear()
     {
-        _adminLock.Lock();
+        std::lock_guard<std::mutex> guard(_adminLock);
         MethodMap::iterator index = _methodMap.begin();
         while (index != _methodMap.end()) {
             CallbackMap::iterator callbackIndex = index->second.begin();
@@ -72,7 +72,6 @@ namespace FireboltSDK {
             }
             index = _methodMap.erase(index);
         }
-        _adminLock.Unlock();
     }
 }
 
