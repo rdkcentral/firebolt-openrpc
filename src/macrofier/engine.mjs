@@ -1377,7 +1377,22 @@ function generateMethods(platformApi = {}, appApi = null, examples = {}, templat
   return results
 }
 
-const getNonNullSchema = (methodObj, platformApi) => {
+const getNonNullSchema = (methodObj, event, platformApi, document) => {
+  if (event) {
+    const schema = event?.result?.schema;
+    if (schema && !schema['$ref']) {
+      return schema;
+    } else if (schema && schema['$ref']) {
+      let referencedSchema = getReferencedSchema(schema['$ref'], platformApi);
+      if (!referencedSchema) {
+        referencedSchema = getReferencedSchema(schema['$ref'], document);
+      }
+      if (referencedSchema) {
+        return referencedSchema;
+      }
+    }
+  }
+  
   if (methodObj.tags) {
     const tag = methodObj.tags.find(tag => tag['x-subscriber-for'] || tag['x-notifier']);
     if (tag) {
@@ -1664,8 +1679,8 @@ function insertMethodMacros(template, methodObj, platformApi, appApi, templates,
     .replace(/\$\{method\.result\.name\}/g, result.name)
     .replace(/\$\{method\.result\.summary\}/g, result.summary)
     .replace(/\$\{method\.result\.link\}/g, getLinkForSchema(result.schema, platformApi)) //, baseUrl: options.baseUrl
-    .replace(/\$\{method\.result\.type\}/g, Types.getSchemaType(result.schema, platformApi, { templateDir: state.typeTemplateDir, title: true, asPath: false, result: true, namespace: false  })) //, baseUrl: options.baseUrl
-    .replace(/\$\{method\.result\.json\}/g, Types.getSchemaType(result.schema.type === 'null' ? (event?.result?.schema || getNonNullSchema(methodObj, platformApi)) : result.schema, platformApi, { templateDir: 'json-types', title: true, code: false, link: false, asPath: false, expandEnums: false, namespace: false  }))
+    .replace(/\$\{method\.result\.type\}/g, Types.getSchemaType(result.schema, platformApi, { templateDir: state.typeTemplateDir, title: true, asPath: false, result: true, namespace: false  })) //, baseUrl: options.baseUrl    
+    .replace(/\$\{method\.result\.json\}/g, Types.getSchemaType(result.schema.type === 'null' ? getNonNullSchema(methodObj, event, platformApi, document) : result.schema, platformApi, { templateDir: 'json-types', title: true, code: false, link: false, asPath: false, expandEnums: false, namespace: false  }))
     // todo: what does prefix do?
     .replace(/\$\{event\.result\.type\}/g, isEventMethod(methodObj) ? Types.getMethodSignatureResult(event, document, { callback: true, namespace: false  }) : '')
     .replace(/\$\{event\.result\.json\.type\}/g, resultJsonType)
