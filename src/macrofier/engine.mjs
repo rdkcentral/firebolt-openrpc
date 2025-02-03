@@ -1518,14 +1518,14 @@ function insertMethodMacros(template, methodObj, platformApi, appApi, templates,
   let itemType = ''
 
   // grab some related methods in case they are output together in a single template file
-  const puller = platformApi.methods.find(method => method.tags.find(tag => tag['x-pulls-for'] === methodObj.name))
-  const pullsFor = methodObj.tags.find(t => t['x-pulls-for']) && platformApi.methods.find(method => method.name === methodObj.tags.find(t => t['x-pulls-for'])['x-pulls-for'])
-  const pullerTemplate = (puller ? insertMethodMacros(getTemplate('/codeblocks/puller', templates), puller, platformApi, appApi, templates, type, examples) : '')
+  const puller = platformApi.methods.find(method => method.tags.find(tag => tag['x-pulls-for'].split('.').pop() === methodObj.name))
+  const pullsFor = methodObj.tags.find(t => t['x-pulls-for']) && platformApi.methods.find(method => method.name === methodObj.tags.find(t => t['x-pulls-for'])['x-pulls-for'].split('.').pop());  const pullerTemplate = (puller ? insertMethodMacros(getTemplate('/codeblocks/puller', templates), puller, platformApi, appApi, templates, type, examples) : '')
   const setter = getSetterFor(methodObj.name, platformApi)
   const setterTemplate = (setter ? insertMethodMacros(getTemplate('/codeblocks/setter', templates), setter, platformApi, appApi, templates, type, examples) : '')
   const subscriber = platformApi.methods.find(method => method.tags.find(tag => tag['x-alternative'] === methodObj.name))
   const subscriberTemplate = (subscriber ? insertMethodMacros(getTemplate('/codeblocks/subscriber', templates), subscriber, platformApi, appApi, templates, type, examples) : '')
   const setterFor = methodObj.tags.find(t => t.name === 'setter') && methodObj.tags.find(t => t.name === 'setter')['x-setter-for'] || ''
+
   const pullsResult = (puller || pullsFor) ? localizeDependencies(pullsFor || methodObj, platformApi).params.findLast(x=>true).schema : null
   const pullsParams = (puller || pullsFor) ? localizeDependencies(getPayloadFromEvent(puller || methodObj, document), document, null, { mergeAllOfs: true }).properties.parameters : null
 
