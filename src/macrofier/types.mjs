@@ -327,12 +327,7 @@ const safePropName = (name) => {
   const config = getConfig()
   return config.enableStringPropertyKeys ? wrapProp(name) : getSafeKeyName(name)
 }
-const insertObjectMacros = (content, schema, module, title, property, options) => {
-
-  if (schema.title == 'EntityIntent') {
-    console.log('STOP')
-  }
-
+const insertObjectMacros = (content, schema, module, title, property, options)=> {
   const options2 = options ? JSON.parse(JSON.stringify(options)) : {}
   options2.parent = title
   options2.parentLevel = options.parentLevel

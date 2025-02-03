@@ -22,7 +22,7 @@ ${if.implementations}
 namespace Firebolt {
 namespace ${info.Title} {
 ${if.providers}
-/* ${PROVIDERS} */${end.if.providers}
+/* ${PROVIDER_CLASSES} */${end.if.providers}
     // Methods
     /* ${METHODS} */
 
