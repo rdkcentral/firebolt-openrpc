@@ -482,12 +482,19 @@ const insertObjectMacros = (content, schema, module, title, property, options) =
 }
 
 const insertArrayMacros = (content, schema, module, level = 0, items, required = false) => {
+    // if (schema?.items?.enum  && module?.title === 'Discovery') {
+    //   console.log('Bam')
+    // }
   content = content
-    .replace(/\$\{json\.type\}/g, getSchemaType(schema.items, module, { templateDir: 'json-types', code: false, namespace: false }))
+    .replace(/\$\{json\.type\}/g, getSchemaType(schema.items, module, { templateDir: 'json-types', code: false, namespace: true }))
     .replace(/\$\{items\}/g, items)
     .replace(/\$\{items\.with\.indent\}/g, required ? indent(items, '    ') : indent(items, '        '))
     .replace(/\$\{if\.impl.array.optional\}(.*?)\$\{end\.if\.impl.array.optional\}/gms, required ? '' : '$1')
     .replace(/\$\{if\.impl.array.non.optional\}(.*?)\$\{end\.if\.impl.array.non.optional\}/gms, required ? '$1' : '')
+
+    // if (content.includes(`WPEFramework::Core::JSON::ArrayType<'SD' | 'HD' | 'UHD'>`)) {
+    //   console.log('NOOO')
+    // }
 
   return content
 }
@@ -773,7 +780,6 @@ function getSchemaType(schema, module, { templateDir = 'types', link = false, co
   if (schema['$ref']) {
     const refSchema = getReferencedSchema(schema['$ref'], module)
     if (refSchema) {
-      // refSchema.title = schema['$ref'].split('/').pop()
       return getSchemaType(refSchema, module, { templateDir, link, code, asPath, event, result, expandEnums, baseUrl, namespace })
     } else {
       // TODO: This never happens... but might be worth keeping in case we link to an opaque external schema at some point?

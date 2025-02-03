@@ -148,20 +148,23 @@ const getLinkForSchema = (schema, json) => {
   return '#'
 }
 
-const getComponentExternalSchema = (json) => {
+const getComponentExternalSchema = (platformApi, appApi) => {
   const refSchemas = new Set();
 
   let externalSchemas;
   let isDefinitions = false;
   let titleLowercase;
 
-  if (json.definitions) {
-    externalSchemas = json.definitions;
+  if (platformApi.definitions) {
+    externalSchemas = platformApi.definitions;
     isDefinitions = true;
-    titleLowercase = json?.title?.toLowerCase();
-  } else if (json.components && json.components.schemas) {
-    externalSchemas = json.components.schemas;
-    titleLowercase = json?.info?.title?.toLowerCase();
+    titleLowercase = platformApi?.title?.toLowerCase();
+  } else if (platformApi.components && platformApi.components.schemas && Object.keys(platformApi.components.schemas).length > 0) {
+    externalSchemas = platformApi.components.schemas;
+    titleLowercase = platformApi?.info?.title?.toLowerCase();
+  } else if (appApi.components && appApi.components.schemas && Object.keys(appApi.components.schemas).length > 0) {
+    externalSchemas = appApi.components.schemas;
+    titleLowercase = appApi?.info?.title?.toLowerCase();
   } else {
     externalSchemas = {};
   }
@@ -197,11 +200,6 @@ const getComponentExternalSchema = (json) => {
 
   // Process references for all schemas
   processReferences(externalSchemas);
-
-  // Remove any value from refSchemas that matches json.info.title (lowercased)
-  // if (titleLowercase) {
-  //   refSchemas.delete(titleLowercase);
-  // }
 
   return Array.from(refSchemas);
 };
@@ -490,7 +488,7 @@ const promoteAndNameSubSchemas = (platformApi, appApi) => {
   })
 
   // Processes schemas to promote and name subschemas, handling nested objects and arrays.
-  const processSchemas = (schemas, destinationPath) => {
+  const processSchemas = (schemas, destinationPath, processSubDefs = true) => {
     let more = true;
     while (more) {
       more = false;
@@ -516,20 +514,18 @@ const promoteAndNameSubSchemas = (platformApi, appApi) => {
                 addContentDescriptorSubSchema(descriptor, key, platformApi, destinationPath);
                 componentSchema.properties[name].items = descriptor.schema;
               }
-              // Will do an array of objects if required
-              // if (propSchema.type === "array" && propSchema.items && propSchema.items.type === "object") {
-              //   more = true;
-              //   const descriptor = {
-              //     name: name,
-              //     schema: propSchema.items
-              //   };
-              //   addContentDescriptorSubSchema(descriptor, key, platformApi, destinationPath);
-              //   componentSchema.properties[name].items = descriptor.schema;
-              // }
             });
           }
+          // Handle external sub schema definitions
+          if (componentSchema.definitions && processSubDefs) {
+            processSchemas(
+              componentSchema.definitions,
+              key + '#/definitions',
+              true
+            );
+          }
         });
-  
+
         if (!schema.title) {
           schema.title = capitalize(key);
         }
@@ -547,18 +543,18 @@ const promoteAndNameSubSchemas = (platformApi, appApi) => {
     processSchemas(platformApi.definitions, '#/definitions')
   }
 
-
   return platformApi
 }
 
 const generateMacros = (platformApi, appApi, templates, languages, options = {}) => {
   // for languages that don't support nested schemas, let's promote them to first-class schemas w/ titles
+
   if (config.extractSubSchemas) {
     platformApi = promoteAndNameSubSchemas(platformApi, appApi)
     if (appApi) {
       appApi = promoteAndNameSubSchemas(appApi)
     }
-  } 
+  }
 
   // grab the options so we don't have to pass them from method to method
   Object.assign(state, options)
@@ -1182,7 +1178,7 @@ const generateImports = (platformApi, appApi, templates, options = { destination
 
   let template = getTemplateFromDestination(options.destination, '/imports/default', templates)
 
-  let componentExternalSchema = getComponentExternalSchema(platformApi)
+  let componentExternalSchema = getComponentExternalSchema(platformApi, appApi)
 
   if (componentExternalSchema.length) {
     imports += componentExternalSchema.map(shared => template.replace(/\$\{info.title.lowercase\}/g, shared.toLowerCase())).join('')
