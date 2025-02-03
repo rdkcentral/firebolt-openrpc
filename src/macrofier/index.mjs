@@ -84,6 +84,7 @@ const macrofy = async (
 
         engine.setConfig({
             copySchemasIntoModules,
+            enableUnionTypes,
             mergeOnTitle,
             createModuleDirectories,
             extractSubSchemas,

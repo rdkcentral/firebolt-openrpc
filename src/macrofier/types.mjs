@@ -21,7 +21,6 @@ import { getReferencedSchema, localizeDependencies, getSafeEnumKeyName, getSafeK
 import path from "path"
 import { getConfig } from '../shared/configLoader.mjs'
 
-const config = getConfig()
 let convertTuplesToArraysOrObjects = false
 const templates = {}
 const state = {}
@@ -324,9 +323,16 @@ const insertObjectPatternPropertiesMacros = (content, schema, module, title, opt
 
 const getIndents = level => level ? '    ' : ''
 const wrapProp = name => name.match(/[/\.\+]/) ? `"${name}"` : name
-const safePropName = name => config.enableStringPropertyKeys ? wrapProp(name) : getSafeKeyName(name)
-
+const safePropName = (name) => {
+  const config = getConfig()
+  return config.enableStringPropertyKeys ? wrapProp(name) : getSafeKeyName(name)
+}
 const insertObjectMacros = (content, schema, module, title, property, options) => {
+
+  if (schema.title == 'EntityIntent') {
+    console.log('STOP')
+  }
+
   const options2 = options ? JSON.parse(JSON.stringify(options)) : {}
   options2.parent = title
   options2.parentLevel = options.parentLevel
@@ -770,6 +776,8 @@ function getSchemaType(schema, module, { templateDir = 'types', link = false, co
   const namespaceStr = namespace ? getTemplate(path.join(templateDir, 'namespace')) : ''
   const theTitle = insertSchemaMacros(namespaceStr + getTemplate(path.join(templateDir, 'title')), schema, module, { name: schema.title, parent: getXSchemaGroup(schema, module), recursive: false })
   const allocatedProxy = event || result
+
+  const config = getConfig()
 
   let title = schema.type === "object" || schema.anyOf || schema.oneOf || Array.isArray(schema.type) && schema.type.includes("object") || schema.enum ? true : false
   
