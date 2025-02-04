@@ -1542,7 +1542,6 @@ function insertMethodMacros(template, methodObj, platformApi, appApi, templates,
   const resultInst = (type === 'methods') ? Types.getSchemaShape(flattenedMethod.result.schema, platformApi, { templateDir: 'result-instantiation', property: flattenedMethod.result.name, required: flattenedMethod.result.required, primitive: true, skipTitleOnce: true, namespace: false }) : '' // w/out primitive: true, getSchemaShape skips anonymous types, like primitives
   const resultInit = (type === 'methods') ? Types.getSchemaShape(flattenedMethod.result.schema, platformApi, { templateDir: 'result-initialization', property: flattenedMethod.result.name, primitive: true, skipTitleOnce: true, namespace: true }) : '' // w/out primitive: true, getSchemaShape skips anonymous types, like primitives
   const serializedEventParams = event && (type === 'methods') ? flattenedMethod.params.filter(p => p.name !== 'listen').map(param => Types.getSchemaShape(param.schema, document, {templateDir: 'parameter-serialization', property: param.name, required: param.required, primitive: true, skipTitleOnce: true, namespace: false })).join('\n') : ''
-  // this was wrong... check when we merge if it was fixed
   const callbackSerializedList = event && (type === 'methods') ? Types.getSchemaShape(event.result.schema, document, { templateDir: eventHasOptionalParam(event) && !event.tags.find(t => t.name === 'provider') ? 'callback-result-serialization' : 'callback-result-serialization', property: result.name, required: event.result.schema.required, primitive: true, skipTitleOnce: true, namespace: false }) : ''
   const callbackInitialization = event && (type === 'methods') ? (eventHasOptionalParam(event) && !event.tags.find(t => t.name === 'provider') ? (event.params.map(param => isOptionalParam(param) ? Types.getSchemaShape(param.schema, document, { templateDir: 'callback-initialization-optional', property: param.name, required: param.required, primitive: true, skipTitleOnce: true }) : '').filter(param => param).join('\n') + '\n') : '' ) + (Types.getSchemaShape(event.result.schema, document, { templateDir: 'callback-initialization', property: result.name, primitive: true, skipTitleOnce: true, namespace: false  })) : ''
   let callbackInstantiation = ''
@@ -2102,6 +2101,24 @@ function insertProviderXValues(template, document, xValues) {
 function insertProviderInterfaceMacros(template, _interface, platformApi = {}, appApi = null, codeblock='interface', directory='interfaces', templates, bidirectional) {
   const document = appApi || platformApi
   const iface = getProviderInterface(_interface, document, bidirectional)
+  let hasEventMethods = false
+
+  if (platformApi && appApi) {
+    // Look for the event method that matched the provider interface
+    // Will likely need to improve the providers code but wanted to do it this way for backwards compatibility for now
+    for (let i = 0; i < iface.length; i++) {
+      const methodName = iface[i].name.split('.')[1];
+      const eventMethodName = `onRequest${capitalize(methodName)}`;
+  
+      const eventMethod = platformApi.methods.find(method => method.name === eventMethodName);
+  
+      if (eventMethod) {
+        iface[i] = eventMethod;
+        hasEventMethods = true;
+      }
+    }
+  }
+
   const capability = extension(iface[0], 'x-provides')
   let xValues
   let interfaceShape = getTemplate(`/codeblocks/${codeblock}`, templates)
@@ -2121,7 +2138,7 @@ function insertProviderInterfaceMacros(template, _interface, platformApi = {}, a
       })
 
 //      let type = config.templateExtensionMap && config.templateExtensionMap['methods'] && config.templateExtensionMap['methods'].includes(suffix) ? 'methods' : 'declarations'
-      return insertMethodMacros(interfaceDeclaration, method, document, null, templates)
+      return insertMethodMacros(interfaceDeclaration, method, (platformApi && appApi && hasEventMethods) ? platformApi : document, null, templates, 'methods')
     }).join('') + '\n')
 
   if (iface.length === 0) {
