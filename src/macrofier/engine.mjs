@@ -621,6 +621,10 @@ const generateMacros = (platformApi, appApi, templates, languages, options = {})
     }
   })
 
+  // if (platformApi?.info?.title === 'Discovery') {
+  //   console.log('HERE')
+  // }
+
   const xusesInterfaces = generateXUsesInterfaces(platformApi, templates)
   const providerSubscribe = generateProviderSubscribe(platformApi, appApi, templates, !!appApi)
   const providerInterfaces = generateProviderInterfaces(platformApi, appApi, templates, 'interface', 'interfaces', !!appApi)
@@ -1486,8 +1490,8 @@ function insertMethodMacros(template, methodObj, platformApi, appApi, templates,
   const capabilities = getTemplate('/sections/capabilities', templates) + insertCapabilityMacros(getTemplate('/capabilities/default', templates), methodObj.tags.find(t => t.name === "capabilities"), methodObj, platformApi)
 
   const result = methodObj.result && JSON.parse(JSON.stringify(methodObj.result))
-  const event = isEventMethod(methodObj) ? JSON.parse(JSON.stringify(methodObj)) : ''
-
+  const event = methodObj.providerEvent ?  JSON.parse(JSON.stringify(methodObj.providerEvent)) :  isEventMethod(methodObj) ? JSON.parse(JSON.stringify(methodObj)) : ''
+  
   // Keep track of any global subscribers to insert into templates
   const globalSubscribersArr = getGlobalSubscribers(platformApi);
   let isGlobalSubscriberEvent = false
@@ -2098,10 +2102,41 @@ function insertProviderXValues(template, document, xValues) {
   return template
 }
 
+function replaceRefsWithSchemas(obj, platformApi, document) {
+  if (Array.isArray(obj)) {
+    return obj.map(item => replaceRefsWithSchemas(item, platformApi, document));
+  } else if (obj && typeof obj === 'object') {
+    if (obj.$ref) {
+      const referencedSchema = getReferencedSchema(obj.$ref, platformApi) || getReferencedSchema(obj.$ref, document);
+      if (referencedSchema) {
+        // Recursively replace refs in the referenced schema
+        const dereferencedSchema = replaceRefsWithSchemas(referencedSchema, platformApi, document);
+        return dereferencedSchema;
+      }
+    }
+    return Object.keys(obj).reduce((acc, key) => {
+      acc[key] = replaceRefsWithSchemas(obj[key], platformApi, document);
+      return acc;
+    }, {});
+  }
+  return obj;
+}
+
+function addProviderEventToMethod(method, eventMethod, document, platformApi) {
+  const docCopy = JSON.parse(JSON.stringify(document));
+
+  // Replace any refs with the referenced schema
+  const updatedEventMethod = replaceRefsWithSchemas(eventMethod, platformApi, document);
+
+  // Push the updated event method into the document
+  docCopy.methods.push(updatedEventMethod);
+
+  return {document: docCopy, updatedEventMethod };
+}
+
 function insertProviderInterfaceMacros(template, _interface, platformApi = {}, appApi = null, codeblock='interface', directory='interfaces', templates, bidirectional) {
-  const document = appApi || platformApi
+  let document = appApi || platformApi
   const iface = getProviderInterface(_interface, document, bidirectional)
-  let hasEventMethods = false
 
   if (platformApi && appApi) {
     // Look for the event method that matched the provider interface
@@ -2113,8 +2148,9 @@ function insertProviderInterfaceMacros(template, _interface, platformApi = {}, a
       const eventMethod = platformApi.methods.find(method => method.name === eventMethodName);
   
       if (eventMethod) {
-        iface[i] = eventMethod;
-        hasEventMethods = true;
+        const { document: updatedDocument, updatedEventMethod } = addProviderEventToMethod(iface[i], eventMethod, document, platformApi);
+        iface[i].providerEvent = updatedEventMethod;
+        document = updatedDocument;
       }
     }
   }
@@ -2138,7 +2174,7 @@ function insertProviderInterfaceMacros(template, _interface, platformApi = {}, a
       })
 
 //      let type = config.templateExtensionMap && config.templateExtensionMap['methods'] && config.templateExtensionMap['methods'].includes(suffix) ? 'methods' : 'declarations'
-      return insertMethodMacros(interfaceDeclaration, method, (platformApi && appApi && hasEventMethods) ? platformApi : document, null, templates, 'methods')
+      return insertMethodMacros(interfaceDeclaration, method, document, null, templates, 'methods')
     }).join('') + '\n')
 
   if (iface.length === 0) {
