@@ -1514,6 +1514,8 @@ function insertMethodMacros(template, methodObj, platformApi, appApi, templates,
     event.params = event.params.filter(p => p.name !== 'listen')
   }
 
+  const eventResultSchemaPropParams = event && event.result && event.result.schema && event.result.schema.properties && event.result.schema.properties.parameters ? `const ${event.result.schema.properties.parameters.title}& parameters` : ''
+
   const eventParams = event.params && event.params.length ? getTemplate('/sections/parameters', templates) + event.params.map(p => insertParameterMacros(getTemplate('/parameters/default', templates), p, event, document)).join('') : ''
 
   const eventParamsRows = event.params && event.params.length ? event.params.map(p => insertParameterMacros(getTemplate('/parameters/default', templates), p, event, document)).join('') : ''
@@ -1660,6 +1662,7 @@ function insertMethodMacros(template, methodObj, platformApi, appApi, templates,
     .replace(/\$\{if\.globalsubscriber\}(.*?)\$\{end\.if\.globalsubscriber\}/gms, (isGlobalSubscriberEvent) ? '$1' : '')
     .replace(/\$\{if\.event\.callback\.params\}(.*?)\$\{end\.if\.event\.callback\.params\}/gms, event && eventHasOptionalParam(event) ? '$1' : '')
     .replace(/\$\{event\.signature\.params\}/g, event ? Types.getMethodSignatureParams(event, document, { namespace: !config.copySchemasIntoModules }) : '')
+    .replace(/\$\{event\.result\.schema\.params\}/g, eventResultSchemaPropParams ? eventResultSchemaPropParams : '')
     .replace(/\$\{event\.signature\.callback\.params\}/g, event ? Types.getMethodSignatureParams(event, document, { callback: true, namespace: !config.copySchemasIntoModules }) : '')
     .replace(/\$\{event\.params\.serialization\}/g, serializedEventParams)
     .replace(/\$\{event\.callback\.serialization\}/g, callbackSerializedList)
@@ -2029,7 +2032,7 @@ function generateXUsesInterfaces(json, templates) {
 }
 
 function generateProviderSubscribe(platformApi, appApi, templates, bidirectional) {
-  const interfaces = getInterfaces(platformApi)
+  const interfaces = getInterfaces(appApi || platformApi)
 
   let template = getTemplate(`/sections/provider-subscribe`, templates)
   const providers = reduce((acc, capability) => {
