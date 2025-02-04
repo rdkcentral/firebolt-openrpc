@@ -2029,7 +2029,8 @@ function generateXUsesInterfaces(json, templates) {
 }
 
 function generateProviderSubscribe(platformApi, appApi, templates, bidirectional) {
-  const interfaces = getProvidedCapabilities(platformApi)
+  const interfaces = getInterfaces(platformApi)
+
   let template = getTemplate(`/sections/provider-subscribe`, templates)
   const providers = reduce((acc, capability) => {
     const template = insertProviderSubscribeMacros(getTemplate('/codeblocks/provider-subscribe', templates), capability, platformApi, appApi, templates, bidirectional)
