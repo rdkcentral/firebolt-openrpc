@@ -71,13 +71,9 @@ const getProvidedCapabilities = (json) => {
     return Array.from(new Set([...getMethods(json).filter(isProviderInterfaceMethod).map(method => method.tags.find(tag => tag['x-provides'])['x-provides'])]))
 }
 
-const getProviderInterfaceMethods = (_interface, json) => {
+const getProviderInterfaceMethods = (_interface, json, prefix) => {
   return json.methods.filter(method => method.name.split('.')[0] === _interface).filter(isProviderInterfaceMethod)
   //return getMethods(json).filter(method => methodName(method).startsWith(prefix) && method.tags && method.tags.find(tag => tag['x-provides'] === _interface))
-}
-
-const getProviderSubscribeInterfaceMethods = (_interface, module) => {
-  return module.methods.filter(method => methodName(method).startsWith('onRequest') && method.tags && method.tags.find(tag => tag['x-provides'] === _interface))
 }
   
 const getInterfaces = (json) => {
@@ -90,21 +86,17 @@ const getInterfaces = (json) => {
     return list    
 }
   
-function getProviderInterface(_interface, module, bidirectional) {
+function getProviderInterface(_interface, module) {
   module = JSON.parse(JSON.stringify(module))
 
-  if (bidirectional) {
-    const iface = getProviderSubscribeInterfaceMethods(_interface, module).map(method => localizeDependencies(method, module))
-    return iface
-  } else {
-    const iface = getProviderInterfaceMethods(_interface, module).map(method => dereferenceAndMergeAllOfs(method, module))
+  const iface = getProviderInterfaceMethods(_interface, module).map(method => dereferenceAndMergeAllOfs(method, module))
   
-    if (iface.length && iface.every(method => methodName(method).startsWith('onRequest'))) {
-        console.log(`Transforming legacy provider interface ${_interface}`)
-        updateUnidirectionalProviderInterface(iface, module)
-    }
-    return iface
+  if (iface.length && iface.every(method => methodName(method).startsWith('onRequest'))) {
+      console.log(`Transforming legacy provider interface ${_interface}`)
+      updateUnidirectionalProviderInterface(iface, module)
   }
+  
+  return iface
 }
 
 function getUnidirectionalProviderInterfaceName(_interface, capability, document = {}) {
@@ -2228,5 +2220,4 @@ export {
     removeUnusedBundles,
     pruneNestedDefinitionsRecursively,
     removeUnusedDefinitions,
-    getProviderSubscribeInterfaceMethods
 }

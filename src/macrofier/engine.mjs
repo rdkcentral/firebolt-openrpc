@@ -1507,10 +1507,8 @@ function insertMethodMacros(template, methodObj, platformApi, appApi, templates,
       result.schema = JSON.parse(JSON.stringify(getPayloadFromEvent(methodObj)))
       event.result.schema = getPayloadFromEvent(event)
     } else {
-      if (!event.result) {
-        const notifier = getNotifier(methodObj, appApi)
-        event.result = notifier.params.slice(-1)[0]
-      }
+      const notifier = getNotifier(methodObj, appApi)
+      event.result = notifier.params.slice(-1)[0]
     }
 
     event.params = event.params.filter(p => p.name !== 'listen')
@@ -2091,10 +2089,6 @@ function getProviderXValues(method) {
 }
 
 function insertProviderXValues(template, document, xValues) {
-  if (!xValues) {
-    return template;
-  }
-
   if (xValues['x-response']) {
     const xResponseInst = Types.getSchemaShape(xValues['x-response'], document, { templateDir: 'parameter-serialization', property: 'result', required: true, primitive: true, skipTitleOnce: true, namespace: !config.copySchemasIntoModules })
     template = template.replace(/\$\{provider\.xresponse\.serialization\}/gms, xResponseInst)

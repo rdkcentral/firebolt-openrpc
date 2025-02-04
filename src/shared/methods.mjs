@@ -17,7 +17,7 @@
  */
 
 const tag = (method, name) => method.tags.find(tag => tag.name === name)
-export const extension = (method, name) => (method?.tags.find(t => t[name]) || {})[name]
+export const extension = (method, name) => (method.tags.find(t => t[name]) || {})[name]
 
 export const capabilities = method => tag(method, 'capabilities')
 export const isProvider = method => capabilities(method)['x-provides']
