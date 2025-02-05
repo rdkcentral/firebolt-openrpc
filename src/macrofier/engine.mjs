@@ -621,10 +621,6 @@ const generateMacros = (platformApi, appApi, templates, languages, options = {})
     }
   })
 
-  // if (platformApi?.info?.title === 'Discovery') {
-  //   console.log('HERE')
-  // }
-
   const xusesInterfaces = generateXUsesInterfaces(platformApi, templates)
   const providerSubscribe = generateProviderSubscribe(platformApi, appApi, templates, !!appApi)
   const providerInterfaces = generateProviderInterfaces(platformApi, appApi, templates, 'interface', 'interfaces', !!appApi)
