@@ -74,11 +74,17 @@ namespace FireboltSDK {
                 , LogLevel(_T("Info"))
                 , WorkerPool()
                 , WsUrl(_T("ws://127.0.0.1:9998"))
+#ifdef GATEWAY_BIDIRECTIONAL
+                , RPCv2(true)
+#endif
             {
                 Add(_T("waitTime"), &WaitTime);
                 Add(_T("logLevel"), &LogLevel);
                 Add(_T("workerPool"), &WorkerPool);
                 Add(_T("wsUrl"), &WsUrl);
+#ifdef GATEWAY_BIDIRECTIONAL
+                Add(_T("rpcV2"), &RPCv2);
+#endif
             }
 
         public:
@@ -86,6 +92,9 @@ namespace FireboltSDK {
             WPEFramework::Core::JSON::String LogLevel;
             WorkerPoolConfig WorkerPool;
             WPEFramework::Core::JSON::String WsUrl;
+#ifdef GATEWAY_BIDIRECTIONAL
+            WPEFramework::Core::JSON::Boolean RPCv2;
+#endif
         };
 
         Accessor(const Accessor&) = delete;
