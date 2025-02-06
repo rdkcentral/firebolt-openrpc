@@ -19,7 +19,9 @@
 #pragma once
 
 #include "error.h"
-/* ${IMPORTS} */
+/* ${IMPORTS:h} */
+${if.callsmetrics}#include "metrics.h"
+${end.if.callsmetrics}
 
 ${if.declarations}namespace Firebolt {
 namespace ${info.Title} {
@@ -30,7 +32,19 @@ ${if.enums}
 ${if.types}
 // Types
 /* ${TYPES} */${end.if.types}
-${if.providers}/* ${PROVIDERS} */${end.if.providers}${if.xuses}/* ${XUSES} */${end.if.xuses}
+${if.providers}// Provider Interfaces
+struct IProviderSession {
+    virtual ~IProviderSession() = default;
+
+    virtual std::string correlationId() const = 0;
+};
+
+struct IFocussableProviderSession : virtual public IProviderSession {
+    virtual ~IFocussableProviderSession() override = default;
+
+    virtual void focus( Firebolt::Error *err = nullptr ) = 0;
+};
+/* ${PROVIDER_INTERFACES} */${end.if.providers}${if.xuses}/* ${XUSES} */${end.if.xuses}
 ${if.methods}struct I${info.Title} {
 
     virtual ~I${info.Title}() = default;

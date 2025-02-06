@@ -23,7 +23,7 @@ ${if.implementations}
 namespace Firebolt {
 namespace ${info.Title} {
 ${if.providers}
-/* ${PROVIDERS} */${end.if.providers}
+/* ${PROVIDER_CLASSES} */${end.if.providers}
     // Methods
     /* ${METHODS} */
 
@@ -36,5 +36,5 @@ ${if.enums}
 
 namespace WPEFramework {
 
-/* ${ENUMS} */
+/* ${ENUM_IMPLEMENTATIONS} */
 }${end.if.enums}
