@@ -12,30 +12,27 @@ ${method.pulls.response.instantiation}
             I${info.Title}::I${method.Name}Notification& notifier = *(reinterpret_cast<I${info.Title}::I${method.Name}Notification*>(notification));
             ${method.pulls.type} element = notifier.${method.rpc.name}(${method.pulls.param.title});
             Firebolt::Error status = Firebolt::Error::NotConnected;
-            FireboltSDK::Transport<WPEFramework::Core::JSON::IElement>* transport = FireboltSDK::Accessor::Instance().GetTransport();
-            if (transport != nullptr) {
-                JsonObject jsonParameters;
-                WPEFramework::Core::JSON::Variant CorrelationId = proxyResponse->CorrelationId.Value();
-                jsonParameters.Set(_T("correlationId"), CorrelationId);
-                ${method.pulls.json.type} ${method.pulls.result.title}Container;
-                {
-        ${method.pulls.result.serialization.with.indent}
-                }
-                string resultStr;
-                ${method.pulls.result.title}Container.ToString(resultStr);
-                WPEFramework::Core::JSON::VariantContainer resultContainer(resultStr);
-                WPEFramework::Core::JSON::Variant Result = resultContainer;
-                jsonParameters.Set(_T("result"), Result);
+            JsonObject jsonParameters;
+            WPEFramework::Core::JSON::Variant CorrelationId = proxyResponse->CorrelationId.Value();
+            jsonParameters.Set(_T("correlationId"), CorrelationId);
+            ${method.pulls.json.type} ${method.pulls.result.title}Container;
+            {
+    ${method.pulls.result.serialization.with.indent}
+            }
+            string resultStr;
+            ${method.pulls.result.title}Container.ToString(resultStr);
+            WPEFramework::Core::JSON::VariantContainer resultContainer(resultStr);
+            WPEFramework::Core::JSON::Variant Result = resultContainer;
+            jsonParameters.Set(_T("result"), Result);
+            {
                 WPEFramework::Core::JSON::Boolean jsonResult;
 
-                status = transport->Invoke("${info.title.lowercase}.${method.pulls.for}", jsonParameters, jsonResult);
+                status = FireboltSDK::Gateway::Instance().Request("${info.title.lowercase}.${method.pulls.for}", jsonParameters, jsonResult);
                 if (status == Firebolt::Error::None) {
                     FIREBOLT_LOG_INFO(FireboltSDK::Logger::Category::OpenRPC, FireboltSDK::Logger::Module<FireboltSDK::Accessor>(), "${info.Title}.${method.name} is successfully pushed with status as %d", jsonResult.Value());
                 }
-
-            } else {
-                FIREBOLT_LOG_ERROR(FireboltSDK::Logger::Category::OpenRPC, FireboltSDK::Logger::Module<FireboltSDK::Accessor>(), "Error in getting Transport err = %d", status);
             }
+
             proxyResponse.Release();
         }
     }

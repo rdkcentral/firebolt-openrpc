@@ -24,9 +24,30 @@ set(FIREBOLT_LOGLEVEL "Info" CACHE STRING  "Log level to be enabled")
 
 # Default options
 option(FIREBOLT_ENABLE_STATIC_LIB "Create Firebolt library as Static library" OFF)
+option(ENABLE_BIDIRECTIONAL "Enable bidirectional communication over WS" OFF)
 option(ENABLE_TESTS "Build openrpc native test" ON)
 option(ENABLE_UNIT_TESTS "Enable unit test" ON)
 option(ENABLE_COVERAGE "Enable code coverage build." ON)
+option(ENABLE_INTERACTIVE_APP "Enable interactive application" ON)
+option(FIREBOLT_PLAIN_LOG "Disable log coloring" OFF)
+
+if (ENABLE_BIDIRECTIONAL)
+    message("Using bidirectional gateway")
+    add_compile_definitions(GATEWAY_BIDIRECTIONAL)
+else ()
+    message("Using unidirectional gateway")
+endif ()
+
+if (ENABLE_INTERACTIVE_APP)
+  set(ENABLE_TESTS ON)
+  set(ENABLE_UNIT_TESTS OFF)
+  set(ENABLE_COVERAGE OFF)
+endif ()
+
+if (FIREBOLT_PLAIN_LOG)
+    add_compile_definitions(LOGGER_NO_COLOR)
+endif ()
+
 
 if (FIREBOLT_ENABLE_STATIC_LIB)
     set(FIREBOLT_LIBRARY_TYPE STATIC)

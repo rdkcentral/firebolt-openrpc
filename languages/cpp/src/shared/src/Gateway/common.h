@@ -17,14 +17,19 @@
  */
 #pragma once
 
-#ifdef GATEWAY_BIDIRECTIONAL
-#include "bidi/Event.h"
-#else
-#include "unidi/Event.h"
-#endif
+#include <chrono>
+#include <functional>
 
 namespace FireboltSDK
 {
-    static constexpr uint32_t DefaultWaitTime = 1000;
+    using Timestamp = std::chrono::time_point<std::chrono::steady_clock>;
+    using MessageID = uint32_t;
+
+    struct Config
+    {
+        static constexpr uint64_t watchdogThreshold_ms = 3000;
+        static constexpr uint64_t watchdogCycle_ms = 500;
+        static constexpr uint32_t DefaultWaitTime = WPEFramework::Core::infinite;
+    };
 }
 

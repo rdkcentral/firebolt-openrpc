@@ -25,7 +25,6 @@ namespace FireboltSDK {
         : _internalEventMap()
         , _externalEventMap()
         , _adminLock()
-        , _transport(nullptr)
     {
         ASSERT(_singleton == nullptr);
         _singleton = this;
@@ -33,9 +32,6 @@ namespace FireboltSDK {
 
     Event::~Event() /* override */
     {
-        _transport->SetEventHandler(nullptr);
-        _transport = nullptr;
-
         _singleton = nullptr;
     }
 
@@ -57,8 +53,7 @@ namespace FireboltSDK {
 
     void Event::Configure(Transport<WPEFramework::Core::JSON::IElement>* transport)
     {
-        _transport = transport;
-        _transport->SetEventHandler(this);
+        transport->SetEventHandler(this);
     }
 
     Firebolt::Error Event::Unsubscribe(const string& eventName, void* usercb)
@@ -66,11 +61,8 @@ namespace FireboltSDK {
         Firebolt::Error status = Revoke(eventName, usercb);
 
         if (status == Firebolt::Error::None) {
-            if (_transport != nullptr) {
-
-                const string parameters("{\"listen\":false}");
-                status = _transport->Unsubscribe(eventName, parameters);
-            }
+            const string parameters("{\"listen\":false}");
+            status = Gateway::Instance().Unsubscribe(eventName, parameters);
         } else {
             status = Firebolt::Error::None;
         }
@@ -81,7 +73,7 @@ namespace FireboltSDK {
     {
         Firebolt::Error result = Firebolt::Error::General;
         Response response;
-        _transport->FromMessage((WPEFramework::Core::JSON::IElement*)&response, *jsonResponse);
+        response.FromString(jsonResponse->Result.Value());
         if (response.Listening.IsSet() == true) {
             result = Firebolt::Error::None;
             enabled = response.Listening.Value();

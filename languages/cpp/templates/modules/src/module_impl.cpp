@@ -17,6 +17,7 @@
  */
 
 #include "${info.title.lowercase}_impl.h"
+#include "Gateway/Gateway.h"
 
 ${if.implementations}
 namespace Firebolt {

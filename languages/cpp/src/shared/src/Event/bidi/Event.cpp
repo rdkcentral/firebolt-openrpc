@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Comcast Cable Communications Management, LLC
+ * Copyright 2023 Comcast Cable Communications Management, LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,16 +15,25 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-#pragma once
+#include "Event.h"
 
-#ifdef GATEWAY_BIDIRECTIONAL
-#include "bidi/Event.h"
-#else
-#include "unidi/Event.h"
-#endif
+namespace FireboltSDK {
 
-namespace FireboltSDK
-{
-    static constexpr uint32_t DefaultWaitTime = 1000;
+    Event* Event::_singleton = nullptr;
+
+    /* static */ Event& Event::Instance()
+    {
+        static Event *instance = new Event();
+        ASSERT(instance != nullptr);
+        return *instance;
+    }
+
+    /* static */ void Event::Dispose()
+    {
+        ASSERT(_singleton != nullptr);
+
+        if (_singleton != nullptr) {
+            delete _singleton;
+        }
+    }
 }
-

@@ -1,47 +1,71 @@
     static void ProviderInvokeSession(std::string& methodName, JsonObject& jsonParameters, Firebolt::Error *err = nullptr)
     {
         Firebolt::Error status = Firebolt::Error::NotConnected;
-        FireboltSDK::Transport<WPEFramework::Core::JSON::IElement>* transport = FireboltSDK::Accessor::Instance().GetTransport();
-        if (transport != nullptr) {
 
-            JsonObject jsonResult;
-            status = transport->Invoke(methodName, jsonParameters, jsonResult);
-            if (status == Firebolt::Error::None) {
-                FIREBOLT_LOG_INFO(FireboltSDK::Logger::Category::OpenRPC, FireboltSDK::Logger::Module<FireboltSDK::Accessor>(), "%s is successfully invoked", methodName.c_str());
-            }
-
-        } else {
-            FIREBOLT_LOG_ERROR(FireboltSDK::Logger::Category::OpenRPC, FireboltSDK::Logger::Module<FireboltSDK::Accessor>(), "Error in getting Transport err = %d", status);
+        JsonObject jsonResult;
+        status = FireboltSDK::Gateway::Instance().Request(methodName, jsonParameters, jsonResult);
+        if (status == Firebolt::Error::None) {
+            FIREBOLT_LOG_INFO(FireboltSDK::Logger::Category::OpenRPC, FireboltSDK::Logger::Module<FireboltSDK::Accessor>(), "%s is successfully invoked", methodName.c_str());
         }
+
         if (err != nullptr) {
             *err = status;
         }
     }
+#ifdef GATEWAY_BIDIRECTIONAL
+    static void ProviderInvokeSession(unsigned id, std::string& methodName, JsonObject& jsonParameters, Firebolt::Error *err = nullptr)
+    {
+        Firebolt::Error status = Firebolt::Error::NotConnected;
+
+        status = FireboltSDK::Gateway::Instance().Response(id, methodName, jsonParameters);
+        if (status == Firebolt::Error::None) {
+            FIREBOLT_LOG_INFO(FireboltSDK::Logger::Category::OpenRPC, FireboltSDK::Logger::Module<FireboltSDK::Accessor>(), "%s is successfully invoked", methodName.c_str());
+        }
+
+        if (err != nullptr) {
+            *err = status;
+        }
+    }
+#endif
     static void ProviderFocusSession(std::string methodName, std::string& correlationId, Firebolt::Error *err = nullptr)
     {
         JsonObject jsonParameters;
+
+#ifdef GATEWAY_BIDIRECTIONAL
+#else
         WPEFramework::Core::JSON::Variant CorrelationId(correlationId);
         jsonParameters.Set(_T("correlationId"), CorrelationId);
+#endif
 
         ProviderInvokeSession(methodName, jsonParameters, err);
     }
     static void ProviderResultSession(std::string methodName, std::string& correlationId, ${provider.xresponse.name} result, Firebolt::Error *err = nullptr)
     {
         JsonObject jsonParameters;
+
+${provider.xresponse.serialization}
+#ifdef GATEWAY_BIDIRECTIONAL
+        ProviderInvokeSession(std::stoul(correlationId), methodName, jsonParameters, err);
+#else
         WPEFramework::Core::JSON::Variant CorrelationId(correlationId);
         jsonParameters.Set(_T("correlationId"), CorrelationId);
 
-${provider.xresponse.serialization}
         ProviderInvokeSession(methodName, jsonParameters, err);
+#endif
     }
     static void ProviderErrorSession(std::string methodName, std::string& correlationId, ${provider.xerror.name} result, Firebolt::Error *err = nullptr)
     {
         JsonObject jsonParameters;
+
+${provider.xerror.serialization}
+#ifdef GATEWAY_BIDIRECTIONAL
+        ProviderInvokeSession(std::stoul(correlationId), methodName, jsonParameters, err);
+#else
         WPEFramework::Core::JSON::Variant CorrelationId(correlationId);
         jsonParameters.Set(_T("correlationId"), CorrelationId);
 
-${provider.xerror.serialization}
         ProviderInvokeSession(methodName, jsonParameters, err);
+#endif
     }
   
 ${methods}
