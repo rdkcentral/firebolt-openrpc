@@ -52,9 +52,14 @@ mkdir -p ${ReleasePath}
 cp -aR ${SdkPath}/src ${ReleasePath}
 cp -aR ${SdkPath}/include ${ReleasePath}
 cp -aR ${SdkPath}/cmake ${ReleasePath}
+chmod +x ${SdkPath}/scripts/build.sh
 cp -aR ${SdkPath}/scripts/build.sh ${ReleasePath}
 cp -aR ${SdkPath}/CMakeLists.txt ${ReleasePath}
-mv ${SdkPath}/firebolt-*open-rpc.json ${ReleasePath}
+if [[ -e ${SdkPath}/firebolt-${ModuleName}-open-rpc.json ]]; then
+  mv ${SdkPath}/firebolt-*open-rpc.json ${ReleasePath}
+else
+  cp -aR ${SdkPath}/../../../dist/firebolt-*open-rpc.json ${ReleasePath}
+fi
 cp -aR ${SdkPath}/cpptest ${ReleasePath}/test
 
 sed -i'' \
