@@ -483,19 +483,12 @@ const insertObjectMacros = (content, schema, module, title, property, options)=>
 }
 
 const insertArrayMacros = (content, schema, module, level = 0, items, required = false) => {
-    // if (schema?.items?.enum  && module?.title === 'Discovery') {
-    //   console.log('Bam')
-    // }
   content = content
     .replace(/\$\{json\.type\}/g, getSchemaType(schema.items, module, { templateDir: 'json-types', code: false, namespace: true }))
     .replace(/\$\{items\}/g, items)
     .replace(/\$\{items\.with\.indent\}/g, required ? indent(items, '    ') : indent(items, '        '))
     .replace(/\$\{if\.impl.array.optional\}(.*?)\$\{end\.if\.impl.array.optional\}/gms, required ? '' : '$1')
     .replace(/\$\{if\.impl.array.non.optional\}(.*?)\$\{end\.if\.impl.array.non.optional\}/gms, required ? '$1' : '')
-
-    // if (content.includes(`WPEFramework::Core::JSON::ArrayType<'SD' | 'HD' | 'UHD'>`)) {
-    //   console.log('NOOO')
-    // }
 
   return content
 }
