@@ -69,7 +69,7 @@ namespace Firebolt {
             ASSERT(_singleton != nullptr);
             if (_singleton != nullptr) {
                 delete _singleton;
-                singleton = nullptr;
+                _singleton = nullptr;
             }
         }
 
@@ -113,7 +113,7 @@ namespace Firebolt {
         {
         }
 
-${module.init}
+${module.init:cpp}
     private:
         FireboltSDK::Accessor* _accessor;
         static FireboltAccessorImpl* _singleton;

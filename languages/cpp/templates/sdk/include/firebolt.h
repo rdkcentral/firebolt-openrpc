@@ -150,7 +150,7 @@ struct IFireboltAccessor {
     // Module Instance methods goes here.
     // Instances are owned by the FireboltAcccessor and linked with its lifecycle.
 
-${module.init}
+${module.init:h}
 };
 
 }

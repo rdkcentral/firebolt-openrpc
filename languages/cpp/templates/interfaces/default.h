@@ -1,1 +1,1 @@
-    virtual void ${method.name}( ${method.signature.params}, std::unique_ptr<IProviderSession> session ) = 0;
+    virtual void ${method.name}( ${event.result.schema.params}, std::unique_ptr<IProviderSession> session ) = 0;

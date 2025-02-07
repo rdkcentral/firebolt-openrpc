@@ -8,6 +8,7 @@
     "excludeDeclarations": true,
     "extractProviderSchema": true,
     "enableUnionTypes": false,
+    "copySchemasIntoModules": false,
     "aggregateFiles": [
         "/include/firebolt.h",
         "/src/firebolt.cpp"

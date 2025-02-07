@@ -20,7 +20,10 @@
 
 #include "FireboltSDK.h"
 #include "IModule.h"
-/* ${IMPORTS} */
+/* ${IMPORTS:impl} */
+${if.callsmetrics}#include "firebolt.h"
+#include "metrics_impl.h"
+${end.if.callsmetrics}
 #include "${info.title.lowercase}.h"
 
 ${if.implementations}

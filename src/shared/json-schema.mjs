@@ -180,6 +180,31 @@ const namespaceRefs = (uri, namespace, schema) => {
   }
 }
 
+const getReferencedSchema = (uri = '', moduleJson = {}) => {
+  const [mainPath, subPath] = (uri || '').split('#')
+  let result
+
+  if (!uri) {
+    throw "getReferencedSchema requires a non-null uri parameter"
+  }
+
+  if (mainPath) {
+    // TODO... assuming that bundles are in one of these two places is dangerous, should write a quick method to "find" where they are
+    result = getPathOr(null, ['components', 'schemas', mainPath, ...subPath.slice(1).split('/')], moduleJson)
+              || getPathOr(null, ['definitions', mainPath, ...subPath.slice(1).split('/')], moduleJson)
+  }
+  else if (subPath) {
+    result = getPathOr(null, subPath.slice(1).split('/'), moduleJson)
+  }
+  if (!result) {
+    //throw `getReferencedSchema: Path '${uri}' not found in ${moduleJson ? (moduleJson.title || moduleJson.info.title) : moduleJson}.`
+    return null
+  }
+  else {
+    return result
+  }
+}
+
 const getPath = (uri = '', moduleJson = {}) => {
   const [mainPath, subPath] = (uri || '').split('#')
   let result
@@ -262,9 +287,10 @@ const getPropertiesInSchema = (json, document) => {
       props.push(...Object.keys(node.properties))
     }
 
-    if (node.propertyNames) {
-      props.push(...node.propertyNames)
-    }
+    // TODO: this propertyNames requires either additionalProperties or patternProperties in order to use this method w/ getPropertySchema, as intended...
+    // if (node.propertyNames) {
+    //   props.push(...node.propertyNames)
+    // }
 
     return props
   }
@@ -280,7 +306,7 @@ function getSchemaConstraints(schema, module, options = { delimiter: '\n' }) {
 
   if (schema['$ref']) {
     if (schema['$ref'][0] === '#') {
-      return getSchemaConstraints(getPath(schema['$ref'], module), module, options)
+      return getSchemaConstraints(getReferencedSchema(schema['$ref'], module), module, options)
     }
     else {
       return ''
@@ -370,7 +396,7 @@ const dereferenceSchema = (refs, definition, document, unresolvedRefs, externalO
 
       let resolvedSchema = cloneDeep(getPathOr(null, refToPath(ref), document))
 
-      if (schemaReferencesItself(resolvedSchema, refToPath(ref))) {
+      if (schemaReferencesItself(resolvedSchema, pathToArray(ref, document))) {
         resolvedSchema = null
       }
 
@@ -515,6 +541,30 @@ const isDefinitionReferencedBySchema = (name = '', moduleJson = {}) => {
   return (refs.length > 0)
 }
 
+const findAll = (document, finder) => {
+  const results = []
+
+  if (document && finder(document)) {
+    results.push(document)
+  }
+
+  if ((typeof document) !== 'object' || !document) {
+    return results
+  }
+
+  Object.keys(document).forEach(key => {
+
+    if (Array.isArray(document) && key === 'length') {
+      return results
+    }
+    else if (typeof document[key] === 'object') {
+      results.push(...findAll(document[key], finder))
+    }
+  })
+
+  return results
+}
+
 const flattenMultipleOfs = (document, type, pointer, path) => {
   if (!pointer) {
     pointer = document
@@ -564,7 +614,365 @@ const flattenMultipleOfs = (document, type, pointer, path) => {
       }
     }
   })
-}  
+}
+
+function combineProperty(result, schema, document, prop, path, all) {
+  if (result.properties === undefined || result.properties[prop] === undefined) {
+    if (result.additionalProperties === false || schema.additionalProperties === false) {
+      if (all) {
+        // leave it out
+      }
+      else {
+        result.properties = result.properties || {}
+        result.properties[prop] = getPropertySchema(schema, prop, document)
+      }
+    }
+    else if (typeof result.additionalProperties === 'object') {
+      result.properties = result.properties || {}
+      result.properties[prop] = combineSchemas([result.additionalProperties, getPropertySchema(schema, prop, document)], document, path + '.' + prop, all)
+    }
+    else {
+      result.properties = result.properties || {}
+      result.properties[prop] = getPropertySchema(schema, prop, document)
+    }
+  }
+  else if (schema.properties === undefined || schema.properties[prop] === undefined) {
+    if (result.additionalProperties === false || schema.additionalProperties === false) {
+      if (all) {
+        delete result.properties[prop]
+      }
+      else {
+        // leave it
+      }
+    }
+    else if (typeof schema.additionalProperties === 'object') {
+      result.properties = result.properties || {}
+      result.properties[prop] = combineSchemas([schema.additionalProperties, getPropertySchema(result, prop, document)], document, path + '.' + prop, all)
+    }
+    else {
+      // do nothing
+    }    
+  }
+  else {
+    const a = getPropertySchema(result, prop, document)
+    const b = getPropertySchema(schema, prop, document)
+
+    result.properties[prop] = combineSchemas([a, b], document, path + '.' + prop, all, true)
+  }
+
+  result = JSON.parse(JSON.stringify(result))
+}
+
+function combineSchemas(schemas, document, path, all, createRefIfNeeded=false) {
+  schemas = JSON.parse(JSON.stringify(schemas))
+  let createRefSchema = false
+
+  if (createRefIfNeeded && schemas.find(s => s?.$ref) && !schemas.every(s => s.$ref === schemas.find(s => s?.$ref).$ref)) { 
+    createRefSchema = true
+  }
+
+  const reference = createRefSchema ? schemas.filter(schema => schema?.$ref).map(schema => schema.$ref).reduce( (prefix, ref, i, arr) => {
+    if (prefix === '') {
+      if (arr.length === 1) {
+        return ref.split('/').slice(0, -1).join('/') + '/'
+      }
+      else {
+        return ref
+      }
+    }
+    else {
+      let index = 0
+      while ((index < Math.min(prefix.length, ref.length)) && (prefix.charAt(index) === ref.charAt(index))) {
+        index++
+      }
+      return prefix.substring(0, index)
+    }
+  }, '') : ''
+
+  const resolve = (schema) => {
+    while (schema.$ref) {
+      if (!getReferencedSchema(schema.$ref, document)) {
+        console.log(`getReferencedSChema returned null`)
+        console.dir(schema)
+      }
+      schema = getReferencedSchema(schema.$ref, document)
+    }
+    return schema
+  }
+
+  let debug = false
+
+  const merge = (schema) => {
+    if (schema.allOf) {
+      schema.allOf = schema.allOf.map(resolve)
+      Object.assign(schema, combineSchemas(schema.allOf, document, path, true))
+      delete schema.allOf
+    }
+    if (schema.oneOf) {
+      schema.oneOf = schema.oneOf.map(resolve)
+      Object.assign(schema, combineSchemas(schema.oneOf, document, path, false))
+      delete schema.oneOf
+    }
+    if (schema.anyOf) {
+      schema.anyOf = schema.anyOf.map(resolve)
+      Object.assign(schema, combineSchemas(schema.anyOf, document, path, false))
+      delete schema.anyOf
+    }
+    return schema
+  }
+
+  const flatten = (schema) => {
+    while (schema.$ref || schema.oneOf || schema.anyOf || schema.allOf) {
+      schema = resolve(schema)
+      schema = merge(schema)
+    }
+    return schema
+  }
+
+  let result = schemas.shift()
+
+  schemas.forEach(schema => {
+
+    if (!schema) {
+      return // skip
+    }
+
+    if (schema.$ref && (schema.$ref === result.$ref)) {
+      return
+    }
+
+    result = JSON.parse(JSON.stringify(flatten(result)))
+    schema = JSON.parse(JSON.stringify(flatten(schema)))
+
+    if (schema.examples && result.examples) {
+      result.examples.push(...schema.examples)
+    }
+
+    if (schema.anyOf) {
+      throw "Cannot combine schemas that contain anyOf"
+    }
+    else if (schema.oneOf) {
+      throw "Cannot combine schemas that contain oneOf"
+    }
+    else if (schema.allOf) {
+      throw "Cannot combine schemas that contain allOf"
+    }
+    else if (Array.isArray(schema.type)) {
+      throw "Cannot combine schemas that have type set to an Array"
+    }
+    else {
+      if (result.const !== undefined && schema.const != undefined) {
+        if (result.const === schema.const) {
+          return
+        }
+        else if (all) {
+          throw `Combined allOf resulted in impossible schema: const ${schema.const} !== const ${result.const}`
+        }
+        else {
+          result.enum = [result.const, schema.const]
+          result.type = typeof result.const
+          delete result.const
+        }
+      }
+      else if (result.enum && schema.enum) {
+        if (all) {
+          result.enum = result.enum.filter(value => schema.enum.includes(value))
+          if (result.enum.length === 0) {
+            throw `Combined allOf resulted in impossible schema: enum: []`
+          }
+        }
+        else {
+          result.enum = Array.from(new Set(result.enum.concat(schema.enum)))
+        }
+      }
+      else if ((result.const !== undefined || schema.const !== undefined) && (result.enum || schema.enum)) {
+        if (all) {
+          const c = result.const !== undefined ? result.const : schema.const
+          const e = result.enum || schema.enum
+          if (e.contains(c)) {
+            result.const = c
+            delete result.enum
+            delete result.type
+          }
+          else {
+            throw `Combined allOf resulted in impossible schema: enum: ${e} does not contain const: ${c}`
+          }
+        }
+        else {
+          result.enum = Array.from(new Set([].concat(result.enum || result.const).concat(schema.enum || schema.const)))
+          result.type = result.type || schema.type
+          delete result.const
+        }
+      }
+      else if ((result.const !== undefined || schema.const !== undefined) && (result.type || schema.type)) {
+        // TODO need to make sure the types match
+        if (all) {
+          result.const = result.const !== undefined ? result.const : schema.const
+          delete result.type
+        }
+        else {
+          result.type = result.type || schema.type
+          delete result.const
+        }
+      }
+      else if (schema.type !== result.type) {
+        throw `Cannot combine schemas with property type conflicts, '${path}': ${schema.type} != ${result.type} in ${schema.title} / ${result.title}`
+      }  
+      else if ((result.enum || schema.enum) && (result.type || schema.type)) {
+        if (all) {
+          result.enum = result.enum || schema.enum
+        }
+        else {
+          result.type = result.type || schema.type
+          delete result.enum
+        }
+      }
+      else if (schema.type === "object") {
+        const propsInSchema = getPropertiesInSchema(schema, document)
+        const propsOnlyInResult = getPropertiesInSchema(result, document).filter(p => !propsInSchema.includes(p))
+
+        propsInSchema.forEach(prop => {
+          combineProperty(result, schema, document, prop, path, all)
+          delete result.title
+        })
+
+        propsOnlyInResult.forEach(prop => {
+          combineProperty(result, schema, document, prop, path, all)
+          delete result.title
+        })
+
+        if (result.additionalProperties === false || schema.additionalProperties === false) {
+          if (all) {
+            result.additionalProperties = false
+          }
+          else {
+            if (result.additionalProperties === true || schema.additionalProperties === true || result.additionalProperties === undefined || schema.additionalProperties === undefined) {
+              result.additionalProperties = true
+            }
+            else if (typeof result.additionalProperties === 'object' || typeof schema.additionalProperties === 'object') {
+              result.additionalProperties = result.additionalProperties || schema.additionalProperties
+            }
+          }
+        }
+        else if (typeof result.additionalProperties === 'object' || typeof schema.additionalProperties === 'object') {
+          result.additionalProperties = combineSchemas([result.additionalProperties, schema.additionalProperties], document, path, all)
+        }
+
+        if (Array.isArray(result.propertyNames) && Array.isArray(schema.propertyNames)) {
+          if (all) {
+            result.propertyNames = Array.from(new Set(result.propertyNames.concat(schema.propertyNames)))
+          }
+          else {
+            result.propertyNames = result.propertyNames.filter(prop => schema.propertyNames.includes(prop))
+          }
+        }
+        else if (Array.isArray(result.propertyNames) || Array.isArray(schema.propertyNames)) {
+          if (all) {
+            result.propertyNames = result.propertyNames || schema.propertyNames
+          }
+          else {
+            delete result.propertyNames
+          }
+        }
+        
+        if (result.patternProperties || schema.patternProperties) {
+          throw `Cannot combine object schemas that have patternProperties ${schema.title} / ${result.title}, ${path}`
+        }
+
+        if (result.required && schema.required) {
+          if (all) {
+            result.required = Array.from(new Set(result.required.concat(schema.required)))
+          }
+          else {
+            result.required = result.required.filter(prop => schema.required.includes(prop))
+          }
+        }
+        else if (result.required || schema.required) {
+          if (all) {
+            result.required = result.required || schema.required
+          }
+          else {
+            delete result.required
+          }
+        }
+      }
+      else if (schema.type === "array") {
+        if (Array.isArray(result.items) || Array.isArray(schema.items)) {
+          throw `Cannot combine tuple schemas, ${path}: ${schema.title} / ${result.title}`
+        }
+        result.items = combineSchemas([result.items, schema.items], document, path, all)
+      }
+
+      if (result.title || schema.title) {
+        result.title = schema.title || result.title // prefer titles from lower in the any/all/oneOf list
+      }
+
+      // combine all other stuff
+      const skip = ['title', 'type', '$ref', 'const', 'enum', 'properties', 'items', 'additionalProperties', 'patternProperties', 'anyOf', 'oneOf', 'allOf']
+      const keysInSchema = Object.keys(schema)
+      const keysOnlyInResult = Object.keys(result).filter(k => !keysInSchema.includes(k))
+
+      keysInSchema.filter(key => !skip.includes(key)).forEach(key => {
+        if (result[key] === undefined) {
+          if (all) {
+            result[key] = schema[key]
+          }
+        }
+        else {
+          // not worth doing this for code-generation, e.g. minimum doesn't actually affect type defintions in most languages
+        }
+      })
+
+      keysOnlyInResult.filter(key => !skip.includes(key)).forEach(key => {
+        if (all) {
+          // do nothing
+        }
+        else {
+          delete result[key]
+        }
+      })
+    }
+  })
+
+  delete result.if
+  delete result.then
+  delete result.else
+  delete result.not
+
+  if (reference && createRefSchema) {
+    const [fragment, uri] = reference.split('#').reverse()
+    const title = result.title || path.split('.').slice(-2).map(x => x.charAt(0).toUpperCase() + x.substring(1)).join('')
+
+    result.title = title
+    
+    let bundle 
+
+    if (uri) {
+      bundle = findAll(document, s => s.$id === uri)[0]
+    }
+    else {
+      bundle = document
+    }
+
+    let pathArray = (fragment + title).split('/')
+    const name = pathArray.pop()
+    let key, i=1
+    while (key = pathArray[i]) {
+      bundle = bundle[key]
+      i++
+    }
+
+    bundle[name] = result
+
+    const refSchema = {
+      $ref: [uri ? uri : '', [...pathArray, name].join('/')].join('#')
+    }
+
+    return refSchema
+  }
+  
+  return result
+}
 
 function union(schemas) {
 
@@ -658,6 +1066,7 @@ export {
   getLocalSchemaPaths,
   getLinkedSchemaPaths,
   getPath,
+  getReferencedSchema,
   getPropertySchema,
   getPropertiesInSchema,
   isDefinitionReferencedBySchema,
