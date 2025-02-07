@@ -62,14 +62,6 @@ else
 fi
 cp -aR ${SdkPath}/cpptest ${ReleasePath}/test
 
-sed -i'' \
-  -e '/-t enable test/d' \
-  -e '/EnableTest="\(ON\|OFF\)"/d' \
-  -e 's/getopts p:s:cltbih/getopts p:s:clbih/g' \
-  -e '/t) EnableTest=.*;;/d' \
-  -e '/-DENABLE_TESTS=${EnableTest}/d' \
-  ${ReleasePath}/build.sh
-
 cd ${ReleasePath}/../
 tar -cvzf ${ReleaseName}.tgz ${ReleaseName}/*
 cd -

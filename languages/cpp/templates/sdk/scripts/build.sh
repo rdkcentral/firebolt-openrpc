@@ -7,7 +7,6 @@ usage()
    echo "    -s sysroot path"
    echo "    -c clear build"
    echo "    -l enable static build"
-   echo "    -t enable test"
    echo "    -b enable bidirectional gateway"
    echo "    -i enable interactive application"
    echo "    -h : help"
@@ -17,20 +16,18 @@ usage()
 }
 
 SdkPath="."
-EnableTest="OFF"
 SysrootPath=${SYSROOT_PATH}
 ClearBuild="N"
 EnableStaticLib="OFF"
 EnableBidirectional="OFF"
 EnableInteractiveApp="OFF"
-while getopts p:s:cltbih flag
+while getopts p:s:clbih flag
 do
     case "${flag}" in
         p) SdkPath="${OPTARG}";;
         s) SysrootPath="${OPTARG}";;
         c) ClearBuild="Y";;
         l) EnableStaticLib="ON";;
-        t) EnableTest="ON";;
         b) EnableBidirectional="ON";;
         i) EnableInteractiveApp="ON";;
         h) usage && exit 1;;
@@ -45,7 +42,6 @@ fi
 rm -rf ${SdkPath}/build/src/libFireboltSDK.so
 cmake -B${SdkPath}/build -S${SdkPath} \
   -DSYSROOT_PATH=${SysrootPath} \
-  -DENABLE_TESTS=${EnableTest} \
   -DHIDE_NON_EXTERNAL_SYMBOLS=OFF \
   -DFIREBOLT_ENABLE_STATIC_LIB=${EnableStaticLib} \
   -DENABLE_BIDIRECTIONAL=${EnableBidirectional} \
