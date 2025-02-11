@@ -571,7 +571,7 @@ const generateMacros = (platformApi, appApi, templates, languages, options = {})
     callsMetrics: false,
   }
 
-  if (callsMetrics(platformApi)) {
+  if (callsMetrics(platformApi).length > 0) {
     macros.callsMetrics = true
   }
 
@@ -1172,6 +1172,7 @@ const generateImports = (platformApi, appApi, templates, options = { destination
     imports += getTemplate('/imports/x-method', templates)
   }
 
+  // I don't think we need this anymore
   if (callsMetrics(platformApi).length) {
     imports += getTemplateFromDestination(options.destination, '/imports/calls-metrics', templates)
   }
