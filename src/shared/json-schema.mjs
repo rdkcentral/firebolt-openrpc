@@ -109,7 +109,7 @@ const getLocalSchemaPaths = obj => {
 const getLinkedSchemaPaths = obj => {
   return objectPaths(obj)
     .filter(x => /\/\$ref$/.test(x))
-    .map(refToPath)
+    .map(x => pathToArray(x, obj))
 }
 
 const updateRefUris = (schema, uri) => {

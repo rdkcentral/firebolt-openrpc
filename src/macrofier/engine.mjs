@@ -1110,7 +1110,7 @@ function getRelatedSchemaLinks(schema = {}, json = {}, templates = {}, options =
   .map(path => getPathOr(null, path, schema))
   .filter(path => seen.hasOwnProperty(path) ? false : (seen[path] = true))
   .map(ref => getReferencedSchema(ref, json))
-  .filter(schema => schema.title)
+  .filter(schema => schema?.title)
   .map(schema => '[' + Types.getSchemaType(schema, json, { templateDir: state.typeTemplateDir, namespace: !config.copySchemasIntoModules }) + '](' + getLinkForSchema(schema, json) + ')') // need full module here, not just the schema
   .filter(link => link)
   .join('\n')
