@@ -162,21 +162,21 @@ const doListen = function(module, event, callback, context, once, internal=false
       reject = rej
     })
 
+    // Iterate and resolve/reject through the list of promises sequentially
+    const tempListenerId = listenerId
     if (promises.length) {
-      Promise.all(promises).then(responses => {
-        resolve(listenerId)
-      }).catch(error => {
-        // Promise.all rejects if at least one promise rejects... we don't want that behavior here
-        // TODO: Do something better than fail silently
-        if (event === '*') {
-          resolve(listenerId)
-        }
-        else {
-          reject(error)
-        }
-      })
-    }
-    else {
+      promises.reduce((prevPromise, currentPromise) => {
+        return prevPromise
+          .then(() => currentPromise)
+          .then(responses => {
+            resolve(tempListenerId)
+          })
+          .catch(error => {
+            doClear(tempListenerId, event, context)
+            reject(error)
+          })
+      }, Promise.resolve())
+    } else {
       resolve(listenerId)
     }
 
