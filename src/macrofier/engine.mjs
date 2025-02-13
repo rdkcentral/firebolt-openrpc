@@ -1367,7 +1367,7 @@ function generateMethods(platformApi = {}, appApi = null, examples = {}, templat
     })
   }
 
-  if (platformApi.methods && platformApi.methods.find(isProviderInterfaceMethod)) {
+  if (platformApi.methods && platformApi.methods.find(isProviderInterfaceMethod) && !appApi) {
     ['provide'].forEach(type => {
       results.push(generateMethodResult(type, templates))
     })
@@ -1712,6 +1712,7 @@ function insertMethodMacros(template, methodObj, platformApi, appApi, templates,
     .replace(/\$\{method\.pulls\.response\.instantiation}/g, pullsResponseInst)
     .replace(/\$\{method\.pulls\.result\.serialization\.with\.indent\}/g, indent(pullsResultSerialize, '    ', 3, 2))
     .replace(/\$\{method\.setter\.for\}/g, setterFor)
+    .replace(/\$\{method\.interface\}/g, extension(methodObj, 'x-interface'))
     .replace(/\$\{method\.puller\}/g, pullerTemplate) // must be last!!
     .replace(/\$\{method\.setter\}/g, setterTemplate) // must be last!!
     .replace(/\$\{method\.subscriber\}/g, subscriberTemplate) // must be last!!
