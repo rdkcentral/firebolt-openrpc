@@ -1,5 +1,7 @@
 #include<iostream>
 #include <fstream>
+#include <vector>
+#include <filesystem>
 
 #include "gtest/gtest.h"
 #include "gmock/gmock.h"
@@ -22,7 +24,6 @@ inline std::string capitalizeFirstChar(std::string str) {
     return str;
 }
 
-
 class JsonEngine
 {
     private:
@@ -33,7 +34,7 @@ class JsonEngine
 
         JsonEngine()
         {
-            _data = read_json_from_file("../../firebolt-core-open-rpc.json");
+            _data = read_json_from_file();
         }
 
         ~JsonEngine(){
@@ -54,8 +55,26 @@ class JsonEngine
             return "";
         }
 
-        json read_json_from_file(const std::string &filename)
+        json read_json_from_file()
         {
+            std::vector<std::string> openRpcFiles = {
+                "firebolt-core-open-rpc.json",
+                "firebolt-manage-open-rpc.json",
+                "firebolt-discovery-open-rpc.json"
+                };
+            std::string filename;
+            for (const auto& file : openRpcFiles) 
+            {
+
+                std::string filePath = std::filesystem::current_path() / ".." / ".." / file;
+
+                if (std::filesystem::exists(filePath)) 
+                {
+                    filename = filePath;
+                    break;
+                }
+    
+            }
             std::ifstream file(filename);
             if (!file.is_open())
             {
