@@ -365,13 +365,6 @@ const insertObjectMacros = (content, schema, module, title, property, options)=>
         
         let type = getSchemaType(localizedProp, module, options2)
 
-        if (localizedProp.anyOf) {
-          type = ''
-        }
-
-        // if (type === 'object' ) {
-        //   type = getSchemaShape(prop, module, { ...options2, type: true })
-        // }
 
         // don't push properties w/ unsupported types
         if (type) {

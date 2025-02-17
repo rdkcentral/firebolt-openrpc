@@ -151,7 +151,7 @@ const getLinkForSchema = (schema, json) => {
 const getComponentExternalSchema = (platformApi, appApi) => {
   const refSchemas = new Set();
 
-  let externalSchemas;
+  let externalSchemas = {};
   let isDefinitions = false;
   let titleLowercase;
 
@@ -159,14 +159,16 @@ const getComponentExternalSchema = (platformApi, appApi) => {
     externalSchemas = platformApi.definitions;
     isDefinitions = true;
     titleLowercase = platformApi?.title?.toLowerCase();
-  } else if (platformApi.components && platformApi.components.schemas && Object.keys(platformApi.components.schemas).length > 0) {
-    externalSchemas = platformApi.components.schemas;
+  }
+
+  if (platformApi?.components && platformApi?.components?.schemas && Object.keys(platformApi.components.schemas).length > 0) {
+    externalSchemas = { ...externalSchemas, ...platformApi.components.schemas };
     titleLowercase = platformApi?.info?.title?.toLowerCase();
-  } else if (appApi.components && appApi.components.schemas && Object.keys(appApi.components.schemas).length > 0) {
-    externalSchemas = appApi.components.schemas;
+  }
+
+  if (appApi?.components && appApi?.components?.schemas && Object.keys(appApi.components.schemas).length > 0) {
+    externalSchemas = { ...externalSchemas, ...appApi.components.schemas };
     titleLowercase = appApi?.info?.title?.toLowerCase();
-  } else {
-    externalSchemas = {};
   }
 
   // Function to process references
