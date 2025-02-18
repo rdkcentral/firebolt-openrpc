@@ -113,6 +113,14 @@ namespace FireboltSDK
             }
         }
 
+#ifdef UNIT_TEST
+        template <typename RESPONSE>
+        Firebolt::Error Request(const std::string &method, const JsonObject &parameters, RESPONSE &response)
+        {
+            std::cout << "Inside Mock Request() function, event: " << method << std::endl;
+            return Firebolt::Error::None;
+        }
+#else
         template <typename RESPONSE>
         Firebolt::Error Request(const std::string &method, const JsonObject &parameters, RESPONSE &response)
         {
@@ -145,6 +153,7 @@ namespace FireboltSDK
 
             return result;
         }
+#endif
 
         bool IdRequested(MessageID id)
         {

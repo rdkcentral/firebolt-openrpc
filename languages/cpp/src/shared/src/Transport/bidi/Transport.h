@@ -268,42 +268,6 @@ namespace FireboltSDK
             return _channel->Sequence();
         }
 
-        template <typename RESPONSE>
-        Firebolt::Error Subscribe(const string& eventName, const string& parameters, RESPONSE& response, bool updateInternal = false)
-        {
-            Entry slot;
-            uint32_t id = _channel->Sequence();
-            Firebolt::Error result = Send(eventName, parameters, id);
-
-            if (result == Firebolt::Error::None) {
-                _adminLock.Lock();
-                
-                // Choose the map based on updateInternal flag
-                EventMap& eventMap = updateInternal ? _internalEventMap : _externalEventMap;
-
-                // Add to the selected event map
-                eventMap.emplace(std::piecewise_construct,
-                                std::forward_as_tuple(eventName),
-                                std::forward_as_tuple(id));
-
-                _adminLock.Unlock();
-
-                result = WaitForEventResponse(id, eventName, response, _waitTime, eventMap);
-              
-            }
-
-            return result;
-        }
-
-        Firebolt::Error Unsubscribe(const string &eventName, const string &parameters)
-        {
-            Revoke(eventName);
-            Entry slot;
-            uint32_t id = _channel->Sequence();
-
-            return Send(eventName, parameters, id);
-        }
-
         void NotifyStatus(Firebolt::Error status)
         {
             _listener(false, status);
