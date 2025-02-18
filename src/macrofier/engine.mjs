@@ -1370,7 +1370,7 @@ function generateMethods(platformApi = {}, appApi = null, examples = {}, templat
     })
   }
 
-  if (platformApi.methods && platformApi.methods.find(isProviderInterfaceMethod)) {
+  if (platformApi.methods && platformApi.methods.find(isProviderInterfaceMethod) && !appApi) {
     ['provide'].forEach(type => {
       results.push(generateMethodResult(type, templates))
     })
@@ -1635,6 +1635,7 @@ function insertMethodMacros(template, methodObj, platformApi, appApi, templates,
     .replace(/\$\{method\.params\.list\}/g, method.params)
     .replace(/\$\{method\.params\.array\}/g, JSON.stringify(methodObj.params.map(p => p.name)))
     .replace(/\$\{method\.params\.count}/g, methodObj.params ? methodObj.params.length : 0)
+    .replace(/\$\{if\.method\.transform\}(.*?)\$\{end\.if\.method\.transform\}/gms, method.transform ? '$1' : '')
     .replace(/\$\{if\.params\}(.*?)\$\{end\.if\.params\}/gms, method.params.length ? '$1' : '')
     .replace(/\$\{if\.result\}(.*?)\$\{end\.if\.result\}/gms, resultType ? '$1' : '')
     .replace(/\$\{if\.result.nonvoid\}(.*?)\$\{end\.if\.result.nonvoid\}/gms, resultType && resultType !== 'void' ? '$1' : '')
@@ -1714,6 +1715,7 @@ function insertMethodMacros(template, methodObj, platformApi, appApi, templates,
     .replace(/\$\{method\.pulls\.response\.instantiation}/g, pullsResponseInst)
     .replace(/\$\{method\.pulls\.result\.serialization\.with\.indent\}/g, indent(pullsResultSerialize, '    ', 3, 2))
     .replace(/\$\{method\.setter\.for\}/g, setterFor)
+    .replace(/\$\{method\.interface\}/g, extension(methodObj, 'x-interface'))
     .replace(/\$\{method\.puller\}/g, pullerTemplate) // must be last!!
     .replace(/\$\{method\.setter\}/g, setterTemplate) // must be last!!
     .replace(/\$\{method\.subscriber\}/g, subscriberTemplate) // must be last!!

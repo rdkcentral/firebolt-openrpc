@@ -1,7 +1,4 @@
 
 function ${method.name}(${method.params.list}) {
-
-  const transforms = ${method.transforms}
-
-  return Transport.send('${info.title}', '${method.name}', { ${method.params.list} }, transforms)
+  return Gateway.request('${info.title}.${method.name}', { ${method.params.list} })${if.method.transform}${method.transform}${end.if.method.transform}
 }

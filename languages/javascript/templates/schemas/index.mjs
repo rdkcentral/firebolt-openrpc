@@ -20,13 +20,8 @@
 
 /* ${INITIALIZATION} */
 
-/* ${EVENTS} */
-/* ${METHODS} */
-  
 export default {
 
-  /* ${EVENTS_ENUM} */
   /* ${ENUM_IMPLEMENTATIONS} */
-  /* ${METHOD_LIST} */
 
 }
