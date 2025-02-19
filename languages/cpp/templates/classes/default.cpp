@@ -1,12 +1,9 @@
     class ${info.Title}${method.Name}Session : virtual public IProviderSession {
     public:
-         std::string correlationId () const override
-         {
-             return _correlationId;
-         }
+        // No correlationId with bidirectional
 
     public:
-        std::string _correlationId;
+        // No correlationId with bidirectional
     };
     static void ${info.Title}${method.Name}SessionInnerCallback( void* provider, const void* userData, void* jsonResponse )
     {
