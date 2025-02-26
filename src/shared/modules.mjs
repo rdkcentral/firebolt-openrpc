@@ -362,7 +362,12 @@ const getPayloadFromEvent = (event, appApi) => {
   }
 }
 
-const getSetterFor = (property, json) => json.methods && json.methods.find(m => m.tags && m.tags.find(t => t['x-setter-for'] === property))
+const getSetterFor = (property, json) => {
+  const fullProperty = `${json?.info?.title}.${property}`;
+  return json.methods && json.methods.find(m => 
+    m.tags && m.tags.find(t => t['x-setter-for'] === property || t['x-setter-for'] === fullProperty)
+  );
+};
 
 const getSubscriberFor = (property, json) => json.methods.find(m => m.tags && m.tags.find(t => t['x-alternative'] === property))
 
@@ -1056,6 +1061,10 @@ const generatePropertySetters = json => {
     const properties = json.methods.filter( m => m.tags && m.tags.find( t => t.name == 'property')) || []
 
     properties.forEach(property => json.methods.push(createSetterFromProperty(property)))
+
+    console.log(json.methods[6])
+    console.log(json.methods[7])
+    console.log(json.methods[8])
 
     return json
 }
