@@ -1062,10 +1062,6 @@ const generatePropertySetters = json => {
 
     properties.forEach(property => json.methods.push(createSetterFromProperty(property)))
 
-    console.log(json.methods[6])
-    console.log(json.methods[7])
-    console.log(json.methods[8])
-
     return json
 }
 
