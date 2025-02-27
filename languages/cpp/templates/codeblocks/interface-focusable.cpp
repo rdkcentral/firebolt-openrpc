@@ -1,3 +1,32 @@
+    static void ProviderInvokeSession(std::string& methodName, JsonObject& jsonParameters, Firebolt::Error *err = nullptr)
+    {
+        Firebolt::Error status = Firebolt::Error::NotConnected;
+
+        JsonObject jsonResult;
+        status = FireboltSDK::Gateway::Instance().Request(methodName, jsonParameters, jsonResult);
+        if (status == Firebolt::Error::None) {
+            FIREBOLT_LOG_INFO(FireboltSDK::Logger::Category::OpenRPC, FireboltSDK::Logger::Module<FireboltSDK::Accessor>(), "%s is successfully invoked", methodName.c_str());
+        }
+
+        if (err != nullptr) {
+            *err = status;
+        }
+    }
+#ifdef GATEWAY_BIDIRECTIONAL
+    static void ProviderInvokeSession(unsigned id, std::string& methodName, JsonObject& jsonParameters, Firebolt::Error *err = nullptr)
+    {
+        Firebolt::Error status = Firebolt::Error::NotConnected;
+
+        status = FireboltSDK::Gateway::Instance().Response(id, methodName, jsonParameters);
+        if (status == Firebolt::Error::None) {
+            FIREBOLT_LOG_INFO(FireboltSDK::Logger::Category::OpenRPC, FireboltSDK::Logger::Module<FireboltSDK::Accessor>(), "%s is successfully invoked", methodName.c_str());
+        }
+
+        if (err != nullptr) {
+            *err = status;
+        }
+    }
+#endif
     static void ProviderFocusSession(std::string methodName, std::string& correlationId, Firebolt::Error *err = nullptr)
     {
         JsonObject jsonParameters;
