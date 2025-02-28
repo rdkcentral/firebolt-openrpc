@@ -1,3 +1,10 @@
+# [3.2.0-next.14](https://github.com/rdkcentral/firebolt-openrpc/compare/v3.2.0-next.13...v3.2.0-next.14) (2025-02-28)
+
+
+### Bug Fixes
+
+* Events - Change promise all to reduce for sequential resolving ([#230](https://github.com/rdkcentral/firebolt-openrpc/issues/230)) ([43f3ad3](https://github.com/rdkcentral/firebolt-openrpc/commit/43f3ad3f72721d779cf7c75e34e4f060abcb33fd))
+
 # [3.2.0-next.13](https://github.com/rdkcentral/firebolt-openrpc/compare/v3.2.0-next.12...v3.2.0-next.13) (2025-01-22)
 
 
