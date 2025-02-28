@@ -344,7 +344,11 @@ const insertObjectMacros = (content, schema, module, title, property, options) =
            options2.required = schema.required && schema.required.includes(name)
         }
         const schemaShape = indent + getSchemaShape(localizedProp, module, options2).replace(/\n/gms, '\n' + indent)
-        const type = getSchemaType(localizedProp, module, options2)
+
+        let type = getSchemaType(localizedProp, module, options2)
+        if (type === 'object') {
+          type = getSchemaShape(localizedProp, module, { ...options2, type: true })
+        }
         // don't push properties w/ unsupported types
         if (type) {
           const description = getSchemaDescription(prop, module)
@@ -549,7 +553,7 @@ function getSchemaShape(schema = {}, module = {}, { templateDir = 'types', paren
   const suffix = destination && ('.' + destination.split('.').pop()) || ''
   const theTitle = insertSchemaMacros(getTemplate(path.join(templateDir, 'title' + suffix)), schema, module, { name: schema.title, parent, property, required, recursive: false })
 
-  let result = getTemplate(path.join(templateDir, 'default' + suffix)) || '${shape}' 
+  let result = !type && getTemplate(path.join(templateDir, 'default' + suffix)) || '${shape}'
 
   let genericTemplate = getTemplate(path.join(templateDir, 'generic' + suffix))
   if (enums && level === 0 && Array.isArray(schema.enum) && ((schema.type === "string") || (schema.type[0] === "string"))) {

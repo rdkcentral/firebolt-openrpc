@@ -1,3 +1,31 @@
+# [3.2.0-next.13](https://github.com/rdkcentral/firebolt-openrpc/compare/v3.2.0-next.12...v3.2.0-next.13) (2025-01-22)
+
+
+### Bug Fixes
+
+* C++ Auto-Reconnect typo ([#240](https://github.com/rdkcentral/firebolt-openrpc/issues/240)) ([bbd5813](https://github.com/rdkcentral/firebolt-openrpc/commit/bbd581398b911d10e7b4f5b495d7c94cb1cdd2f1))
+
+# [3.2.0-next.12](https://github.com/rdkcentral/firebolt-openrpc/compare/v3.2.0-next.11...v3.2.0-next.12) (2024-12-16)
+
+
+### Bug Fixes
+
+* C++ Auto-Reconnect ([#237](https://github.com/rdkcentral/firebolt-openrpc/issues/237)) ([dde6753](https://github.com/rdkcentral/firebolt-openrpc/commit/dde67533121d147db373c2c46c4d53e4bb467cd1))
+
+# [3.2.0-next.11](https://github.com/rdkcentral/firebolt-openrpc/compare/v3.2.0-next.10...v3.2.0-next.11) (2024-11-27)
+
+
+### Bug Fixes
+
+* C++ Pascal casing method name ([#233](https://github.com/rdkcentral/firebolt-openrpc/issues/233)) ([ed1106f](https://github.com/rdkcentral/firebolt-openrpc/commit/ed1106f8b608364078998fca87ee853fb4c54224))
+
+# [3.2.0-next.10](https://github.com/rdkcentral/firebolt-openrpc/compare/v3.2.0-next.9...v3.2.0-next.10) (2024-11-21)
+
+
+### Bug Fixes
+
+* Make nested objects show in typescript .d.ts file and in the doc… ([#231](https://github.com/rdkcentral/firebolt-openrpc/issues/231)) ([31217ce](https://github.com/rdkcentral/firebolt-openrpc/commit/31217ceef01b23ede632015472caa1f12b5a17d4))
+
 # [3.2.0-next.9](https://github.com/rdkcentral/firebolt-openrpc/compare/v3.2.0-next.8...v3.2.0-next.9) (2024-11-18)
 
 

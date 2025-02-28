@@ -54,7 +54,7 @@ ${event.callback.instantiation}
     }
     void ${info.Title}Impl::globalSubscribe( I${info.Title}::I${method.Name}Notification& notification, Firebolt::Error *err )
     {
-        const string eventName = _T("${info.title.lowercase}.${method.rpc.name}");
+        const string eventName = _T("${info.title}.${method.rpc.name}");
         Firebolt::Error status = Firebolt::Error::None;
 
         JsonObject jsonParameters;
@@ -66,7 +66,7 @@ ${event.callback.instantiation}
     }
     void ${info.Title}Impl::globalUnsubscribe( I${info.Title}::I${method.Name}Notification& notification, Firebolt::Error *err )
     {
-        Firebolt::Error status = FireboltSDK::Event::Instance().Unsubscribe(_T("${info.title.lowercase}.${method.rpc.name}"), reinterpret_cast<void*>(&notification));
+        Firebolt::Error status = FireboltSDK::Event::Instance().Unsubscribe(_T("${info.title}.${method.rpc.name}"), reinterpret_cast<void*>(&notification));
 
         if (err != nullptr) {
             *err = status;
