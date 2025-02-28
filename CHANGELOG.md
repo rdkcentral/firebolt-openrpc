@@ -1,3 +1,10 @@
+# [3.2.0-next.15](https://github.com/rdkcentral/firebolt-openrpc/compare/v3.2.0-next.14...v3.2.0-next.15) (2025-02-28)
+
+
+### Bug Fixes
+
+* remove problematic listener removal ([#221](https://github.com/rdkcentral/firebolt-openrpc/issues/221)) ([4746ea8](https://github.com/rdkcentral/firebolt-openrpc/commit/4746ea86bd9117446e2e6a972feeb6b4ed2d313b))
+
 # [3.2.0-next.14](https://github.com/rdkcentral/firebolt-openrpc/compare/v3.2.0-next.13...v3.2.0-next.14) (2025-02-28)
 
 
