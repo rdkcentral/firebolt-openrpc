@@ -60,11 +60,6 @@ namespace FireboltSDK
             return transport->Invoke(method, parameters, response);
         }
 
-        Firebolt::Error Response(unsigned id, const std::string &method, const JsonObject &response)
-        {
-            return Firebolt::Error::General;
-        }
-
         template <typename RESPONSE>
         Firebolt::Error Subscribe(const string& event, const string& parameters, RESPONSE& response)
         {
@@ -82,8 +77,8 @@ namespace FireboltSDK
             return transport->Unsubscribe(event, parameters);
         }
 
-        template <typename RESPONSE, typename PARAMETERS, typename CALLBACK>
-        Firebolt::Error RegisterProviderInterface(const std::string &method, const PARAMETERS &parameters, const CALLBACK& callback, void* usercb)
+        template <typename RESPONSE, typename CALLBACK>
+        Firebolt::Error RegisterProviderInterface<RESPONSE>(const std::string &method, const JsonObject &parameters, const CALLBACK& callback)
         {
             return Firebolt::Error::General;
         }

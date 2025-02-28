@@ -49,7 +49,7 @@ namespace FireboltSDK
         EventMap eventMap;
         mutable std::mutex eventMap_mtx;
 
-        using DispatchFunctionProvider = std::function<void(const std::string &parameters, unsigned, void*)>;
+        using DispatchFunctionProvider = std::function<std::string(const std::string &parameters, void*)>;
 
         struct Method {
             std::string name;
@@ -134,7 +134,7 @@ namespace FireboltSDK
             }
         }
 
-        void Request(unsigned id, const std::string &method, const std::string &parameters)
+        void Request(Transport<WPEFramework::Core::JSON::IElement>* transport, unsigned id, const std::string &method, const std::string &parameters)
         {
             size_t dotPos = method.find('.');
             if (dotPos == std::string::npos) {
@@ -152,18 +152,11 @@ namespace FireboltSDK
             while (it != methods.end()) {
                 it = std::find_if(it, methods.end(), [&methodName](const Method &m) { return m.name == methodName; });
                 if (it != methods.end()) {
-                    it->lambda("{ \"parameters\":" + parameters + "}", id, it->usercb);
-                    it++;
+                    std::string response = it->lambda("{ \"parameters\":" + parameters + "}", it->usercb);
+                    transport->SendResponse(id, response);
+                    break;
                 }
             }
-        }
-
-        Firebolt::Error Response(Transport<WPEFramework::Core::JSON::IElement>* transport, unsigned id, const std::string &method, const JsonObject &response)
-        {
-            std::string s;
-            response.ToString(s);
-            Firebolt::Error status = transport->SendResponse(method, "\"" + std::string(response.Get(_T("result"))) + "\"", id);
-            return status;
         }
 
         template <typename RESPONSE, typename PARAMETERS, typename CALLBACK>
@@ -179,12 +172,12 @@ namespace FireboltSDK
                 method.erase(0, 2); // erase "on"
             }
 
-            std::function<void(void* usercb, const void* response, void*)> actualCallback = callback;
-            DispatchFunctionProvider lambda = [actualCallback, method, waitTime](const std::string &response, unsigned id, void* usercb) {
-                WPEFramework::Core::ProxyType<RESPONSE>* jsonResponse = new WPEFramework::Core::ProxyType<RESPONSE>();
-                *jsonResponse = WPEFramework::Core::ProxyType<RESPONSE>::Create();
-                (*jsonResponse)->FromString(response);
-                actualCallback(usercb, &id, jsonResponse);
+            std::function<std::string(void* usercb, void* params)> actualCallback = callback;
+            DispatchFunctionProvider lambda = [actualCallback, method, waitTime](const std::string &params, void* usercb) {
+                WPEFramework::Core::ProxyType<RESPONSE>* jsonParams = new WPEFramework::Core::ProxyType<RESPONSE>();
+                *jsonParams = WPEFramework::Core::ProxyType<RESPONSE>::Create();
+                (*jsonParams)->FromString(params);
+                return actualCallback(usercb, jsonParams);
             };
             std::lock_guard lck(providers_mtx);
             if (providers.find(interface) == providers.end()) {
