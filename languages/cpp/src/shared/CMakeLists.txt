@@ -31,6 +31,11 @@ option(ENABLE_COVERAGE "Enable code coverage build." ON)
 option(ENABLE_INTERACTIVE_APP "Enable interactive application" ON)
 option(FIREBOLT_PLAIN_LOG "Disable log coloring" OFF)
 
+file(GLOB APP_SCHEMA "./firebolt-*-app-open-rpc.json")
+if (APP_SCHEMA)
+  set(ENABLE_BIDIRECTIONAL ON)
+endif ()
+
 if (ENABLE_BIDIRECTIONAL)
     message("Using bidirectional gateway")
     add_compile_definitions(GATEWAY_BIDIRECTIONAL)
