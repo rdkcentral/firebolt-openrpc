@@ -1,3 +1,27 @@
+# [3.2.0](https://github.com/rdkcentral/firebolt-openrpc/compare/v3.1.3...v3.2.0) (2025-02-28)
+
+
+### Bug Fixes
+
+* Add open-rpc to generated C++ SDK ([#217](https://github.com/rdkcentral/firebolt-openrpc/issues/217)) ([a02980a](https://github.com/rdkcentral/firebolt-openrpc/commit/a02980a2aebb4a8c0cd675ea8752ee7b5ecd9fd7))
+* C++ Auto-Reconnect ([#237](https://github.com/rdkcentral/firebolt-openrpc/issues/237)) ([dde6753](https://github.com/rdkcentral/firebolt-openrpc/commit/dde67533121d147db373c2c46c4d53e4bb467cd1))
+* C++ Auto-Reconnect typo ([#240](https://github.com/rdkcentral/firebolt-openrpc/issues/240)) ([bbd5813](https://github.com/rdkcentral/firebolt-openrpc/commit/bbd581398b911d10e7b4f5b495d7c94cb1cdd2f1))
+* C++ Pascal casing method name ([#233](https://github.com/rdkcentral/firebolt-openrpc/issues/233)) ([ed1106f](https://github.com/rdkcentral/firebolt-openrpc/commit/ed1106f8b608364078998fca87ee853fb4c54224))
+* Do not hard-code SDK Version in CI processes ([#228](https://github.com/rdkcentral/firebolt-openrpc/issues/228)) ([45b513e](https://github.com/rdkcentral/firebolt-openrpc/commit/45b513e415ced4a6e0dc18b7724bd832b54a8f77))
+* Documentation generation enhancements ([#227](https://github.com/rdkcentral/firebolt-openrpc/issues/227)) ([7fe212b](https://github.com/rdkcentral/firebolt-openrpc/commit/7fe212ba3ce862739f1ece79b7722a65ec9fdc13))
+* Events - Change promise all to reduce for sequential resolving ([#230](https://github.com/rdkcentral/firebolt-openrpc/issues/230)) ([43f3ad3](https://github.com/rdkcentral/firebolt-openrpc/commit/43f3ad3f72721d779cf7c75e34e4f060abcb33fd))
+* For C++ Capabilities.info ([#224](https://github.com/rdkcentral/firebolt-openrpc/issues/224)) ([c21e49a](https://github.com/rdkcentral/firebolt-openrpc/commit/c21e49ab1591301b1c3e5adaa5d6e0fb2edd2517))
+* Generate full SDKs in CI for tooling changes ([#226](https://github.com/rdkcentral/firebolt-openrpc/issues/226)) ([953f533](https://github.com/rdkcentral/firebolt-openrpc/commit/953f533ad89044c10bd09737205deda89f510fb5))
+* Make nested objects show in typescript .d.ts file and in the doc… ([#231](https://github.com/rdkcentral/firebolt-openrpc/issues/231)) ([31217ce](https://github.com/rdkcentral/firebolt-openrpc/commit/31217ceef01b23ede632015472caa1f12b5a17d4))
+* Native SDK unit tests support framework ([#223](https://github.com/rdkcentral/firebolt-openrpc/issues/223)) ([819cc21](https://github.com/rdkcentral/firebolt-openrpc/commit/819cc210a53d80fefe547b41c463620cb668624d))
+* Remove optional params as null in documentation ([#229](https://github.com/rdkcentral/firebolt-openrpc/issues/229)) ([95808ef](https://github.com/rdkcentral/firebolt-openrpc/commit/95808ef281711f5fed298bc3406606d3a7cee421))
+
+
+### Features
+
+* Cpp global subscriber type ([#218](https://github.com/rdkcentral/firebolt-openrpc/issues/218)) ([45cbf0a](https://github.com/rdkcentral/firebolt-openrpc/commit/45cbf0abd289294315a484ef85f2fe5d70e6fd63))
+* Make private method and private events more hidden ([#216](https://github.com/rdkcentral/firebolt-openrpc/issues/216)) ([d3d5bdd](https://github.com/rdkcentral/firebolt-openrpc/commit/d3d5bddc7a2f979bd5efea960786ea1b488b0751))
+
 # [3.2.0-next.15](https://github.com/rdkcentral/firebolt-openrpc/compare/v3.2.0-next.14...v3.2.0-next.15) (2025-02-28)
 
 
