@@ -21,7 +21,7 @@ ${event.callback.instantiation}
 
         JsonObject jsonParameters;
 ${event.params.serialization}
-        status = FireboltSDK::Event::Instance().Subscribe<${event.result.json.type}>(eventName, jsonParameters, ${method.name}InnerCallback, reinterpret_cast<void*>(&notification), nullptr);
+        status = FireboltSDK::Event::Instance().Subscribe<${method.result.json}>(eventName, jsonParameters, ${method.name}InnerCallback, reinterpret_cast<void*>(&notification), nullptr);
 
         if (err != nullptr) {
             *err = status;
@@ -58,7 +58,7 @@ ${event.callback.instantiation}
         Firebolt::Error status = Firebolt::Error::None;
 
         JsonObject jsonParameters;
-        status = FireboltSDK::Event::Instance().Subscribe<${event.result.json.type}>(eventName, jsonParameters, ${method.name}GlobalCallback, reinterpret_cast<void*>(&notification), nullptr);
+        status = FireboltSDK::Event::Instance().Subscribe<${method.result.json}>(eventName, jsonParameters, ${method.name}GlobalCallback, reinterpret_cast<void*>(&notification), nullptr);
 
         if (err != nullptr) {
             *err = status;

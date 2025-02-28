@@ -28,7 +28,7 @@ option(ENABLE_BIDIRECTIONAL "Enable bidirectional communication over WS" OFF)
 option(ENABLE_TESTS "Build openrpc native test" ON)
 option(ENABLE_UNIT_TESTS "Enable unit test" ON)
 option(ENABLE_COVERAGE "Enable code coverage build." ON)
-option(ENABLE_INTERACTIVE_APP "Enable interactive application" ON)
+option(ENABLE_INTERACTIVE_APP "Enable interactive application" OFF)
 option(FIREBOLT_PLAIN_LOG "Disable log coloring" OFF)
 
 file(GLOB APP_SCHEMA "./firebolt-*-app-open-rpc.json")

@@ -63,11 +63,6 @@ namespace FireboltSDK
             return implementation->Request(method, parameters, response);
         }
 
-        Firebolt::Error Response(unsigned id, const std::string &method, const JsonObject &response)
-        {
-            return implementation->Response(id, method, response);
-        }
-
 #ifdef GATEWAY_BIDIRECTIONAL
         template <typename RESULT, typename CALLBACK>
         Firebolt::Error Subscribe(const string& event, JsonObject& parameters, const CALLBACK& callback, void* usercb, const void* userdata, bool prioritize = false)
