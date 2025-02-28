@@ -51,9 +51,11 @@ namespace Firebolt {
 
         static FireboltAccessorImpl& Instance()
         {
-            static FireboltAccessorImpl* instance = new FireboltAccessorImpl();
-            ASSERT(instance != nullptr);
-            return *instance;
+            if (_singleton == nullptr) {
+                _singleton = new FireboltAccessorImpl();
+                ASSERT(_singleton != nullptr);
+            }
+            return *_singleton;
         }
 
         static void Dispose()
@@ -67,6 +69,7 @@ namespace Firebolt {
             ASSERT(_singleton != nullptr);
             if (_singleton != nullptr) {
                 delete _singleton;
+                _singleton = nullptr;
             }
         }
 
@@ -84,6 +87,21 @@ namespace Firebolt {
         Firebolt::Error Connect( OnConnectionChanged listener ) override
         {
             return _accessor->Connect(listener);
+        }
+
+        void RegisterConnectionChangeListener( OnConnectionChanged listener ) override
+        {
+            return _accessor->RegisterConnectionChangeListener(listener);
+        }
+
+        void UnregisterConnnectionChangeListener() override
+        {
+            _accessor->UnregisterConnnectionChangeListener();
+        }
+
+        bool IsConnected() const override
+        {
+            return _accessor->IsConnected();
         }
 
         Firebolt::Error Disconnect() override

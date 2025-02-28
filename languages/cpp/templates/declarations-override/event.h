@@ -2,3 +2,7 @@
         // method result properties : ${method.result.properties}
         void subscribe( ${event.signature.params}${if.event.params}, ${end.if.event.params}I${info.Title}::I${method.Name}Notification& notification, Firebolt::Error *err = nullptr ) override;
         void unsubscribe( I${info.Title}::I${method.Name}Notification& notification, Firebolt::Error *err = nullptr ) override;
+${if.globalsubscriber}
+        void globalSubscribe( I${info.Title}::I${method.Name}Notification& notification, Firebolt::Error *err = nullptr ) override;
+        void globalUnsubscribe( I${info.Title}::I${method.Name}Notification& notification, Firebolt::Error *err = nullptr ) override;
+${end.if.globalsubscriber}

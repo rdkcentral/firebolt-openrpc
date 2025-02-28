@@ -14,7 +14,6 @@ usage()
 SdkPath=".."
 InstallPath=".."
 ModuleName="core"
-Version=1.3.0-next.1
 
 while getopts i:s:m:v:h flag
 do
@@ -55,6 +54,7 @@ cp -aR ${SdkPath}/include ${ReleasePath}
 cp -aR ${SdkPath}/cmake ${ReleasePath}
 cp -aR ${SdkPath}/scripts/build.sh ${ReleasePath}
 cp -aR ${SdkPath}/CMakeLists.txt ${ReleasePath}
+mv ${SdkPath}/firebolt-*open-rpc.json ${ReleasePath}
 cp -aR ${SdkPath}/cpptest ${ReleasePath}/test
 
 sed -i'' -e '/EnableTest="ON";;/d' ${ReleasePath}/build.sh

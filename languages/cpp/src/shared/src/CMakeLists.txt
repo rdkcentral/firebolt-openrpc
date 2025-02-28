@@ -31,17 +31,23 @@ add_library(${TARGET} ${FIREBOLT_LIBRARY_TYPE}
     Async/Async.cpp
 )
 
+if(ENABLE_UNIT_TESTS)
+    target_compile_definitions(FireboltSDK PRIVATE UNIT_TEST)
+endif()
+
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 find_package(${NAMESPACE}WebSocket CONFIG REQUIRED)
 find_package(${NAMESPACE}WebSocket CONFIG REQUIRED)
 find_package(${NAMESPACE}Core CONFIG REQUIRED)
+find_package(${NAMESPACE}Cryptalgo CONFIG REQUIRED)
 
 target_link_libraries(${TARGET}
     PUBLIC
         ${NAMESPACE}WebSocket::${NAMESPACE}WebSocket
         ${NAMESPACE}Core::${NAMESPACE}Core
         ${NAMESPACE}WebSocket::${NAMESPACE}WebSocket
+        ${NAMESPACE}Cryptalgo::${NAMESPACE}Cryptalgo
 )
 
 target_include_directories(${TARGET}
