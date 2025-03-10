@@ -32,6 +32,8 @@ const __dirname = url.fileURLToPath(new URL('.', import.meta.url))
 
 const run = async ({
     input: input,
+    appApi: appApi,
+    platformApi: platformApi,
     schemas: schemas,
     transformations = false,
     'pass-throughs': passThroughs
@@ -167,7 +169,7 @@ const run = async ({
 
         if (transformations) {
             // Do the firebolt API magic
-            json = fireboltize(json)
+            json = fireboltize(json, !!appApi)
 
             // pull in external markdown files for descriptions
             json = addExternalMarkdown(json, markdown)
