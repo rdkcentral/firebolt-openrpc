@@ -1958,6 +1958,7 @@ const collectChildRefs = (ref, json, collectedRefs = []) => {
 const removeUnusedDefinitions = (json) => {
     json = JSON.parse(JSON.stringify(json));
     let collectedRefs = [];
+    let removed = [];
 
     // Loop through each schema and remove definitions that are not used
     Object.keys(json.components.schemas).forEach((schemaKey) => {
@@ -1993,6 +1994,7 @@ const removeUnusedDefinitions = (json) => {
                 if (!isReferenced) {
                     // If the definition is not referenced, delete it
                     delete schemaObj.definitions[defKey];
+                    removed.push(defKey);
                 }
             });
 
@@ -2000,6 +2002,28 @@ const removeUnusedDefinitions = (json) => {
             if (Object.keys(schemaObj.definitions).length === 0) {
                 delete schemaObj.definitions;
             }
+        }
+
+        if (schemaObj.definitions && removed) {
+            Object.keys(schemaObj.definitions).forEach((defKey) => {
+                const defs = schemaObj.definitions[defKey];
+                if (defs.anyOf && Array.isArray(defs.anyOf)) {
+                    defs.anyOf = defs.anyOf.filter((item) => {
+                        return !removed.includes(item.$ref?.split('/').pop());
+                    });
+                    if (defs.anyOf.length === 0) {
+                        delete defs.anyOf;
+                    }
+                }
+                if (defs.oneOf && Array.isArray(defs.oneOf)) {
+                    defs.oneOf = defs.oneOf.filter((item) => {
+                        return !removed.includes(item.$ref?.split('/').pop());
+                    });
+                    if (defs.oneOf.length === 0) {
+                        delete defs.oneOf;
+                    }
+                }
+            });
         }
 
         // Remove unused definitions from oneOf
