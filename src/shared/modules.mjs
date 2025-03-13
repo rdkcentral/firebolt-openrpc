@@ -1956,55 +1956,87 @@ const collectChildRefs = (ref, json, collectedRefs = []) => {
 
 
 const removeUnusedDefinitions = (json) => {
-  json = JSON.parse(JSON.stringify(json));
-  let collectedRefs = []
+    json = JSON.parse(JSON.stringify(json));
+    let collectedRefs = [];
 
-  // Loop through each schema and remove definitions that are not used
-  Object.keys(json.components.schemas).forEach((schemaKey) => {
-    const schemaObj = json.components.schemas[schemaKey];
+    // Loop through each schema and remove definitions that are not used
+    Object.keys(json.components.schemas).forEach((schemaKey) => {
+        const schemaObj = json.components.schemas[schemaKey];
 
-    // First get all references to schemas outside of the actual schema
-    const doc = JSON.parse(JSON.stringify(json));
-    delete doc.components.schemas[schemaKey];
-    const outsideRefs = getAllValuesForName('$ref', doc);
+        // First get all references to schemas outside of the actual schema
+        const doc = JSON.parse(JSON.stringify(json));
+        delete doc.components.schemas[schemaKey];
+        const outsideRefs = getAllValuesForName('$ref', doc);
 
-    // Filter the refs from the schema
-    const usedRefs = outsideRefs.filter((ref) => ref.startsWith(schemaKey));
+        // Filter the refs from the schema
+        const usedRefs = outsideRefs.filter((ref) => ref.startsWith(schemaKey));
 
-    // Now that we have a list of used refs, we can keep it along with any "child" refs
-    // All other definitions can be removed since they are not needed
-   // Process definitions if they exist
-   if (schemaObj.definitions && typeof schemaObj.definitions === 'object') {
-    // Collect all child refs first
-    Object.keys(schemaObj.definitions).forEach((defKey) => {
-      const isUsed = usedRefs.some((ref) => ref.endsWith(`/${defKey}`));
-      
-      if (isUsed) {
-        collectedRefs = collectChildRefs(schemaObj.definitions[defKey], json, collectedRefs);
-      }
+        // Now that we have a list of used refs, we can keep it along with any "child" refs
+        // All other definitions can be removed since they are not needed
+        // Process definitions if they exist
+        if (schemaObj.definitions && typeof schemaObj.definitions === 'object') {
+            // Collect all child refs first
+            Object.keys(schemaObj.definitions).forEach((defKey) => {
+                const isUsed = usedRefs.some((ref) => ref.endsWith(`/${defKey}`));
+
+                if (isUsed) {
+                    collectedRefs = collectChildRefs(schemaObj.definitions[defKey], json, collectedRefs);
+                }
+            });
+
+            // Now remove unused definitions
+            Object.keys(schemaObj.definitions).forEach((defKey) => {
+                // Check if this definition is referenced in collectedRefs
+                const isReferenced = collectedRefs.some(ref => ref.endsWith(`/${defKey}`)) ||
+                    usedRefs.some(ref => ref.endsWith(`/${defKey}`));
+
+                if (!isReferenced) {
+                    // If the definition is not referenced, delete it
+                    delete schemaObj.definitions[defKey];
+                }
+            });
+
+            // If no definitions left, remove the definitions object
+            if (Object.keys(schemaObj.definitions).length === 0) {
+                delete schemaObj.definitions;
+            }
+        }
+
+        // Remove unused definitions from oneOf
+        if (schemaObj.oneOf && Array.isArray(schemaObj.oneOf)) {
+            schemaObj.oneOf = schemaObj.oneOf.filter((item) => {
+                if (item.$ref) {
+                    const refName = item.$ref.split('/').pop();
+                    return schemaObj.definitions && schemaObj.definitions[refName];
+                }
+                return true;
+            });
+
+            // If oneOf becomes an empty array, delete it
+            if (schemaObj.oneOf.length === 0) {
+                delete schemaObj.oneOf;
+            }
+        }
+
+        // Remove unused definitions from anyOf
+        if (schemaObj.anyOf && Array.isArray(schemaObj.anyOf)) {
+            schemaObj.anyOf = schemaObj.anyOf.filter((item) => {
+                if (item.$ref) {
+                    const refName = item.$ref.split('/').pop();
+                    return schemaObj.definitions && schemaObj.definitions[refName];
+                }
+                return true;
+            });
+
+            // If anyOf becomes an empty array, delete it
+            if (schemaObj.anyOf.length === 0) {
+                delete schemaObj.anyOf;
+            }
+        }
     });
 
-    // Now remove unused definitions
-    Object.keys(schemaObj.definitions).forEach((defKey) => {
-      // Check if this definition is referenced in collectedRefs
-      const isReferenced = collectedRefs.some(ref => ref.endsWith(`/${defKey}`)) || 
-                         usedRefs.some(ref => ref.endsWith(`/${defKey}`));
-      
-      if (!isReferenced) {
-        // If the definition is not referenced, delete it
-        delete schemaObj.definitions[defKey];
-      }
-    });
-
-    // If no definitions left, remove the definitions object
-    if (Object.keys(schemaObj.definitions).length === 0) {
-      delete schemaObj.definitions;
-    }
-  }
-});
-
-return json;
-}
+    return json;
+};
 
 const pruneNestedDefinitionsRecursively = (doc) => {
   // We’ll loop until no more definitions are removed in a pass
