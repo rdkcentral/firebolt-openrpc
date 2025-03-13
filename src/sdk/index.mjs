@@ -44,7 +44,7 @@ const run = async ({
   
   try {
     // Important file/directory locations
-    const packageJsonFile = path.join(path.dirname(input), '..', 'package.json')
+    const packageJsonFile = path.join(path.dirname(platformApi), '..', 'package.json')
     const packageJson = await readJson(packageJsonFile)
     mainFilename = path.basename(packageJson.main)
     declarationsFilename = path.basename(packageJson.types)
