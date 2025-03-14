@@ -25,29 +25,18 @@
 
 #include "../common.h"
 
-#include "Transport/Transport.h"
-
 #include <string>
 #include <stdio.h>
 
-#ifdef UNIT_TEST
-#include "IGateway.h"
-#endif
+#include "mockGateway.h"
 
 namespace FireboltSDK
 {
 
     using EventCallback = std::function<void(const std::string & /* eventName */, const JsonObject & /* parameters */, Firebolt::Error /* error */)>;
 
-#ifndef UNIT_TEST
-    class GatewayImpl
-#else
-    class GatewayImpl : public IGateway
-#endif
+    class GatewayImpl : public IGatewayMock
     {
-
-        Transport<WPEFramework::Core::JSON::IElement> *transport;
-
     public:
         GatewayImpl()
         {
@@ -56,39 +45,9 @@ namespace FireboltSDK
     public:
         void TransportUpdated(Transport<WPEFramework::Core::JSON::IElement> *transport)
         {
-            this->transport = transport;
+           this->transport = transport;
         }
 
-#ifndef UNIT_TEST
-        template <typename RESPONSE>
-        Firebolt::Error Request(const std::string &method, const JsonObject &parameters, RESPONSE &response)
-        {
-            if (transport == nullptr)
-            {
-                return Firebolt::Error::NotConnected;
-            }
-            return transport->Invoke(method, parameters, response);
-        }
-#else
-        Firebolt::Error Request(const std::string &method, const JsonObject &parameters, FireboltSDK::JSON::String &response)
-        {
-            if (transport == nullptr)
-            {
-                return Firebolt::Error::NotConnected;
-            }
-            return transport->Invoke(method, parameters, response);
-        }
-
-        Firebolt::Error Request(const std::string &method, const JsonObject &parameters, Firebolt::Authentication::JsonData_Token &response)
-        {
-            if (transport == nullptr)
-            {
-                return Firebolt::Error::NotConnected;
-            }
-            return transport->Invoke(method, parameters, response);
-        }
-
-#endif
 
         Firebolt::Error Response(unsigned id, const std::string &method, const JsonObject &response)
         {
@@ -126,3 +85,4 @@ namespace FireboltSDK
         }
     };
 }
+

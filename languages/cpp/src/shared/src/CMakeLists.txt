@@ -28,6 +28,7 @@ list(APPEND SOURCES
     Transport/Transport.cpp
     Accessor/Accessor.cpp
     Async/Async.cpp
+    Properties/Properties.cpp
 )
 
 if (ENABLE_BIDIRECTIONAL)
