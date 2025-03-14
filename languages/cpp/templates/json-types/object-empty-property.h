@@ -1,1 +1,1 @@
-    using ${title} = WPEFramework::Core::JSON::VariantContainer;
+    class ${title} : public WPEFramework::Core::JSON::VariantContainer {};

@@ -16,23 +16,28 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifdef UNIT_TEST
+#include "Properties.h"
 
-#include "TypesPriv.h"
-
-namespace Firebolt
+namespace FireboltSDK
 {
-    namespace Authentication
+
+    std::unique_ptr<Properties> Properties::instance = nullptr;
+
+    Properties &Properties::Instance()
     {
-        class JsonData_Token;
+        if (instance == nullptr)
+        {
+            instance = std::make_unique<Properties>();
+        }
+        return *instance;
+    }
+
+    void Properties::Dispose()
+    {
+        ASSERT(instance != nullptr);
+        if (instance != nullptr)
+        {
+            instance = nullptr;
+        }
     }
 }
-
-class IGateway
-{
-public:
-    virtual ~IGateway() = default;
-    virtual Firebolt::Error Request(const std::string &method, const JsonObject &parameters, FireboltSDK::JSON::String &result) = 0;
-    virtual Firebolt::Error Request(const std::string &method, const JsonObject &parameters, Firebolt::Authentication::JsonData_Token &result) = 0;
-};
-#endif

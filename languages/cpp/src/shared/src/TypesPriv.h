@@ -19,6 +19,7 @@
 #pragma once
 
 #include <string>
+#include <core/JSON.h>
 
 namespace FireboltSDK {
 namespace JSON {

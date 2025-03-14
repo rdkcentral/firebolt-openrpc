@@ -1,1 +1,1 @@
-        using ${title} = WPEFramework::Core::JSON::ArrayType<${json.type}>;
+        class ${title} : public WPEFramework::Core::JSON::ArrayType<${json.type}> {};

@@ -27,6 +27,7 @@ option(FIREBOLT_ENABLE_STATIC_LIB "Create Firebolt library as Static library" OF
 option(ENABLE_BIDIRECTIONAL "Enable bidirectional communication over WS" OFF)
 option(ENABLE_TESTS "Build openrpc native test" ON)
 option(ENABLE_UNIT_TESTS "Enable unit test" ON)
+option(ENABLE_MOCK_TESTS "Enable mock test" OFF)
 option(ENABLE_COVERAGE "Enable code coverage build." ON)
 option(ENABLE_INTERACTIVE_APP "Enable interactive application" ON)
 option(FIREBOLT_PLAIN_LOG "Disable log coloring" OFF)

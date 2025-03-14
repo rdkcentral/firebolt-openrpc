@@ -28,6 +28,7 @@ list(APPEND SOURCES
     Transport/Transport.cpp
     Accessor/Accessor.cpp
     Async/Async.cpp
+    Properties/Properties.cpp
 )
 
 if (ENABLE_BIDIRECTIONAL)
@@ -37,6 +38,10 @@ else ()
 endif ()
 
 add_library(${TARGET} ${FIREBOLT_LIBRARY_TYPE} ${SOURCES})
+
+if(ENABLE_MOCK_TESTS)
+    add_compile_definitions(MOCK_TEST)
+endif()
 
 if(ENABLE_UNIT_TESTS)
     target_compile_definitions(FireboltSDK PRIVATE UNIT_TEST)
@@ -60,6 +65,7 @@ target_link_libraries(${TARGET}
 target_include_directories(${TARGET}
     PRIVATE
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../test/include>
         $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}>
 )
 
