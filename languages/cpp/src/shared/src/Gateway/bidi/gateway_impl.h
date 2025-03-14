@@ -87,7 +87,7 @@ namespace FireboltSDK
         {
             if (message.Designator.IsSet()) { // designator -> method
                 if (message.Id.IsSet()) {
-                    server.Request(message.Id.Value(), message.Designator.Value(), message.Parameters.Value());
+                    server.Request(transport, message.Id.Value(), message.Designator.Value(), message.Parameters.Value());
                 } else {
                     server.Notify(message.Designator.Value(), message.Parameters.Value());
                 }
@@ -103,14 +103,6 @@ namespace FireboltSDK
                 return Firebolt::Error::NotConnected;
             }
             return client.Request(method, parameters, response);
-        }
-
-        Firebolt::Error Response(unsigned id, const std::string &method, const JsonObject &response)
-        {
-            if (transport == nullptr) {
-                return Firebolt::Error::NotConnected;
-            }
-            return server.Response(transport, id, method, response);
         }
 
         template <typename RESULT, typename CALLBACK>
