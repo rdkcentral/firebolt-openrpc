@@ -1,4 +1,7 @@
 #!/bin/bash
+
+set -e
+
 usage()
 {
    echo "options:"
@@ -46,6 +49,7 @@ GetVersion()
 #GetVersion
 ReleaseName=firebolt-${ModuleName}-native-sdk-${Version}
 ReleasePath=${InstallPath}/${ReleaseName}
+DistPath=${SdkPath}/../../../dist
 
 rm -rf ${ReleasePath}
 mkdir -p ${ReleasePath}
@@ -55,10 +59,9 @@ cp -aR ${SdkPath}/cmake ${ReleasePath}
 chmod +x ${SdkPath}/scripts/build.sh
 cp -aR ${SdkPath}/scripts/build.sh ${ReleasePath}
 cp -aR ${SdkPath}/CMakeLists.txt ${ReleasePath}
-if [[ -e ${SdkPath}/firebolt-${ModuleName}-open-rpc.json ]]; then
-  mv ${SdkPath}/firebolt-*open-rpc.json ${ReleasePath}
-else
-  cp -aR ${SdkPath}/../../../dist/firebolt-*open-rpc.json ${ReleasePath}
+cp -a ${DistPath}/firebolt-${ModuleName}-open-rpc.json ${ReleasePath}
+if [[ -e ${DistPath}/firebolt-${ModuleName}-app-open-rpc.json ]]; then
+  cp -a ${DistPath}/firebolt-${ModuleName}-app-open-rpc.json ${ReleasePath}
 fi
 cp -aR ${SdkPath}/cpptest ${ReleasePath}/test
 

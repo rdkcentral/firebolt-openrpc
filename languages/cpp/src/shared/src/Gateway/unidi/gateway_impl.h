@@ -77,8 +77,8 @@ namespace FireboltSDK
             return transport->Unsubscribe(event, parameters);
         }
 
-        template <typename RESPONSE, typename CALLBACK>
-        Firebolt::Error RegisterProviderInterface<RESPONSE>(const std::string &method, const JsonObject &parameters, const CALLBACK& callback)
+        template <typename RESPONSE, typename PARAMETERS, typename CALLBACK>
+        Firebolt::Error RegisterProviderInterface(const std::string &method, const PARAMETERS &parameters, const CALLBACK& callback, void* usercb)
         {
             return Firebolt::Error::General;
         }
