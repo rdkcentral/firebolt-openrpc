@@ -163,20 +163,27 @@ const doListen = function(module, event, callback, context, once, internal=false
     })
 
     // Iterate and resolve/reject through the list of promises sequentially
-    const tempListenerId = listenerId
-    if (promises.length) {
+    const templistenerId = listenerId;
+    if(promises.length) {
       promises.reduce((prevPromise, currentPromise) => {
         return prevPromise
           .then(() => currentPromise)
           .then(responses => {
-            resolve(tempListenerId)
+            resolve(templistenerId)
           })
           .catch(error => {
-            doClear(tempListenerId, event, context)
-            reject(error)
-          })
-      }, Promise.resolve())
-    } else {
+            if (event === '*') {
+              resolve(templistenerId)
+            }
+            else {
+              // Remove the failed listener
+              doClear(templistenerId, event, context)
+              reject(error)
+            }
+          });
+      }, Promise.resolve());
+    }
+    else {
       resolve(listenerId)
     }
 
