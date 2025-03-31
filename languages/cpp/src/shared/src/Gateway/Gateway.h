@@ -57,6 +57,11 @@ namespace FireboltSDK
 
         void TransportUpdated(Transport<WPEFramework::Core::JSON::IElement>* transport);
 
+        void UpdateGateway(std::unique_ptr<GatewayImpl> mockGateway)
+        {
+            implementation = std::move(mockGateway);
+        }
+
         template <typename RESPONSE>
         Firebolt::Error Request(const std::string &method, const JsonObject &parameters, RESPONSE &response)
         {

@@ -6,8 +6,8 @@
         ${if.params}${method.params.serialization}${end.if.params}
         ${method.result.json} jsonResult;
 ${method.result.initialization}
-        ${if.params}Firebolt::Error status = FireboltSDK::Properties::Get(method, jsonParameters, jsonResult);${end.if.params}
-        ${if.params.empty}Firebolt::Error status = FireboltSDK::Properties::Get(method, jsonResult);${end.if.params.empty}
+        ${if.params}Firebolt::Error status = FireboltSDK::Properties::Instance().Get(method, jsonParameters, jsonResult);${end.if.params}
+        ${if.params.empty}Firebolt::Error status = FireboltSDK::Properties::Instance().Get(method, jsonResult);${end.if.params.empty}
         if (status == Firebolt::Error::None) {
 ${method.result.instantiation}
         }

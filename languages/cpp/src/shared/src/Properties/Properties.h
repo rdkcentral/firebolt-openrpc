@@ -21,10 +21,11 @@
 #include "Accessor/Accessor.h"
 #include "Event/Event.h"
 #include "Gateway/Gateway.h"
+#include "IPropertiesMock.h"
 
 namespace FireboltSDK {
 
-    class Properties {
+    class Properties : public IPropertiesMock{
     public:
         Properties(const Properties&) = delete;
         Properties& operator= (const Properties&) = delete;
@@ -32,19 +33,19 @@ namespace FireboltSDK {
         Properties() = default;
         ~Properties() = default;
 
-    public:
-        template <typename RESPONSETYPE>
-        static Firebolt::Error Get(const string& propertyName, RESPONSETYPE& response)
+        static Properties &Instance();
+        static void Dispose();
+
+        void UpdateProperties(std::unique_ptr<Properties> mockProperties)
         {
-            JsonObject parameters;
-            return Gateway::Instance().Request<RESPONSETYPE>(propertyName, parameters, response);
+            instance = std::move(mockProperties);
         }
 
-        template <typename PARAMETERS, typename RESPONSETYPE>
-        static Firebolt::Error Get(const string& propertyName, const PARAMETERS& parameters, RESPONSETYPE& response)
-        {
-            return Gateway::Instance().Request(propertyName, parameters, response);
-        }
+    private:
+        static std::unique_ptr<Properties> instance;
+        Properties(std::unique_ptr<Properties> instance);
+
+    public:
 
         template <typename PARAMETERS>
         static Firebolt::Error Set(const string& propertyName, const PARAMETERS& parameters)

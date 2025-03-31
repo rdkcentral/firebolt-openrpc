@@ -25,53 +25,44 @@
 
 #include "../common.h"
 
-#include "Transport/Transport.h"
-
 #include <string>
 #include <stdio.h>
+
+#include "mockGateway.h"
 
 namespace FireboltSDK
 {
 
     using EventCallback = std::function<void(const std::string & /* eventName */, const JsonObject & /* parameters */, Firebolt::Error /* error */)>;
 
-    class GatewayImpl
+    class GatewayImpl : public IGatewayMock
     {
-
-        Transport<WPEFramework::Core::JSON::IElement>* transport;
-
     public:
         GatewayImpl()
         {
         }
 
     public:
-        void TransportUpdated(Transport<WPEFramework::Core::JSON::IElement>* transport)
+        void TransportUpdated(Transport<WPEFramework::Core::JSON::IElement> *transport)
         {
            this->transport = transport;
         }
 
-        template <typename RESPONSE>
-        Firebolt::Error Request(const std::string &method, const JsonObject &parameters, RESPONSE &response)
-        {
-            if (transport == nullptr) {
-                return Firebolt::Error::NotConnected;
-            }
-            return transport->Invoke(method, parameters, response);
-        }
 
         template <typename RESPONSE>
-        Firebolt::Error Subscribe(const string& event, const string& parameters, RESPONSE& response)
+        Firebolt::Error Subscribe(const string &event, const string &parameters, RESPONSE &response)
         {
-            if (transport == nullptr) {
+            if (transport == nullptr)
+            {
                 return Firebolt::Error::NotConnected;
             }
             return transport->Subscribe(event, parameters, response);
         }
 
-        Firebolt::Error Unsubscribe(const string& event, const string& parameters)
+        Firebolt::Error Unsubscribe(const string &event, const string &parameters)
         {
-            if (transport == nullptr) {
+            if (transport == nullptr)
+            {
                 return Firebolt::Error::NotConnected;
             }
             return transport->Unsubscribe(event, parameters);
@@ -83,7 +74,7 @@ namespace FireboltSDK
             return Firebolt::Error::General;
         }
 
-        Firebolt::Error UnregisterProviderInterface(const std::string &interface, const std::string &method, void* usercb)
+        Firebolt::Error UnregisterProviderInterface(const std::string &interface, const std::string &method, void *usercb)
         {
             return Firebolt::Error::General;
         }
