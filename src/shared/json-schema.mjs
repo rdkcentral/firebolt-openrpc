@@ -299,6 +299,11 @@ const getPropertiesInSchema = (json, document) => {
 }
 
 function getSchemaConstraints(schema, module, options = { delimiter: '\n' }) {
+  if (schema == null) {
+    console.warn('getSchemaConstraints: schema is null')
+    return ''
+  }
+  
   if (schema.schema) {
     schema = schema.schema
   }
