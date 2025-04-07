@@ -50,9 +50,9 @@ const defaults = {
 // Ignore args: 0 (node), 1 (cli.mjs), and 2 (the task name, which has no --option in front of it)
 const parsedArgs = Object.assign({}, defaults, nopt(knownOpts, shortHands, process.argv, 3))
 const task = process.argv[2]
-const signOff = () => console.log('\nThis has been a presentation of \x1b[38;5;202mFirebolt\x1b[0m \u{1F525} \u{1F529}\n')
 
 try {
+  console.log(`Starting task '${task}'\n`);
   switch(task) {
     case 'slice':
       await slice(parsedArgs);
@@ -72,7 +72,7 @@ try {
     default:
       console.log('Invalid task: ' + task);
   }
-  signOff();
+  console.log(`\nTask '${task}' has finished\n`);
 } catch (error) {
   console.dir(error)
   throw error

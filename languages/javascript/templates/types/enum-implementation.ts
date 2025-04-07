@@ -1,0 +1,3 @@
+enum ${title} {
+    ${key} = '${value}',
+}
