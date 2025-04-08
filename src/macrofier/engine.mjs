@@ -1574,14 +1574,19 @@ function insertMethodMacros(template, methodObj, platformApi, appApi, templates,
   const resultType = result.schema ? Types.getSchemaType(result.schema, platformApi, { templateDir: state.typeTemplateDir, namespace: false }) : ''
   const resultSchemaType = result.schema.type
   const resultJsonType = result.schema ? Types.getSchemaType(result.schema, platformApi, { templateDir: 'json-types', namespace: true  }) : ''
-  
+
+  let currentModuleApi = platformApi
+  if (currentModuleApi && isEmpty(currentModuleApi.components.schemas)) {
+    currentModuleApi = appApi
+  }
+
   try {
-    generateResultParams(result.schema, platformApi, templates, { name: result.name})
+    generateResultParams(result.schema, currentModuleApi, templates, { name: result.name})
   } catch (e) {
     console.dir(methodObj)    
   }
 
-  const resultParams = result && generateResultParams(result.schema, platformApi, templates, { name: result.name})
+  const resultParams = result && generateResultParams(result.schema, currentModuleApi, templates, { name: result.name})
 
   // todo: what does prefix do in Types.mjs? need to account for it somehow
   const callbackResultJsonType = event && result.schema ? Types.getSchemaType(result.schema, document, { templateDir: 'json-types', namespace: false }) : ''
@@ -1652,8 +1657,8 @@ function insertMethodMacros(template, methodObj, platformApi, appApi, templates,
     .replace(/\$\{method\.params\.serialization\.with\.indent\}/g, indent(serializedParams, '    '))
     // Typed signature stuff
     .replace(/\$\{method\.signature\}/g, signature)
-    .replace(/\$\{method\.signature\.params\}/g, Types.getMethodSignatureParams(methodObj, platformApi, { namespace: !config.copySchemasIntoModules }))
-    .replace(/\$\{method\.signature\.result\}/g, Types.getMethodSignatureResult(methodObj, platformApi, { namespace: !config.copySchemasIntoModules }))
+    .replace(/\$\{method\.signature\.params\}/g, Types.getMethodSignatureParams(methodObj, currentModuleApi, { namespace: !config.copySchemasIntoModules }))
+    .replace(/\$\{method\.signature\.result\}/g, Types.getMethodSignatureResult(methodObj, currentModuleApi, { namespace: !config.copySchemasIntoModules }))
     .replace(/\$\{method\.context\}/g, method.context.join(', '))
     .replace(/\$\{method\.context\.array\}/g, JSON.stringify(method.context))
     .replace(/\$\{method\.context\.count}/g, method.context ? method.context.length : 0)
@@ -1856,8 +1861,26 @@ function insertExampleMacros(template, examples, method, json, templates) {
           while (match.index - indent >= 0 && match.input[match.index - indent] !== '\n') {
             indent++
           }
-          const value = JSON.stringify(method.examples[index].params[paramIndex].value, null, '\t').split('\n').map((line, i) => i > 0 ? ' '.repeat(indent) + line : line).join('\n')
-          languageContent = languageContent.replace(/\$\{method\.params\[([0-9]+)\]\.example\.value\}/g, value)
+
+          if(index < method.examples.length && paramIndex < method.examples[index].params.length)
+          {
+            const value = JSON.stringify(method.examples[index].params[paramIndex].value, null, '\t').split('\n').map((line, i) => i > 0 ? ' '.repeat(indent) + line : line).join('\n')
+            languageContent = languageContent.replace(/\$\{method\.params\[([0-9]+)\]\.example\.value\}/g, value)
+          }
+          else
+          {
+            languageContent = languageContent.replace(/\$\{method\.params\[([0-9]+)\]\.example\.value\}/g, "")
+            /*
+            if (index >= method.examples.length)
+            {
+              console.log(`Current index is not less than examples liength (index: ${index} ? ${method.examples.length})`)
+            }
+            else if (paramIndex >= method.examples[index].params.length)
+            {
+              console.log(`paramIndex is not less than method.examples[index].params.length  (paramIndex: ${paramIndex} ? ${method.examples[index].params.length})`)
+            }
+            */
+          }          
         })
 
 
@@ -1937,6 +1960,11 @@ function generateResultParams(result, json, templates, { name = '' } = {}) {
       moduleTitle = result.$ref.split("/")[2]
     }
     result = getReferencedSchema(result.$ref, json)
+
+    if(result == null ) {
+      console.log(`Warning: result is null or $ref is null for ${name}`)
+      return '';
+    }
   }
 
   // const results are almost certainly `"const": "null"` so there's no need to include it in the method signature
