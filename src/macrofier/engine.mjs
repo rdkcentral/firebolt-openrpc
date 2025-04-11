@@ -1870,17 +1870,7 @@ function insertExampleMacros(template, examples, method, json, templates) {
           else
           {
             languageContent = languageContent.replace(/\$\{method\.params\[([0-9]+)\]\.example\.value\}/g, "")
-            /*
-            if (index >= method.examples.length)
-            {
-              console.log(`Current index is not less than examples liength (index: ${index} ? ${method.examples.length})`)
-            }
-            else if (paramIndex >= method.examples[index].params.length)
-            {
-              console.log(`paramIndex is not less than method.examples[index].params.length  (paramIndex: ${paramIndex} ? ${method.examples[index].params.length})`)
-            }
-            */
-          }          
+          }
         })
 
 

@@ -692,7 +692,7 @@ function getSchemaShape(schema = {}, module = {}, { templateDir = 'types', paren
   else if (schema.type) {
     const shape = insertPrimitiveMacros(getTemplate(path.join(templateDir, 'primitive')), schema, module, theTitle, templateDir)
     result = result.replace(/\$\{shape\}/g, shape)
-    const config = getConfig()   
+    const config = getConfig()
     if (!config.langcode) {
       return insertSchemaMacros(result, schema, module, { name: theTitle, parent, property, required, templateDir })
     }
