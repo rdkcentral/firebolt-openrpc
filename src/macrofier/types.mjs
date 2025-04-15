@@ -785,7 +785,7 @@ function getSchemaType(schema, module, { templateDir = 'types', link = false, co
       }
     }
   }
-  else if (title && schema.title) {
+  else if (title && theTitle && !(schema.type === 'string' && schema.enum && schema.enum[0] === 'dial' && config.langcode === 'javascript')) {
     if (link) {
       return '[' + wrap(theTitle, code ? '`' : '') + '](#' + schema.title.toLowerCase() + ')'
     }
