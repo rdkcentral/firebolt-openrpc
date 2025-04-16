@@ -27,6 +27,7 @@ import Types from './types.mjs'
 import path from 'path'
 import engine from './engine.mjs'
 import { flattenMultipleOfs, replaceUri } from '../shared/json-schema.mjs'
+import { getConfig } from '../shared/configLoader.mjs'
 
 /************************************************************************************************/
 /******************************************** MAIN **********************************************/
@@ -73,8 +74,7 @@ const macrofy = async (
         treeshakePattern = null,
         treeshakeEntry = null,
         treeshakeTypes = [],
-        moduleWhitelist = [],
-        langcode
+        moduleWhitelist = []
     } = options
 
     return new Promise( async (resolve, reject) => {
@@ -204,7 +204,7 @@ const macrofy = async (
 
         let append = false
 
-        const suffixes = langcode == 'javascript' ? { js: '.mjs', ts: '.ts' } : {};
+        const suffixes = getConfig().langcode == 'javascript' ? { js: '.mjs', ts: '.ts' } : {};
         modules.forEach(module => {
             const appApiOpenRpc2 = appApiOpenRpc && getAppApiModule(module.info.title, appApiOpenRpc, module)
             logSuccess(` - gotAppApiModule`)

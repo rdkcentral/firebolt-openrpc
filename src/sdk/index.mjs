@@ -87,8 +87,7 @@ const run = async ({
     rename: mainFilename ? { '/index.mjs': mainFilename, '/index.d.ts': declarationsFilename } : {},
     treeshakePattern: config.treeshakePattern ? new RegExp(config.treeshakePattern, "g") : undefined,
     treeshakeTypes: config.treeshakeTypes,
-    treeshakeEntry: mainFilename ? '/' + mainFilename : '/index.mjs',
-    langcode: config.langcode
+    treeshakeEntry: mainFilename ? '/' + mainFilename : '/index.mjs'
   })
 }
 
