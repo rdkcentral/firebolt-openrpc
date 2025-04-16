@@ -60,7 +60,7 @@ function getImplementation() {
     // This parameter will not be present when using unidirectional SDK.
     // Unidirectional endpoint is handled in Gateway/Unidirectional.mjs
     const endpoint = win.__firebolt.endpoint
-    const url = endpoint + (endpoing.includes('?') ? '&' : '?') + 'RPCv2=true'
+    const url = endpoint + (endpoint.includes('?') ? '&' : '?') + 'RPCv2=true'
     implementation = new WebsocketTransport(url)
   }
   else {
