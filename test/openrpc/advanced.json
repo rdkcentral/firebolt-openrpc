@@ -10,7 +10,8 @@
             "name": "onEventWithContext",
             "tags": [
                 {
-                    "name": "event"
+                    "name": "notifier",
+                    "x-event": "onEventWithContext"
                 },
                 {
                     "name": "capabilities",
@@ -60,7 +61,8 @@
             "name": "onEventWithTwoContext",
             "tags": [
                 {
-                    "name": "event"
+                    "name": "notifier",
+                    "x-event": "onEventWithTwoContext"
                 },
                 {
                     "name": "capabilities",

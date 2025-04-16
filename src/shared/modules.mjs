@@ -1720,7 +1720,6 @@ const fireboltize = (json, bidirectional) => {
       console.log('Creating bidirectional APIs')
       json = generateEventSubscribers(json)
       json = generateProviderRegistrars(json)
-      json = generateEventListenerParameters(json)
 
     } else {
       console.log('Creating unidirectional APIs')
