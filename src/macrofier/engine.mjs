@@ -905,7 +905,7 @@ const generateEnums = (json, templates, template = 'enum') => {
       return output ? output.replace(/\$\{schema.list\}/g, val.trimEnd()) : val
     }),
     map(reduce((acc, val) => acc.concat(val).concat('\n'), '')),
-    map(map((schema) => convertEnumTemplate(schema, `/types/${template}`, templates))),
+    map(map((schema) => convertEnumTemplate(schema, `/types/${template}${state.suffix}`, templates))),
     map(enumFinder),
     getSchemas
   )(json)
@@ -1000,7 +1000,6 @@ function generateSchemas(platformApi, templates, options) {
 
   const schemas = JSON.parse(JSON.stringify(platformApi.definitions || (platformApi.components && platformApi.components.schemas) || {}))
 
-
   const generate = (name, schema, uri, { prefix = '' } = {}) => {
     // these are internal schemas used by the fireboltize-openrpc tooling, and not meant to be used in code/doc generation
     if (['ListenResponse', 'ProviderRequest', 'ProviderResponse', 'FederatedResponse', 'FederatedRequest'].includes(name)) {
@@ -1026,7 +1025,7 @@ function generateSchemas(platformApi, templates, options) {
     // Schema title is requuired for proper documentation generation
     if (!schema.title) schema.title = name
 
-    const schemaShape = Types.getSchemaShape(schema, platformApi, { templateDir: state.typeTemplateDir, primitive: config.primitives ? Object.keys(config.primitives).length > 0 : false, namespace: !config.copySchemasIntoModules })
+    const schemaShape = Types.getSchemaShape(schema, platformApi, { templateDir: state.typeTemplateDir, primitive: config.primitives ? Object.keys(config.primitives).length > 0 : false, namespace: !config.copySchemasIntoModules, suffix: state.suffix })
 
     const schemaImpl = Types.getSchemaShape(schema, platformApi, { templateDir: state.typeTemplateDir, enumImpl: true, primitive: config.primitives ? Object.keys(config.primitives).length > 0 : false, namespace: !config.copySchemasIntoModules })
     
@@ -1533,7 +1532,7 @@ function insertMethodMacros(template, methodObj, platformApi, appApi, templates,
   const setterTemplate = (setter ? insertMethodMacros(getTemplate('/codeblocks/setter', templates), setter, platformApi, appApi, templates, type, examples) : '')
   const subscriber = platformApi.methods.find(method => method.tags.find(tag => tag['x-alternative'] === methodObj.name))
   const subscriberTemplate = (subscriber ? insertMethodMacros(getTemplate('/codeblocks/subscriber', templates), subscriber, platformApi, appApi, templates, type, examples) : '')
-  const setterFor = methodObj.tags.find(t => t.name === 'setter') && methodObj.tags.find(t => t.name === 'setter')['x-setter-for'] || ''
+  const setterFor = methodObj.tags.find(t => t.name === 'setter') && methodObj.tags.find(t => t.name === 'setter')['x-setter-for'].split('.').pop() || ''
 
   const pullsResult = (puller || pullsFor) ? localizeDependencies(pullsFor || methodObj, platformApi).params.findLast(x=>true).schema : null
   const pullsParams = (puller || pullsFor) ? localizeDependencies(getPayloadFromEvent(puller || methodObj, document), document, null, { mergeAllOfs: true }).properties.parameters : null
@@ -1870,17 +1869,7 @@ function insertExampleMacros(template, examples, method, json, templates) {
           else
           {
             languageContent = languageContent.replace(/\$\{method\.params\[([0-9]+)\]\.example\.value\}/g, "")
-            /*
-            if (index >= method.examples.length)
-            {
-              console.log(`Current index is not less than examples liength (index: ${index} ? ${method.examples.length})`)
-            }
-            else if (paramIndex >= method.examples[index].params.length)
-            {
-              console.log(`paramIndex is not less than method.examples[index].params.length  (paramIndex: ${paramIndex} ? ${method.examples[index].params.length})`)
-            }
-            */
-          }          
+          }
         })
 
 

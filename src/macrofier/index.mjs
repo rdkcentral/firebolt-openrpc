@@ -27,6 +27,7 @@ import Types from './types.mjs'
 import path from 'path'
 import engine from './engine.mjs'
 import { flattenMultipleOfs, replaceUri } from '../shared/json-schema.mjs'
+import { getConfig } from '../shared/configLoader.mjs'
 
 /************************************************************************************************/
 /******************************************** MAIN **********************************************/
@@ -203,11 +204,13 @@ const macrofy = async (
 
         let append = false
 
+        const suffixes = getConfig().langcode == 'javascript' ? { js: '.mjs', ts: '.ts' } : {};
         modules.forEach(module => {
             const appApiOpenRpc2 = appApiOpenRpc && getAppApiModule(module.info.title, appApiOpenRpc, module)
             logSuccess(` - gotAppApiModule`)
             
-            const macros = engine.generateMacros(module, appApiOpenRpc2, templates, exampleTemplates, {hideExcluded: hideExcluded, copySchemasIntoModules: copySchemasIntoModules, createPolymorphicMethods: createPolymorphicMethods, type: 'methods'})
+            const macros        = engine.generateMacros(module, appApiOpenRpc2, templates, exampleTemplates, {hideExcluded: hideExcluded, copySchemasIntoModules: copySchemasIntoModules, createPolymorphicMethods: createPolymorphicMethods, type: 'methods', suffix: suffixes?.js })
+            const macrosPrimary = engine.generateMacros(module, appApiOpenRpc2, templates, exampleTemplates, {hideExcluded: hideExcluded, copySchemasIntoModules: copySchemasIntoModules, createPolymorphicMethods: createPolymorphicMethods, type: 'methods', suffix: suffixes?.ts })
             logSuccess(`Generated macros for module ${module.info.title}`)
             
             // Pick the index and defaults templates for each module.
@@ -226,8 +229,8 @@ const macrofy = async (
             })
 
             primaryOutput.forEach(output => {
-                macros.append = append
-                outputFiles[output] = engine.insertMacros(outputFiles[output], macros)
+                macrosPrimary.append = append
+                outputFiles[output] = engine.insertMacros(outputFiles[output], macrosPrimary)
                 logSuccess(` - Inserted ${module.info.title} macros for template ${output}`)
             })
 
@@ -274,7 +277,8 @@ const macrofy = async (
               return // skip this one, it was already merged into the module w/ the same name
           }
 
-          const macros = engine.generateMacros(document, null, templates, exampleTemplates, {hideExcluded: hideExcluded, copySchemasIntoModules: copySchemasIntoModules, createPolymorphicMethods: createPolymorphicMethods })
+          const macros        = engine.generateMacros(document, null, templates, exampleTemplates, {hideExcluded: hideExcluded, copySchemasIntoModules: copySchemasIntoModules, createPolymorphicMethods: createPolymorphicMethods, suffix: suffixes?.js })
+          const macrosPrimary = engine.generateMacros(document, null, templates, exampleTemplates, {hideExcluded: hideExcluded, copySchemasIntoModules: copySchemasIntoModules, createPolymorphicMethods: createPolymorphicMethods, suffix: suffixes?.ts })
 
           if (templatesPerSchema || primaryOutput.length) {
               templatesPerSchema && templatesPerSchema.forEach( t => {
@@ -288,8 +292,8 @@ const macrofy = async (
                 })
 
                 primaryOutput && primaryOutput.forEach(output => {
-                  macros.append = append
-                  outputFiles[output] = engine.insertMacros(outputFiles[output], macros)
+                  macrosPrimary.append = append
+                  outputFiles[output] = engine.insertMacros(outputFiles[output], macrosPrimary)
                 })
 
               append = true
