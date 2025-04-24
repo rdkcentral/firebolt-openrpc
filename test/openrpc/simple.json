@@ -258,61 +258,6 @@
             ]
         },
         {
-            "name": "methodWithMethodAttribute",
-            "summary": "A method using a method-attribute transform.",
-            "description": "A method for testing sub-method generation.",
-            "tags": [
-                {
-                    "name": "capabilities",
-                    "x-uses": ["xrn:firebolt:capability:test:test"]
-                }
-            ],
-            "params": [
-                {
-                    "name": "title",
-                    "required": true,
-                    "schema": {
-                        "$ref": "https://meta.comcast.com/firebolt/types#/definitions/LocalizedString"
-                    },
-                    "summary": "A localized string test parameter."
-                }
-            ],
-            "result": {
-                "name": "result",
-                "summary": "A result for testing basic method generation.",
-                "schema": {
-                    "type": "object",
-                    "properties": {
-                        "aString": {
-                            "type": "string"
-                        },
-                        "aMethod": {
-                            "type": "string",
-                            "x-method": "Simple.method",
-                            "x-this-param": "accessory"
-                        }
-                    }
-                }
-            },
-            "examples": [
-                {
-                    "name": "Default Example",
-                    "params": [
-                        {
-                            "name": "title",
-                            "value": "test"
-                        }
-                    ],
-                    "result": {
-                        "name": "Default Result",
-                        "value": {
-                            "foo": "here's foo"
-                        }
-                    }
-                }
-            ]
-        },
-        {
             "name": "methodWithMultipleParams",
             "summary": "A method that takes two parameters",
             "description": "A method that takes two parameters",
