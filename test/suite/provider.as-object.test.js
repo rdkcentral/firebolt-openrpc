@@ -33,7 +33,7 @@ let responseCorrelationId
 beforeAll( () => {
     
     transport.onSend(json => {
-        if (json.method === 'provider.onRequestSimpleMethod') {
+        if (json.method === 'Provider.onRequestSimpleMethod') {
             providerMethodNotificationRegistered = true
 
             // Confirm the listener is on
@@ -50,7 +50,7 @@ beforeAll( () => {
                 })
             })
         }
-        else if (json.method === 'provider.simpleMethodResponse') {
+        else if (json.method === 'Provider.simpleMethodResponse') {
             providerMethodResultSent = true
             value = json.params.result
             responseCorrelationId = json.params.correlationId

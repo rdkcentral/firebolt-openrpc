@@ -58,7 +58,7 @@ beforeAll( () => {
     }
     
     transport.onSend(json => {
-        if (json.method === 'provider.onRequestMultiMethodOne') {
+        if (json.method === 'Provider.onRequestMultiMethodOne') {
             providerMethodOneNotificationRegistered = true
 
             // Confirm the listener is on
@@ -75,12 +75,12 @@ beforeAll( () => {
                 })
             })
         }
-        else if (json.method === 'provider.multiMethodOneResponse') {
+        else if (json.method === 'Provider.multiMethodOneResponse') {
             providerMethodOneResultSent = true
             valueOne = json.params.result
             responseCorrelationIdOne = json.params.correlationId
         }
-        if (json.method === 'provider.onRequestMultiMethodTwo') {
+        if (json.method === 'Provider.onRequestMultiMethodTwo') {
             providerMethodTwoNotificationRegistered = true
 
             // Confirm the listener is on
@@ -97,7 +97,7 @@ beforeAll( () => {
                 })
             })
         }
-        else if (json.method === 'provider.multiMethodTwoResponse') {
+        else if (json.method === 'Provider.multiMethodTwoResponse') {
             providerMethodTwoResultSent = true
             valueTwo = json.params.result
             responseCorrelationIdTwo = json.params.correlationId

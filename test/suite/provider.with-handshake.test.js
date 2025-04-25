@@ -43,7 +43,7 @@ beforeAll( () => {
     }
     
     transport.onSend(json => {
-        if (json.method === 'provider.onRequestHandshakeMethod') {
+        if (json.method === 'Provider.onRequestHandshakeMethod') {
             providerMethodNotificationRegistered = true
 
             // Confirm the listener is on
@@ -60,10 +60,10 @@ beforeAll( () => {
                 })
             })
         }
-        else if (json.method === 'provider.handshakeMethodFocus') {
+        else if (json.method === 'Provider.handshakeMethodFocus') {
             providerMethodReadySent = true
         }
-        else if (json.method === 'provider.handshakeMethodResponse') {
+        else if (json.method === 'Provider.handshakeMethodResponse') {
             providerMethodResultSent = true
             value = json.params.result
             responseCorrelationId = json.params.correlationId

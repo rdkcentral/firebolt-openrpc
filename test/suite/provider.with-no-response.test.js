@@ -38,7 +38,7 @@ beforeAll( () => {
     }
     
     transport.onSend(json => {
-        if (json.method === 'provider.onRequestNoResponseMethod') {
+        if (json.method === 'Provider.onRequestNoResponseMethod') {
             providerMethodNotificationRegistered = true
 
             // Confirm the listener is on
@@ -55,7 +55,7 @@ beforeAll( () => {
                 })
             })
         }
-        else if (json.method === 'provider.noResponseMethodResponse') {
+        else if (json.method === 'Provider.noResponseMethodResponse') {
             providerMethodResultSent = true
             hasNoResponse = json.params.hasOwnProperty('result') === false
             responseCorrelationId = json.params.correlationId

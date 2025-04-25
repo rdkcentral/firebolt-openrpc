@@ -45,7 +45,7 @@ beforeAll( () => {
     }
     
     transport.onSend(json => {
-        if (json.method === 'provider.onRequestSimpleMethod') {
+        if (json.method === 'Provider.onRequestSimpleMethod') {
             providerMethodNotificationRegistered = true
 
             // Confirm the listener is on
@@ -62,7 +62,7 @@ beforeAll( () => {
                 })
             })
         }
-        else if (json.method === 'provider.simpleMethodError') {
+        else if (json.method === 'Provider.simpleMethodError') {
             providerMethodErrorSent = true
             value = json.params.error
             responseCorrelationId = json.params.correlationId
