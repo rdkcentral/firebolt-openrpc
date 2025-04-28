@@ -59,5 +59,4 @@ test('Multiple Parameters', async () => {
     expect(msg.method).toBe('Simple.methodWithMultipleParams')
     expect(msg.params.id).toBe(5)
     expect(msg.params.title).toBe('foo')
-    console.log(JSON.stringify(msg))
 });
