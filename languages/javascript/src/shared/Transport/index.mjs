@@ -76,7 +76,7 @@ if(! win.__firebolt.setTransportLayer) {
   win.__firebolt.setTransportLayer = (transport) => {
        win.__firebolt.transport = transport;
        implementation = win.__firebolt.transport;
-       implementation.receive(_callback)};
+       implementation.receive(_callback);
   };
 }
 
