@@ -27,12 +27,12 @@ let propertySetterWasTriggeredWithValue = false
 beforeAll( () => {
 
     transport.onSend(json => {
-        if (json.method === 'simple.property') {
+        if (json.method === 'Simple.property') {
             transport.response(json.id, {
                 foo: "here's foo"
             })            
         }
-        else if (json.method === 'simple.onPropertyChanged') {
+        else if (json.method === 'Simple.onPropertyChanged') {
             // Confirm the listener is on
             transport.response(json.id, {
                 listening: true,
@@ -46,7 +46,7 @@ beforeAll( () => {
                 })
             })
         }
-        else if (json.method === 'simple.setProperty') {
+        else if (json.method === 'Simple.setProperty') {
             propertySetterWasTriggered = true
             if (json.params.value.foo === 'a new foo!' || json.params.value.foo === null) {
                 propertySetterWasTriggeredWithValue = true

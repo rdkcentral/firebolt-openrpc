@@ -56,8 +56,7 @@ test('Multiple Parameters', async () => {
     window['__firebolt'].setTransportLayer(new TransportSpy(cb))
     await Simple.methodWithMultipleParams(5, 'foo')
     let msg = await promise
-    expect(msg.method).toBe('simple.methodWithMultipleParams')
+    expect(msg.method).toBe('Simple.methodWithMultipleParams')
     expect(msg.params.id).toBe(5)
     expect(msg.params.title).toBe('foo')
-    console.log(JSON.stringify(msg))
 });

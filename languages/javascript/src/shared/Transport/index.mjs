@@ -64,10 +64,22 @@ function getImplementation() {
   
   win.__firebolt.transport = implementation
   implementation.receive(_callback)
-  _callback = undefined
+  
+  //we want to keep the callback to use in setTransportLayer. (for unit testing)
+  //_callback = undefined
 
   return implementation
 }
+
+// This is to set the transport layer for unit testing
+if(! win.__firebolt.setTransportLayer) {
+  win.__firebolt.setTransportLayer = (transport) => {
+       win.__firebolt.transport = transport;
+       implementation = win.__firebolt.transport;
+       implementation.receive(_callback);
+  };
+}
+
 
 export default {
   send,
