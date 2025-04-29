@@ -66,7 +66,7 @@
             ]
         },
         {
-            "name": "property",
+            "name": "usualProperty",
             "summary": "A property.",
             "tags": [
                 {
@@ -151,6 +151,39 @@
                 }                
             ]            
         },
+        {
+            "name": "readonlyProperty",
+            "summary": "Get the property readonly",
+            "params": [],
+            "tags": [
+              {
+                "name": "property:readonly"
+              },
+              {
+                "name": "capabilities",
+                "x-uses": [
+                  "xrn:firebolt:capability:test:test"
+                ]
+              }
+            ],
+            "result": {
+              "name": "read only property",
+              "summary": "the read only property",
+              "schema": {
+                "type": "boolean"
+              }
+            },
+            "examples": [
+              {
+                "name": "Default Example",
+                "params": [],
+                "result": {
+                  "name": "Default Result",
+                  "value": true
+                }
+              }
+            ]
+        },         
         {
             "name": "methodWithMarkdownDescription",
             "summary": "A method that pulls it's description from an external markdown file.",

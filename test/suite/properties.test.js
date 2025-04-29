@@ -27,12 +27,12 @@ let propertySetterWasTriggeredWithValue = false
 beforeAll( () => {
 
     transport.onSend(json => {
-        if (json.method === 'Simple.property') {
+        if (json.method === 'Simple.usualProperty') {
             transport.response(json.id, {
                 foo: "here's foo"
             })            
         }
-        else if (json.method === 'Simple.onPropertyChanged') {
+        else if (json.method === 'Simple.onUsualPropertyChanged') {
             // Confirm the listener is on
             transport.response(json.id, {
                 listening: true,
@@ -46,7 +46,7 @@ beforeAll( () => {
                 })
             })
         }
-        else if (json.method === 'Simple.setProperty') {
+        else if (json.method === 'Simple.setUsualProperty') {
             propertySetterWasTriggered = true
             if (json.params.value.foo === 'a new foo!' || json.params.value.foo === null) {
                 propertySetterWasTriggeredWithValue = true
@@ -60,19 +60,19 @@ beforeAll( () => {
 })
 
 test('Basic Property get', () => {
-    return Simple.property().then(result => {
+    return Simple.usualProperty().then(result => {
         expect(result.foo).toBe("here's foo")
     })
 });
 
 test('Basic Property subscribe', () => {
-    return Simple.property(value => {
+    return Simple.usualProperty(value => {
         expect(value.foo).toBe("here's foo")
     })
 });
 
 test('Basic Property set', () => {
-    Simple.property({
+    Simple.usualProperty({
         foo: 'a new foo!'
     })
 
@@ -81,7 +81,7 @@ test('Basic Property set', () => {
 });
 
 test('Basic Property set with null', () => {
-    Simple.property({
+    Simple.usualProperty({
         foo: null
     })
     expect(propertySetterWasTriggered).toBe(true)
