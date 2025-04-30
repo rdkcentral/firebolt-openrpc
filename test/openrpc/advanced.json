@@ -7,6 +7,42 @@
     },
     "methods": [
         {
+            "name": "plainEvent",
+            "tags": [
+                {
+                    "name": "notifier",
+                    "x-event": "Advanced.onPlainEvent"
+                },
+                {
+                    "name": "capabilities",
+                    "x-uses": [
+                        "xrn:firebolt:capability:test:test"
+                    ]
+                }
+            ],
+            "summary": "Plain event with no context.",
+            "params": [
+                {
+                    "name": "value",
+                    "summary": "A value",
+                    "schema": {
+                        "type": "string"
+                    }
+                }
+            ],
+            "examples": [
+                {
+                    "name": "Default Example",
+                    "params": [
+                        {
+                            "name": "Default Result",
+                            "value": "Living Room"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
             "name": "eventWithContext",
             "tags": [
                 {
@@ -15,7 +51,9 @@
                 },
                 {
                     "name": "capabilities",
-                    "x-uses": ["xrn:firebolt:capability:test:test"]
+                    "x-uses": [
+                        "xrn:firebolt:capability:test:test"
+                    ]
                 }
             ],
             "summary": "An event with one context parameter.",
@@ -26,19 +64,19 @@
                     "schema": {
                         "type": "string"
                     }
+                },
+                {
+                    "name": "value",
+                    "schema": {
+                        "type": "object",
+                        "properties": {
+                            "foo": {
+                                "type": "string"
+                            }
+                        }
+                    }
                 }
             ],
-            "result": {
-                "name": "result",
-                "schema": {
-                    "type": "object",
-                    "properties": {
-                        "foo": {
-                            "type": "string"
-                        }
-                    }    
-                }
-            },
             "examples": [
                 {
                     "name": "Default Example",
@@ -46,14 +84,14 @@
                         {
                             "name": "appId",
                             "value": "hulu"
+                        },
+                        {
+                            "name": "value",
+                            "value": {
+                                "foo": "bar"
+                            }
                         }
-                    ],
-                    "result": {
-                        "name": "result",
-                        "value": {
-                            "foo": "bar"
-                        }
-                    }
+                    ]
                 }
             ]
         },
@@ -66,7 +104,9 @@
                 },
                 {
                     "name": "capabilities",
-                    "x-uses": ["xrn:firebolt:capability:test:test"]
+                    "x-uses": [
+                        "xrn:firebolt:capability:test:test"
+                    ]
                 }
             ],
             "summary": "An event with two context parameters.",
@@ -84,19 +124,19 @@
                     "schema": {
                         "type": "string"
                     }
+                },
+                {
+                    "name": "value",
+                    "schema": {
+                        "type": "object",
+                        "properties": {
+                            "foo": {
+                                "type": "string"
+                            }
+                        }
+                    }
                 }
             ],
-            "result": {
-                "name": "result",
-                "schema": {
-                    "type": "object",
-                    "properties": {
-                        "foo": {
-                            "type": "string"
-                        }
-                    }    
-                }
-            },
             "examples": [
                 {
                     "name": "Default Example",
@@ -108,20 +148,20 @@
                         {
                             "name": "state",
                             "value": "inactive"
+                        },
+                        {
+                            "name": "result",
+                            "value": {
+                                "foo": "bar"
+                            }
                         }
-                    ],
-                    "result": {
-                        "name": "result",
-                        "value": {
-                            "foo": "bar"
-                        }
-                    }
+                    ]
                 }
             ]
         },
         {
             "name": "propertyWithContext",
-            "summary":"",
+            "summary": "",
             "tags": [
                 {
                     "name": "property"
@@ -174,7 +214,7 @@
                         "name": "value",
                         "value": true
                     }
-                }                
+                }
             ]
         },
         {
@@ -183,7 +223,9 @@
             "tags": [
                 {
                     "name": "capabilities",
-                    "x-uses": ["xrn:firebolt:capability:test:test"]
+                    "x-uses": [
+                        "xrn:firebolt:capability:test:test"
+                    ]
                 }
             ],
             "description": "A method for testing advanced method generation.",
@@ -252,7 +294,6 @@
                     },
                     "aNumber": {
                         "type": "number"
-                        
                     }
                 }
             }

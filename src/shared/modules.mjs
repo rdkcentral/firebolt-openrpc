@@ -1260,8 +1260,7 @@ const generateEventSubscribers = json => {
       if (!subscriber) {
           const subscriber = JSON.parse(JSON.stringify(notifier))
           subscriber.name = methodRename(subscriber, name => 'on' + name.charAt(0).toUpperCase() + name.substring(1))
-          //TODO: Why do we need to remove one parameter if exists? Comennted out this code as unit tests in are failing
-          //subscriber.params.pop()
+          subscriber.params.pop()
           subscriber.params.push({
               name: 'listen',
               schema: {
@@ -1277,8 +1276,7 @@ const generateEventSubscribers = json => {
           }
 
           subscriber.examples.forEach(example => {
-            //TODO: Why do we need to remove one parameter if exists? Comennted out this code as unit tests in are failing
-            // example.params.pop()
+              example.params.pop()
               example.params.push({
                   name: "listen",
                   value: true

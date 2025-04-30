@@ -1093,7 +1093,7 @@ function generateSchemas(platformApi, templates, options) {
       generate(...item)
     }
     catch (error) {
-      console.error(error)
+      //console.error(error)
     }
   })
 
@@ -1506,7 +1506,7 @@ function insertMethodMacros(template, methodObj, platformApi, appApi, templates,
       event.result.schema = getPayloadFromEvent(event)
     } else {
       const notifier = getNotifier(methodObj, appApi)
-      if (notifier.params.length > 0) {
+      if (notifier && notifier.params && notifier.params.length > 0) {
         event.result = notifier.params.slice(-1)[0];
       } else {
         event.result = null;
@@ -1555,10 +1555,10 @@ function insertMethodMacros(template, methodObj, platformApi, appApi, templates,
   let callbackInstantiation = ''
   if (event) {
     if (eventHasOptionalParam(event) && !event.tags.find(t => t.name === 'provider'))  {
-      callbackInstantiation = (type === 'methods') ? Types.getSchemaShape(event.result.schema, document, { templateDir: 'callback-instantiation', property: result.name, primitive: true, skipTitleOnce: true, namespace: false  }) : ''
+      callbackInstantiation = (type === 'methods') ? Types.getSchemaShape( event.result?.schema, document, { templateDir: 'callback-instantiation', property: result.name, primitive: true, skipTitleOnce: true, namespace: false  }) : ''
       let paramInstantiation = (type === 'methods') ? event.params.map(param => isOptionalParam(param) ? Types.getSchemaShape(param.schema, document, { templateDir: 'callback-context-instantiation', property: param.name, required: param.required, primitive: true, skipTitleOnce: true, namespace: false  }) : '').filter(param => param).join('\n') : ''
-      let resultInitialization = (type === 'methods') ? Types.getSchemaShape(event.result.schema, document, { templateDir: 'callback-value-initialization', property: result.name, primitive: true, skipTitleOnce: true, namespace: false  }) : ''
-      let resultInstantiation = (type === 'methods') ? Types.getSchemaShape(event.result.schema, document, { templateDir: 'callback-value-instantiation', property: result.name, primitive: true, skipTitleOnce: true, namespace: false  }) : ''
+      let resultInitialization = (type === 'methods') ? Types.getSchemaShape(event.result?.schema, document, { templateDir: 'callback-value-initialization', property: result.name, primitive: true, skipTitleOnce: true, namespace: false  }) : ''
+      let resultInstantiation = (type === 'methods') ? Types.getSchemaShape(event.result?.schema, document, { templateDir: 'callback-value-instantiation', property: result.name, primitive: true, skipTitleOnce: true, namespace: false  }) : ''
       callbackInstantiation = callbackInstantiation
         .replace(/\$\{callback\.param\.instantiation\.with\.indent\}/g, indent(paramInstantiation, '    ', 3))
         .replace(/\$\{callback\.result\.initialization\.with\.indent\}/g, indent(resultInitialization, '    ', 1))
