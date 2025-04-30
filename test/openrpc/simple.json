@@ -12,7 +12,9 @@
             "tags": [
                 {
                     "name": "capabilities",
-                    "x-uses": ["xrn:firebolt:capability:test:test"]
+                    "x-uses": [
+                        "xrn:firebolt:capability:test:test"
+                    ]
                 }
             ],
             "description": "A method for testing basic method generation.",
@@ -66,7 +68,7 @@
             ]
         },
         {
-            "name": "usualProperty",
+            "name": "plainProperty",
             "summary": "A property.",
             "tags": [
                 {
@@ -80,8 +82,7 @@
                 }
             ],
             "description": "A property for testing basic property generation.",
-            "params": [
-            ],
+            "params": [],
             "result": {
                 "name": "result",
                 "summary": "A result for testing basic method generation.",
@@ -92,7 +93,10 @@
                     ],
                     "properties": {
                         "foo": {
-                            "type": ["string", "null"],
+                            "type": [
+                                "string",
+                                "null"
+                            ],
                             "description": "A required field in the result."
                         },
                         "bar": {
@@ -148,42 +152,42 @@
                             "foo": null
                         }
                     }
-                }                
-            ]            
+                }
+            ]
         },
         {
             "name": "readonlyProperty",
             "summary": "Get the property readonly",
             "params": [],
             "tags": [
-              {
-                "name": "property:readonly"
-              },
-              {
-                "name": "capabilities",
-                "x-uses": [
-                  "xrn:firebolt:capability:test:test"
-                ]
-              }
+                {
+                    "name": "property:readonly"
+                },
+                {
+                    "name": "capabilities",
+                    "x-uses": [
+                        "xrn:firebolt:capability:test:test"
+                    ]
+                }
             ],
             "result": {
-              "name": "read only property",
-              "summary": "the read only property",
-              "schema": {
-                "type": "boolean"
-              }
+                "name": "read only property",
+                "summary": "the read only property",
+                "schema": {
+                    "type": "boolean"
+                }
             },
             "examples": [
-              {
-                "name": "Default Example",
-                "params": [],
-                "result": {
-                  "name": "Default Result",
-                  "value": true
+                {
+                    "name": "Default Example",
+                    "params": [],
+                    "result": {
+                        "name": "Default Result",
+                        "value": true
+                    }
                 }
-              }
             ]
-        },         
+        },
         {
             "name": "methodWithMarkdownDescription",
             "summary": "A method that pulls it's description from an external markdown file.",
@@ -193,9 +197,11 @@
             "tags": [
                 {
                     "name": "capabilities",
-                    "x-uses": ["xrn:firebolt:capability:test:test"]
+                    "x-uses": [
+                        "xrn:firebolt:capability:test:test"
+                    ]
                 }
-            ],         
+            ],
             "params": [
                 {
                     "name": "parameter",
@@ -252,7 +258,9 @@
             "tags": [
                 {
                     "name": "capabilities",
-                    "x-uses": ["xrn:firebolt:capability:test:test"]
+                    "x-uses": [
+                        "xrn:firebolt:capability:test:test"
+                    ]
                 }
             ],
             "params": [
@@ -297,7 +305,9 @@
             "tags": [
                 {
                     "name": "capabilities",
-                    "x-uses": ["xrn:firebolt:capability:test:test"]
+                    "x-uses": [
+                        "xrn:firebolt:capability:test:test"
+                    ]
                 }
             ],
             "params": [

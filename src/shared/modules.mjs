@@ -31,8 +31,6 @@ import { getExternalSchemaPaths, isDefinitionReferencedBySchema, isNull, localiz
 import { extension, getNotifier, isEvent, isNotifier, isPusher, isRegistration, name as methodName, rename as methodRename, provides } from './methods.mjs'
 const { isObject, isArray, propEq, pathSatisfies, hasProp, propSatisfies } = predicates
 
-const listOfAllNotifiersGeneratedFromProperties = [];
-
 // TODO remove these when major/rpc branch is merged
 const name = method => method.name.split('.').pop()
 const rename = (method, renamer) => method.name.split('.').map((x, i, arr) => i === (arr.length-1) ? renamer(x) : x).join('.')
@@ -566,8 +564,7 @@ const createNotifierFromProperty = (property, type='Changed') => {
           delete example.result    
       })
   }
-  //store in listOfAllNotifiersGeneratedFromProperties the notifier name for later to chekc if a notifier is generated from property
-  listOfAllNotifiersGeneratedFromProperties.push(notifier.name)
+
   return notifier
 }
 
@@ -1263,17 +1260,7 @@ const generateEventSubscribers = json => {
       if (!subscriber) {
           const subscriber = JSON.parse(JSON.stringify(notifier))
           subscriber.name = methodRename(subscriber, name => 'on' + name.charAt(0).toUpperCase() + name.substring(1))
-          
-          // if the subscriber is generated from property tag, only then we remove the last param, because that param was previosly added by createNotifierFromProperty  
-          let shouldPopTopParam = false;
-          
-          //check if the notifier is generated from property
-          if (listOfAllNotifiersGeneratedFromProperties.includes(notifier.name)) {
-              shouldPopTopParam = true ;
-          }
-          if (shouldPopTopParam) {
-              subscriber.params.pop()
-          }
+          subscriber.params.pop()
           subscriber.params.push({
               name: 'listen',
               schema: {
@@ -1289,9 +1276,7 @@ const generateEventSubscribers = json => {
           }
 
           subscriber.examples.forEach(example => {
-              if (shouldPopTopParam) {
-                  example.params.pop()
-              }
+              example.params.pop()
               example.params.push({
                   name: "listen",
                   value: true
