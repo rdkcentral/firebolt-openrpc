@@ -114,6 +114,10 @@ function event(module, event, value) {
   }))
 }
 
+function receiveMessage (message) {
+  callback(message);
+}
+
 let id = 0
 const requests = []
 
@@ -168,7 +172,10 @@ export function setMockResponses(m) {
 
 export default {
   send: send,
-  receive: receive,
+  receiveMessage: receiveMessage,
+  handle: handle,
   event: event,
-  request: request
+  receive: receive,
+  request: request,
+
 }

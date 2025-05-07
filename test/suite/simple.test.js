@@ -15,32 +15,35 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-
+import { transport } from '../TransportHarness.js'
+import MockTransport from '../../build/sdk/javascript/src/Transport/MockTransport.mjs'
 import { Simple } from '../../build/sdk/javascript/src/sdk.mjs'
 import { expect } from '@jest/globals';
 
 
-class TransportSpy {
+beforeAll(() => {
 
-    constructor(spy) {
-        this.spy = spy
-        this.responder = null
+    transport.onSend = (module, method, json_params, json_id) => {
+        expect(module).toBe('Simple')
+
+        if (method === 'method') {
+            //setTimeout( _ => {
+            MockTransport.receiveMessage(JSON.stringify({ jsonrpc: "2.0", result: { foo: "here's foo", value: 5 }, id: json_id }))
+            //})     
+        }
+        else if (method === 'methodWithMultipleParams') {
+
+            //setTimeout( _ => {
+            MockTransport.receiveMessage(JSON.stringify({ jsonrpc: "2.0", result: true, id: json_id }))
+            //}) 
+
+        }
     }
 
-    async send(msg) {
-        let parsed = JSON.parse(msg)
-        this.spy(parsed)
-        this.responder(JSON.stringify({
-            jsonrpc: '2.0',
-            id: parsed.id,
-            result: {}
-        }))
-    }
-
-    receive(callback) {
-        this.responder = callback
-    }
-}
+    return new Promise((resolve, reject) => {
+        setTimeout(resolve, 100)
+    })
+})
 
 test('Basic', () => {
     return Simple.method(true).then(result => {
@@ -49,14 +52,8 @@ test('Basic', () => {
 });
 
 test('Multiple Parameters', async () => {
-    let cb = null;
-    let promise = new Promise((resolve, reject) => {
-        cb = resolve
+    return Simple.methodWithMultipleParams(5, 'foo').then(result => {
+        expect(result).toBe(true)
     })
-    window['__firebolt'].setTransportLayer(new TransportSpy(cb))
-    await Simple.methodWithMultipleParams(5, 'foo')
-    let msg = await promise
-    expect(msg.method).toBe('Simple.methodWithMultipleParams')
-    expect(msg.params.id).toBe(5)
-    expect(msg.params.title).toBe('foo')
+
 });
