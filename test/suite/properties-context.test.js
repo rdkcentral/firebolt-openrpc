@@ -16,9 +16,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { Advanced } from '../../build/sdk/javascript/src/sdk.mjs'
-import Setup from '../Setup'
 import { transport } from '../TransportHarness.js'
+import MockTransport from '../../build/sdk/javascript/src/Transport/MockTransport.mjs'
+import { Advanced } from '../../build/sdk/javascript/src/sdk.mjs'
+
+
 import { expect } from '@jest/globals';
 
 let propertySetterWasTriggered = false
@@ -29,57 +31,63 @@ let contextSentToSubscriber = false
 let contextSentToEvent = false
 let bothContextSentToEvent = false
 
-beforeAll( () => {
+beforeAll(() => {
 
-    transport.onSend(json => {
-        console.dir(json)
-        if (json.method === 'Advanced.propertyWithContext') {
-            if (json.params.appId === 'some-app') {
+    transport.onSend = (module, method, json_params, json_id) => {
+
+        //assert that module is Advanced
+        expect(module).toBe('Advanced')
+
+        if (method === 'propertyWithContext') {
+            if (json_params.appId === 'some-app') {
                 contextSentToGetter = true
             }
-            transport.response(json.id, true)            
+            //transport.response(json.id, true) 
+            MockTransport.receiveMessage(JSON.stringify({ jsonrpc: "2.0", result: true, id: json_id }))
         }
-        else if (json.method === 'Advanced.onPropertyWithContextChanged') {
-            if (json.params.appId === 'some-app') {
+        else if (method === 'onPropertyWithContextChanged') {
+            if (json_params.appId === 'some-app') {
                 contextSentToSubscriber = true
             }
 
             // Confirm the listener is on
-            transport.response(json.id, {
-                listening: true,
-                event: json.method
-            })
+            /* transport.response(json.id, {
+                 listening: true,
+                 event: method
+             })
+                 */
+            MockTransport.receiveMessage(JSON.stringify({ jsonrpc: "2.0", result: { listening: true, event: method }, id: json_id }))
 
             // send out a request event
-            setTimeout( _ => {
+            setTimeout(_ => {
                 transport.response(json.id, false)
             })
         }
-        else if (json.method === 'Advanced.setPropertyWithContext') {
-            if (json.params.appId === 'some-app') {
+        else if (method === 'setPropertyWithContext') {
+            if (json_params.appId === 'some-app') {
                 contextSentToSetter = true
             }
 
             propertySetterWasTriggered = true
-            if (json.params.value === true) {
+            if (json_params.value === true) {
                 propertySetterWasTriggeredWithValue = true
             }
         }
-        else if (json.method === "Advanced.onEventWithContext") {
-            if (json.params.appId === 'some-app') {
+        else if (method === "onEventWithContext") {
+            if (json_params.appId === 'some-app') {
                 contextSentToEvent = true
             }
         }
-        else if (json.method === "Advanced.onEventWithTwoContext") {
-            if (json.params.appId === 'some-app' && json.params.state === 'inactive') {
+        else if (method === "onEventWithTwoContext") {
+            if (json_params.appId === 'some-app' && json_params.state === 'inactive') {
                 bothContextSentToEvent = true
             }
         }
-    })
+    };
 
     Advanced.propertyWithContext('some-app', true)
 
-    return new Promise( (resolve, reject) => {
+    return new Promise((resolve, reject) => {
         setTimeout(resolve, 100)
     })
 })
@@ -109,7 +117,7 @@ test('Event with single context param', () => {
         expect(contextSentToEvent).toBe(true)
     })
 })
-    
+
 test('Event with two context params', () => {
     Advanced.listen("eventWithTwoContext", "some-app", "inactive", (data) => {
         expect(bothContextSentToEvent).toBe(true)

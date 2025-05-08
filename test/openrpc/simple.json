@@ -332,7 +332,7 @@
                 "name": "result",
                 "summary": "A result for testing basic method generation.",
                 "schema": {
-                    "type": "null"
+                    "type": "boolean"
                 }
             },
             "examples": [
@@ -350,7 +350,7 @@
                     ],
                     "result": {
                         "name": "Default Result",
-                        "value": null
+                        "value": true
                     }
                 }
             ]

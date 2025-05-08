@@ -13,10 +13,6 @@
                     "name": "capabilities",
                     "x-provides": "xrn:firebolt:capability:test:simple",
                     "x-allow-focus": false
-                },
-                {
-                    "name": "notifier",
-                    "x-event": "Provider.onRequestSimpleMethod"
                 }
             ],
             "summary": "Dispatches a request for the simple method to the simple provider.",
