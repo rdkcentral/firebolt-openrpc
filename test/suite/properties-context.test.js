@@ -33,20 +33,21 @@ let bothContextSentToEvent = false
 
 beforeAll(() => {
 
-    transport.onSend = (module, method, json_params, json_id) => {
+    transport.onSend ((json) => {
+        let [module, method] = json.method.split('.')
 
         //assert that module is Advanced
         expect(module).toBe('Advanced')
 
         if (method === 'propertyWithContext') {
-            if (json_params.appId === 'some-app') {
+            if (json.params.appId === 'some-app') {
                 contextSentToGetter = true
             }
             //transport.response(json.id, true) 
-            MockTransport.receiveMessage(JSON.stringify({ jsonrpc: "2.0", result: true, id: json_id }))
+            MockTransport.receiveMessage(JSON.stringify({ jsonrpc: "2.0", result: true, id: json.id }))
         }
         else if (method === 'onPropertyWithContextChanged') {
-            if (json_params.appId === 'some-app') {
+            if (json.params.appId === 'some-app') {
                 contextSentToSubscriber = true
             }
 
@@ -56,7 +57,7 @@ beforeAll(() => {
                  event: method
              })
                  */
-            MockTransport.receiveMessage(JSON.stringify({ jsonrpc: "2.0", result: { listening: true, event: method }, id: json_id }))
+            MockTransport.receiveMessage(JSON.stringify({ jsonrpc: "2.0", result: { listening: true, event: method }, id: json.id }))
 
             // send out a request event
             setTimeout(_ => {
@@ -64,26 +65,26 @@ beforeAll(() => {
             })
         }
         else if (method === 'setPropertyWithContext') {
-            if (json_params.appId === 'some-app') {
+            if (json.params.appId === 'some-app') {
                 contextSentToSetter = true
             }
 
             propertySetterWasTriggered = true
-            if (json_params.value === true) {
+            if (json.params.value === true) {
                 propertySetterWasTriggeredWithValue = true
             }
         }
         else if (method === "onEventWithContext") {
-            if (json_params.appId === 'some-app') {
+            if (json.params.appId === 'some-app') {
                 contextSentToEvent = true
             }
         }
         else if (method === "onEventWithTwoContext") {
-            if (json_params.appId === 'some-app' && json_params.state === 'inactive') {
+            if (json.params.appId === 'some-app' && json.params.state === 'inactive') {
                 bothContextSentToEvent = true
             }
         }
-    };
+    });
 
     Advanced.propertyWithContext('some-app', true)
 
