@@ -27,30 +27,31 @@ let propertySetterWasTriggeredWithValue = false
 
 beforeAll(() => {
 
-    transport.onSend = (module, method, json_params, json_id) => {
+    transport.onSend ((json) => {
+        let [module, method] = json.method.split('.')
 
         expect(module).toBe('Simple')
 
         if (method === 'plainProperty') {
             /*
-            transport.response(json_id, {
+            transport.response(json.id, {
                 foo: "here's foo"
             })
             */
-            MockTransport.receiveMessage(JSON.stringify({ jsonrpc: "2.0", result: { foo: "here's foo" }, id: json_id }))
+            MockTransport.receiveMessage(JSON.stringify({ jsonrpc: "2.0", result: { foo: "here's foo" }, id: json.id }))
         }
         else if (method === 'onPlainPropertyChanged') {
             // Confirm the listener is on
-            MockTransport.receiveMessage(JSON.stringify({ jsonrpc: "2.0", result: { listening: true, event: method }, id: json_id }))
+            MockTransport.receiveMessage(JSON.stringify({ jsonrpc: "2.0", result: { listening: true, event: method }, id: json.id }))
 
         }
         else if (method === 'setPlainProperty') {
             propertySetterWasTriggered = true
-            if (json_params.value.foo === 'a new foo!' || json_params.value.foo === null) {
+            if (json.params.value.foo === 'a new foo!' || json.params.value.foo === null) {
                 propertySetterWasTriggeredWithValue = true
             }
         }
-    }
+    })
 
     return new Promise((resolve, reject) => {
         setTimeout(resolve, 100)

@@ -23,22 +23,24 @@ import { expect } from '@jest/globals';
 
 beforeAll(() => {
 
-    transport.onSend = (module, method, json_params, json_id) => {
+    transport.onSend ((json) => {
+        let [module, method] = json.method.split('.')
+
         expect(module).toBe('Simple')
 
         if (method === 'method') {
             //setTimeout( _ => {
-            MockTransport.receiveMessage(JSON.stringify({ jsonrpc: "2.0", result: { foo: "here's foo", value: 5 }, id: json_id }))
+            MockTransport.receiveMessage(JSON.stringify({ jsonrpc: "2.0", result: { foo: "here's foo", value: 5 }, id: json.id }))
             //})     
         }
         else if (method === 'methodWithMultipleParams') {
 
             //setTimeout( _ => {
-            MockTransport.receiveMessage(JSON.stringify({ jsonrpc: "2.0", result: true, id: json_id }))
+            MockTransport.receiveMessage(JSON.stringify({ jsonrpc: "2.0", result: true, id: json.id }))
             //}) 
 
         }
-    }
+    })
 
     return new Promise((resolve, reject) => {
         setTimeout(resolve, 100)

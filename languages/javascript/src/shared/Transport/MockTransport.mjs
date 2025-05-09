@@ -41,13 +41,13 @@ function send(message) {
     return
   }
 
-  if (json.method) {
-    let [module, method] = json.method.split('.')
+  //let [module, method] = json.method.split('.')
 
-    if (testHarness && testHarness.onSend) {
-      testHarness.onSend(module, method, json.params, json.id)
-    }
-  
+  if (testHarness && testHarness.send) {
+    testHarness.send(message)
+  }
+
+  if (json.method) {
     if (mock)
       handle(json)
     else
@@ -62,7 +62,6 @@ function send(message) {
       promise.reject(json.error)
     }
   }
-
 }
 
 function handle(json) {
