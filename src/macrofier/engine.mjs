@@ -1290,12 +1290,14 @@ function generateExamples(json = {}, mainTemplates = {}, languages = {}) {
     examples[method.name].map(example => {
       if (example.languages['JSON-RPC']) {
         try {
-          example.languages['JSON-RPC'].code = JSON.stringify(JSON.parse(example.languages['JSON-RPC'].code), null, '\t')
-          example.languages['JSON-RPC'].result = JSON.stringify(JSON.parse(example.languages['JSON-RPC'].result), null, '\t')
+          const code = JSON.stringify(JSON.parse(example.languages['JSON-RPC'].code), null, '\t')
+          const result = JSON.stringify(JSON.parse(example.languages['JSON-RPC'].result), null, '\t')
+          example.languages['JSON-RPC'].code = code;
+          example.languages['JSON-RPC'].result = result;
         }
         catch (error) {
-          console.log(error)
-         }
+          console.error(`ERROR: ${error.name} When parsing example for ${method.name}`)
+        }
       }
     })
   })
