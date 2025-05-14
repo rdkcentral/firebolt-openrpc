@@ -2,5 +2,5 @@
    * Subscriber: ${method.summary}
    * 
    */
-function ${method.alternative}(subscriber: (${event.result.name}: ${event.result.type}) => void): Promise<number>
+function ${method.name}(subscriber: (${method.result.name}: ${method.result.type}) => void): Promise<number>
 

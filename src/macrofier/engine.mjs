@@ -1459,7 +1459,7 @@ function insertMethodMacros(template, methodObj, platformApi, appApi, templates,
   }
 
   if (getAlternativeMethod(methodObj)) {
-    method.alternative = getAlternativeMethod(methodObj)
+    method.alternative = getAlternativeMethod(methodObj).split('.').pop().replace(/\(\)$/, '')
   }
   else if (extension(methodObj, 'x-subscriber-for')) {
     method.alternative = extension(methodObj, 'x-subscriber-for').split('.').pop()
@@ -1533,8 +1533,15 @@ function insertMethodMacros(template, methodObj, platformApi, appApi, templates,
   const pullerTemplate = (puller ? insertMethodMacros(getTemplate('/codeblocks/puller', templates), puller, platformApi, appApi, templates, type, examples) : '')
   const setter = getSetterFor(methodObj.name, platformApi)
   const setterTemplate = (setter ? insertMethodMacros(getTemplate('/codeblocks/setter', templates), setter, platformApi, appApi, templates, type, examples) : '')
-  const subscriber = platformApi.methods.find(method => method.tags.find(tag => tag['x-alternative'] === methodObj.name))
-  const subscriberTemplate = (subscriber ? insertMethodMacros(getTemplate('/codeblocks/subscriber', templates), subscriber, platformApi, appApi, templates, type, examples) : '')
+  const subscriber = platformApi.methods.find(method => method.tags.find(tag => tag['x-subscriber-for'] === `${moduleName}.${methodObj.name}`) || method.tags.find(tag => tag['x-alternative'] === `${moduleName}.${methodObj.name}()`))
+  let subscriberTemplate = ''
+  if (subscriber) {
+    subscriberTemplate = getTemplate('/codeblocks/subscriber', templates)
+         .replace(/\$\{method\.name\}/g, method.name)
+         .replace(/\$\{method\.summary\}/g, methodObj.summary)
+         .replace(/\$\{method\.result\.name\}/g, result.name)
+         .replace(/\$\{method\.result\.type\}/g, Types.getSchemaType(result.schema, platformApi, { templateDir: state.typeTemplateDir, title: true, asPath: false, result: true, namespace: false }))
+  }
   const setterFor = methodObj.tags.find(t => t.name === 'setter') && methodObj.tags.find(t => t.name === 'setter')['x-setter-for'].split('.').pop() || ''
 
   const pullsResult = (puller || pullsFor) ? localizeDependencies(pullsFor || methodObj, platformApi).params.findLast(x=>true).schema : null
