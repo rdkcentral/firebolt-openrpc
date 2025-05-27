@@ -1429,8 +1429,15 @@ function insertMethodMacros(template, methodObj, json, templates, type = '', exa
 
   //callculate the number of optional params
   let optionalParams = 0
-  if (methodObj.params) 
-    optionalParams = methodObj.params.filter(p => p.required === false).length
+  if (methodObj.params && methodObj.params.length) {
+    // Count the number of optional parameters starting from the last and stop when a required parameter is found
+    for (let i = methodObj.params.length - 1; i >= 0; i--) {
+      if (methodObj.params[i].required) {
+        break; // Stop counting when a required parameter is found
+      }
+      optionalParams++;
+    }
+  }
 
   template = insertExampleMacros(template, examples[methodObj.name] || [], methodObj, json, templates)
   template = template.replace(/\$\{method\.name\}/g, method.name)

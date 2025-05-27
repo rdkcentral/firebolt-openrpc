@@ -104,29 +104,31 @@ export default class Transport {
   }
 
   static removeNullOptionalParams(params, numOfOptionalParams) {
-      if (numOfOptionalParams > 0) {
-        // iterate over all params starting backwrods and if the param is null or undefined remove it from the params object
-        const keys = Object.keys(params)
-        let i = keys.length - 1
-        while (i >= 0) {
-          const key = keys[i]
-          if (params[key] === null || params[key] === undefined) {
-            delete params[key]
-            console.warn('WARNING: null values for optional params will be disallowed in a future Firebolt version. Parameter: ' + key)
-          } else {
-            break
-          }
-          i--
-          if (numOfOptionalParams > 0) {
-            numOfOptionalParams--
-          }
-          else {
-            break
-          }
+    if (numOfOptionalParams > 0) {
+      // iterate over all params starting backwrods and if the param is null or undefined remove it from the params object
+      const keys = Object.keys(params)
+      let i = keys.length - 1
+      while (i >= 0) {
+        const key = keys[i]
+        if (params[key] === null) {
+          delete params[key]
+          console.warn('WARNING: null values for optional params will be disallowed in a future Firebolt version. Parameter: ' + key)
+        } else if (params[key] === undefined) {
+          // undefined means the param is not provided, which is Ok
+        } else {
+          break
+        }
+        i--
+        if (numOfOptionalParams > 0) {
+          numOfOptionalParams--
+        }
+        else {
+          break
         }
       }
-      return params
     }
+    return params
+  }
   _send (module, method, params, transforms) {
     if (Array.isArray(module) && !method && !params) {
       return this._batch(module)
