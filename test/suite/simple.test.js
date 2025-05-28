@@ -63,8 +63,7 @@ test('Basic', () => {
         expect(result.foo).toBe("here's foo")
     })
 });
-
-test('Multiple Parameters', async () => {
+test('Calls method with required parameter and validates payload', async () => {
 
     await Simple.methodWithMultipleParams(5, 'foo')
     let msg = await promise
@@ -74,7 +73,7 @@ test('Multiple Parameters', async () => {
     console.log(JSON.stringify(msg))
 });
 
-test('Method without optional param', async () => {
+test('Handles method call with no optional parameter provided', async () => {
 
     await Simple.methodWithOneOptionalParam()
     let msg = await promise
@@ -82,7 +81,7 @@ test('Method without optional param', async () => {
     expect(Object.keys(msg.params).length).toBe(0)
 });
 
-test('Method with optional param', async () => {
+test('Handles method call with optional parameter provided', async () => {
 
     await Simple.methodWithOneOptionalParam('foo')
     let msg = await promise
@@ -90,7 +89,7 @@ test('Method with optional param', async () => {
     expect(msg.params.param1).toBe('foo')
 });
 
-test('Method with null optional param', async () => {
+test('Handles method call with optional parameter explicitly set to null', async () => {
 
     await Simple.methodWithOneOptionalParam(null)
     let msg = await promise
@@ -98,37 +97,34 @@ test('Method with null optional param', async () => {
     expect(Object.keys(msg.params).length).toBe(0)
 });
 
-test('One required and the optional param is not passed', async () => {
+test('Handles method with one required parameter, optional parameter omitted', async () => {
 
     await Simple.methodWithOneRequiredOneOptionalParam("foo")
     let msg = await promise
     expect(msg.method).toBe('simple.methodWithOneRequiredOneOptionalParam')
     expect(msg.params.param1).toBe('foo')
     expect(Object.keys(msg.params).length).toBe(1)
-
 });
 
-test('One required and the optional param is passed as null', async () => {
+test('Handles method with one required parameter, optional parameter set to null', async () => {
 
     await Simple.methodWithOneRequiredOneOptionalParam('foo', null)
     let msg = await promise
     expect(msg.method).toBe('simple.methodWithOneRequiredOneOptionalParam')
     expect(msg.params.param1).toBe('foo')
     expect(Object.keys(msg.params).length).toBe(1)
-
 });
 
-test('The required and the optional params are null', async () => {
+test('Handles method with both required and optional parameters set to null', async () => {
 
     await Simple.methodWithOneRequiredOneOptionalParam(null, null)
     let msg = await promise
     expect(msg.method).toBe('simple.methodWithOneRequiredOneOptionalParam')
     expect(msg.params.param1).toBe(null)
     expect(Object.keys(msg.params).length).toBe(1)
-
 });
 
-test('One required and one optional param', async () => {
+test('Handles method call with both required and optional parameters provided', async () => {
 
     await Simple.methodWithOneRequiredOneOptionalParam('foo', 'bar')
     let msg = await promise
@@ -136,10 +132,9 @@ test('One required and one optional param', async () => {
     expect(msg.params.param1).toBe('foo')
     expect(msg.params.param2).toBe('bar')
     expect(Object.keys(msg.params).length).toBe(2)
-
 });
 
-test('Method with two optional params both not passed', async () => {
+test('Handles method with two optional parameters: only required provided', async () => {
 
     await Simple.methodWithTwoOptionalParam("foo")
     let msg = await promise
@@ -148,27 +143,16 @@ test('Method with two optional params both not passed', async () => {
     expect(Object.keys(msg.params).length).toBe(1)
 });
 
-test('One optional param passed as null second one not', async () => {
+test('Handles method with two optional parameters: first optional param set to null', async () => {
 
     await Simple.methodWithTwoOptionalParam('foo', null)
     let msg = await promise
     expect(msg.method).toBe('simple.methodWithTwoOptionalParam')
     expect(msg.params.param1).toBe('foo')
     expect(Object.keys(msg.params).length).toBe(1)
-
 });
 
-test('One optional param passed as null second one not', async () => {
-
-    await Simple.methodWithTwoOptionalParam('foo', null)
-    let msg = await promise
-    expect(msg.method).toBe('simple.methodWithTwoOptionalParam')
-    expect(msg.params.param1).toBe('foo')
-    expect(Object.keys(msg.params).length).toBe(1)
-
-});
-
-test('Two optional params passed as null', async () => {
+test('Handles method with two optional parameters: both set to null', async () => {
 
     await Simple.methodWithTwoOptionalParam('foo', null, null)
     let msg = await promise
@@ -177,7 +161,7 @@ test('Two optional params passed as null', async () => {
     expect(Object.keys(msg.params).length).toBe(1)
 });
 
-test('One optional param passed second one not', async () => {
+test('Handles method with two optional parameters: first provided, second not', async () => {
 
     await Simple.methodWithTwoOptionalParam('foo', 'bar')
     let msg = await promise
@@ -187,7 +171,7 @@ test('One optional param passed second one not', async () => {
     expect(Object.keys(msg.params).length).toBe(2)
 });
 
-test('Two optional params spassed, first as null second by value', async () => {
+test('Handles method with two optional parameters: first param set to null, second provided', async () => {
 
     await Simple.methodWithTwoOptionalParam('foo', null, "bar")
     let msg = await promise
@@ -198,7 +182,7 @@ test('Two optional params spassed, first as null second by value', async () => {
     expect(Object.keys(msg.params).length).toBe(3)
 });
 
-test('Method with optional params in wrong order', async () => {
+test('Handles optional parameters in wrong order', async () => {
 
     await Simple.methodWithTwoOptionalParamInWrongOrder(null, 'foo', "bar")
     let msg = await promise
