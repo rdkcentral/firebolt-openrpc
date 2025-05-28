@@ -53,14 +53,14 @@ test('Basic', () => {
     })
 });
 
-test('Multiple Parameters', async () => {
+test('Calls method with required parameter and validates payload', async () => {
     return Simple.methodWithMultipleParams(5, 'foo').then(result => {
         expect(result).toBe(true)
     })
 
 });
 
-test('Method without optional param', async () => {
+test('Handles method call with no optional parameter provided', async () => {
 
     transport.onSend((json) => {
         let [module, method] = json.method.split('.')
@@ -74,7 +74,7 @@ test('Method without optional param', async () => {
 });
 
 
-test('Method with optional param', async () => {
+test('Handles method call with optional parameter provided', async () => {
 
     transport.onSend((json) => {
         let [module, method] = json.method.split('.')
@@ -87,7 +87,7 @@ test('Method with optional param', async () => {
     Simple.methodWithOneOptionalParam('foo')
 });
 
-test('Method with null optional param', async () => {
+test('Handles method call with optional parameter explicitly set to null', async () => {
 
     transport.onSend((json) => {
         let [module, method] = json.method.split('.')
@@ -100,7 +100,7 @@ test('Method with null optional param', async () => {
     Simple.methodWithOneOptionalParam(null)
 });
 
-test('One required and the optional param is not passed', async () => {
+test('Handles method with one required parameter, optional parameter omitted', async () => {
 
     transport.onSend((json) => {
         let [module, method] = json.method.split('.')
@@ -113,7 +113,7 @@ test('One required and the optional param is not passed', async () => {
     Simple.methodWithOneRequiredOneOptionalParam("foo")
 });
 
-test('One required and the optional param is passed as null', async () => {
+test('Handles method with one required parameter, optional parameter set to null', async () => {
 
     transport.onSend((json) => {
         let [module, method] = json.method.split('.')
@@ -127,7 +127,7 @@ test('One required and the optional param is passed as null', async () => {
     Simple.methodWithOneRequiredOneOptionalParam('foo', null)
 });
 
-test('The required and the optional params are null', async () => {
+test('Handles method with both required and optional parameters set to null', async () => {
 
     transport.onSend((json) => {
         let [module, method] = json.method.split('.')
@@ -141,7 +141,7 @@ test('The required and the optional params are null', async () => {
     Simple.methodWithOneRequiredOneOptionalParam(null, null)
 });
 
-test('One required and one optional param', async () => {
+test('Handles method call with both required and optional parameters provided', async () => {
 
     transport.onSend((json) => {
         let [module, method] = json.method.split('.')
@@ -156,7 +156,7 @@ test('One required and one optional param', async () => {
     Simple.methodWithOneRequiredOneOptionalParam('foo', 'bar')
 });
 
-test('Method with two optional params both not passed', async () => {
+test('Handles method with two optional parameters: only required provided', async () => {
 
     transport.onSend((json) => {
         let [module, method] = json.method.split('.')
@@ -170,7 +170,7 @@ test('Method with two optional params both not passed', async () => {
     Simple.methodWithTwoOptionalParam("foo")
 });
 
-test('One optional param passed as null second one not', async () => {
+test('Handles method with two optional parameters: first optional param set to null', async () => {
 
     transport.onSend((json) => {
         let [module, method] = json.method.split('.')
@@ -184,20 +184,8 @@ test('One optional param passed as null second one not', async () => {
     Simple.methodWithTwoOptionalParam('foo', null)
 });
 
-test('One optional param passed as null second one not', async () => {
-    transport.onSend((json) => {
-        let [module, method] = json.method.split('.')
+test('Handles method with two optional parameters: both set to null', async () => {
 
-        expect(module).toBe('Simple')
-        expect(method).toBe('methodWithTwoOptionalParam')
-        expect(json.params.param1).toBe('foo')
-        expect(Object.keys(json.params).length).toBe(1)
-        MockTransport.receiveMessage(JSON.stringify({ jsonrpc: "2.0", result: {}, id: json.id }))
-    })
-    Simple.methodWithTwoOptionalParam('foo', null)
-});
-
-test('Two optional params passed as null', async () => {
     transport.onSend((json) => {
         let [module, method] = json.method.split('.')
 
@@ -210,7 +198,8 @@ test('Two optional params passed as null', async () => {
     Simple.methodWithTwoOptionalParam('foo', null, null)
 });
 
-test('One optional param passed second one not', async () => {
+test('Handles method with two optional parameters: first provided, second not', async () => {
+
     transport.onSend((json) => {
         let [module, method] = json.method.split('.')
 
@@ -224,7 +213,8 @@ test('One optional param passed second one not', async () => {
     Simple.methodWithTwoOptionalParam('foo', 'bar')
 });
 
-test('Two optional params spassed, first as null second by value', async () => {
+test('Handles method with two optional parameters: first param set to null, second provided', async () => {
+
     transport.onSend((json) => {
         let [module, method] = json.method.split('.')
 
@@ -239,7 +229,8 @@ test('Two optional params spassed, first as null second by value', async () => {
     Simple.methodWithTwoOptionalParam('foo', null, "bar")
 });
 
-test('Method with optional params in wrong order', async () => {
+test('Handles optional parameters in wrong order', async () => {
+
     transport.onSend((json) => {
         let [module, method] = json.method.split('.')
 
