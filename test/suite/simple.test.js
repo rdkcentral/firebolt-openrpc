@@ -118,6 +118,16 @@ test('One required and the optional param is passed as null', async () => {
 
 });
 
+test('The required and the optional params are null', async () => {
+
+    await Simple.methodWithOneRequiredOneOptionalParam(null, null)
+    let msg = await promise
+    expect(msg.method).toBe('simple.methodWithOneRequiredOneOptionalParam')
+    expect(msg.params.param1).toBe(null)
+    expect(Object.keys(msg.params).length).toBe(1)
+
+});
+
 test('One required and one optional param', async () => {
 
     await Simple.methodWithOneRequiredOneOptionalParam('foo', 'bar')

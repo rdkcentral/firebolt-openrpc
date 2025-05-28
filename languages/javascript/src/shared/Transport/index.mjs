@@ -104,28 +104,25 @@ export default class Transport {
   }
 
   static removeNullOptionalParams(params, numOfOptionalParams) {
-    if (numOfOptionalParams > 0) {
-      // iterate over all params starting backwrods and if the param is null or undefined remove it from the params object
-      const keys = Object.keys(params)
-      let i = keys.length - 1
-      while (i >= 0) {
-        const key = keys[i]
-        if (params[key] === null) {
-          delete params[key]
-          console.warn('WARNING: null values for optional params will be disallowed in a future Firebolt version. Parameter: ' + key)
-        } else if (params[key] === undefined) {
-          // undefined means the param is not provided, which is Ok
-        } else {
-          break
-        }
-        i--
-        if (numOfOptionalParams > 0) {
-          numOfOptionalParams--
-        }
-        else {
-          break
-        }
+
+    // Iterate over all params starting backwrods and if the param is null remove it from the params object. 
+    // If it is undefined that means the param is not provided, which is Ok.
+    // We should not get a call with numOfOptionalParams === 0, but if we do, just return the params as are.
+    const keys = Object.keys(params)
+    let paramsIndex = keys.length - 1
+    while (paramsIndex >= 0 && numOfOptionalParams > 0) {
+      const key = keys[paramsIndex]
+      if (params[key] === null) {
+        delete params[key]
+        console.warn('WARNING: null values for optional params will be disallowed in a future Firebolt version. Parameter: ' + key)
+      } else if (params[key] === undefined) {
+        // undefined means the param is not provided, we should continue.
+      } else {
+        // if an optional param is provided we should stop removing params as if we continue we will change the order of the params
+        break
       }
+      paramsIndex--
+      numOfOptionalParams--
     }
     return params
   }
