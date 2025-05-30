@@ -1427,6 +1427,18 @@ function insertMethodMacros(template, methodObj, json, templates, type = '', exa
     signature = ''
   }
 
+  //callculate the number of optional params
+  let optionalParams = 0
+  if (methodObj.params && methodObj.params.length) {
+    // Count the number of optional parameters starting from the last and stop when a required parameter is found
+    for (let i = methodObj.params.length - 1; i >= 0; i--) {
+      if (methodObj.params[i].required) {
+        break; // Stop counting when a required parameter is found
+      }
+      optionalParams++;
+    }
+  }
+
   template = insertExampleMacros(template, examples[methodObj.name] || [], methodObj, json, templates)
   template = template.replace(/\$\{method\.name\}/g, method.name)
     .replace(/\$\{method\.rpc\.name\}/g, methodObj.rpc_name || methodObj.name)
@@ -1441,6 +1453,8 @@ function insertMethodMacros(template, methodObj, json, templates, type = '', exa
     .replace(/\$\{method\.params\.list\}/g, method.params)
     .replace(/\$\{method\.params\.array\}/g, JSON.stringify(methodObj.params.map(p => p.name)))
     .replace(/\$\{method\.params\.count}/g, methodObj.params ? methodObj.params.length : 0)
+    .replace(/\$\{if\.optionalParams\}(.*?)\$\{end\.if\.optionalParams\}/gms, optionalParams > 0 ? '$1' : '')
+    .replace(/\$\{optionalParams\}/g, optionalParams)
     .replace(/\$\{if\.params\}(.*?)\$\{end\.if\.params\}/gms, method.params.length ? '$1' : '')
     .replace(/\$\{if\.result\}(.*?)\$\{end\.if\.result\}/gms, resultType ? '$1' : '')
     .replace(/\$\{if\.result.nonvoid\}(.*?)\$\{end\.if\.result.nonvoid\}/gms, resultType && resultType !== 'void' ? '$1' : '')
