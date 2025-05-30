@@ -150,7 +150,7 @@ jobs:
           REPO_NAME="firebolt-apis"
           RUN_ID="${{ env.CPP_RUN_ID }}"
           MAX_POLLS=30  # Max polls before timeout
-          POLL_INTERVAL=50  # In seconds
+          POLL_INTERVAL=60  # In seconds
 
 
           # Poll the specific run ID for status
@@ -162,10 +162,10 @@ jobs:
             conclusion=$(echo $run_response | jq -r '.conclusion')
 
             if [ "$status" == "completed" ] && [ "$conclusion" == "success" ]; then
-              echo "JavaScript SDK generated successfully for the OpenRPC changes."
+              echo "CPP SDK generated successfully for the OpenRPC changes."
               break
             elif [ "$status" == "completed" ] && [ "$conclusion" == "failure" ]; then
-              echo "Failed to generate JavaScript SDK for the OpenRPC changes."
+              echo "Failed to generate CPP SDK for the OpenRPC changes."
             else
               echo "Still in progress. Checking again in ${POLL_INTERVAL} seconds..."
               sleep $POLL_INTERVAL
@@ -173,7 +173,7 @@ jobs:
           done
 
           if [ "$i" -eq "$MAX_POLLS" ]; then
-            echo "Timeout reached while waiting for JavaScript SDK generation."
+            echo "Timeout reached while waiting for CPP SDK generation."
             exit 1
           fi
 
