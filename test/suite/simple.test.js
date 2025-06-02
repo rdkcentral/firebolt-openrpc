@@ -23,7 +23,7 @@ import { expect } from '@jest/globals';
 
 beforeAll(() => {
 
-    transport.onSend ((json) => {
+    transport.onSend((json) => {
         let [module, method] = json.method.split('.')
 
         expect(module).toBe('Simple')
@@ -53,9 +53,194 @@ test('Basic', () => {
     })
 });
 
-test('Multiple Parameters', async () => {
+test('Calls method with required parameter and validates payload', async () => {
     return Simple.methodWithMultipleParams(5, 'foo').then(result => {
         expect(result).toBe(true)
     })
 
+});
+
+test('Handles method call with no optional parameter provided', async () => {
+
+    transport.onSend((json) => {
+        let [module, method] = json.method.split('.')
+
+        expect(module).toBe('Simple')
+        expect(method).toBe('methodWithOneOptionalParam')
+        expect(Object.keys(json.params).length).toBe(0)
+        MockTransport.receiveMessage(JSON.stringify({ jsonrpc: "2.0", result: {}, id: json.id }))
+    })
+    Simple.methodWithOneOptionalParam()
+});
+
+
+test('Handles method call with optional parameter provided', async () => {
+
+    transport.onSend((json) => {
+        let [module, method] = json.method.split('.')
+
+        expect(module).toBe('Simple')
+        expect(method).toBe('methodWithOneOptionalParam')
+        expect(json.params.param1).toBe('foo')
+        MockTransport.receiveMessage(JSON.stringify({ jsonrpc: "2.0", result: {}, id: json.id }))
+    })
+    Simple.methodWithOneOptionalParam('foo')
+});
+
+test('Handles method call with optional parameter explicitly set to null', async () => {
+
+    transport.onSend((json) => {
+        let [module, method] = json.method.split('.')
+
+        expect(module).toBe('Simple')
+        expect(method).toBe('methodWithOneOptionalParam')
+        expect(Object.keys(json.params).length).toBe(0)
+        MockTransport.receiveMessage(JSON.stringify({ jsonrpc: "2.0", result: {}, id: json.id }))
+    })
+    Simple.methodWithOneOptionalParam(null)
+});
+
+test('Handles method with one required parameter, optional parameter omitted', async () => {
+
+    transport.onSend((json) => {
+        let [module, method] = json.method.split('.')
+
+        expect(module).toBe('Simple')
+        expect(method).toBe('methodWithOneRequiredOneOptionalParam')
+        expect(Object.keys(json.params).length).toBe(1)
+        MockTransport.receiveMessage(JSON.stringify({ jsonrpc: "2.0", result: {}, id: json.id }))
+    })
+    Simple.methodWithOneRequiredOneOptionalParam("foo")
+});
+
+test('Handles method with one required parameter, optional parameter set to null', async () => {
+
+    transport.onSend((json) => {
+        let [module, method] = json.method.split('.')
+
+        expect(module).toBe('Simple')
+        expect(method).toBe('methodWithOneRequiredOneOptionalParam')
+        expect(json.params.param1).toBe('foo')
+        expect(Object.keys(json.params).length).toBe(1)
+        MockTransport.receiveMessage(JSON.stringify({ jsonrpc: "2.0", result: {}, id: json.id }))
+    })
+    Simple.methodWithOneRequiredOneOptionalParam('foo', null)
+});
+
+test('Handles method with both required and optional parameters set to null', async () => {
+
+    transport.onSend((json) => {
+        let [module, method] = json.method.split('.')
+
+        expect(module).toBe('Simple')
+        expect(method).toBe('methodWithOneRequiredOneOptionalParam')
+        expect(json.params.param1).toBe(null)
+        expect(Object.keys(json.params).length).toBe(1)
+        MockTransport.receiveMessage(JSON.stringify({ jsonrpc: "2.0", result: {}, id: json.id }))
+    })
+    Simple.methodWithOneRequiredOneOptionalParam(null, null)
+});
+
+test('Handles method call with both required and optional parameters provided', async () => {
+
+    transport.onSend((json) => {
+        let [module, method] = json.method.split('.')
+
+        expect(module).toBe('Simple')
+        expect(method).toBe('methodWithOneRequiredOneOptionalParam')
+        expect(json.params.param1).toBe('foo')
+        expect(json.params.param2).toBe('bar')
+        expect(Object.keys(json.params).length).toBe(2)
+        MockTransport.receiveMessage(JSON.stringify({ jsonrpc: "2.0", result: {}, id: json.id }))
+    })
+    Simple.methodWithOneRequiredOneOptionalParam('foo', 'bar')
+});
+
+test('Handles method with two optional parameters: only required provided', async () => {
+
+    transport.onSend((json) => {
+        let [module, method] = json.method.split('.')
+
+        expect(module).toBe('Simple')
+        expect(method).toBe('methodWithTwoOptionalParam')
+        expect(json.params.param1).toBe('foo')
+        expect(Object.keys(json.params).length).toBe(1)
+        MockTransport.receiveMessage(JSON.stringify({ jsonrpc: "2.0", result: {}, id: json.id }))
+    })
+    Simple.methodWithTwoOptionalParam("foo")
+});
+
+test('Handles method with two optional parameters: first optional param set to null', async () => {
+
+    transport.onSend((json) => {
+        let [module, method] = json.method.split('.')
+
+        expect(module).toBe('Simple')
+        expect(method).toBe('methodWithTwoOptionalParam')
+        expect(json.params.param1).toBe('foo')
+        expect(Object.keys(json.params).length).toBe(1)
+        MockTransport.receiveMessage(JSON.stringify({ jsonrpc: "2.0", result: {}, id: json.id }))
+    })
+    Simple.methodWithTwoOptionalParam('foo', null)
+});
+
+test('Handles method with two optional parameters: both set to null', async () => {
+
+    transport.onSend((json) => {
+        let [module, method] = json.method.split('.')
+
+        expect(module).toBe('Simple')
+        expect(method).toBe('methodWithTwoOptionalParam')
+        expect(json.params.param1).toBe('foo')
+        expect(Object.keys(json.params).length).toBe(1)
+        MockTransport.receiveMessage(JSON.stringify({ jsonrpc: "2.0", result: {}, id: json.id }))
+    })
+    Simple.methodWithTwoOptionalParam('foo', null, null)
+});
+
+test('Handles method with two optional parameters: first provided, second not', async () => {
+
+    transport.onSend((json) => {
+        let [module, method] = json.method.split('.')
+
+        expect(module).toBe('Simple')
+        expect(method).toBe('methodWithTwoOptionalParam')
+        expect(json.params.param1).toBe('foo')
+        expect(json.params.param2).toBe('bar')
+        expect(Object.keys(json.params).length).toBe(2)
+        MockTransport.receiveMessage(JSON.stringify({ jsonrpc: "2.0", result: {}, id: json.id }))
+    })
+    Simple.methodWithTwoOptionalParam('foo', 'bar')
+});
+
+test('Handles method with two optional parameters: first param set to null, second provided', async () => {
+
+    transport.onSend((json) => {
+        let [module, method] = json.method.split('.')
+
+        expect(module).toBe('Simple')
+        expect(method).toBe('methodWithTwoOptionalParam')
+        expect(json.params.param1).toBe('foo')
+        expect(json.params.param2).toBe(null)
+        expect(json.params.param3).toBe('bar')
+        expect(Object.keys(json.params).length).toBe(3)
+        MockTransport.receiveMessage(JSON.stringify({ jsonrpc: "2.0", result: {}, id: json.id }))
+    })
+    Simple.methodWithTwoOptionalParam('foo', null, "bar")
+});
+
+test('Handles optional parameters in wrong order', async () => {
+
+    transport.onSend((json) => {
+        let [module, method] = json.method.split('.')
+
+        expect(module).toBe('Simple')
+        expect(method).toBe('methodWithTwoOptionalParamInWrongOrder')
+        expect(json.params.param1).toBe(null)
+        expect(json.params.param2).toBe('foo')
+        expect(json.params.param3).toBe('bar')
+        expect(Object.keys(json.params).length).toBe(3)
+        MockTransport.receiveMessage(JSON.stringify({ jsonrpc: "2.0", result: {}, id: json.id }))
+    })
+    Simple.methodWithTwoOptionalParamInWrongOrder(null, 'foo', "bar")
 });
