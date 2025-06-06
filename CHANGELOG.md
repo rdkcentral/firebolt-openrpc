@@ -1,3 +1,10 @@
+# [3.2.0-next.17](https://github.com/rdkcentral/firebolt-openrpc/compare/v3.2.0-next.16...v3.2.0-next.17) (2025-06-06)
+
+
+### Features
+
+* Remove all optional parameters with null value ([850e26b](https://github.com/rdkcentral/firebolt-openrpc/commit/850e26bb006dd06691cbe88940db58303abee861))
+
 # [3.2.0-next.16](https://github.com/rdkcentral/firebolt-openrpc/compare/v3.2.0-next.15...v3.2.0-next.16) (2025-05-16)
 
 
