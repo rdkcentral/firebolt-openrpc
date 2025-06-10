@@ -55,12 +55,14 @@ function send(message) {
   }
   else if (json.id !== undefined && requests[json.id]) {
     const promise = requests[json.id]
-    if (json.result !== undefined) {
-      promise.resolve(json.result)
-    }
-    else {
+    if (json.error !== undefined) {
       promise.reject(json.error)
     }
+    else {
+      promise.resolve(json.result)
+    }
+
+    delete requests[json.id]
   }
 }
 
@@ -68,9 +70,14 @@ function handle(json) {
   let result
   try {
     result = getResult(json.method, json.params)
+    setTimeout(() => callback(JSON.stringify({
+      jsonrpc: '2.0',
+      result: result,
+      id: json.id
+    })))
   }
   catch (error) {
-    setTimeout(() => callback(JSON.stringify({ 
+    setTimeout(() => callback(JSON.stringify({
       jsonrpc: '2.0',
       error: {
         code: -32602,
@@ -79,12 +86,6 @@ function handle(json) {
       id: json.id
     })))
   }
-
-  setTimeout(() => callback(JSON.stringify({ 
-    jsonrpc: '2.0',
-    result: result,
-    id: json.id
-  })))
 }
 
 function receive(_callback) {
@@ -121,12 +122,13 @@ let id = 0
 const requests = []
 
 function request(method, params) {
+  const requestId = id++;
   const promise = new Promise( (resolve, reject) => {
-    requests[id] = { resolve, reject }
+    requests[requestId] = { resolve, reject }
   })
   callback(JSON.stringify({ 
     jsonrpc: '2.0',
-    id: id,
+    id: requestId,
     method: `${method}`,
     params: params
   }))
@@ -144,6 +146,7 @@ function dotGrab(obj = {}, key) {
 }
 
 function getResult(method, params) {
+  
   let api = dotGrab(mock, method)
 
   if (method.match(/^[a-zA-Z]+\.on[A-Za-z]+$/)) {
@@ -159,7 +162,9 @@ function getResult(method, params) {
       result = null
     }
     return result
-  } else return api
+  } 
+  else 
+    return api
 }
 
 export function setMockResponses(m) {
@@ -175,6 +180,5 @@ export default {
   handle: handle,
   event: event,
   receive: receive,
-  request: request,
 
 }

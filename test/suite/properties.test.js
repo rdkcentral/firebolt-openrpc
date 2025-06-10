@@ -66,9 +66,11 @@ test('Basic Property get', () => {
 });
 
 test('Basic Property subscribe', () => {
-    return Simple.plainProperty(value => {
-        expect(value.foo).toBe("here's foo")
+    let p = Simple.plainProperty(value => {
+        expect(value.value).toBe("value 123")
     })
+    MockTransport.event("Simple","plainPropertyChanged",  "value 123");
+    return p;
 });
 
 test('Basic Property set', () => {
@@ -90,7 +92,10 @@ test('Basic Property set with null', () => {
 
 //test listen to "plainPropertyChanged" event
 test('Basic Property subscribe to event', () => {
-    return Simple.listen("plainPropertyChanged", value => {
-        expect(value.foo).toBe("here's foo")
+    Simple.clear("plainPropertyChanged");
+    let p = Simple.listen("plainPropertyChanged", value => {
+        expect(value.value).toBe( "value 123")
     })
+    MockTransport.event("Simple","plainPropertyChanged",  "value 123");
+    return p;
 });

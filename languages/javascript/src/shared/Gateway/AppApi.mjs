@@ -74,16 +74,16 @@ export function response(id, result, error) {
   const promise = promises[id];
 
   if (promise) {
-    if (result !== undefined) {
-      promises[id].resolve(result);
-    } else if (error !== undefined) {
+    if (error !== undefined) {
       promises[id].reject(error);
+    } else {
+      promises[id].resolve(result);
     }
 
     // TODO make sure this works
     delete promises[id];
   } else {
-    throw `Received a response for an unidentified request ${id}`;
+    throw `Received a response for an unidentified request ${id}, result: ${result}, error: ${error}`;
   }
 }
 

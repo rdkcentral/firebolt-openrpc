@@ -1290,12 +1290,14 @@ function generateExamples(json = {}, mainTemplates = {}, languages = {}) {
     examples[method.name].map(example => {
       if (example.languages['JSON-RPC']) {
         try {
-          example.languages['JSON-RPC'].code = JSON.stringify(JSON.parse(example.languages['JSON-RPC'].code), null, '\t')
-          example.languages['JSON-RPC'].result = JSON.stringify(JSON.parse(example.languages['JSON-RPC'].result), null, '\t')
+          const code = JSON.stringify(JSON.parse(example.languages['JSON-RPC'].code), null, '\t')
+          const result = JSON.stringify(JSON.parse(example.languages['JSON-RPC'].result), null, '\t')
+          example.languages['JSON-RPC'].code = code;
+          example.languages['JSON-RPC'].result = result;
         }
         catch (error) {
-          console.log(error)
-         }
+          console.error(`ERROR: ${error.name} When parsing example for ${method.name}`)
+        }
       }
     })
   })
@@ -1457,10 +1459,10 @@ function insertMethodMacros(template, methodObj, platformApi, appApi, templates,
   }
 
   if (getAlternativeMethod(methodObj)) {
-    method.alternative = getAlternativeMethod(methodObj)
+    method.alternative = getAlternativeMethod(methodObj).split('.').pop().replace(/\(\)$/, '')
   }
   else if (extension(methodObj, 'x-subscriber-for')) {
-    method.alternative = extension(methodObj, 'x-subscriber-for')
+    method.alternative = extension(methodObj, 'x-subscriber-for').split('.').pop()
   }
 
   const flattenedMethod = localizeDependencies(methodObj, platformApi)
@@ -1527,11 +1529,19 @@ function insertMethodMacros(template, methodObj, platformApi, appApi, templates,
 
   // grab some related methods in case they are output together in a single template file
   const puller = platformApi.methods.find(method => method.tags.find(tag => tag['x-pulls-for'] === methodObj.name))
-  const pullsFor = methodObj.tags.find(t => t['x-pulls-for']) && platformApi.methods.find(method => method.name === methodObj.tags.find(t => t['x-pulls-for'])['x-pulls-for'].split('.').pop());  const pullerTemplate = (puller ? insertMethodMacros(getTemplate('/codeblocks/puller', templates), puller, platformApi, appApi, templates, type, examples) : '')
+  const pullsFor = methodObj.tags.find(t => t['x-pulls-for']) && platformApi.methods.find(method => method.name === methodObj.tags.find(t => t['x-pulls-for'])['x-pulls-for'].split('.').pop());
+  const pullerTemplate = (puller ? insertMethodMacros(getTemplate('/codeblocks/puller', templates), puller, platformApi, appApi, templates, type, examples) : '')
   const setter = getSetterFor(methodObj.name, platformApi)
   const setterTemplate = (setter ? insertMethodMacros(getTemplate('/codeblocks/setter', templates), setter, platformApi, appApi, templates, type, examples) : '')
-  const subscriber = platformApi.methods.find(method => method.tags.find(tag => tag['x-alternative'] === methodObj.name))
-  const subscriberTemplate = (subscriber ? insertMethodMacros(getTemplate('/codeblocks/subscriber', templates), subscriber, platformApi, appApi, templates, type, examples) : '')
+  const subscriber = platformApi.methods.find(method => method.tags.find(tag => tag['x-subscriber-for'] === `${moduleName}.${methodObj.name}`) || method.tags.find(tag => tag['x-alternative'] === `${moduleName}.${methodObj.name}()`))
+  let subscriberTemplate = ''
+  if (subscriber) {
+    subscriberTemplate = getTemplate('/codeblocks/subscriber', templates)
+         .replace(/\$\{method\.name\}/g, method.name)
+         .replace(/\$\{method\.summary\}/g, methodObj.summary)
+         .replace(/\$\{method\.result\.name\}/g, result.name)
+         .replace(/\$\{method\.result\.type\}/g, Types.getSchemaType(result.schema, platformApi, { templateDir: state.typeTemplateDir, title: true, asPath: false, result: true, namespace: false }))
+  }
   const setterFor = methodObj.tags.find(t => t.name === 'setter') && methodObj.tags.find(t => t.name === 'setter')['x-setter-for'].split('.').pop() || ''
 
   const pullsResult = (puller || pullsFor) ? localizeDependencies(pullsFor || methodObj, platformApi).params.findLast(x=>true).schema : null
