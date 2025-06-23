@@ -58,7 +58,10 @@ export async function notify(method, params) {
     listeners[method](...Object.values(params));
     return;
   }
-  throw `Notification not implemented: ${method}`;
+  // All SDKs use a global transport where they register their callbacks for the responses.
+  // When the global transport receives a message, it calls all registered callbacks with that same message.
+  // That's why we can't generate an error here, as the response could be for an event registered by another SDK.  
+  //console.log( `Notification not implemented: ${method}`);
 }
 
 // Register a provider implementation with an interface name
