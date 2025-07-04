@@ -445,8 +445,8 @@ const promoteSchema = (location, property, title, document, destinationPath) => 
   }
 }
 
-// only consider sub-objects and sub enums to be sub-schemas
-const isSubSchema = (schema) => schema.type === 'object' || (schema.type === 'string' && schema.enum)
+//const isSubSchema = (schema) => schema.type === 'object' || (schema.type === 'string' && schema.enum)
+const isSubSchema = (schema) => schema.type === 'object' /*|| (schema.type === 'string' && schema.enum)*/
 
 // check schema is sub enum of array
 const isSubEnumOfArraySchema = (schema) => (schema.type === 'array' && schema.items.enum)
