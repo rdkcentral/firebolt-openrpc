@@ -1794,6 +1794,10 @@ function insertExampleMacros(template, examples, method, json, templates) {
 
   let index = -1
   Object.keys(examples).forEach(key => {
+    // if the key is not the method name, skip it, we don't want to include examples for other methods
+    if (key != method.name) {
+      return;
+    }
     examples[key].forEach(example => {
     index++
       let code = getTemplate('/codeblocks/example', templates)
