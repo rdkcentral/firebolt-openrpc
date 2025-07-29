@@ -56,7 +56,12 @@ function getImplementation() {
     implementation = win.__firebolt.transport
   }
   else if (win.__firebolt.endpoint) {
-    implementation = new WebsocketTransport(win.__firebolt.endpoint)
+    // Only adds RPCv2=true query parameter when using bidirectional SDK.
+    // This parameter will not be present when using unidirectional SDK.
+    // Unidirectional endpoint is handled in Gateway/Unidirectional.mjs
+    const endpoint = win.__firebolt.endpoint
+    const url = endpoint + (endpoint.includes('?') ? '&' : '?') + 'RPCv2=true'
+    implementation = new WebsocketTransport(url)
   }
   else {
     implementation = MockTransport
