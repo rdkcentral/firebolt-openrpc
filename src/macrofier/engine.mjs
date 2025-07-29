@@ -445,8 +445,8 @@ const promoteSchema = (location, property, title, document, destinationPath) => 
   }
 }
 
-// only consider sub-objects and sub enums to be sub-schemas
-const isSubSchema = (schema) => schema.type === 'object' || (schema.type === 'string' && schema.enum)
+//const isSubSchema = (schema) => schema.type === 'object' || (schema.type === 'string' && schema.enum)
+const isSubSchema = (schema) => schema.type === 'object' /*|| (schema.type === 'string' && schema.enum)*/
 
 // check schema is sub enum of array
 const isSubEnumOfArraySchema = (schema) => (schema.type === 'array' && schema.items.enum)
@@ -905,7 +905,7 @@ const generateEnums = (json, templates, template = 'enum') => {
       return output ? output.replace(/\$\{schema.list\}/g, val.trimEnd()) : val
     }),
     map(reduce((acc, val) => acc.concat(val).concat('\n'), '')),
-    map(map((schema) => convertEnumTemplate(schema, `/types/${template}`, templates))),
+    map(map((schema) => convertEnumTemplate(schema, `/types/${template}${state.suffix}`, templates))),
     map(enumFinder),
     getSchemas
   )(json)
@@ -1000,7 +1000,6 @@ function generateSchemas(platformApi, templates, options) {
 
   const schemas = JSON.parse(JSON.stringify(platformApi.definitions || (platformApi.components && platformApi.components.schemas) || {}))
 
-
   const generate = (name, schema, uri, { prefix = '' } = {}) => {
     // these are internal schemas used by the fireboltize-openrpc tooling, and not meant to be used in code/doc generation
     if (['ListenResponse', 'ProviderRequest', 'ProviderResponse', 'FederatedResponse', 'FederatedRequest'].includes(name)) {
@@ -1026,7 +1025,7 @@ function generateSchemas(platformApi, templates, options) {
     // Schema title is requuired for proper documentation generation
     if (!schema.title) schema.title = name
 
-    const schemaShape = Types.getSchemaShape(schema, platformApi, { templateDir: state.typeTemplateDir, primitive: config.primitives ? Object.keys(config.primitives).length > 0 : false, namespace: !config.copySchemasIntoModules })
+    const schemaShape = Types.getSchemaShape(schema, platformApi, { templateDir: state.typeTemplateDir, primitive: config.primitives ? Object.keys(config.primitives).length > 0 : false, namespace: !config.copySchemasIntoModules, suffix: state.suffix })
 
     const schemaImpl = Types.getSchemaShape(schema, platformApi, { templateDir: state.typeTemplateDir, enumImpl: true, primitive: config.primitives ? Object.keys(config.primitives).length > 0 : false, namespace: !config.copySchemasIntoModules })
     
@@ -1094,7 +1093,7 @@ function generateSchemas(platformApi, templates, options) {
       generate(...item)
     }
     catch (error) {
-      console.error(error)
+      //console.error(error)
     }
   })
 
@@ -1291,12 +1290,14 @@ function generateExamples(json = {}, mainTemplates = {}, languages = {}) {
     examples[method.name].map(example => {
       if (example.languages['JSON-RPC']) {
         try {
-          example.languages['JSON-RPC'].code = JSON.stringify(JSON.parse(example.languages['JSON-RPC'].code), null, '\t')
-          example.languages['JSON-RPC'].result = JSON.stringify(JSON.parse(example.languages['JSON-RPC'].result), null, '\t')
+          const code = JSON.stringify(JSON.parse(example.languages['JSON-RPC'].code), null, '\t')
+          const result = JSON.stringify(JSON.parse(example.languages['JSON-RPC'].result), null, '\t')
+          example.languages['JSON-RPC'].code = code;
+          example.languages['JSON-RPC'].result = result;
         }
         catch (error) {
-          console.log(error)
-         }
+          console.error(`ERROR: ${error.name} When parsing example for ${method.name}`)
+        }
       }
     })
   })
@@ -1458,10 +1459,10 @@ function insertMethodMacros(template, methodObj, platformApi, appApi, templates,
   }
 
   if (getAlternativeMethod(methodObj)) {
-    method.alternative = getAlternativeMethod(methodObj)
+    method.alternative = getAlternativeMethod(methodObj).split('.').pop().replace(/\(\)$/, '')
   }
   else if (extension(methodObj, 'x-subscriber-for')) {
-    method.alternative = extension(methodObj, 'x-subscriber-for')
+    method.alternative = extension(methodObj, 'x-subscriber-for').split('.').pop()
   }
 
   const flattenedMethod = localizeDependencies(methodObj, platformApi)
@@ -1507,7 +1508,7 @@ function insertMethodMacros(template, methodObj, platformApi, appApi, templates,
       event.result.schema = getPayloadFromEvent(event)
     } else {
       const notifier = getNotifier(methodObj, appApi)
-      if (notifier.params.length > 0) {
+      if (notifier && notifier.params && notifier.params.length > 0) {
         event.result = notifier.params.slice(-1)[0];
       } else {
         event.result = null;
@@ -1528,12 +1529,20 @@ function insertMethodMacros(template, methodObj, platformApi, appApi, templates,
 
   // grab some related methods in case they are output together in a single template file
   const puller = platformApi.methods.find(method => method.tags.find(tag => tag['x-pulls-for'] === methodObj.name))
-  const pullsFor = methodObj.tags.find(t => t['x-pulls-for']) && platformApi.methods.find(method => method.name === methodObj.tags.find(t => t['x-pulls-for'])['x-pulls-for'].split('.').pop());  const pullerTemplate = (puller ? insertMethodMacros(getTemplate('/codeblocks/puller', templates), puller, platformApi, appApi, templates, type, examples) : '')
+  const pullsFor = methodObj.tags.find(t => t['x-pulls-for']) && platformApi.methods.find(method => method.name === methodObj.tags.find(t => t['x-pulls-for'])['x-pulls-for'].split('.').pop());
+  const pullerTemplate = (puller ? insertMethodMacros(getTemplate('/codeblocks/puller', templates), puller, platformApi, appApi, templates, type, examples) : '')
   const setter = getSetterFor(methodObj.name, platformApi)
   const setterTemplate = (setter ? insertMethodMacros(getTemplate('/codeblocks/setter', templates), setter, platformApi, appApi, templates, type, examples) : '')
-  const subscriber = platformApi.methods.find(method => method.tags.find(tag => tag['x-alternative'] === methodObj.name))
-  const subscriberTemplate = (subscriber ? insertMethodMacros(getTemplate('/codeblocks/subscriber', templates), subscriber, platformApi, appApi, templates, type, examples) : '')
-  const setterFor = methodObj.tags.find(t => t.name === 'setter') && methodObj.tags.find(t => t.name === 'setter')['x-setter-for'] || ''
+  const subscriber = platformApi.methods.find(method => method.tags.find(tag => tag['x-subscriber-for'] === `${moduleName}.${methodObj.name}`) || method.tags.find(tag => tag['x-alternative'] === `${moduleName}.${methodObj.name}()`))
+  let subscriberTemplate = ''
+  if (subscriber) {
+    subscriberTemplate = getTemplate('/codeblocks/subscriber', templates)
+         .replace(/\$\{method\.name\}/g, method.name)
+         .replace(/\$\{method\.summary\}/g, methodObj.summary)
+         .replace(/\$\{method\.result\.name\}/g, result.name)
+         .replace(/\$\{method\.result\.type\}/g, Types.getSchemaType(result.schema, platformApi, { templateDir: state.typeTemplateDir, title: true, asPath: false, result: true, namespace: false }))
+  }
+  const setterFor = methodObj.tags.find(t => t.name === 'setter') && methodObj.tags.find(t => t.name === 'setter')['x-setter-for'].split('.').pop() || ''
 
   const pullsResult = (puller || pullsFor) ? localizeDependencies(pullsFor || methodObj, platformApi).params.findLast(x=>true).schema : null
   const pullsParams = (puller || pullsFor) ? localizeDependencies(getPayloadFromEvent(puller || methodObj, document), document, null, { mergeAllOfs: true }).properties.parameters : null
@@ -1556,10 +1565,10 @@ function insertMethodMacros(template, methodObj, platformApi, appApi, templates,
   let callbackInstantiation = ''
   if (event) {
     if (eventHasOptionalParam(event) && !event.tags.find(t => t.name === 'provider'))  {
-      callbackInstantiation = (type === 'methods') ? Types.getSchemaShape(event.result.schema, document, { templateDir: 'callback-instantiation', property: result.name, primitive: true, skipTitleOnce: true, namespace: false  }) : ''
+      callbackInstantiation = (type === 'methods') ? Types.getSchemaShape( event.result?.schema, document, { templateDir: 'callback-instantiation', property: result.name, primitive: true, skipTitleOnce: true, namespace: false  }) : ''
       let paramInstantiation = (type === 'methods') ? event.params.map(param => isOptionalParam(param) ? Types.getSchemaShape(param.schema, document, { templateDir: 'callback-context-instantiation', property: param.name, required: param.required, primitive: true, skipTitleOnce: true, namespace: false  }) : '').filter(param => param).join('\n') : ''
-      let resultInitialization = (type === 'methods') ? Types.getSchemaShape(event.result.schema, document, { templateDir: 'callback-value-initialization', property: result.name, primitive: true, skipTitleOnce: true, namespace: false  }) : ''
-      let resultInstantiation = (type === 'methods') ? Types.getSchemaShape(event.result.schema, document, { templateDir: 'callback-value-instantiation', property: result.name, primitive: true, skipTitleOnce: true, namespace: false  }) : ''
+      let resultInitialization = (type === 'methods') ? Types.getSchemaShape(event.result?.schema, document, { templateDir: 'callback-value-initialization', property: result.name, primitive: true, skipTitleOnce: true, namespace: false  }) : ''
+      let resultInstantiation = (type === 'methods') ? Types.getSchemaShape(event.result?.schema, document, { templateDir: 'callback-value-instantiation', property: result.name, primitive: true, skipTitleOnce: true, namespace: false  }) : ''
       callbackInstantiation = callbackInstantiation
         .replace(/\$\{callback\.param\.instantiation\.with\.indent\}/g, indent(paramInstantiation, '    ', 3))
         .replace(/\$\{callback\.result\.initialization\.with\.indent\}/g, indent(resultInitialization, '    ', 1))
@@ -1629,6 +1638,19 @@ function insertMethodMacros(template, methodObj, platformApi, appApi, templates,
     signature = ''
   }
 
+  //callculate the number of optional params
+  let optionalParams = 0
+  if (methodObj.params && methodObj.params.length) {
+    // Count the number of optional parameters starting from the last and stop when a required parameter is found
+    for (let i = methodObj.params.length - 1; i >= 0; i--) {
+      if (methodObj.params[i].required) {
+        break; // Stop counting when a required parameter is found
+      }
+      optionalParams++;
+    }
+  }
+
+
   template = insertExampleMacros(template, examples || [], methodObj, platformApi, templates)
 
   template = template.replace(/\$\{method\.name\}/g, method.name)
@@ -1644,6 +1666,8 @@ function insertMethodMacros(template, methodObj, platformApi, appApi, templates,
     .replace(/\$\{method\.params\.list\}/g, method.params)
     .replace(/\$\{method\.params\.array\}/g, JSON.stringify(methodObj.params.map(p => p.name)))
     .replace(/\$\{method\.params\.count}/g, methodObj.params ? methodObj.params.length : 0)
+    .replace(/\$\{if\.optionalParams\}(.*?)\$\{end\.if\.optionalParams\}/gms, optionalParams > 0 ? '$1' : '')
+    .replace(/\$\{optionalParams\}/g, optionalParams)    
     .replace(/\$\{if\.method\.transform\}(.*?)\$\{end\.if\.method\.transform\}/gms, method.transform ? '$1' : '')
     .replace(/\$\{if\.params\}(.*?)\$\{end\.if\.params\}/gms, method.params.length ? '$1' : '')
     .replace(/\$\{if\.result\}(.*?)\$\{end\.if\.result\}/gms, resultType ? '$1' : '')
@@ -1770,6 +1794,10 @@ function insertExampleMacros(template, examples, method, json, templates) {
 
   let index = -1
   Object.keys(examples).forEach(key => {
+    // if the key is not the method name, skip it, we don't want to include examples for other methods
+    if (key != method.name) {
+      return;
+    }
     examples[key].forEach(example => {
     index++
       let code = getTemplate('/codeblocks/example', templates)
@@ -1870,17 +1898,7 @@ function insertExampleMacros(template, examples, method, json, templates) {
           else
           {
             languageContent = languageContent.replace(/\$\{method\.params\[([0-9]+)\]\.example\.value\}/g, "")
-            /*
-            if (index >= method.examples.length)
-            {
-              console.log(`Current index is not less than examples liength (index: ${index} ? ${method.examples.length})`)
-            }
-            else if (paramIndex >= method.examples[index].params.length)
-            {
-              console.log(`paramIndex is not less than method.examples[index].params.length  (paramIndex: ${paramIndex} ? ${method.examples[index].params.length})`)
-            }
-            */
-          }          
+          }
         })
 
 

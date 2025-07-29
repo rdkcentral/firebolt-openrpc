@@ -16,23 +16,39 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { Provider } from '../../build/sdk/javascript/src/sdk.mjs'
-import Setup from '../Setup.js'
 import { transport } from '../TransportHarness.js'
+import MockTransport from '../../build/sdk/javascript/src/Transport/MockTransport.mjs'
+import { Provider } from '../../build/sdk/javascript/src/sdk.mjs'
+import { expect } from '@jest/globals';
 
-let providerMethodNotificationRegistered = false
-let providerMethodRequestDispatched = false
+let providerMethodRequestReceived = false
 let providerMethodErrorSent = false
-let methodSession
-let value
-let responseCorrelationId
+let errorData
+let errorMessage
+let errorCode
 
+beforeAll(() => {
+    transport.onSend((json) => {
+        if (json.method) {
+            let [module, method] = json.method.split('.')
+            expect(module).toBe('Provider')
 
-beforeAll( () => {
+        }
+        else {
+
+            if (json.error) {
+                providerMethodErrorSent = true
+                errorMessage = json.error.message
+                errorCode = json.error.code
+                errorData = json.error.data
+            }
+
+        }
+    })
 
     class SimpleProvider {
-        simpleMethod(...args) {
-            methodSession = args[1]
+        requestSimpleMethod(...args) {
+            providerMethodRequestReceived = true
 
             throw {
                 message: 'An error occured!',
@@ -42,36 +58,13 @@ beforeAll( () => {
                 }
             }
         }
-    }
-    
-    transport.onSend(json => {
-        if (json.method === 'provider.onRequestSimpleMethod') {
-            providerMethodNotificationRegistered = true
+    };
 
-            // Confirm the listener is on
-            transport.response(json.id, {
-                listening: true,
-                event: json.method
-            })
+    Provider.provide(new SimpleProvider())
+    //call the provider method to trigger the error
+    MockTransport.receiveMessage(JSON.stringify({ jsonrpc: "2.0", method: "Provider.requestSimpleMethod", id: 1 }))
 
-            // send out a request event
-            setTimeout( _ => {
-                providerMethodRequestDispatched = true
-                transport.response(json.id, {
-                    correlationId: 123
-                })
-            })
-        }
-        else if (json.method === 'provider.simpleMethodError') {
-            providerMethodErrorSent = true
-            value = json.params.error
-            responseCorrelationId = json.params.correlationId
-        }
-    })
-
-    Provider.provide('xrn:firebolt:capability:test:simple', new SimpleProvider())    
-
-    return new Promise( (resolve, reject) => {
+    return new Promise((resolve, reject) => {
         setTimeout(resolve, 100)
     })
 })
@@ -81,27 +74,13 @@ test('Provider as Class registered', () => {
     expect(1).toBe(1)
 });
 
-test('Provider method notification turned on', () => {
-    expect(providerMethodNotificationRegistered).toBe(true)
+test('Provider method throw an exeption', () => {
+
+    expect(providerMethodRequestReceived).toBe(true)
+    expect(providerMethodErrorSent).toBe(true)
+    expect(errorMessage).toBe('An error occured!')
+    expect(errorCode).toBe(50)
+    expect(errorData).toEqual({ info: 'the_info' })
+
 })
 
-test('Provider method request dispatched', () => {
-    expect(providerMethodRequestDispatched).toBe(true)
-})
-
-test('Provide method session arg has correlationId', () => {
-    expect(methodSession.correlationId()).toBe(123)
-})
-
-test('Provide method session arg DOES NOT have focus', () => {
-    expect(methodSession.hasOwnProperty('focus')).toBe(false)
-})
-
-test('Provider response used correct correlationId', () => {
-    expect(responseCorrelationId).toBe(123)
-})
-
-test('Provider method error is correct', () => {
-    expect(value.code).toBe(50)
-    expect(value.data.info).toBe('the_info')
-})

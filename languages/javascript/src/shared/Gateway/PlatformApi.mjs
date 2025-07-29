@@ -49,16 +49,15 @@ export async function request(id, method, params, transforms) {
   Transport.send(response);
 }
 
-// TODO: How do we know what order the params are in!?
-// Need to implement this spec:
-// https://github.com/rdkcentral/firebolt-apis/blob/feature/protocol/requirements/specifications/general/context-parameters.md
-// Which ensures that we'll only have one (any name) or two (data & context) parameters.
 export async function notify(method, params) {
   if (listeners[method]) {
-    listeners[method](...Object.values(params));
+    listeners[method](params);
     return;
   }
-  throw `Notification not implemented: ${method}`;
+  // All SDKs use a global transport where they register their callbacks for the responses.
+  // When the global transport receives a message, it calls all registered callbacks with that same message.
+  // That's why we can't generate an error here, as the response could be for an event registered by another SDK.  
+  //console.log( `Notification not implemented: ${method}`);
 }
 
 // Register a provider implementation with an interface name

@@ -69,6 +69,7 @@ function getImplementation() {
   
   win.__firebolt.transport = implementation
   implementation.receive(_callback)
+  
   _callback = undefined
 
   return implementation

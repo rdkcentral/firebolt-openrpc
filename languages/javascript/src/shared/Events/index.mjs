@@ -96,14 +96,24 @@ export const registerEventContext = (module, event, context) => {
   validContext[module][event] = context.concat()
 }
 
-const callCallbacks = (key, args) => {
+const callCallbacks = (key, params) => {
+  const args = Object.values(params);
   const callbacks = Object.entries(listeners.internal[key] || {}).concat(Object.entries(listeners.external[key] || {}))
   callbacks.forEach( ([listenerId, callback]) => {
     if (oncers.indexOf(parseInt(listenerId)) >= 0) {
       oncers.splice(oncers.indexOf(parseInt(listenerId)), 1)
       delete listeners.external[key][listenerId]
     }
-    callback.apply(null, [args])
+    if (args.length <= callback.length) {
+      callback.apply(null, args)
+    } else if (args.length > 0 && callback.length > 0 && callback.length < args.length) {
+      // read the params the callback takes and if they are less then the size of args remove the extra params from the front
+      const callbackArgs = args.slice(-callback.length, args.length)
+      callback.apply(null, callbackArgs)
+    }
+    else {
+      callback.call(null)
+    }
   })
 }
 

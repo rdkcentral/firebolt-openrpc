@@ -1574,7 +1574,8 @@ const createPolymorphicMethods = (method, json) => {
     return polymorphicMethodSchemas
 }
 
-const isSubSchema = (schema) => schema.type === 'object' || (schema.type === 'string' && schema.enum)
+//const isSubSchema = (schema) => schema.type === 'object' || (schema.type === 'string' && schema.enum)
+const isSubSchema = (schema) => schema.type === 'object' /*|| (schema.type === 'string' && schema.enum)*/
 const isSubEnumOfArraySchema = (schema) => (schema.type === 'array' && schema.items.enum)
 
 const addComponentSubSchemasNameForProperties = (key, schema) => {

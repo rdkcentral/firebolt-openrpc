@@ -12,7 +12,9 @@
             "tags": [
                 {
                     "name": "capabilities",
-                    "x-uses": ["xrn:firebolt:capability:test:test"]
+                    "x-uses": [
+                        "xrn:firebolt:capability:test:test"
+                    ]
                 }
             ],
             "description": "A method for testing basic method generation.",
@@ -66,7 +68,7 @@
             ]
         },
         {
-            "name": "property",
+            "name": "plainProperty",
             "summary": "A property.",
             "tags": [
                 {
@@ -80,8 +82,7 @@
                 }
             ],
             "description": "A property for testing basic property generation.",
-            "params": [
-            ],
+            "params": [],
             "result": {
                 "name": "result",
                 "summary": "A result for testing basic method generation.",
@@ -92,7 +93,10 @@
                     ],
                     "properties": {
                         "foo": {
-                            "type": ["string", "null"],
+                            "type": [
+                                "string",
+                                "null"
+                            ],
                             "description": "A required field in the result."
                         },
                         "bar": {
@@ -148,8 +152,41 @@
                             "foo": null
                         }
                     }
-                }                
-            ]            
+                }
+            ]
+        },
+        {
+            "name": "readonlyProperty",
+            "summary": "Get the property readonly",
+            "params": [],
+            "tags": [
+                {
+                    "name": "property:readonly"
+                },
+                {
+                    "name": "capabilities",
+                    "x-uses": [
+                        "xrn:firebolt:capability:test:test"
+                    ]
+                }
+            ],
+            "result": {
+                "name": "read only property",
+                "summary": "the read only property",
+                "schema": {
+                    "type": "boolean"
+                }
+            },
+            "examples": [
+                {
+                    "name": "Default Example",
+                    "params": [],
+                    "result": {
+                        "name": "Default Result",
+                        "value": true
+                    }
+                }
+            ]
         },
         {
             "name": "methodWithMarkdownDescription",
@@ -160,9 +197,11 @@
             "tags": [
                 {
                     "name": "capabilities",
-                    "x-uses": ["xrn:firebolt:capability:test:test"]
+                    "x-uses": [
+                        "xrn:firebolt:capability:test:test"
+                    ]
                 }
-            ],         
+            ],
             "params": [
                 {
                     "name": "parameter",
@@ -219,7 +258,9 @@
             "tags": [
                 {
                     "name": "capabilities",
-                    "x-uses": ["xrn:firebolt:capability:test:test"]
+                    "x-uses": [
+                        "xrn:firebolt:capability:test:test"
+                    ]
                 }
             ],
             "params": [
@@ -258,68 +299,15 @@
             ]
         },
         {
-            "name": "methodWithMethodAttribute",
-            "summary": "A method using a method-attribute transform.",
-            "description": "A method for testing sub-method generation.",
-            "tags": [
-                {
-                    "name": "capabilities",
-                    "x-uses": ["xrn:firebolt:capability:test:test"]
-                }
-            ],
-            "params": [
-                {
-                    "name": "title",
-                    "required": true,
-                    "schema": {
-                        "$ref": "https://meta.comcast.com/firebolt/types#/definitions/LocalizedString"
-                    },
-                    "summary": "A localized string test parameter."
-                }
-            ],
-            "result": {
-                "name": "result",
-                "summary": "A result for testing basic method generation.",
-                "schema": {
-                    "type": "object",
-                    "properties": {
-                        "aString": {
-                            "type": "string"
-                        },
-                        "aMethod": {
-                            "type": "string",
-                            "x-method": "Simple.method",
-                            "x-this-param": "accessory"
-                        }
-                    }
-                }
-            },
-            "examples": [
-                {
-                    "name": "Default Example",
-                    "params": [
-                        {
-                            "name": "title",
-                            "value": "test"
-                        }
-                    ],
-                    "result": {
-                        "name": "Default Result",
-                        "value": {
-                            "foo": "here's foo"
-                        }
-                    }
-                }
-            ]
-        },
-        {
             "name": "methodWithMultipleParams",
             "summary": "A method that takes two parameters",
             "description": "A method that takes two parameters",
             "tags": [
                 {
                     "name": "capabilities",
-                    "x-uses": ["xrn:firebolt:capability:test:test"]
+                    "x-uses": [
+                        "xrn:firebolt:capability:test:test"
+                    ]
                 }
             ],
             "params": [
@@ -344,7 +332,7 @@
                 "name": "result",
                 "summary": "A result for testing basic method generation.",
                 "schema": {
-                    "type": "null"
+                    "type": "boolean"
                 }
             },
             "examples": [
@@ -358,6 +346,238 @@
                         {
                             "name": "title",
                             "value": "test"
+                        }
+                    ],
+                    "result": {
+                        "name": "Default Result",
+                        "value": true
+                    }
+                }
+            ]
+        },
+        {
+            "name": "methodWithOneOptionalParam",
+            "summary": "A method that takes two parameters with one optional",
+            "description": "A method that takes two parameters with one optional",
+            "tags": [
+                {
+                    "name": "capabilities",
+                    "x-uses": [
+                        "xrn:firebolt:capability:test:test"
+                    ]
+                }
+            ],
+            "params": [
+                {
+                    "name": "param1",
+                    "required": false,
+                    "schema": {
+                        "type": "string"
+                    },
+                    "summary": "A test string 1"
+                }
+            ],
+            "result": {
+                "name": "result",
+                "summary": "A result for testing basic method generation.",
+                "schema": {
+                    "type": "null"
+                }
+            },
+            "examples": [
+                {
+                    "name": "Default Example",
+                    "params": [
+                        {
+                            "name": "param1",
+                            "value": "test 1"
+                        }
+                    ],
+                    "result": {
+                        "name": "Default Result",
+                        "value": null
+                    }
+                }
+            ]
+        },
+        {
+            "name": "methodWithOneRequiredOneOptionalParam",
+            "summary": "A method that takes two parameters with one optional",
+            "description": "A method that takes two parameters with one optional",
+            "tags": [
+                {
+                    "name": "capabilities",
+                    "x-uses": [
+                        "xrn:firebolt:capability:test:test"
+                    ]
+                }
+            ],
+            "params": [
+                {
+                    "name": "param1",
+                    "required": true,
+                    "schema": {
+                        "type": "string"
+                    },
+                    "summary": "A test string 1"
+                },
+                {
+                    "name": "param2",
+                    "required": false,
+                    "schema": {
+                        "type": "string"
+                    },
+                    "summary": "A test string 2."
+                }
+            ],
+            "result": {
+                "name": "result",
+                "summary": "A result for testing basic method generation.",
+                "schema": {
+                    "type": "null"
+                }
+            },
+            "examples": [
+                {
+                    "name": "Example 1",
+                    "params": [
+                        {
+                            "name": "param1",
+                            "value": "val 1"
+                        }
+                    ],
+                    "result": {
+                        "name": "Default Result",
+                        "value": null
+                    }
+                }
+            ]
+        },
+        {
+            "name": "methodWithTwoOptionalParam",
+            "summary": "A method that takes three parameters with two optional",
+            "description": "A method that takes three parameters with two optional",
+            "tags": [
+                {
+                    "name": "capabilities",
+                    "x-uses": [
+                        "xrn:firebolt:capability:test:test"
+                    ]
+                }
+            ],
+            "params": [
+                {
+                    "name": "param1",
+                    "required": true,
+                    "schema": {
+                        "type": "string"
+                    },
+                    "summary": "A test string"
+                },
+                {
+                    "name": "param2",
+                    "required": false,
+                    "schema": {
+                        "type": "string"
+                    },
+                    "summary": "A string test parameter 1."
+                },
+                {
+                    "name": "param3",
+                    "required": false,
+                    "schema": {
+                        "type": "string"
+                    },
+                    "summary": "A string test parameter 2."
+                }
+            ],
+            "result": {
+                "name": "result",
+                "summary": "A result for testing basic method generation.",
+                "schema": {
+                    "type": "null"
+                }
+            },
+            "examples": [
+                {
+                    "name": "Default Example",
+                    "params": [
+                        {
+                            "name": "param1",
+                            "value": "val 1"
+                        },
+                        {
+                            "name": "param2",
+                            "value": "val 2"
+                        }
+                    ],
+                    "result": {
+                        "name": "Default Result",
+                        "value": null
+                    }
+                }
+            ]
+        },
+        {
+            "name": "methodWithTwoOptionalParamInWrongOrder",
+            "summary": "A method that takes two optional in wrong order - starting with optional then required then optional",
+            "description": "A method that takes two optional in wrong order - starting with optional then required then optional",
+            "tags": [
+                {
+                    "name": "capabilities",
+                    "x-uses": [
+                        "xrn:firebolt:capability:test:test"
+                    ]
+                }
+            ],
+            "params": [
+                {
+                    "name": "param1",
+                    "required": false,
+                    "schema": {
+                        "type": "string"
+                    },
+                    "summary": "A test string"
+                },
+                {
+                    "name": "param2",
+                    "required": true,
+                    "schema": {
+                        "type": "string"
+                    },
+                    "summary": "A string test parameter 1."
+                },
+                {
+                    "name": "param3",
+                    "required": false,
+                    "schema": {
+                        "type": "string"
+                    },
+                    "summary": "A string test parameter 2."
+                }
+            ],
+            "result": {
+                "name": "result",
+                "summary": "A result for testing basic method generation.",
+                "schema": {
+                    "type": "null"
+                }
+            },
+            "examples": [
+                {
+                    "name": "Default Example",
+                    "params": [
+                        {
+                            "name": "param1",
+                            "value": "val 1"
+                        },
+                        {
+                            "name": "param2",
+                            "value": "val 2"
+                        },
+                        {
+                            "name": "param3",
+                            "value": "val 3"
                         }
                     ],
                     "result": {

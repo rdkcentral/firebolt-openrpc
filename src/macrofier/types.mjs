@@ -332,8 +332,8 @@ const insertObjectMacros = (content, schema, module, title, property, options)=>
   options2.parent = title
   options2.parentLevel = options.parentLevel
   options2.level = options.level + 1
-  options2.templateDir = options.templateDir
-  ;(['properties', 'properties.register', 'properties.assign']).forEach(macro => {
+  options2.templateDir = options.templateDir;
+  (['properties', 'properties.register', 'properties.assign']).forEach(macro => {
     const indent = getIndents(options.parentLevel || (options.level ? 1 : 0))
     const templateType = macro.split('.').slice(1).join('')
     const template = getTemplate(path.join(options.templateDir, 'property' + (templateType ? `-${templateType}` : ''))).replace(/\n/gms, '\n' + indent)
@@ -536,7 +536,7 @@ const insertAnyOfMacros = (content, schema, module, namespace) => {
   const itemTemplate = content
   if (content.split('\n').find(line => line.includes("${type}"))) {
     content = schema.anyOf.map((item, i) => itemTemplate
-      .replace(/\$\{type\}/g, getSchemaType(item, module), { namespace })
+      .replace(/\$\{type\}/g, getSchemaType(item, module).split('.').pop(), { namespace })
       .replace(/\$\{delimiter\}(.*?)\$\{end.delimiter\}/g, i === schema.anyOf.length - 1 ? '' : '$1')
     ).join('')
   }
@@ -560,7 +560,7 @@ const sanitize = (schema) => {
   return result
 }
 
-function getSchemaShape(schema = {}, module = {}, { templateDir = 'types', parent = '', property = '', required = false, parentLevel = 0, level = 0, summary, descriptions = true, enums = true, enumImpl = false, skipTitleOnce = false, array = false, primitive = false, type = false, namespace = true } = {}) {  
+function getSchemaShape(schema = {}, module = {}, { templateDir = 'types', parent = '', property = '', required = false, parentLevel = 0, level = 0, summary, descriptions = true, enums = true, enumImpl = false, skipTitleOnce = false, array = false, primitive = false, type = false, namespace = true, suffix = '' } = {}) {
   schema = sanitize(schema)
   if (level === 0 && !schema.title && !primitive) {
     return ''
@@ -577,14 +577,14 @@ function getSchemaShape(schema = {}, module = {}, { templateDir = 'types', paren
 
   let genericTemplate = getTemplate(path.join(templateDir, 'generic'))
   if (enums && level === 0 && Array.isArray(schema.enum) && ((schema.type === "string") || (schema.type[0] === "string"))) {
-    result = getTemplate(path.join(templateDir, enumImpl ? 'enum-implementation' : 'enum')) || genericTemplate
+    result = getTemplate(path.join(templateDir, enumImpl ? `enum-implementation${suffix}` : `enum${suffix}`)) || genericTemplate
     return insertSchemaMacros(insertEnumMacros(result, schema, module, theTitle, templateDir), schema, module, { name: theTitle, parent, property, required })
   }
 
   if (schema['$ref']) {
     const someJson = getReferencedSchema(schema['$ref'], module)
     if (someJson) {
-      return getSchemaShape(someJson, module, { templateDir, parent, property, required, parentLevel, level, summary, descriptions, enums, array, primitive, namespace })
+      return getSchemaShape(someJson, module, { templateDir, parent, property, required, parentLevel, level, summary, descriptions, enums, array, primitive, namespace, suffix })
     }
     throw "Unresolvable $ref: " + schema['$ref'] + ", in " + moduleTitle
   }
@@ -595,7 +595,7 @@ function getSchemaShape(schema = {}, module = {}, { templateDir = 'types', paren
   else if (!skipTitleOnce && (level > 0) && schema.title) {
     let enumType = (schema.type === 'string' && Array.isArray(schema.enum))
     // TODO: allow the 'ref' template to actually insert the shape using getSchemaShape
-    const innerShape = getSchemaShape(schema, module, { skipTitleOnce: true, templateDir, parent, property, required, parentLevel, level, summary, descriptions, enums: enumType, array, primitive, namespace })
+    const innerShape = getSchemaShape(schema, module, { skipTitleOnce: true, templateDir, parent, property, required, parentLevel, level, summary, descriptions, enums: enumType, array, primitive, namespace, suffix })
 
     const shape = getTemplate(path.join(templateDir, 'ref'))
       .replace(/\$\{shape\}/g, innerShape)
@@ -668,7 +668,7 @@ function getSchemaShape(schema = {}, module = {}, { templateDir = 'types', paren
     }
     delete union['$ref']
 
-    return getSchemaShape(union, module, { templateDir, parent, property, required, parentLevel, level, summary, descriptions, enums: false, array, primitive, namespace })
+    return getSchemaShape(union, module, { templateDir, parent, property, required, parentLevel, level, summary, descriptions, enums: false, array, primitive, namespace, suffix })
   }
   else if (schema.type === "array" && schema.items && isSupportedTuple(schema)) {
     // tuple
@@ -678,7 +678,7 @@ function getSchemaShape(schema = {}, module = {}, { templateDir = 'types', paren
   }
   else if (schema.type === "array" && schema.items && !Array.isArray(schema.items)) {
     // array
-    const items = getSchemaShape(schema.items, module, { templateDir, parent, property, required, parentLevel: parentLevel + 1, level, summary, descriptions, enums: false, array: true, primitive, namespace })
+    const items = getSchemaShape(schema.items, module, { templateDir, parent, property, required, parentLevel: parentLevel + 1, level, summary, descriptions, enums: false, array: true, primitive, namespace, suffix })
     // Need to dereference any ref items
     if (schema.items['$ref']) {
       schema.items = getReferencedSchema(schema.items['$ref'], module)
@@ -692,7 +692,7 @@ function getSchemaShape(schema = {}, module = {}, { templateDir = 'types', paren
   else if (schema.type) {
     const shape = insertPrimitiveMacros(getTemplate(path.join(templateDir, 'primitive')), schema, module, theTitle, templateDir)
     result = result.replace(/\$\{shape\}/g, shape)
-    const config = getConfig()   
+    const config = getConfig()
     if (!config.langcode) {
       return insertSchemaMacros(result, schema, module, { name: theTitle, parent, property, required, templateDir })
     }
@@ -785,7 +785,7 @@ function getSchemaType(schema, module, { templateDir = 'types', link = false, co
       }
     }
   }
-  else if (title && schema.title) {
+  else if (title && theTitle && !(schema.type === 'string' && schema.enum && schema.enum[0] === 'dial' && config.langcode === 'javascript')) {
     if (link) {
       return '[' + wrap(theTitle, code ? '`' : '') + '](#' + schema.title.toLowerCase() + ')'
     }

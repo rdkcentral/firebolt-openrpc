@@ -7,14 +7,53 @@
     },
     "methods": [
         {
-            "name": "onEventWithContext",
+            "name": "plainEvent",
             "tags": [
                 {
-                    "name": "event"
+                    "name": "notifier",
+                    "x-event": "Advanced.onPlainEvent"
                 },
                 {
                     "name": "capabilities",
-                    "x-uses": ["xrn:firebolt:capability:test:test"]
+                    "x-uses": [
+                        "xrn:firebolt:capability:test:test"
+                    ]
+                }
+            ],
+            "summary": "Plain event with no context.",
+            "params": [
+                {
+                    "name": "value",
+                    "summary": "A value",
+                    "schema": {
+                        "type": "string"
+                    }
+                }
+            ],
+            "examples": [
+                {
+                    "name": "Default Example",
+                    "params": [
+                        {
+                            "name": "Default Result",
+                            "value": "Living Room"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "eventWithContext",
+            "tags": [
+                {
+                    "name": "notifier",
+                    "x-event": "Advanced.onEventWithContext"
+                },
+                {
+                    "name": "capabilities",
+                    "x-uses": [
+                        "xrn:firebolt:capability:test:test"
+                    ]
                 }
             ],
             "summary": "An event with one context parameter.",
@@ -25,19 +64,19 @@
                     "schema": {
                         "type": "string"
                     }
+                },
+                {
+                    "name": "value",
+                    "schema": {
+                        "type": "object",
+                        "properties": {
+                            "foo": {
+                                "type": "string"
+                            }
+                        }
+                    }
                 }
             ],
-            "result": {
-                "name": "result",
-                "schema": {
-                    "type": "object",
-                    "properties": {
-                        "foo": {
-                            "type": "string"
-                        }
-                    }    
-                }
-            },
             "examples": [
                 {
                     "name": "Default Example",
@@ -45,26 +84,29 @@
                         {
                             "name": "appId",
                             "value": "hulu"
+                        },
+                        {
+                            "name": "value",
+                            "value": {
+                                "foo": "bar"
+                            }
                         }
-                    ],
-                    "result": {
-                        "name": "result",
-                        "value": {
-                            "foo": "bar"
-                        }
-                    }
+                    ]
                 }
             ]
         },
         {
-            "name": "onEventWithTwoContext",
+            "name": "eventWithTwoContext",
             "tags": [
                 {
-                    "name": "event"
+                    "name": "notifier",
+                    "x-event": "Advanced.onEventWithTwoContext"
                 },
                 {
                     "name": "capabilities",
-                    "x-uses": ["xrn:firebolt:capability:test:test"]
+                    "x-uses": [
+                        "xrn:firebolt:capability:test:test"
+                    ]
                 }
             ],
             "summary": "An event with two context parameters.",
@@ -82,19 +124,19 @@
                     "schema": {
                         "type": "string"
                     }
+                },
+                {
+                    "name": "value",
+                    "schema": {
+                        "type": "object",
+                        "properties": {
+                            "foo": {
+                                "type": "string"
+                            }
+                        }
+                    }
                 }
             ],
-            "result": {
-                "name": "result",
-                "schema": {
-                    "type": "object",
-                    "properties": {
-                        "foo": {
-                            "type": "string"
-                        }
-                    }    
-                }
-            },
             "examples": [
                 {
                     "name": "Default Example",
@@ -106,20 +148,20 @@
                         {
                             "name": "state",
                             "value": "inactive"
+                        },
+                        {
+                            "name": "result",
+                            "value": {
+                                "foo": "bar"
+                            }
                         }
-                    ],
-                    "result": {
-                        "name": "result",
-                        "value": {
-                            "foo": "bar"
-                        }
-                    }
+                    ]
                 }
             ]
         },
         {
             "name": "propertyWithContext",
-            "summary":"",
+            "summary": "",
             "tags": [
                 {
                     "name": "property"
@@ -172,48 +214,6 @@
                         "name": "value",
                         "value": true
                     }
-                }                
-            ]
-        },
-        {
-            "name": "list",
-            "tags": [
-                {
-                    "name": "temporal-set"
-                },
-                {
-                    "name": "capabilities",
-                    "x-uses": ["xrn:firebolt:capability:test:test"]
-                }
-            ],
-            "summary": "A temporal set method that lists Advanced objects.",
-            "params": [
-
-            ],
-            "result": {
-                "name": "items",
-                "schema": {
-                    "type": "array",
-                    "items": {
-                        "title": "Item",
-                        "$ref": "#/components/schemas/Advanced"
-                    }    
-                }
-            },
-            "examples": [
-                {
-                    "name": "Default Example",
-                    "params": [
-                    ],
-                    "result": {
-                        "name": "items",
-                        "value": [
-                            {
-                                "aString": "Here's a string",
-                                "aNumber": 123
-                            }
-                        ]
-                    }
                 }
             ]
         },
@@ -223,7 +223,9 @@
             "tags": [
                 {
                     "name": "capabilities",
-                    "x-uses": ["xrn:firebolt:capability:test:test"]
+                    "x-uses": [
+                        "xrn:firebolt:capability:test:test"
+                    ]
                 }
             ],
             "description": "A method for testing advanced method generation.",
@@ -290,10 +292,8 @@
                     "aString": {
                         "type": "string"
                     },
-                    "aMethod": {
-                        "type": "null",
-                        "x-method": "Advanced.action",
-                        "x-this-param": "advanced"
+                    "aNumber": {
+                        "type": "number"
                     }
                 }
             }

@@ -1,5 +1,8 @@
 /*
- * Copyright 2021 Comcast Cable Communications Management, LLC
+ * If not stated otherwise in this file or this component's LICENSE file the
+ * following copyright and licenses apply:
+ *
+ * Copyright 2025 Sky UK
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,97 +19,66 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { Provider } from '../../build/sdk/javascript/src/sdk.mjs'
-import Setup from '../Setup.js'
 import { transport } from '../TransportHarness.js'
+import MockTransport from '../../build/sdk/javascript/src/Transport/MockTransport.mjs'
+import { Provider } from '../../build/sdk/javascript/src/sdk.mjs'
+import { expect } from '@jest/globals';
 
-let providerMethodOneNotificationRegistered = false
-let providerMethodOneRequestDispatched = false
-let providerMethodOneResultSent = false
+
+let providerRegistered = false
 let numberOfArgsMethodOne = -1
 let methodOneParameters
-let methodOneSession
 let valueOne
-let responseCorrelationIdOne
 
-let providerMethodTwoNotificationRegistered = false
-let providerMethodTwoRequestDispatched = false
-let providerMethodTwoResultSent = false
 let numberOfArgsMethodTwo = -1
-let methodTwoParameters
-let methodTwoSession
+let methodTwoParam1
+let methodTwoParam2
 let valueTwo
-let responseCorrelationIdTwo
 
 
-beforeAll( () => {
+beforeAll(() => {
 
     class MultiProvider {
-        multiMethodOne(...args) {
+        requestMultiMethodOne(...args) {
             numberOfArgsMethodOne = args.length
             methodOneParameters = args[0]
-            methodOneSession = args[1]
-            return Promise.resolve('a value!')
+            return Promise.resolve(true)
         }
 
-        multiMethodTwo(...args) {
+        requestMultiMethodTwo(...args) {
             numberOfArgsMethodTwo = args.length
-            methodTwoParameters = args[0]
-            methodTwoSession = args[1]
+            methodTwoParam1 = args[0]
+            methodTwoParam2 = args[1]
             return Promise.resolve('another value!')
         }
     }
-    
-    transport.onSend(json => {
-        if (json.method === 'provider.onRequestMultiMethodOne') {
-            providerMethodOneNotificationRegistered = true
 
-            // Confirm the listener is on
-            transport.response(json.id, {
-                listening: true,
-                event: json.method
-            })
+    transport.onSend((json) => {
+        if (json.method) {
+            let [module, method] = json.method.split('.')
+            expect(module).toBe('Provider')
+            providerRegistered = true
 
-            // send out a request event
-            setTimeout( _ => {
-                providerMethodOneRequestDispatched = true
-                transport.response(json.id, {
-                    correlationId: 123
-                })
-            })
         }
-        else if (json.method === 'provider.multiMethodOneResponse') {
-            providerMethodOneResultSent = true
-            valueOne = json.params.result
-            responseCorrelationIdOne = json.params.correlationId
-        }
-        if (json.method === 'provider.onRequestMultiMethodTwo') {
-            providerMethodTwoNotificationRegistered = true
-
-            // Confirm the listener is on
-            transport.response(json.id, {
-                listening: true,
-                event: json.method
-            })
-
-            // send out a request event
-            setTimeout( _ => {
-                providerMethodTwoRequestDispatched = true
-                transport.response(json.id, {
-                    correlationId: 456
-                })
-            })
-        }
-        else if (json.method === 'provider.multiMethodTwoResponse') {
-            providerMethodTwoResultSent = true
-            valueTwo = json.params.result
-            responseCorrelationIdTwo = json.params.correlationId
+        //catch the response
+        if (json.method == null) {
+            if (json.result) {
+                if (json.id == 1) {
+                    valueOne = json.result
+                }
+                else if (json.id == 2) {
+                    valueTwo = json.result
+                }
+            }
         }
     })
 
-    Provider.provide('xrn:firebolt:capability:test:multi', new MultiProvider())    
+    Provider.provide(new MultiProvider())
 
-    return new Promise( (resolve, reject) => {
+    MockTransport.receiveMessage(JSON.stringify({ jsonrpc: "2.0", method: "Provider.requestMultiMethodOne", params: { "param1": true }, id: 1 }))
+    MockTransport.receiveMessage(JSON.stringify({ jsonrpc: "2.0", method: "Provider.requestMultiMethodTwo", params: { "param1": false, "param2": 123 }, id: 2 }))
+
+    return new Promise((resolve, reject) => {
         setTimeout(resolve, 100)
     })
 })
@@ -116,64 +88,32 @@ test('Provider as Class registered', () => {
     expect(1).toBe(1)
 });
 
-test('Provider method 1 notification turned on', () => {
-    expect(providerMethodOneNotificationRegistered).toBe(true)
-})
-
-test('Provider method 1 request dispatched', () => {
-    expect(providerMethodOneRequestDispatched).toBe(true)
+test('Provider registered', () => {
+    expect(providerRegistered).toBe(true)
 })
 
 test('Provide method 1 called with two args', () => {
-    expect(numberOfArgsMethodOne).toBe(2)
+    expect(numberOfArgsMethodOne).toBe(1)
 })
 
-test('Provide method 1 parameters arg is null', () => {
-    expect(methodOneParameters).toBe(null)
-})
-
-test('Provide method 1 session arg has correlationId', () => {
-    expect(methodOneSession.correlationId()).toBe(123)
-})
-
-test('Provide method 1 session arg DOES NOT have focus', () => {
-    expect(methodOneSession.hasOwnProperty('focus')).toBe(false)
-})
-
-test('Provider response 1 used correct correlationId', () => {
-    expect(responseCorrelationIdOne).toBe(123)
+test('Provide method 1 parame1 is true', () => {
+    expect(methodOneParameters).toBe(true)
 })
 
 test('Provider method 1 result is correct', () => {
-    expect(valueOne).toBe('a value!')
-})
-
-test('Provider method 2 notification turned on', () => {
-    expect(providerMethodTwoNotificationRegistered).toBe(true)
-})
-
-test('Provider method 2 request dispatched', () => {
-    expect(providerMethodTwoRequestDispatched).toBe(true)
+    expect(valueOne).toBe(true)
 })
 
 test('Provide method 2 called with two args', () => {
     expect(numberOfArgsMethodTwo).toBe(2)
 })
 
-test('Provide method 2 parameters arg is null', () => {
-    expect(methodTwoParameters).toBe(null)
+test('Provide method 2 param1 arg is false', () => {
+    expect(methodTwoParam1).toBe(false)
 })
 
-test('Provide method 2 session arg has correlationId', () => {
-    expect(methodTwoSession.correlationId()).toBe(456)
-})
-
-test('Provide method 2 session arg DOES NOT have focus', () => {
-    expect(methodTwoSession.hasOwnProperty('focus')).toBe(false)
-})
-
-test('Provider response 2 used correct correlationId', () => {
-    expect(responseCorrelationIdTwo).toBe(456)
+test('Provide method 2 param2 arg is false', () => {
+    expect(methodTwoParam2).toBe(123)
 })
 
 test('Provider method 2 result is correct', () => {

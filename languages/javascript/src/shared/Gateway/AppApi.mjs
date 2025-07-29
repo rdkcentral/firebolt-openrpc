@@ -74,16 +74,19 @@ export function response(id, result, error) {
   const promise = promises[id];
 
   if (promise) {
-    if (result !== undefined) {
-      promises[id].resolve(result);
-    } else if (error !== undefined) {
+    if (error !== undefined) {
       promises[id].reject(error);
+    } else {
+      promises[id].resolve(result);
     }
 
     // TODO make sure this works
     delete promises[id];
   } else {
-    throw `Received a response for an unidentified request ${id}`;
+    // All SDKs use a global id generator and a global transport where they register their callbacks for the responses.
+    // When the global transport receives a message, it calls all registered callbacks with that same message.
+    // That's why we can't generate an error here, as the response could be for a request made by another SDK.
+    // console.log(`Received a response for an unidentified request ${id}, result: ${result}, error: ${error}`);
   }
 }
 

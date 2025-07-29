@@ -16,37 +16,36 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { Simple } from '../../build/sdk/javascript/src/sdk.mjs'
-import Setup from '../Setup'
 import { transport } from '../TransportHarness.js'
+import MockTransport from '../../build/sdk/javascript/src/Transport/MockTransport.mjs'
+import { Simple } from '../../build/sdk/javascript/src/sdk.mjs'
 import { expect } from '@jest/globals';
+
 
 let propertySetterWasTriggered = false
 let propertySetterWasTriggeredWithValue = false
 
-beforeAll( () => {
+beforeAll(() => {
 
-    transport.onSend(json => {
-        if (json.method === 'simple.property') {
+    transport.onSend ((json) => {
+        let [module, method] = json.method.split('.')
+
+        expect(module).toBe('Simple')
+
+        if (method === 'plainProperty') {
+            /*
             transport.response(json.id, {
                 foo: "here's foo"
-            })            
+            })
+            */
+            MockTransport.receiveMessage(JSON.stringify({ jsonrpc: "2.0", result: { foo: "here's foo" }, id: json.id }))
         }
-        else if (json.method === 'simple.onPropertyChanged') {
+        else if (method === 'onPlainPropertyChanged') {
             // Confirm the listener is on
-            transport.response(json.id, {
-                listening: true,
-                event: json.method
-            })
+            MockTransport.receiveMessage(JSON.stringify({ jsonrpc: "2.0", result: { listening: true, event: method }, id: json.id }))
 
-            // send out a request event
-            setTimeout( _ => {
-                transport.response(json.id, {
-                    foo: "here's foo"
-                })
-            })
         }
-        else if (json.method === 'simple.setProperty') {
+        else if (method === 'setPlainProperty') {
             propertySetterWasTriggered = true
             if (json.params.value.foo === 'a new foo!' || json.params.value.foo === null) {
                 propertySetterWasTriggeredWithValue = true
@@ -54,25 +53,28 @@ beforeAll( () => {
         }
     })
 
-    return new Promise( (resolve, reject) => {
+    return new Promise((resolve, reject) => {
         setTimeout(resolve, 100)
     })
 })
 
+
 test('Basic Property get', () => {
-    return Simple.property().then(result => {
+    return Simple.plainProperty().then(result => {
         expect(result.foo).toBe("here's foo")
     })
 });
 
 test('Basic Property subscribe', () => {
-    return Simple.property(value => {
-        expect(value.foo).toBe("here's foo")
+    let p = Simple.plainProperty(value => {
+        expect(value.value).toBe("value 123")
     })
+    MockTransport.event("Simple","plainPropertyChanged",  "value 123");
+    return p;
 });
 
 test('Basic Property set', () => {
-    Simple.property({
+    Simple.plainProperty({
         foo: 'a new foo!'
     })
 
@@ -81,9 +83,19 @@ test('Basic Property set', () => {
 });
 
 test('Basic Property set with null', () => {
-    Simple.property({
+    Simple.plainProperty({
         foo: null
     })
     expect(propertySetterWasTriggered).toBe(true)
     expect(propertySetterWasTriggeredWithValue).toBe(true)
+});
+
+//test listen to "plainPropertyChanged" event
+test('Basic Property subscribe to event', () => {
+    Simple.clear("plainPropertyChanged");
+    let p = Simple.listen("plainPropertyChanged", value => {
+        expect(value.value).toBe( "value 123")
+    })
+    MockTransport.event("Simple","plainPropertyChanged",  "value 123");
+    return p;
 });
