@@ -1,0 +1,51 @@
+{
+  "validate": [
+    "method",
+    "params",
+    "response",
+    "events"
+  ],
+  "multiUserConnections": "warn",
+  "bidirectional": true,
+  "supportedOpenRPCs": [
+    {
+      "name": "core",
+      "cliFlag": null,
+      "cliShortFlag": null,
+      "url_Note": "Can be changed to test different versions of the firebolt-open-rpc",
+      "url": "https://rdkcentral.github.io/firebolt/requirements/latest/specifications/firebolt-open-rpc.json",
+      "enabled": false
+    },
+    {
+      "name": "mock",
+      "cliFlag": "mock",
+      "cliShortFlag": "m",
+      "fileName": "../../build/sdk-open-rpc.json",
+      "enabled": true
+    }
+  ],
+  "supportedToAppOpenRPCs": [
+    {
+      "name": "coreToApp",
+      "cliFlag": null,
+      "cliShortFlag": null,
+      "url_Note": "URL for toApp OpenRPC (Firebolt 2.0 event/provider spec)",
+      "fileName": "../../build/sdk-app-open-rpc.json",
+      "enabled": true
+    }
+  ],
+  "eventConfig": {
+    "registrationMessage": {
+      "searchRegex": "(?=.*\\\"method\\\".*)(?=.*\\\"listen\\\":true.*).*\\.on\\S*",
+      "method": "$.method"
+    },
+    "unRegistrationMessage": {
+      "searchRegex": "(?=.*\\\"method\\\".*)(?=.*\\\"listen\\\":false.*).*\\.on\\S*",
+      "method": "$.method"
+    },
+    "registrationAck": "{\"jsonrpc\":\"2.0\",\"id\":{{registration.id}},\"result\":{\"listening\":true,\"event\":\"{{method}}\"}}",
+    "unRegistrationAck": "{\"jsonrpc\":\"2.0\",\"id\":{{unRegistration.id}},\"result\":{\"listening\":false,\"event\":\"{{method}}\"}}",
+    "event": "{\"result\":{{{resultAsJson}}},\"id\":{{registration.id}},\"jsonrpc\":\"2.0\"}",
+    "eventType": "Firebolt"
+  }
+}

@@ -1541,7 +1541,10 @@ function insertMethodMacros(template, methodObj, platformApi, appApi, templates,
          .replace(/\$\{method\.summary\}/g, methodObj.summary)
          .replace(/\$\{method\.result\.name\}/g, result.name)
          .replace(/\$\{method\.result\.type\}/g, Types.getSchemaType(result.schema, platformApi, { templateDir: state.typeTemplateDir, title: true, asPath: false, result: true, namespace: false }))
-  }
+    //The subscriber template for the documentation is different from the one for the code generation and must be inserted with insertMethodMacros. See the implementaion in unidirectional branch.
+    subscriberTemplate =  insertMethodMacros(subscriberTemplate, subscriber, platformApi, appApi, templates, type, examples)
+    subscriberTemplate =  insertMethodMacros(subscriberTemplate, subscriber, platformApi, appApi, templates, type, examples)
+   }
   const setterFor = methodObj.tags.find(t => t.name === 'setter') && methodObj.tags.find(t => t.name === 'setter')['x-setter-for'].split('.').pop() || ''
 
   const pullsResult = (puller || pullsFor) ? localizeDependencies(pullsFor || methodObj, platformApi).params.findLast(x=>true).schema : null
