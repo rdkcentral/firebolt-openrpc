@@ -88,12 +88,46 @@ const setConfig = (c) => {
   config = c
 }
 
+const isXSubscriberFor = (method) => {
+  return method.tags && method.tags.find(tag => tag.name === "event" && tag["x-subscriber-for"])
+}
+
+const isXNotifier = (method) => {
+  return method.tags && method.tags.find(tag => tag.name === "event" && tag["x-notifier"])
+}
+
+const getNotifierForMethod3 = (method, appApi) => {
+  
+  if (! method.tags)
+    return null
+
+  const subscriberTag =  method.tags.find(tag => tag.name === "event" && tag["x-notifier"])
+  if (subscriberTag && appApi && appApi.methods) {
+    return appApi.methods.find(method => method.name === subscriberTag["x-notifier"])
+  }
+  return null
+}
+
+const getNotifierForMethod = (method, appApi) => {
+  
+  const subscriberTag =  appApi.methods.find(appApiMethod => 
+    {
+      return appApiMethod.tags && appApiMethod.tags.find(tag => tag.name === "notifier" && (tag["x-event"]?.includes('.' + method.name) || tag["x-event"]?.includes('on' + method.name.charAt(0).toUpperCase() + method.name.slice(1))))
+    })
+  return subscriberTag
+}
+
+
 const getTemplate = (name, templates) => {
   return templates[Object.keys(templates).find(k => k === name)] || templates[Object.keys(templates).find(k => k.startsWith(name + '.'))] || ''
 }
 
 const getTemplateTypeForMethod = (method, type, templates) => {
-  const name = method.tags ? (isAllowFocusMethod(method) && Object.keys(templates).find(name => name.startsWith(`/${type}/allowsFocus.`))) ? 'allowsFocus' : (method.tags.map(tag => tag.name.split(":").shift()).find(tag => Object.keys(templates).find(name => name.startsWith(`/${type}/${tag}.`)))) || 'default' : 'default'
+  let name = method.tags ? (isAllowFocusMethod(method) && Object.keys(templates).find(name => name.startsWith(`/${type}/allowsFocus.`))) ? 'allowsFocus' : (method.tags.map(tag => tag.name.split(":").shift()).find(tag => Object.keys(templates).find(name => name.startsWith(`/${type}/${tag}.`)))) || 'default' : 'default'
+  //if method.tags contains object with name "event" and a property x-subscriber-for then the template is 'subscriber'
+  if (isXSubscriberFor(method)) {
+    name = 'subscriber'
+  }
   const path = `/${type}/${name}`
   return getTemplate(path, templates)
 }
@@ -593,7 +627,7 @@ const generateMacros = (platformApi, appApi, templates, languages, options = {})
   const initialization = generateInitialization(platformApi, appApi, templates)
   const eventsEnum = generateEvents(platformApi, templates)
 
-  const examples = generateExamples(platformApi, templates, languages)
+  const examples = generateExamples(platformApi, templates, languages, appApi)
   const allMethodsArray = generateMethods(platformApi, appApi, examples, templates, languages, options.type)
 
   Array.from(new Set(['methods'].concat(config.additionalMethodTemplates))).filter(dir => dir).forEach(dir => {
@@ -1259,10 +1293,19 @@ const generateDeprecatedInitialization = (platformApi, appApi, templates) => {
   )(platformApi)
 }
 
-function generateExamples(json = {}, mainTemplates = {}, languages = {}) {
+function generateExamples(json = {}, mainTemplates = {}, languages = {}, appApi = null) {
   const examples = {}
 
   json && json.methods && json.methods.forEach(method => {
+    let isXNotifierMethod = isXNotifier(method); 
+
+    
+    const notifierForMethod = getNotifierForMethod(method, appApi)
+    let notifierForMethodExampleParams = null;
+    if(notifierForMethod && notifierForMethod.examples && notifierForMethod.examples.length) {
+      //notifierForMethodExampleParams = notifierForMethod.examples[0].params[0].value
+    }
+
     examples[method.name] = method.examples.map(example => ({
       json: example,
       value: example.result.value,
@@ -1271,9 +1314,9 @@ function generateExamples(json = {}, mainTemplates = {}, languages = {}) {
         code: getTemplateForExample(method, templates)
           .replace(/\$\{rpc\.example\.params\}/g, JSON.stringify(Object.fromEntries(example.params.map(param => [param.name, param.value])))),
         result: getTemplateForExampleResult(method, templates)
-          .replace(/\$\{example\.result\}/g, JSON.stringify(example.result.value, null, '\t'))
-          .replace(/\$\{example\.result\.item\}/g, Array.isArray(example.result.value) ? JSON.stringify(example.result.value[0], null, '\t') : ''),
-        template: lang === 'JSON-RPC' ? getTemplate('/examples/jsonrpc', mainTemplates) : getTemplateForExample(method, mainTemplates) // getTemplate('/examples/default', mainTemplates)
+          .replace(/\$\{example\.result\}/g, JSON.stringify((notifierForMethodExampleParams ? notifierForMethodExampleParams : example.result.value), null, '\t'))
+          .replace(/\$\{example\.result\.item\}/g, Array.isArray((notifierForMethodExampleParams ? notifierForMethodExampleParams : example.result.value)) ? JSON.stringify((notifierForMethodExampleParams ? notifierForMethodExampleParams : example.result.value)[0], null, '\t') : ''),
+        template: lang === 'JSON-RPC' ?(isXNotifierMethod? getTemplate('/examples/jsonrpc-subscriber', mainTemplates) : getTemplate('/examples/jsonrpc', mainTemplates)) : getTemplateForExample(method, mainTemplates) // getTemplate('/examples/default', mainTemplates)
       }])))
     }))
 
@@ -1340,7 +1383,7 @@ function generateMethods(platformApi = {}, appApi = null, examples = {}, templat
       declaration: {},
       excluded: methodObj.tags.find(t => t.name === 'exclude-from-sdk'),
       event: isEventMethod(methodObj),
-      examples: generateExamples(methodObj, templates, languages)
+      examples: generateExamples(methodObj, templates, languages, appApi)
     }
 
     // Generate implementation of methods/events for both dynamic and static configured templates
@@ -1520,9 +1563,18 @@ function insertMethodMacros(template, methodObj, platformApi, appApi, templates,
 
   const eventResultSchemaPropParams = event && event.result && event.result.schema && event.result.schema.properties && event.result.schema.properties.parameters ? `const ${event.result.schema.properties.parameters.title}& parameters` : ''
 
-  const eventParams = event.params && event.params.length ? getTemplate('/sections/parameters', templates) + event.params.map(p => insertParameterMacros(getTemplate('/parameters/default', templates), p, event, document)).join('') : ''
+  
+  let eventParams = event.params && event.params.length ? getTemplate('/sections/parameters', templates) + event.params.map(p => insertParameterMacros(getTemplate('/parameters/default', templates), p, event, document)).join('') : ''
+  const eventForSubscriber = getNotifierForMethod(method, appApi)
+  if(eventForSubscriber && eventForSubscriber.examples && eventForSubscriber.examples.length) {
+    eventParams = eventForSubscriber.params && eventForSubscriber.params.length ? 
+      getTemplate('/sections/parameters', templates) + eventForSubscriber.params.map(p => insertParameterMacros(getTemplate('/parameters/default', templates), p, eventForSubscriber, document)).join('') 
+    : ''
+  }
+
 
   const eventParamsRows = event.params && event.params.length ? event.params.map(p => insertParameterMacros(getTemplate('/parameters/default', templates), p, event, document)).join('') : ''
+
 
   let itemName = ''
   let itemType = ''
@@ -1541,8 +1593,7 @@ function insertMethodMacros(template, methodObj, platformApi, appApi, templates,
          .replace(/\$\{method\.summary\}/g, methodObj.summary)
          .replace(/\$\{method\.result\.name\}/g, result.name)
          .replace(/\$\{method\.result\.type\}/g, Types.getSchemaType(result.schema, platformApi, { templateDir: state.typeTemplateDir, title: true, asPath: false, result: true, namespace: false }))
-    //The subscriber template for the documentation is different from the one for the code generation and must be inserted with insertMethodMacros. See the implementaion in unidirectional branch.
-    subscriberTemplate =  insertMethodMacros(subscriberTemplate, subscriber, platformApi, appApi, templates, type, examples)
+    //The subscriber template for the documentation is different from the one in the code generation and must be inserted with insertMethodMacros. See the implementaion in unidirectional branch.
     subscriberTemplate =  insertMethodMacros(subscriberTemplate, subscriber, platformApi, appApi, templates, type, examples)
    }
   const setterFor = methodObj.tags.find(t => t.name === 'setter') && methodObj.tags.find(t => t.name === 'setter')['x-setter-for'].split('.').pop() || ''
@@ -1654,7 +1705,7 @@ function insertMethodMacros(template, methodObj, platformApi, appApi, templates,
   }
 
 
-  template = insertExampleMacros(template, examples || [], methodObj, platformApi, templates)
+  template = insertExampleMacros(template, examples || [], methodObj, platformApi, templates, appApi)
 
   template = template.replace(/\$\{method\.name\}/g, method.name)
     .replace(/\$\{method\.rpc\.name\}/g, methodObj.rpc_name || methodObj.name)
@@ -1778,12 +1829,12 @@ function insertMethodMacros(template, methodObj, platformApi, appApi, templates,
   })
 
   // Note that we do this twice to ensure all recursive macros are resolved
-  template = insertExampleMacros(template, examples || [], methodObj, platformApi, templates)
+  template = insertExampleMacros(template, examples || [], methodObj, platformApi, templates, appApi)
 
   return template
 }
 
-function insertExampleMacros(template, examples, method, json, templates) {
+function insertExampleMacros(template, examples, method, json, templates, appApi) {
 
   let content = ''
 
@@ -1871,6 +1922,19 @@ function insertExampleMacros(template, examples, method, json, templates) {
         }
         
         const params = generateParamsWithIndentation(method);
+
+        const eventForSubscriber = getNotifierForMethod(method, appApi)
+        if(eventForSubscriber && eventForSubscriber.examples && eventForSubscriber.examples.length) {
+          const output = eventForSubscriber.examples[0].params.reduce((acc, item) => {
+	          acc[item.name] = item.value;
+	          return acc;
+          }, {});
+          if(Object.keys(output).length > 1 || !isXSubscriberFor(method))
+            language.result = JSON.stringify(output, null, '\t')
+          else
+            //then get the value of the first key in output
+            language.result = JSON.stringify(Object.values(output)[0], null, '\t')
+        }
 
         languageContent = languageContent
           .replace(/\$\{example\.code\}/g, language.code)

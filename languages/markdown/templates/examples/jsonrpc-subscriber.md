@@ -1,11 +1,12 @@
 ${example.language}:
 
+Request:
+
 ```${example.langcode}
 ${example.code}
 ```
-
-Value of vlad`${method.result.name}`:
+Response vlad1:
 
 ```${example.langcode}
-${example.result}
+{"jsonrpc":"2.0","id":1,"result":null}
 ```

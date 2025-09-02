@@ -6,7 +6,7 @@ Request:
 ${example.code}
 ```
 
-Response:
+Response vlad1:
 
 ```${example.langcode}
 ${example.result}
