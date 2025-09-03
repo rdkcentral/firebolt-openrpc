@@ -6,4 +6,4 @@ let listenerId = await ${method.alternative}(${method.result.name} => {
 })
 console.log(${method.result.name})
 ```
-Value of vlad2`${method.result.name}: ${example.result} `:
+Value of `${method.result.name}: ${example.result} `

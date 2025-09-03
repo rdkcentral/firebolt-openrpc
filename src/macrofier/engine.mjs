@@ -96,27 +96,19 @@ const isXNotifier = (method) => {
   return method.tags && method.tags.find(tag => tag.name === "event" && tag["x-notifier"])
 }
 
-const getNotifierForMethod3 = (method, appApi) => {
-  
-  if (! method.tags)
-    return null
-
-  const subscriberTag =  method.tags.find(tag => tag.name === "event" && tag["x-notifier"])
-  if (subscriberTag && appApi && appApi.methods) {
-    return appApi.methods.find(method => method.name === subscriberTag["x-notifier"])
-  }
-  return null
-}
-
 const getNotifierForMethod = (method, appApi) => {
-  
-  const subscriberTag =  appApi.methods.find(appApiMethod => 
-    {
-      return appApiMethod.tags && appApiMethod.tags.find(tag => tag.name === "notifier" && (tag["x-event"]?.includes('.' + method.name) || tag["x-event"]?.includes('on' + method.name.charAt(0).toUpperCase() + method.name.slice(1))))
-    })
-  return subscriberTag
-}
 
+  const result = appApi.methods.find(appApiMethod => {
+    if (appApiMethod.tags) {
+      //iterate over tags to find the event tag with x-event
+      const eventTag = appApiMethod.tags.find(tag => tag.name === "notifier" && tag["x-event"])
+      if (eventTag && eventTag["x-event"].includes(method.name))
+        return appApiMethod
+    }
+    return null
+  })
+  return result
+}
 
 const getTemplate = (name, templates) => {
   return templates[Object.keys(templates).find(k => k === name)] || templates[Object.keys(templates).find(k => k.startsWith(name + '.'))] || ''
@@ -124,7 +116,6 @@ const getTemplate = (name, templates) => {
 
 const getTemplateTypeForMethod = (method, type, templates) => {
   let name = method.tags ? (isAllowFocusMethod(method) && Object.keys(templates).find(name => name.startsWith(`/${type}/allowsFocus.`))) ? 'allowsFocus' : (method.tags.map(tag => tag.name.split(":").shift()).find(tag => Object.keys(templates).find(name => name.startsWith(`/${type}/${tag}.`)))) || 'default' : 'default'
-  //if method.tags contains object with name "event" and a property x-subscriber-for then the template is 'subscriber'
   if (isXSubscriberFor(method)) {
     name = 'subscriber'
   }
@@ -1297,15 +1288,8 @@ function generateExamples(json = {}, mainTemplates = {}, languages = {}, appApi 
   const examples = {}
 
   json && json.methods && json.methods.forEach(method => {
-    let isXNotifierMethod = isXNotifier(method); 
 
-    
-    const notifierForMethod = getNotifierForMethod(method, appApi)
-    let notifierForMethodExampleParams = null;
-    if(notifierForMethod && notifierForMethod.examples && notifierForMethod.examples.length) {
-      //notifierForMethodExampleParams = notifierForMethod.examples[0].params[0].value
-    }
-
+    let isXNotifierMethod = isXNotifier(method);
     examples[method.name] = method.examples.map(example => ({
       json: example,
       value: example.result.value,
@@ -1314,9 +1298,9 @@ function generateExamples(json = {}, mainTemplates = {}, languages = {}, appApi 
         code: getTemplateForExample(method, templates)
           .replace(/\$\{rpc\.example\.params\}/g, JSON.stringify(Object.fromEntries(example.params.map(param => [param.name, param.value])))),
         result: getTemplateForExampleResult(method, templates)
-          .replace(/\$\{example\.result\}/g, JSON.stringify((notifierForMethodExampleParams ? notifierForMethodExampleParams : example.result.value), null, '\t'))
-          .replace(/\$\{example\.result\.item\}/g, Array.isArray((notifierForMethodExampleParams ? notifierForMethodExampleParams : example.result.value)) ? JSON.stringify((notifierForMethodExampleParams ? notifierForMethodExampleParams : example.result.value)[0], null, '\t') : ''),
-        template: lang === 'JSON-RPC' ?(isXNotifierMethod? getTemplate('/examples/jsonrpc-subscriber', mainTemplates) : getTemplate('/examples/jsonrpc', mainTemplates)) : getTemplateForExample(method, mainTemplates) // getTemplate('/examples/default', mainTemplates)
+          .replace(/\$\{example\.result\}/g, JSON.stringify(example.result.value, null, '\t'))
+          .replace(/\$\{example\.result\.item\}/g, Array.isArray(example.result.value) ? JSON.stringify(example.result.value[0], null, '\t') : ''),
+        template: lang === 'JSON-RPC' ? (isXNotifierMethod ? getTemplate('/examples/jsonrpc-subscriber', mainTemplates) : getTemplate('/examples/jsonrpc', mainTemplates)) : getTemplateForExample(method, mainTemplates) // getTemplate('/examples/default', mainTemplates)
       }])))
     }))
 
@@ -1565,16 +1549,17 @@ function insertMethodMacros(template, methodObj, platformApi, appApi, templates,
 
   
   let eventParams = event.params && event.params.length ? getTemplate('/sections/parameters', templates) + event.params.map(p => insertParameterMacros(getTemplate('/parameters/default', templates), p, event, document)).join('') : ''
+  
   const eventForSubscriber = getNotifierForMethod(method, appApi)
-  if(eventForSubscriber && eventForSubscriber.examples && eventForSubscriber.examples.length) {
-    eventParams = eventForSubscriber.params && eventForSubscriber.params.length ? 
-      getTemplate('/sections/parameters', templates) + eventForSubscriber.params.map(p => insertParameterMacros(getTemplate('/parameters/default', templates), p, eventForSubscriber, document)).join('') 
-    : ''
+  // If there's a notifier for this method, and it has examples, use its params for the eventParams section
+  if (eventForSubscriber && eventForSubscriber.examples && eventForSubscriber.examples.length) {
+    eventParams = (eventForSubscriber.params && eventForSubscriber.params.length) ?
+      getTemplate('/sections/parameters', templates) + eventForSubscriber.params.map(p => insertParameterMacros(getTemplate('/parameters/default', templates), p, eventForSubscriber, document)).join('')
+      : ''
   }
 
 
   const eventParamsRows = event.params && event.params.length ? event.params.map(p => insertParameterMacros(getTemplate('/parameters/default', templates), p, event, document)).join('') : ''
-
 
   let itemName = ''
   let itemType = ''
@@ -1923,14 +1908,14 @@ function insertExampleMacros(template, examples, method, json, templates, appApi
         
         const params = generateParamsWithIndentation(method);
 
-        const eventForSubscriber = getNotifierForMethod(method, appApi)
-        if(eventForSubscriber && eventForSubscriber.examples && eventForSubscriber.examples.length) {
-          const output = eventForSubscriber.examples[0].params.reduce((acc, item) => {
-	          acc[item.name] = item.value;
-	          return acc;
+        const notifierForMethod = getNotifierForMethod(method, appApi)
+        if (notifierForMethod && notifierForMethod.examples && notifierForMethod.examples.length && notifierForMethod.examples[0].params) {
+          const output = notifierForMethod.examples[0].params.reduce((acc, item) => {
+            acc[item.name] = item.value;
+            return acc;
           }, {});
           if(Object.keys(output).length > 1 || !isXSubscriberFor(method))
-            language.result = JSON.stringify(output, null, '\t')
+            language.result = JSON.stringify(output, null, '\t');
           else
             //then get the value of the first key in output
             language.result = JSON.stringify(Object.values(output)[0], null, '\t')
