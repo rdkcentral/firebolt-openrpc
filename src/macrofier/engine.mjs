@@ -88,6 +88,39 @@ const setConfig = (c) => {
   config = c
 }
 
+const isGeneratingDocs = (languages) => {
+
+  if (languages && Object.keys(languages).some(lang => lang.toLowerCase() === 'json-rpc'))
+    return true
+  else
+    return false
+}
+
+const isXSubscriberFor = (method) => {
+  return method.tags && method.tags.find(tag => tag.name === "event" && tag["x-subscriber-for"])
+}
+
+const isXNotifier = (method) => {
+  return method.tags && method.tags.find(tag => tag.name === "event" && tag["x-notifier"])
+}
+
+const getNotifierForMethod = (method, appApi) => {
+
+  let result = null;
+  if (appApi && appApi.methods) {
+    result = appApi.methods.find(appApiMethod => {
+      if (appApiMethod.tags) {
+        //iterate over tags to find the event tag with x-event
+        const eventTag = appApiMethod.tags.find(tag => tag.name === "notifier" && tag["x-event"])
+        if (eventTag && eventTag["x-event"].includes(method.name))
+          return appApiMethod
+      }
+      return null
+    })
+  }
+  return result
+}
+
 const getTemplate = (name, templates) => {
   return templates[Object.keys(templates).find(k => k === name)] || templates[Object.keys(templates).find(k => k.startsWith(name + '.'))] || ''
 }
@@ -1263,6 +1296,9 @@ function generateExamples(json = {}, mainTemplates = {}, languages = {}) {
   const examples = {}
 
   json && json.methods && json.methods.forEach(method => {
+
+    let isXNotifierMethod = isXNotifier(method);
+
     examples[method.name] = method.examples.map(example => ({
       json: example,
       value: example.result.value,
@@ -1273,7 +1309,7 @@ function generateExamples(json = {}, mainTemplates = {}, languages = {}) {
         result: getTemplateForExampleResult(method, templates)
           .replace(/\$\{example\.result\}/g, JSON.stringify(example.result.value, null, '\t'))
           .replace(/\$\{example\.result\.item\}/g, Array.isArray(example.result.value) ? JSON.stringify(example.result.value[0], null, '\t') : ''),
-        template: lang === 'JSON-RPC' ? getTemplate('/examples/jsonrpc', mainTemplates) : getTemplateForExample(method, mainTemplates) // getTemplate('/examples/default', mainTemplates)
+        template: lang === 'JSON-RPC' ? (isXNotifierMethod ? getTemplate('/examples/jsonrpc-subscriber', mainTemplates) : getTemplate('/examples/jsonrpc', mainTemplates)) : getTemplateForExample(method, mainTemplates) // getTemplate('/examples/default', mainTemplates)
       }])))
     }))
 
@@ -1520,7 +1556,18 @@ function insertMethodMacros(template, methodObj, platformApi, appApi, templates,
 
   const eventResultSchemaPropParams = event && event.result && event.result.schema && event.result.schema.properties && event.result.schema.properties.parameters ? `const ${event.result.schema.properties.parameters.title}& parameters` : ''
 
-  const eventParams = event.params && event.params.length ? getTemplate('/sections/parameters', templates) + event.params.map(p => insertParameterMacros(getTemplate('/parameters/default', templates), p, event, document)).join('') : ''
+  
+  let eventParams = event.params && event.params.length ? getTemplate('/sections/parameters', templates) + event.params.map(p => insertParameterMacros(getTemplate('/parameters/default', templates), p, event, document)).join('') : ''
+ 
+  if (isGeneratingDocs(languages)) {
+    const eventForSubscriber = getNotifierForMethod(method, appApi)
+    // If there's a notifier for this method, and it has examples, use its params for the eventParams section
+    if (eventForSubscriber && eventForSubscriber.examples && eventForSubscriber.examples.length) {
+      eventParams = (eventForSubscriber.params && eventForSubscriber.params.length) ?
+        getTemplate('/sections/parameters', templates) + eventForSubscriber.params.map(p => insertParameterMacros(getTemplate('/parameters/default', templates), p, eventForSubscriber, document)).join('')
+        : ''
+    }
+  }
 
   const eventParamsRows = event.params && event.params.length ? event.params.map(p => insertParameterMacros(getTemplate('/parameters/default', templates), p, event, document)).join('') : ''
 
@@ -1530,9 +1577,9 @@ function insertMethodMacros(template, methodObj, platformApi, appApi, templates,
   // grab some related methods in case they are output together in a single template file
   const puller = platformApi.methods.find(method => method.tags.find(tag => tag['x-pulls-for'] === methodObj.name))
   const pullsFor = methodObj.tags.find(t => t['x-pulls-for']) && platformApi.methods.find(method => method.name === methodObj.tags.find(t => t['x-pulls-for'])['x-pulls-for'].split('.').pop());
-  const pullerTemplate = (puller ? insertMethodMacros(getTemplate('/codeblocks/puller', templates), puller, platformApi, appApi, templates, type, examples) : '')
+  const pullerTemplate = (puller ? insertMethodMacros(getTemplate('/codeblocks/puller', templates), puller, platformApi, appApi, templates, type, examples, languages) : '')
   const setter = getSetterFor(methodObj.name, platformApi)
-  const setterTemplate = (setter ? insertMethodMacros(getTemplate('/codeblocks/setter', templates), setter, platformApi, appApi, templates, type, examples) : '')
+  const setterTemplate = (setter ? insertMethodMacros(getTemplate('/codeblocks/setter', templates), setter, platformApi, appApi, templates, type, examples, languages) : '')
   const subscriber = platformApi.methods.find(method => method.tags.find(tag => tag['x-subscriber-for'] === `${moduleName}.${methodObj.name}`) || method.tags.find(tag => tag['x-alternative'] === `${moduleName}.${methodObj.name}()`))
   let subscriberTemplate = ''
   if (subscriber) {
@@ -1541,7 +1588,11 @@ function insertMethodMacros(template, methodObj, platformApi, appApi, templates,
          .replace(/\$\{method\.summary\}/g, methodObj.summary)
          .replace(/\$\{method\.result\.name\}/g, result.name)
          .replace(/\$\{method\.result\.type\}/g, Types.getSchemaType(result.schema, platformApi, { templateDir: state.typeTemplateDir, title: true, asPath: false, result: true, namespace: false }))
-  }
+     if (isGeneratingDocs(languages)) {
+      //The subscriber template for the documentation is different from the one in the code generation and must be inserted with insertMethodMacros. See the implementaion in unidirectional branch.
+      subscriberTemplate =  insertMethodMacros(subscriberTemplate, subscriber, platformApi, appApi, templates, type, examples, languages)
+     }
+   }
   const setterFor = methodObj.tags.find(t => t.name === 'setter') && methodObj.tags.find(t => t.name === 'setter')['x-setter-for'].split('.').pop() || ''
 
   const pullsResult = (puller || pullsFor) ? localizeDependencies(pullsFor || methodObj, platformApi).params.findLast(x=>true).schema : null
@@ -1630,7 +1681,7 @@ function insertMethodMacros(template, methodObj, platformApi, appApi, templates,
     const currentConfig = JSON.parse(JSON.stringify(config))
     config.operators = config.operators || {}
     config.operators.paramDelimiter = ', '
-    signature = insertMethodMacros(signature, methodObj, platformApi, appApi, lang, type)
+    signature = insertMethodMacros(signature, methodObj, platformApi, appApi, lang, type, examples, languages)
     config = currentConfig
     Types.setTemplates(templates)
   }
@@ -1651,7 +1702,7 @@ function insertMethodMacros(template, methodObj, platformApi, appApi, templates,
   }
 
 
-  template = insertExampleMacros(template, examples || [], methodObj, platformApi, templates)
+  template = insertExampleMacros(template, examples || [], methodObj, platformApi, templates, appApi, isGeneratingDocs(languages))
 
   template = template.replace(/\$\{method\.name\}/g, method.name)
     .replace(/\$\{method\.rpc\.name\}/g, methodObj.rpc_name || methodObj.name)
@@ -1775,12 +1826,12 @@ function insertMethodMacros(template, methodObj, platformApi, appApi, templates,
   })
 
   // Note that we do this twice to ensure all recursive macros are resolved
-  template = insertExampleMacros(template, examples || [], methodObj, platformApi, templates)
+  template = insertExampleMacros(template, examples || [], methodObj, platformApi, templates, appApi, isGeneratingDocs(languages))
 
   return template
 }
 
-function insertExampleMacros(template, examples, method, json, templates) {
+function insertExampleMacros(template, examples, method, json, templates, appApi, docsGeneration) {
 
   let content = ''
 
@@ -1869,6 +1920,20 @@ function insertExampleMacros(template, examples, method, json, templates) {
         
         const params = generateParamsWithIndentation(method);
 
+         if (docsGeneration) {
+          const notifierForMethod = getNotifierForMethod(method, appApi)
+          if (notifierForMethod && notifierForMethod.examples && notifierForMethod.examples.length && notifierForMethod.examples[0].params) {
+            const output = notifierForMethod.examples[0].params.reduce((acc, item) => {
+              acc[item.name] = item.value;
+              return acc;
+            }, {});
+            if(Object.keys(output).length > 1 || !isXSubscriberFor(method))
+              language.result = JSON.stringify(output, null, '\t');
+            else
+              //then get the value of the first key in output
+              language.result = JSON.stringify(Object.values(output)[0], null, '\t')
+          }
+        }
         languageContent = languageContent
           .replace(/\$\{example\.code\}/g, language.code)
           .replace(/\$\{example\.name\}/g, example.json.name)
