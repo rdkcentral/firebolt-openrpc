@@ -89,9 +89,8 @@ const setConfig = (c) => {
 }
 
 const isGeneratingDocs = (languages) => {
-  //languages is and object so check for a property that is JSON-RPC
-  //languages && Object.keys(languages).some(lang => lang.toLowerCase() === 'json-rpc')
-  if(languages && Object.keys(languages).some(lang => lang.toLowerCase() === 'json-rpc'))
+
+  if (languages && Object.keys(languages).some(lang => lang.toLowerCase() === 'json-rpc'))
     return true
   else
     return false
@@ -127,8 +126,7 @@ const getTemplate = (name, templates) => {
 }
 
 const getTemplateTypeForMethod = (method, type, templates) => {
-  let name = method.tags ? (isAllowFocusMethod(method) && Object.keys(templates).find(name => name.startsWith(`/${type}/allowsFocus.`))) ? 'allowsFocus' : (method.tags.map(tag => tag.name.split(":").shift()).find(tag => Object.keys(templates).find(name => name.startsWith(`/${type}/${tag}.`)))) || 'default' : 'default'
-
+  const name = method.tags ? (isAllowFocusMethod(method) && Object.keys(templates).find(name => name.startsWith(`/${type}/allowsFocus.`))) ? 'allowsFocus' : (method.tags.map(tag => tag.name.split(":").shift()).find(tag => Object.keys(templates).find(name => name.startsWith(`/${type}/${tag}.`)))) || 'default' : 'default'
   const path = `/${type}/${name}`
   return getTemplate(path, templates)
 }
@@ -628,7 +626,7 @@ const generateMacros = (platformApi, appApi, templates, languages, options = {})
   const initialization = generateInitialization(platformApi, appApi, templates)
   const eventsEnum = generateEvents(platformApi, templates)
 
-  const examples = generateExamples(platformApi, templates, languages, appApi)
+  const examples = generateExamples(platformApi, templates, languages)
   const allMethodsArray = generateMethods(platformApi, appApi, examples, templates, languages, options.type)
 
   Array.from(new Set(['methods'].concat(config.additionalMethodTemplates))).filter(dir => dir).forEach(dir => {
@@ -1294,14 +1292,12 @@ const generateDeprecatedInitialization = (platformApi, appApi, templates) => {
   )(platformApi)
 }
 
-function generateExamples(json = {}, mainTemplates = {}, languages = {}, appApi = null) {
+function generateExamples(json = {}, mainTemplates = {}, languages = {}) {
   const examples = {}
 
   json && json.methods && json.methods.forEach(method => {
 
-    let isXNotifierMethod = null;
-    if(isGeneratingDocs(languages))
-      isXNotifierMethod = isXNotifier(method);
+    let isXNotifierMethod = isXNotifier(method);
 
     examples[method.name] = method.examples.map(example => ({
       json: example,
@@ -1380,7 +1376,7 @@ function generateMethods(platformApi = {}, appApi = null, examples = {}, templat
       declaration: {},
       excluded: methodObj.tags.find(t => t.name === 'exclude-from-sdk'),
       event: isEventMethod(methodObj),
-      examples: generateExamples(methodObj, templates, languages, appApi)
+      examples: generateExamples(methodObj, templates, languages)
     }
 
     // Generate implementation of methods/events for both dynamic and static configured templates
