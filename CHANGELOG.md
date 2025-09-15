@@ -1,3 +1,10 @@
+# [3.2.0-next.18](https://github.com/rdkcentral/firebolt-openrpc/compare/v3.2.0-next.17...v3.2.0-next.18) (2025-09-15)
+
+
+### Bug Fixes
+
+* Omit private methods from doc ToC ([#275](https://github.com/rdkcentral/firebolt-openrpc/issues/275)) ([296a066](https://github.com/rdkcentral/firebolt-openrpc/commit/296a06609c5c1e4a2d9241b83db695e7e3b44183))
+
 # [3.2.0-next.17](https://github.com/rdkcentral/firebolt-openrpc/compare/v3.2.0-next.16...v3.2.0-next.17) (2025-06-06)
 
 
