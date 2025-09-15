@@ -816,20 +816,20 @@ function insertTableofContents(content) {
   let toc = ''
   const count = {}
   const slugger = title => title.toLowerCase().replace(/ /g, '-').replace(/-+/g, '-').replace(/[^a-zA-Z-]/g, '')
-  let collapsedContentLevel = null
+  let inPrivateSection = false
 
   content.split('\n').filter(line => line.match(/^\#/)).map(line => {
     const match = line.match(/^(\#+) (.*)/)
-    if (match) {
+
+    if (!match) { return }
+
+    // level 2 == section title (Usage, Overview, Methods, etc)
+    // level 3 == method/event names; we'll only list public methods/events in the ToC
+    // level 4 == examples; we'll ignore these in the ToC
       const level = match[1].length
-      if (level > 1 && level < 4) {
-        if (collapsedContentLevel === level) {
-          // we are back to the level we started the collapsed content, end the collapse
-          toc += ' ' + '  '.repeat(collapsedContentLevel) + '</details>\n'
-          collapsedContentLevel = null
-        }
         const title = match[2]
         const slug = slugger(title)
+
         if (count.hasOwnProperty(slug)) {
           count[slug] += 1
         }
@@ -837,15 +837,21 @@ function insertTableofContents(content) {
           count[slug] = 0
         }
         const link = '#' + slug + (count[slug] ? `-${count[slug]}` : '')
-        toc += ' ' + '  '.repeat(level - 1) + `- [${title}](${link})`
-        if (title === 'Private Methods' || title === 'Private Events') {
-          let anchor = title === 'Private Methods' ? 'private-methods-details' : 'private-events-details'
-          toc += '<details ontoggle="document.getElementById(\'' + anchor + '\').open=this.open"><summary>Show</summary>\n'
-          collapsedContentLevel = level
-        } else {
-          toc += '\n'
-        }
+
+    if (level == 2 || level == 3) {
+      if (inPrivateSection) {
+        // we're currently in a private section and don't want to output private methods/events in ToC
+        if (level == 3) { return }
+
+        // we've dropped out of a private section, output methods as normal
+        inPrivateSection = false
       }
+
+        if (title === 'Private Methods' || title === 'Private Events') {
+        inPrivateSection = true
+      }
+
+      toc += '  '.repeat(level - 2) + `- [${title}](${link})\n`
     }
   }).join('\n')
 
