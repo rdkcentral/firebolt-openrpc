@@ -26,8 +26,8 @@ import { logHeader, logSuccess } from '../shared/io.mjs'
 import Types from './types.mjs'
 import path from 'path'
 import engine from './engine.mjs'
-import { flattenMultipleOfs, replaceUri } from '../shared/json-schema.mjs'
-import { getConfig } from '../shared/configLoader.mjs'
+import { replaceUri } from '../shared/json-schema.mjs'
+import { getConfig } from '../shared/configLoader.mjs'  
 
 /************************************************************************************************/
 /******************************************** MAIN **********************************************/

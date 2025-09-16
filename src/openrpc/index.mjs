@@ -100,8 +100,8 @@ const run = async ({
     mergedOpenRpc.methods.push(...json.methods)
 
     // add schemas from this module
-    // json.components && Object.assign(mergedOpenRpc.components.schemas, json.components.schemas)
-    json.components && json.components.schemas && Object.assign(mergedOpenRpc.components.schemas, Object.fromEntries(Object.entries(json.components.schemas).map( ([key, schema]) => ([json.info.title + '.' + key, schema]) )))
+    json.components && Object.assign(mergedOpenRpc.components.schemas, json.components.schemas)
+
     namespaceRefs('', json.info.title, mergedOpenRpc)
 
     // add externally referenced schemas that are in our shared schemas path
@@ -133,12 +133,15 @@ const run = async ({
   appApiOpenRpc && appApiOpenRpc.methods.push(...mergedOpenRpc.methods.filter(isAppApi))
 
   // Add schemas
-  mergedOpenRpc.components && Object.assign(platformApiOpenRpc.components.schemas, mergedOpenRpc.components.schemas)
+  platformApiOpenRpc.components && Object.assign(platformApiOpenRpc.components.schemas, mergedOpenRpc.components.schemas)
   appApiOpenRpc?.components && Object.assign(appApiOpenRpc.components.schemas, mergedOpenRpc.components.schemas)
+  
+  //copy x-schemas from mergedOpenRpc to platformApiOpenRpc & appApiOpenRpc
+  platformApiOpenRpc && (platformApiOpenRpc["x-schemas"] = {})
+  appApiOpenRpc && (appApiOpenRpc["x-schemas"] = {})
 
-  // Add externally referenced schemas that are in our shared schemas path
-  platformApiOpenRpc = addExternalSchemas(platformApiOpenRpc, sharedSchemas)
-  appApiOpenRpc && (appApiOpenRpc = addExternalSchemas(appApiOpenRpc, sharedSchemas))
+  Object.assign(platformApiOpenRpc["x-schemas"], mergedOpenRpc["x-schemas"])
+  appApiOpenRpc && Object.assign(appApiOpenRpc["x-schemas"], mergedOpenRpc["x-schemas"])
 
   await writeJson(platformApi, platformApiOpenRpc)
   appApiOpenRpc && await writeJson(appApi, appApiOpenRpc)

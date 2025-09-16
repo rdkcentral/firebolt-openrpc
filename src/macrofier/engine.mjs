@@ -1475,11 +1475,14 @@ const getNonNullSchema = (methodObj, event, platformApi, document) => {
 
 // TODO: this is called too many places... let's reduce that to just generateMethods
 function insertMethodMacros(template, methodObj, platformApi, appApi, templates, type = 'method', examples = [], languages = {}) {
-  const document = appApi || platformApi
+  
   const moduleName = getModuleName(platformApi)
   const info = {
     title: moduleName
   }
+  const isPlatformApiMethod = platformApi.methods.find(method => method.name === `${methodObj.name}` || method.name === `${moduleName}.${methodObj.name}`)
+  let document = appApi || platformApi
+    
   const method = {
     name: methodObj.name.split('.').pop(),
     params: methodObj.params.map(p => p.name).join(', '),
@@ -1636,7 +1639,7 @@ function insertMethodMacros(template, methodObj, platformApi, appApi, templates,
   const resultJsonType = result.schema ? Types.getSchemaType(result.schema, platformApi, { templateDir: 'json-types', namespace: true  }) : ''
 
   let currentModuleApi = platformApi
-  if (currentModuleApi && isEmpty(currentModuleApi.components.schemas)) {
+  if (!isPlatformApiMethod && appApi) {
     currentModuleApi = appApi
   }
 
@@ -1745,9 +1748,9 @@ function insertMethodMacros(template, methodObj, platformApi, appApi, templates,
     .replace(/\$\{if\.event\.params\}(.*?)\$\{end\.if\.event\.params\}/gms, event && event.params.length ? '$1' : '')
     .replace(/\$\{if\.globalsubscriber\}(.*?)\$\{end\.if\.globalsubscriber\}/gms, (isGlobalSubscriberEvent) ? '$1' : '')
     .replace(/\$\{if\.event\.callback\.params\}(.*?)\$\{end\.if\.event\.callback\.params\}/gms, event && eventHasOptionalParam(event) ? '$1' : '')
-    .replace(/\$\{event\.signature\.params\}/g, event ? Types.getMethodSignatureParams(event, document, { namespace: !config.copySchemasIntoModules }) : '')
+    .replace(/\$\{event\.signature\.params\}/g, event ? Types.getMethodSignatureParams(event, currentModuleApi, { namespace: !config.copySchemasIntoModules }) : '')
     .replace(/\$\{event\.result\.schema\.params\}/g, eventResultSchemaPropParams ? eventResultSchemaPropParams : '')
-    .replace(/\$\{event\.signature\.callback\.params\}/g, event ? Types.getMethodSignatureParams(event, document, { callback: true, namespace: !config.copySchemasIntoModules }) : '')
+    .replace(/\$\{event\.signature\.callback\.params\}/g, event ? Types.getMethodSignatureParams(event, currentModuleApi, { callback: true, namespace: !config.copySchemasIntoModules }) : '')
     .replace(/\$\{event\.params\.serialization\}/g, serializedEventParams)
     .replace(/\$\{event\.callback\.serialization\}/g, callbackSerializedList)
     .replace(/\$\{event\.callback\.initialization\}/g, callbackInitialization)
@@ -2036,6 +2039,10 @@ function generateResult(result, json, templates, { name = '' } = {}) {
 }
 
 function generateResultParams(result, json, templates, { name = '' } = {}) {
+  if(json == null || json.info == null) {
+    console.log(`Warning: json.info is null for ${name}`);
+    return '';
+  }
   let moduleTitle = json.info.title
 
   while (result.$ref) {
@@ -2294,7 +2301,7 @@ function insertProviderInterfaceMacros(template, _interface, platformApi = {}, a
       })
 
 //      let type = config.templateExtensionMap && config.templateExtensionMap['methods'] && config.templateExtensionMap['methods'].includes(suffix) ? 'methods' : 'declarations'
-      return insertMethodMacros(interfaceDeclaration, method, document, null, templates, 'methods')
+      return insertMethodMacros(interfaceDeclaration, method, document, appApi, templates, 'methods')
     }).join('') + '\n')
 
   if (iface.length === 0) {

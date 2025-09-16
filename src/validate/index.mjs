@@ -190,7 +190,6 @@ const run = async ({
             json.methods.filter(method => method.name.indexOf('.') === -1).forEach(method => {
                 method.name = json.info.title + '.' + method.name
             })
-            json.components && json.components.schemas && (json.components.schemas = Object.fromEntries(Object.entries(json.components.schemas).map( ([key, schema]) => ([json.info.title + '.' + key, schema]) )))
             namespaceRefs('', json.info.title, json)
 
             // Do the firebolt API magic
@@ -220,6 +219,7 @@ const run = async ({
                 "$id": `${json.info.title}.method.${index}.examples`,
                 "title": `${method.name} Examples`,
                 "oneOf": [],
+                "x-schemas": json['x-schemas'],
                 "components": json.components
             }
 
