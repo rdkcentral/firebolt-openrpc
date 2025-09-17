@@ -18,7 +18,7 @@
 
 import { readJson, readFiles, readDir } from "../shared/filesystem.mjs"
 import { addExternalMarkdown, addExternalSchemas, fireboltize } from "../shared/modules.mjs"
-import { namespaceRefs, removeIgnoredAdditionalItems, replaceUri } from "../shared/json-schema.mjs"
+import { removeIgnoredAdditionalItems, replaceUri } from "../shared/json-schema.mjs"
 import { validate, displayError, validatePasshtroughs } from "./validator/index.mjs"
 import { logHeader, logSuccess, logError } from "../shared/io.mjs"
 
@@ -190,7 +190,7 @@ const run = async ({
             json.methods.filter(method => method.name.indexOf('.') === -1).forEach(method => {
                 method.name = json.info.title + '.' + method.name
             })
-            namespaceRefs('', json.info.title, json)
+            //namespaceRefs('', json.info.title, json)
 
             // Do the firebolt API magic
             json = fireboltize(json, !!appApi)

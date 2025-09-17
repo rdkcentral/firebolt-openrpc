@@ -20,7 +20,6 @@ import { readJson, readFiles, readDir, writeJson } from "../shared/filesystem.mj
 import { addExternalMarkdown, addExternalSchemas, fireboltize } from "../shared/modules.mjs"
 import path from "path"
 import { logHeader, logSuccess } from "../shared/io.mjs"
-import { namespaceRefs } from "../shared/json-schema.mjs"
 
 const run = async ({
   input: input,
@@ -102,7 +101,7 @@ const run = async ({
     // add schemas from this module
     json.components && Object.assign(mergedOpenRpc.components.schemas, json.components.schemas)
 
-    namespaceRefs('', json.info.title, mergedOpenRpc)
+    //namespaceRefs('', json.info.title, mergedOpenRpc)
 
     // add externally referenced schemas that are in our shared schemas path
     mergedOpenRpc = addExternalSchemas(mergedOpenRpc, sharedSchemas)

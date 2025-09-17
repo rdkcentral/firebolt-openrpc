@@ -477,46 +477,8 @@ const getAllValuesForName = (name, obj) => {
   return [...new Set(values(name, obj))];
 }
 
-const namespaceRefs = (uri, namespace, schema) => {
-  if (schema) {
-    if (schema.hasOwnProperty('$ref') && (typeof schema['$ref'] === 'string')) {
-      const parts = schema.$ref.split('#')
-      if (parts[0] === uri && parts[1].indexOf('.') === -1) {
-        const old = schema.$ref
-        //schema['$ref'] = schema['$ref'].split('#').map( x => x === uri ? uri : x.split('/').map((y, i, arr) => i===arr.length-1 ? namespace + '.' + y : y).join('/')).join('#')
-      }
-    }
-    else if (typeof schema === 'object') {
-      Object.keys(schema).forEach(key => {
-        namespaceRefs(uri, namespace, schema[key])
-      })
-    }
-  }
-}
-
 const getReferencedSchema = (uri = '', moduleJson = {}) => {
-  const [mainPath, subPath] = (uri || '').split('#')
-  let result
-
-  if (!uri) {
-    throw "getReferencedSchema requires a non-null uri parameter"
-  }
-
-  if (mainPath) {
-    // TODO... assuming that bundles are in one of these two places is dangerous, should write a quick method to "find" where they are
-    result = getPathOr(null, ['components', 'schemas', mainPath, ...subPath.slice(1).split('/')], moduleJson)
-              || getPathOr(null, ['definitions', mainPath, ...subPath.slice(1).split('/')], moduleJson)
-  }
-  else if (subPath) {
-    result = getPathOr(null, subPath.slice(1).split('/'), moduleJson)
-  }
-  if (!result) {
-    //throw `getReferencedSchema: Path '${uri}' not found in ${moduleJson ? (moduleJson.title || moduleJson.info.title) : moduleJson}.`
-    return null
-  }
-  else {
-    return result
-  }
+  return getPath(uri, moduleJson);
 }
 
 function union(schemas) {
@@ -624,6 +586,5 @@ export {
   mergeOneOf,
   dereferenceAndMergeAllOfs,
   getReferencedSchema,
-  namespaceRefs,
   getAllValuesForName,
 } 
