@@ -1959,8 +1959,7 @@ const getModule = (name, json, copySchemas, extractSubSchemas) => {
         })
     }
 
-    //return removeUnusedSchemas(openrpc)
-    return openrpc
+    return removeUnusedSchemas(openrpc)
 }
 
 const removeUnusedBundles = (json) => {
@@ -2231,7 +2230,7 @@ const getAppApiModule = (name, appApi, platformApi) => {
   }
   delete openrpc.info['x-module-descriptions']
 
-  openrpc = promoteAndNameSubSchemas(openrpc)
+  //openrpc = promoteAndNameSubSchemas(openrpc)
   return removeUnusedSchemas(openrpc)
 }
 

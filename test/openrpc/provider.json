@@ -41,10 +41,6 @@
                     "name": "capabilities",
                     "x-provides": "xrn:firebolt:capability:test:handshake",
                     "x-allow-focus": true
-                },
-                {
-                    "name": "notifier",
-                    "x-event": "Provider.onRequestHandshakeMethod"
                 }
             ],
             "summary": "Dispatches a request for the simple method, with a handshake, to the simple provider.",

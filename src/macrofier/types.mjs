@@ -72,6 +72,7 @@ const indent = (str, padding) => {
 
 // TODO: This is what's left of getMethodSignatureParams. We need to figure out / handle C's `FireboltTypes_StringHandle`
 function getMethodSignatureParams(method, module, { callback, namespace }) {
+  namespace = false // disable namespace support
   const paramOptional = getTemplate('/parameters/optional')
   let polymorphicPull = method.tags.find(t => t.name === 'polymorphic-pull')
   return method.params.map(param => {
@@ -105,6 +106,7 @@ function getMethodSignatureParams(method, module, { callback, namespace }) {
 }
 
 function getMethodSignatureResult(method, module, {  callback, namespace }) {
+  namespace = false // disable namespace support
   let type = getSchemaType(method.result.schema, module, { namespace })
   let result = ''
 
@@ -207,7 +209,7 @@ function insertSchemaMacros(content, schema, module, { name = '', parent = '', p
     .replace(/\$\{info.TITLE\}/g, moduleTitle.toUpperCase())
 
   if (recursive) {
-    content = content.replace(/\$\{type\}/g, getSchemaType(schema, module, { templateDir: templateDir, destination: state.destination, section: state.section, code: false, namespace: true }))
+    content = content.replace(/\$\{type\}/g, getSchemaType(schema, module, { templateDir: templateDir, destination: state.destination, section: state.section, code: false, namespace: false }))
   }
   return content
 }
@@ -553,7 +555,8 @@ const sanitize = (schema) => {
   return result
 }
 
-function getSchemaShape(schema = {}, module = {}, { templateDir = 'types', parent = '', property = '', required = false, parentLevel = 0, level = 0, summary, descriptions = true, enums = true, enumImpl = false, skipTitleOnce = false, array = false, primitive = false, type = false, namespace = true, suffix = '' } = {}) {
+function getSchemaShape(schema = {}, module = {}, { templateDir = 'types', parent = '', property = '', required = false, parentLevel = 0, level = 0, summary, descriptions = true, enums = true, enumImpl = false, skipTitleOnce = false, array = false, primitive = false, type = false, namespace = false, suffix = '' } = {}) {
+  namespace = false // disable namespace support
   schema = sanitize(schema)
   if (level === 0 && !schema.title && !primitive) {
     return ''

@@ -38,17 +38,19 @@ const run = async ({
 
   const sharedSchemaList = schemas ? (await Promise.all(schemas.map(d => readDir(d, { recursive: true })))).flat() : []
   const sharedSchemas = await readFiles(sharedSchemaList)
-
+  var openRpcVersion = '';
   try {
     const packageJson = await readJson(path.join(input, '..', 'package.json'))
-    platformApiOpenRpc.info.version = packageJson.version
-    appApiOpenRpc && (appApiOpenRpc.info.version = packageJson.version)
+    openRpcVersion = packageJson.version;
+    platformApiOpenRpc.info.version = openRpcVersion
+    mergedOpenRpc.info.version = openRpcVersion
+    appApiOpenRpc && (appApiOpenRpc.info.version = openRpcVersion)
   }
   catch (error) {
     // fail silently
   }
 
-  logHeader(`Generating compiled ${platformApiOpenRpc.info.title} OpenRPC document version ${platformApiOpenRpc.info.version}`)
+  logHeader(`Generating compiled ${platformApiOpenRpc.info.title} OpenRPC document version ${openRpcVersion}`)
 
   Object.entries(sharedSchemas).forEach(([path, schema]) => {
     const json = JSON.parse(schema)
@@ -126,6 +128,7 @@ const run = async ({
   })
 
   Object.assign(platformApiOpenRpc.info, mergedOpenRpc.info)
+  platformApiOpenRpc.info.version = openRpcVersion
 
   // Split into platformApi & appApi
   platformApiOpenRpc.methods.push(...mergedOpenRpc.methods.filter(isPlatformApi))

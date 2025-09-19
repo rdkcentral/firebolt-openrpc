@@ -1031,8 +1031,18 @@ function generateSchemas(platformApi, templates, options) {
     return results
   }
 
-  const schemas = JSON.parse(JSON.stringify(platformApi.definitions || (platformApi.components && platformApi.components.schemas) || {}))
-
+  let schemas = JSON.parse(JSON.stringify(platformApi.definitions || (platformApi.components && platformApi.components.schemas) || {}))
+  // we need to add also the schemas in platformApi["x-schemas"]
+  if (platformApi["x-schemas"]) {
+    //iterate over each key in platformApi["x-schemas"] and merge into schemas
+    Object.entries(platformApi["x-schemas"]).forEach(([key, value]) => {
+      schemas = {
+        ...schemas,
+        ...JSON.parse(JSON.stringify(value || {}))
+      }
+    })
+  }
+  
   const generate = (name, schema, uri, { prefix = '' } = {}) => {
     // these are internal schemas used by the fireboltize-openrpc tooling, and not meant to be used in code/doc generation
     if (['ListenResponse', 'ProviderRequest', 'ProviderResponse', 'FederatedResponse', 'FederatedRequest'].includes(name)) {
@@ -1058,9 +1068,9 @@ function generateSchemas(platformApi, templates, options) {
     // Schema title is requuired for proper documentation generation
     if (!schema.title) schema.title = name
 
-    const schemaShape = Types.getSchemaShape(schema, platformApi, { templateDir: state.typeTemplateDir, primitive: config.primitives ? Object.keys(config.primitives).length > 0 : false, namespace: !config.copySchemasIntoModules, suffix: state.suffix })
+    const schemaShape = Types.getSchemaShape(schema, platformApi, { templateDir: state.typeTemplateDir, primitive: config.primitives ? Object.keys(config.primitives).length > 0 : false, namespace: false, suffix: state.suffix })
 
-    const schemaImpl = Types.getSchemaShape(schema, platformApi, { templateDir: state.typeTemplateDir, enumImpl: true, primitive: config.primitives ? Object.keys(config.primitives).length > 0 : false, namespace: !config.copySchemasIntoModules })
+    const schemaImpl = Types.getSchemaShape(schema, platformApi, { templateDir: state.typeTemplateDir, enumImpl: true, primitive: config.primitives ? Object.keys(config.primitives).length > 0 : false, namespace: false })
     
     content = content
       .replace(/\$\{schema.title\}/, (schema.title || name))
