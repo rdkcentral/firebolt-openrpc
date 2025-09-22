@@ -2230,7 +2230,7 @@ const getAppApiModule = (name, appApi, platformApi) => {
   }
   delete openrpc.info['x-module-descriptions']
 
-  //openrpc = promoteAndNameSubSchemas(openrpc)
+  openrpc = promoteAndNameSubSchemas(openrpc)
   return removeUnusedSchemas(openrpc)
 }
 

@@ -163,7 +163,7 @@ const getXSchemaGroup = (schema, module) => {
             group = title
           } else {
             group = getXSchemaGroupFromProperties(schema, title, s.properties, group)
-	  }
+          }
         })
       })
     })
