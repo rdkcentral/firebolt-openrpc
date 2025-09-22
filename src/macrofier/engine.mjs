@@ -88,6 +88,39 @@ const setConfig = (c) => {
   config = c
 }
 
+const isGeneratingDocs = (languages) => {
+
+  if (languages && Object.keys(languages).some(lang => lang.toLowerCase() === 'json-rpc'))
+    return true
+  else
+    return false
+}
+
+const isXSubscriberFor = (method) => {
+  return method.tags && method.tags.find(tag => tag.name === "event" && tag["x-subscriber-for"])
+}
+
+const isXNotifier = (method) => {
+  return method.tags && method.tags.find(tag => tag.name === "event" && tag["x-notifier"])
+}
+
+const getNotifierForMethod = (method, appApi) => {
+
+  let result = null;
+  if (appApi && appApi.methods) {
+    result = appApi.methods.find(appApiMethod => {
+      if (appApiMethod.tags) {
+        //iterate over tags to find the event tag with x-event
+        const eventTag = appApiMethod.tags.find(tag => tag.name === "notifier" && tag["x-event"])
+        if (eventTag && eventTag["x-event"].includes(method.name))
+          return appApiMethod
+      }
+      return null
+    })
+  }
+  return result
+}
+
 const getTemplate = (name, templates) => {
   return templates[Object.keys(templates).find(k => k === name)] || templates[Object.keys(templates).find(k => k.startsWith(name + '.'))] || ''
 }
@@ -1004,8 +1037,18 @@ function generateSchemas(platformApi, templates, options) {
     return results
   }
 
-  const schemas = JSON.parse(JSON.stringify(platformApi.definitions || (platformApi.components && platformApi.components.schemas) || {}))
-
+  let schemas = JSON.parse(JSON.stringify(platformApi.definitions || (platformApi.components && platformApi.components.schemas) || {}))
+  // we need to add also the schemas in platformApi["x-schemas"]
+  if (platformApi["x-schemas"]) {
+    //iterate over each key in platformApi["x-schemas"] and merge into schemas
+    Object.entries(platformApi["x-schemas"]).forEach(([key, value]) => {
+      schemas = {
+        ...schemas,
+        ...JSON.parse(JSON.stringify(value || {}))
+      }
+    })
+  }
+  
   const generate = (name, schema, uri, { prefix = '' } = {}) => {
     // these are internal schemas used by the fireboltize-openrpc tooling, and not meant to be used in code/doc generation
     if (['ListenResponse', 'ProviderRequest', 'ProviderResponse', 'FederatedResponse', 'FederatedRequest'].includes(name)) {
@@ -1031,9 +1074,9 @@ function generateSchemas(platformApi, templates, options) {
     // Schema title is requuired for proper documentation generation
     if (!schema.title) schema.title = name
 
-    const schemaShape = Types.getSchemaShape(schema, platformApi, { templateDir: state.typeTemplateDir, primitive: config.primitives ? Object.keys(config.primitives).length > 0 : false, namespace: !config.copySchemasIntoModules, suffix: state.suffix })
+    const schemaShape = Types.getSchemaShape(schema, platformApi, { templateDir: state.typeTemplateDir, primitive: config.primitives ? Object.keys(config.primitives).length > 0 : false, namespace: false, suffix: state.suffix })
 
-    const schemaImpl = Types.getSchemaShape(schema, platformApi, { templateDir: state.typeTemplateDir, enumImpl: true, primitive: config.primitives ? Object.keys(config.primitives).length > 0 : false, namespace: !config.copySchemasIntoModules })
+    const schemaImpl = Types.getSchemaShape(schema, platformApi, { templateDir: state.typeTemplateDir, enumImpl: true, primitive: config.primitives ? Object.keys(config.primitives).length > 0 : false, namespace: false })
     
     content = content
       .replace(/\$\{schema.title\}/, (schema.title || name))
@@ -1269,6 +1312,9 @@ function generateExamples(json = {}, mainTemplates = {}, languages = {}) {
   const examples = {}
 
   json && json.methods && json.methods.forEach(method => {
+
+    let isXNotifierMethod = isXNotifier(method);
+
     examples[method.name] = method.examples.map(example => ({
       json: example,
       value: example.result.value,
@@ -1279,7 +1325,7 @@ function generateExamples(json = {}, mainTemplates = {}, languages = {}) {
         result: getTemplateForExampleResult(method, templates)
           .replace(/\$\{example\.result\}/g, JSON.stringify(example.result.value, null, '\t'))
           .replace(/\$\{example\.result\.item\}/g, Array.isArray(example.result.value) ? JSON.stringify(example.result.value[0], null, '\t') : ''),
-        template: lang === 'JSON-RPC' ? getTemplate('/examples/jsonrpc', mainTemplates) : getTemplateForExample(method, mainTemplates) // getTemplate('/examples/default', mainTemplates)
+        template: lang === 'JSON-RPC' ? (isXNotifierMethod ? getTemplate('/examples/jsonrpc-subscriber', mainTemplates) : getTemplate('/examples/jsonrpc', mainTemplates)) : getTemplateForExample(method, mainTemplates) // getTemplate('/examples/default', mainTemplates)
       }])))
     }))
 
@@ -1445,11 +1491,19 @@ const getNonNullSchema = (methodObj, event, platformApi, document) => {
 
 // TODO: this is called too many places... let's reduce that to just generateMethods
 function insertMethodMacros(template, methodObj, platformApi, appApi, templates, type = 'method', examples = [], languages = {}) {
-  const document = appApi || platformApi
+  
   const moduleName = getModuleName(platformApi)
   const info = {
     title: moduleName
   }
+  const isPlatformApiMethod = platformApi.methods.find(method => method.name === `${methodObj.name}` || method.name === `${moduleName}.${methodObj.name}`)
+  let currentModuleApi = platformApi
+  if (!isPlatformApiMethod && appApi) {
+    currentModuleApi = appApi
+  }
+  
+  const document = appApi || platformApi
+    
   const method = {
     name: methodObj.name.split('.').pop(),
     params: methodObj.params.map(p => p.name).join(', '),
@@ -1485,10 +1539,10 @@ function insertMethodMacros(template, methodObj, platformApi, appApi, templates,
   const temporalItemName = isTemporalSetMethod(methodObj) ? methodObj.result.schema.items && methodObj.result.schema.items.title || 'Item' : ''
   const temporalAddName = isTemporalSetMethod(methodObj) ? `on${temporalItemName}Available` : ''
   const temporalRemoveName = isTemporalSetMethod(methodObj) ? `on${temporalItemName}Unvailable` : ''
-  const params = methodObj.params && methodObj.params.length ? getTemplate('/sections/parameters', templates) + methodObj.params.map(p => insertParameterMacros(getTemplate('/parameters/default', templates), p, methodObj, platformApi)).join(paramDelimiter) : ''
-  const paramsRows = methodObj.params && methodObj.params.length ? methodObj.params.map(p => insertParameterMacros(getTemplate('/parameters/default', templates), p, methodObj, platformApi)).join('') : ''
-  const paramsAnnotations = methodObj.params && methodObj.params.length ? methodObj.params.map(p => insertParameterMacros(getTemplate('/parameters/annotations', templates), p, methodObj, platformApi)).join('') : ''
-  const paramsJson = methodObj.params && methodObj.params.length ? methodObj.params.map(p => insertParameterMacros(getTemplate('/parameters/json', templates), p, methodObj, platformApi)).join('') : ''
+  const params = methodObj.params && methodObj.params.length ? getTemplate('/sections/parameters', templates) + methodObj.params.map(p => insertParameterMacros(getTemplate('/parameters/default', templates), p, methodObj, currentModuleApi)).join(paramDelimiter) : ''
+  const paramsRows = methodObj.params && methodObj.params.length ? methodObj.params.map(p => insertParameterMacros(getTemplate('/parameters/default', templates), p, methodObj, currentModuleApi)).join('') : ''
+  const paramsAnnotations = methodObj.params && methodObj.params.length ? methodObj.params.map(p => insertParameterMacros(getTemplate('/parameters/annotations', templates), p, methodObj, currentModuleApi)).join('') : ''
+  const paramsJson = methodObj.params && methodObj.params.length ? methodObj.params.map(p => insertParameterMacros(getTemplate('/parameters/json', templates), p, methodObj, currentModuleApi)).join('') : ''
 
   const deprecated = methodObj.tags && methodObj.tags.find(t => t.name === 'deprecated')
   const deprecation = deprecated ? deprecated['x-since'] ? `since version ${deprecated['x-since']}` : '' : ''
@@ -1497,7 +1551,42 @@ function insertMethodMacros(template, methodObj, platformApi, appApi, templates,
 
   const result = methodObj.result && JSON.parse(JSON.stringify(methodObj.result))
   const event = methodObj.providerEvent ?  JSON.parse(JSON.stringify(methodObj.providerEvent)) :  isEventMethod(methodObj) ? JSON.parse(JSON.stringify(methodObj)) : ''
-  
+ 
+  const isEventInAppApiModule = appApi.methods.find(method => method.name === `${event.name}` || method.name === `${moduleName}.${event.name}`)
+  //full copy appApi or platformApi into currentModuleApiForEvent not shallow copy
+  let currentModuleApiForEvent = appApi ? JSON.parse(JSON.stringify(appApi)) : JSON.parse(JSON.stringify(platformApi))
+  if (isEventInAppApiModule ) {
+    console.log(`Event ${event.name} found in appApi`)
+  }
+
+  // add patformApi components.schemas to currentModuleApiForEvent
+  // as we need to combine platformApi and appApi schemas for event result schema resolution
+  // this is because the params of an event are usueally defined in appApi while the event context parameters if any are defined in platformApi
+  if (platformApi.components && platformApi.components.schemas) {
+    if (!currentModuleApiForEvent.components) {
+      currentModuleApiForEvent.components = {}
+    }
+    if (!currentModuleApiForEvent.components.schemas) {
+      currentModuleApiForEvent.components.schemas = {}
+    }
+    Object.entries(platformApi.components.schemas).forEach(([key, value]) => {
+      if (!currentModuleApiForEvent.components.schemas[key]) {
+        currentModuleApiForEvent.components.schemas[key] = value
+      }
+    })
+  }
+  // add platformAip["x-schemas"] to currentModuleApiForEvent
+  if (platformApi["x-schemas"]) {
+    if (!currentModuleApiForEvent["x-schemas"]) {
+      currentModuleApiForEvent["x-schemas"] = {}
+    }
+    Object.entries(platformApi["x-schemas"]).forEach(([key, value]) => {
+      if (!currentModuleApiForEvent["x-schemas"][key]) {
+        currentModuleApiForEvent["x-schemas"][key] = value
+      }
+    })
+  }
+
   // Keep track of any global subscribers to insert into templates
   const globalSubscribersArr = getGlobalSubscribers(platformApi);
   let isGlobalSubscriberEvent = false
@@ -1526,9 +1615,20 @@ function insertMethodMacros(template, methodObj, platformApi, appApi, templates,
 
   const eventResultSchemaPropParams = event && event.result && event.result.schema && event.result.schema.properties && event.result.schema.properties.parameters ? `const ${event.result.schema.properties.parameters.title}& parameters` : ''
 
-  const eventParams = event.params && event.params.length ? getTemplate('/sections/parameters', templates) + event.params.map(p => insertParameterMacros(getTemplate('/parameters/default', templates), p, event, document)).join('') : ''
+  
+  let eventParams = event.params && event.params.length ? getTemplate('/sections/parameters', templates) + event.params.map(p => insertParameterMacros(getTemplate('/parameters/default', templates), p, event, currentModuleApiForEvent)).join('') : ''
+ 
+  if (isGeneratingDocs(languages)) {
+    const eventForSubscriber = getNotifierForMethod(method, appApi)
+    // If there's a notifier for this method, and it has examples, use its params for the eventParams section
+    if (eventForSubscriber && eventForSubscriber.examples && eventForSubscriber.examples.length) {
+      eventParams = (eventForSubscriber.params && eventForSubscriber.params.length) ?
+        getTemplate('/sections/parameters', templates) + eventForSubscriber.params.map(p => insertParameterMacros(getTemplate('/parameters/default', templates), p, eventForSubscriber, appApi)).join('')
+        : ''
+    }
+  }
 
-  const eventParamsRows = event.params && event.params.length ? event.params.map(p => insertParameterMacros(getTemplate('/parameters/default', templates), p, event, document)).join('') : ''
+  const eventParamsRows = event.params && event.params.length ? event.params.map(p => insertParameterMacros(getTemplate('/parameters/default', templates), p, event, currentModuleApiForEvent)).join('') : ''
 
   let itemName = ''
   let itemType = ''
@@ -1536,9 +1636,9 @@ function insertMethodMacros(template, methodObj, platformApi, appApi, templates,
   // grab some related methods in case they are output together in a single template file
   const puller = platformApi.methods.find(method => method.tags.find(tag => tag['x-pulls-for'] === methodObj.name))
   const pullsFor = methodObj.tags.find(t => t['x-pulls-for']) && platformApi.methods.find(method => method.name === methodObj.tags.find(t => t['x-pulls-for'])['x-pulls-for'].split('.').pop());
-  const pullerTemplate = (puller ? insertMethodMacros(getTemplate('/codeblocks/puller', templates), puller, platformApi, appApi, templates, type, examples) : '')
+  const pullerTemplate = (puller ? insertMethodMacros(getTemplate('/codeblocks/puller', templates), puller, platformApi, appApi, templates, type, examples, languages) : '')
   const setter = getSetterFor(methodObj.name, platformApi)
-  const setterTemplate = (setter ? insertMethodMacros(getTemplate('/codeblocks/setter', templates), setter, platformApi, appApi, templates, type, examples) : '')
+  const setterTemplate = (setter ? insertMethodMacros(getTemplate('/codeblocks/setter', templates), setter, platformApi, appApi, templates, type, examples, languages) : '')
   const subscriber = platformApi.methods.find(method => method.tags.find(tag => tag['x-subscriber-for'] === `${moduleName}.${methodObj.name}`) || method.tags.find(tag => tag['x-alternative'] === `${moduleName}.${methodObj.name}()`))
   let subscriberTemplate = ''
   if (subscriber) {
@@ -1547,7 +1647,11 @@ function insertMethodMacros(template, methodObj, platformApi, appApi, templates,
          .replace(/\$\{method\.summary\}/g, methodObj.summary)
          .replace(/\$\{method\.result\.name\}/g, result.name)
          .replace(/\$\{method\.result\.type\}/g, Types.getSchemaType(result.schema, platformApi, { templateDir: state.typeTemplateDir, title: true, asPath: false, result: true, namespace: false }))
-  }
+     if (isGeneratingDocs(languages)) {
+      //The subscriber template for the documentation is different from the one in the code generation and must be inserted with insertMethodMacros. See the implementaion in unidirectional branch.
+      subscriberTemplate =  insertMethodMacros(subscriberTemplate, subscriber, platformApi, appApi, templates, type, examples, languages)
+     }
+   }
   const setterFor = methodObj.tags.find(t => t.name === 'setter') && methodObj.tags.find(t => t.name === 'setter')['x-setter-for'].split('.').pop() || ''
 
   const pullsResult = (puller || pullsFor) ? localizeDependencies(pullsFor || methodObj, platformApi).params.findLast(x=>true).schema : null
@@ -1565,35 +1669,30 @@ function insertMethodMacros(template, methodObj, platformApi, appApi, templates,
   const serializedParams = (type === 'methods') ? flattenedMethod.params.map(param => Types.getSchemaShape(param.schema, platformApi, { templateDir: 'parameter-serialization', property: param.name, required: param.required, primitive: true, skipTitleOnce: true, namespace: true })).join('\n') : ''
   const resultInst = (type === 'methods') ? Types.getSchemaShape(flattenedMethod.result.schema, platformApi, { templateDir: 'result-instantiation', property: flattenedMethod.result.name, required: flattenedMethod.result.required, primitive: true, skipTitleOnce: true, namespace: false }) : '' // w/out primitive: true, getSchemaShape skips anonymous types, like primitives
   const resultInit = (type === 'methods') ? Types.getSchemaShape(flattenedMethod.result.schema, platformApi, { templateDir: 'result-initialization', property: flattenedMethod.result.name, primitive: true, skipTitleOnce: true, namespace: true }) : '' // w/out primitive: true, getSchemaShape skips anonymous types, like primitives
-  const serializedEventParams = event && (type === 'methods') ? flattenedMethod.params.filter(p => p.name !== 'listen').map(param => Types.getSchemaShape(param.schema, document, {templateDir: 'parameter-serialization', property: param.name, required: param.required, primitive: true, skipTitleOnce: true, namespace: false })).join('\n') : ''
-  const callbackSerializedList = event && (type === 'methods') ? Types.getSchemaShape(event.result?.schema, document, { templateDir: eventHasOptionalParam(event) && !event.tags.find(t => t.name === 'provider') ? 'callback-result-serialization' : 'callback-result-serialization', property: result.name, required: event.result?.schema.required, primitive: true, skipTitleOnce: true, namespace: false }) : ''
-  const callbackInitialization = event && (type === 'methods') ? (eventHasOptionalParam(event) && !event.tags.find(t => t.name === 'provider') ? (event.params.map(param => isOptionalParam(param) ? Types.getSchemaShape(param.schema, document, { templateDir: 'callback-initialization-optional', property: param.name, required: param.required, primitive: true, skipTitleOnce: true }) : '').filter(param => param).join('\n') + '\n') : '' ) + (Types.getSchemaShape(event.result?.schema, document, { templateDir: 'callback-initialization', property: result.name, primitive: true, skipTitleOnce: true, namespace: false  })) : ''
+  const serializedEventParams = event && (type === 'methods') ? flattenedMethod.params.filter(p => p.name !== 'listen').map(param => Types.getSchemaShape(param.schema, currentModuleApi, {templateDir: 'parameter-serialization', property: param.name, required: param.required, primitive: true, skipTitleOnce: true, namespace: false })).join('\n') : ''
+  const callbackSerializedList = event && (type === 'methods') ? Types.getSchemaShape(event.result?.schema, currentModuleApiForEvent, { templateDir: eventHasOptionalParam(event) && !event.tags.find(t => t.name === 'provider') ? 'callback-result-serialization' : 'callback-result-serialization', property: result.name, required: event.result?.schema.required, primitive: true, skipTitleOnce: true, namespace: false }) : ''
+  const callbackInitialization = event && (type === 'methods') ? (eventHasOptionalParam(event) && !event.tags.find(t => t.name === 'provider') ? (event.params.map(param => isOptionalParam(param) ? Types.getSchemaShape(param.schema, currentModuleApiForEvent, { templateDir: 'callback-initialization-optional', property: param.name, required: param.required, primitive: true, skipTitleOnce: true }) : '').filter(param => param).join('\n') + '\n') : '' ) + (Types.getSchemaShape(event.result?.schema, currentModuleApiForEvent, { templateDir: 'callback-initialization', property: result.name, primitive: true, skipTitleOnce: true, namespace: false  })) : ''
   let callbackInstantiation = ''
   if (event) {
     if (eventHasOptionalParam(event) && !event.tags.find(t => t.name === 'provider'))  {
-      callbackInstantiation = (type === 'methods') ? Types.getSchemaShape( event.result?.schema, document, { templateDir: 'callback-instantiation', property: result.name, primitive: true, skipTitleOnce: true, namespace: false  }) : ''
-      let paramInstantiation = (type === 'methods') ? event.params.map(param => isOptionalParam(param) ? Types.getSchemaShape(param.schema, document, { templateDir: 'callback-context-instantiation', property: param.name, required: param.required, primitive: true, skipTitleOnce: true, namespace: false  }) : '').filter(param => param).join('\n') : ''
-      let resultInitialization = (type === 'methods') ? Types.getSchemaShape(event.result?.schema, document, { templateDir: 'callback-value-initialization', property: result.name, primitive: true, skipTitleOnce: true, namespace: false  }) : ''
-      let resultInstantiation = (type === 'methods') ? Types.getSchemaShape(event.result?.schema, document, { templateDir: 'callback-value-instantiation', property: result.name, primitive: true, skipTitleOnce: true, namespace: false  }) : ''
+      callbackInstantiation = (type === 'methods') ? Types.getSchemaShape( event.result?.schema, currentModuleApiForEvent, { templateDir: 'callback-instantiation', property: result.name, primitive: true, skipTitleOnce: true, namespace: false  }) : ''
+      let paramInstantiation = (type === 'methods') ? event.params.map(param => isOptionalParam(param) ? Types.getSchemaShape(param.schema, currentModuleApiForEvent, { templateDir: 'callback-context-instantiation', property: param.name, required: param.required, primitive: true, skipTitleOnce: true, namespace: false  }) : '').filter(param => param).join('\n') : ''
+      let resultInitialization = (type === 'methods') ? Types.getSchemaShape(event.result?.schema, currentModuleApiForEvent, { templateDir: 'callback-value-initialization', property: result.name, primitive: true, skipTitleOnce: true, namespace: false  }) : ''
+      let resultInstantiation = (type === 'methods') ? Types.getSchemaShape(event.result?.schema, currentModuleApiForEvent, { templateDir: 'callback-value-instantiation', property: result.name, primitive: true, skipTitleOnce: true, namespace: false  }) : ''
       callbackInstantiation = callbackInstantiation
         .replace(/\$\{callback\.param\.instantiation\.with\.indent\}/g, indent(paramInstantiation, '    ', 3))
         .replace(/\$\{callback\.result\.initialization\.with\.indent\}/g, indent(resultInitialization, '    ', 1))
         .replace(/\$\{callback\.result\.instantiation\}/g, resultInstantiation)
     }
     else {
-      callbackInstantiation = (type === 'methods') ? Types.getSchemaShape(event.result?.schema, document, { templateDir: 'callback-result-instantiation', property: result.name, primitive: true, skipTitleOnce: true, namespace: false  }) : ''
+      callbackInstantiation = (type === 'methods') ? Types.getSchemaShape(event.result?.schema, currentModuleApiForEvent, { templateDir: 'callback-result-instantiation', property: result.name, primitive: true, skipTitleOnce: true, namespace: false  }) : ''
     }
   }
   // hmm... how is this different from callbackSerializedList? i guess they get merged?
-  const callbackResponseInst = event && (type === 'methods') ? (eventHasOptionalParam(event) ? (event.params.map(param => isOptionalParam(param) ? Types.getSchemaShape(param.schema, document, { templateDir: 'callback-response-instantiation', property: param.name, required: param.required, primitive: true, skipTitleOnce: true, namespace: false  }) : '').filter(param => param).join(', ') + ', ') : '' ) + (Types.getSchemaShape(event.result?.schema, document, { templateDir: 'callback-response-instantiation', property: result.name, primitive: true, skipTitleOnce: true })) : ''
+  const callbackResponseInst = event && (type === 'methods') ? (eventHasOptionalParam(event) ? (event.params.map(param => isOptionalParam(param) ? Types.getSchemaShape(param.schema, currentModuleApiForEvent, { templateDir: 'callback-response-instantiation', property: param.name, required: param.required, primitive: true, skipTitleOnce: true, namespace: false  }) : '').filter(param => param).join(', ') + ', ') : '' ) + (Types.getSchemaShape(event.result?.schema, currentModuleApiForEvent, { templateDir: 'callback-response-instantiation', property: result.name, primitive: true, skipTitleOnce: true })) : ''
   const resultType = result.schema ? Types.getSchemaType(result.schema, platformApi, { templateDir: state.typeTemplateDir, namespace: false }) : ''
   const resultSchemaType = result.schema.type
   const resultJsonType = result.schema ? Types.getSchemaType(result.schema, platformApi, { templateDir: 'json-types', namespace: true  }) : ''
-
-  let currentModuleApi = platformApi
-  if (currentModuleApi && isEmpty(currentModuleApi.components.schemas)) {
-    currentModuleApi = appApi
-  }
 
   try {
     generateResultParams(result.schema, currentModuleApi, templates, { name: result.name})
@@ -1610,7 +1709,7 @@ function insertMethodMacros(template, methodObj, platformApi, appApi, templates,
   const pullsForJsonType = pullsResult ? Types.getSchemaType(pullsResult, platformApi, { templateDir: 'json-types', namespace: false}) : ''
   const pullsForParamJsonType = pullsParams ? Types.getSchemaType(pullsParams, platformApi, { templateDir: 'json-types', namespace: false }) : ''
   
-  const pullsEventParamName = event ? Types.getSchemaInstantiation(event.result, document, event.name, { instantiationType: 'pull.param.name', namespace: false}) : ''
+  const pullsEventParamName = event ? Types.getSchemaInstantiation(event.result, currentModuleApiForEvent, event.name, { instantiationType: 'pull.param.name', namespace: false}) : ''
 
   let seeAlso = ''
   if (isPolymorphicPullMethod(methodObj) && pullsForType) {
@@ -1624,7 +1723,7 @@ function insertMethodMacros(template, methodObj, platformApi, appApi, templates,
   if (isTemporalSetMethod(methodObj)) {
     itemName = result.schema.items.title || 'item'
     itemName = itemName.charAt(0).toLowerCase() + itemName.substring(1)
-    itemType = Types.getSchemaType(result.schema.items, platformApi, { templateDir: state.typeTemplateDir, namespace: false})
+    itemType = Types.getSchemaType(result.schema.items, currentModuleApi, { templateDir: state.typeTemplateDir, namespace: false})
   }
 
   let signature
@@ -1636,7 +1735,7 @@ function insertMethodMacros(template, methodObj, platformApi, appApi, templates,
     const currentConfig = JSON.parse(JSON.stringify(config))
     config.operators = config.operators || {}
     config.operators.paramDelimiter = ', '
-    signature = insertMethodMacros(signature, methodObj, platformApi, appApi, lang, type)
+    signature = insertMethodMacros(signature, methodObj, platformApi, appApi, lang, type, examples, languages)
     config = currentConfig
     Types.setTemplates(templates)
   }
@@ -1657,7 +1756,7 @@ function insertMethodMacros(template, methodObj, platformApi, appApi, templates,
   }
 
 
-  template = insertExampleMacros(template, examples || [], methodObj, platformApi, templates)
+  template = insertExampleMacros(template, examples || [], methodObj, platformApi, templates, appApi, isGeneratingDocs(languages))
 
   template = template.replace(/\$\{method\.name\}/g, method.name)
     .replace(/\$\{method\.rpc\.name\}/g, methodObj.rpc_name || methodObj.name)
@@ -1700,9 +1799,9 @@ function insertMethodMacros(template, methodObj, platformApi, appApi, templates,
     .replace(/\$\{if\.event\.params\}(.*?)\$\{end\.if\.event\.params\}/gms, event && event.params.length ? '$1' : '')
     .replace(/\$\{if\.globalsubscriber\}(.*?)\$\{end\.if\.globalsubscriber\}/gms, (isGlobalSubscriberEvent) ? '$1' : '')
     .replace(/\$\{if\.event\.callback\.params\}(.*?)\$\{end\.if\.event\.callback\.params\}/gms, event && eventHasOptionalParam(event) ? '$1' : '')
-    .replace(/\$\{event\.signature\.params\}/g, event ? Types.getMethodSignatureParams(event, document, { namespace: !config.copySchemasIntoModules }) : '')
+    .replace(/\$\{event\.signature\.params\}/g, event ? Types.getMethodSignatureParams(event, currentModuleApiForEvent, { namespace: !config.copySchemasIntoModules }) : '')
     .replace(/\$\{event\.result\.schema\.params\}/g, eventResultSchemaPropParams ? eventResultSchemaPropParams : '')
-    .replace(/\$\{event\.signature\.callback\.params\}/g, event ? Types.getMethodSignatureParams(event, document, { callback: true, namespace: !config.copySchemasIntoModules }) : '')
+    .replace(/\$\{event\.signature\.callback\.params\}/g, event ? Types.getMethodSignatureParams(event, currentModuleApiForEvent, { callback: true, namespace: !config.copySchemasIntoModules }) : '')
     .replace(/\$\{event\.params\.serialization\}/g, serializedEventParams)
     .replace(/\$\{event\.callback\.serialization\}/g, callbackSerializedList)
     .replace(/\$\{event\.callback\.initialization\}/g, callbackInitialization)
@@ -1725,13 +1824,13 @@ function insertMethodMacros(template, methodObj, platformApi, appApi, templates,
     .replace(/\$\{method\.result\.summary\}/g, result.summary)
     .replace(/\$\{method\.result\.link\}/g, getLinkForSchema(result.schema, platformApi)) //, baseUrl: options.baseUrl
     .replace(/\$\{method\.result\.type\}/g, Types.getSchemaType(result.schema, platformApi, { templateDir: state.typeTemplateDir, title: true, asPath: false, result: true, namespace: false  })) //, baseUrl: options.baseUrl    
-    .replace(/\$\{method\.result\.json\}/g, Types.getSchemaType(result.schema.type === 'null' ? getNonNullSchema(methodObj, event, platformApi, document) : result.schema, platformApi, { templateDir: 'json-types', title: true, code: false, link: false, asPath: false, expandEnums: false, namespace: true  }))
+    .replace(/\$\{method\.result\.json\}/g, Types.getSchemaType(result.schema.type === 'null' ? getNonNullSchema(methodObj, event, platformApi, appApi) : result.schema, platformApi, { templateDir: 'json-types', title: true, code: false, link: false, asPath: false, expandEnums: false, namespace: true  }))
     // todo: what does prefix do?
-    .replace(/\$\{event\.result\.type\}/g, isEventMethod(methodObj) && event.result ? Types.getMethodSignatureResult(event, document, { callback: true, namespace: !config.copySchemasIntoModules }) : '')
+    .replace(/\$\{event\.result\.type\}/g, isEventMethod(methodObj) && event.result ? Types.getMethodSignatureResult(event, currentModuleApiForEvent, { callback: true, namespace: !config.copySchemasIntoModules }) : '')
     .replace(/\$\{event\.result\.json\.type\}/g, resultJsonType)
     .replace(/\$\{event\.result\.json\.type\}/g, callbackResultJsonType)
     .replace(/\$\{event\.pulls\.param\.name\}/g, pullsEventParamName)
-    .replace(/\$\{method\.result\}/g, generateResult(result.schema, platformApi, templates, { name: result.name }))
+    .replace(/\$\{method\.result\}/g, generateResult(result.schema, currentModuleApiForEvent, templates, { name: result.name }))
     .replace(/\$\{method\.result\.json\.type\}/g, resultJsonType)
     .replace(/\$\{method\.result\.instantiation\}/g, resultInst)
     .replace(/\$\{method\.result\.initialization\}/g, resultInit)
@@ -1781,12 +1880,12 @@ function insertMethodMacros(template, methodObj, platformApi, appApi, templates,
   })
 
   // Note that we do this twice to ensure all recursive macros are resolved
-  template = insertExampleMacros(template, examples || [], methodObj, platformApi, templates)
+  template = insertExampleMacros(template, examples || [], methodObj, platformApi, templates, appApi, isGeneratingDocs(languages))
 
   return template
 }
 
-function insertExampleMacros(template, examples, method, json, templates) {
+function insertExampleMacros(template, examples, method, json, templates, appApi, docsGeneration) {
 
   let content = ''
 
@@ -1875,6 +1974,20 @@ function insertExampleMacros(template, examples, method, json, templates) {
         
         const params = generateParamsWithIndentation(method);
 
+         if (docsGeneration) {
+          const notifierForMethod = getNotifierForMethod(method, appApi)
+          if (notifierForMethod && notifierForMethod.examples && notifierForMethod.examples.length && notifierForMethod.examples[0].params) {
+            const output = notifierForMethod.examples[0].params.reduce((acc, item) => {
+              acc[item.name] = item.value;
+              return acc;
+            }, {});
+            if(Object.keys(output).length > 1 || !isXSubscriberFor(method))
+              language.result = JSON.stringify(output, null, '\t');
+            else
+              //then get the value of the first key in output
+              language.result = JSON.stringify(Object.values(output)[0], null, '\t')
+          }
+        }
         languageContent = languageContent
           .replace(/\$\{example\.code\}/g, language.code)
           .replace(/\$\{example\.name\}/g, example.json.name)
@@ -1977,6 +2090,10 @@ function generateResult(result, json, templates, { name = '' } = {}) {
 }
 
 function generateResultParams(result, json, templates, { name = '' } = {}) {
+  if(json == null || json.info == null) {
+    console.log(`Warning: json.info is null for ${name}`);
+    return '';
+  }
   let moduleTitle = json.info.title
 
   while (result.$ref) {
@@ -2235,7 +2352,7 @@ function insertProviderInterfaceMacros(template, _interface, platformApi = {}, a
       })
 
 //      let type = config.templateExtensionMap && config.templateExtensionMap['methods'] && config.templateExtensionMap['methods'].includes(suffix) ? 'methods' : 'declarations'
-      return insertMethodMacros(interfaceDeclaration, method, document, null, templates, 'methods')
+      return insertMethodMacros(interfaceDeclaration, method, document, appApi, templates, 'methods')
     }).join('') + '\n')
 
   if (iface.length === 0) {

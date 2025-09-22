@@ -10,7 +10,7 @@
     ],
     "enableStringPropertyKeys": true,
     "createModuleDirectories": true,
-    "copySchemasIntoModules": true,
+    "copySchemasIntoModules": false,
     "enableUnionTypes": true,
     "aggregateFiles": [
         "/index.d.ts"
