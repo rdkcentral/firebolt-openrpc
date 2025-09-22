@@ -17,7 +17,7 @@
  */
 
 import deepmerge from 'deepmerge'
-import { getReferencedSchema, localizeDependencies, getSafeEnumKeyName, getSafeKeyName } from '../shared/json-schema.mjs'
+import { getPath, localizeDependencies, getSafeEnumKeyName, getSafeKeyName } from '../shared/json-schema.mjs'
 import path from "path"
 import { getConfig } from '../shared/configLoader.mjs'
 
@@ -72,6 +72,7 @@ const indent = (str, padding) => {
 
 // TODO: This is what's left of getMethodSignatureParams. We need to figure out / handle C's `FireboltTypes_StringHandle`
 function getMethodSignatureParams(method, module, { callback, namespace }) {
+  namespace = false // disable namespace support
   const paramOptional = getTemplate('/parameters/optional')
   let polymorphicPull = method.tags.find(t => t.name === 'polymorphic-pull')
   return method.params.map(param => {
@@ -105,6 +106,7 @@ function getMethodSignatureParams(method, module, { callback, namespace }) {
 }
 
 function getMethodSignatureResult(method, module, {  callback, namespace }) {
+  namespace = false // disable namespace support
   let type = getSchemaType(method.result.schema, module, { namespace })
   let result = ''
 
@@ -148,26 +150,24 @@ const getXSchemaGroupFromProperties = (schema, title, properties, group) => {
   return group
 }
 
+// TODO: this assumes the same title doesn't exist in multiple x-schema groups!
 const getXSchemaGroup = (schema, module) => {
-  let group = module.info ? module.info.title : module.title
-  let bundles = module.definitions || module.components.schemas
-  
-  if (schema.title && bundles) {
-    Object.entries(bundles).filter(([key, s]) => s.$id).forEach(([id, bundle]) => {
-      const title = bundle.title
-      Object.values(bundle.definitions).forEach(moduleSchema => {
+  let group = module.info.title
+
+  if (schema.title && module['x-schemas']) {
+    Object.entries(module['x-schemas']).forEach(([title, module]) => {
+      Object.values(module).forEach(moduleSchema => {
         let schemas = moduleSchema.allOf ? moduleSchema.allOf : [moduleSchema]
         schemas.forEach((s) => {
           if (schema.title === s.title || schema.title === moduleSchema.title) {
             group = title
           } else {
             group = getXSchemaGroupFromProperties(schema, title, s.properties, group)
-	        }
+          }
         })
       })
     })
   }
-
   return group
 }
 
@@ -177,21 +177,16 @@ function getSchemaDescription(schema, module) {
     schema = schema.items
   }
   if (schema['$ref'] && (schema['$ref'][0] === '#')) {
-    const refSchema = getReferencedSchema(schema['$ref'], module)
+    const refSchema = getPath(schema['$ref'], module)
     description = (refSchema && refSchema.description) || description
   }
   return description
 }
 
 function insertSchemaMacros(content, schema, module, { name = '', parent = '', property = '', required = false, recursive = true, templateDir = 'types'}) {
-  let title = name || schema.title || ''
-  const parentTitle = getXSchemaGroup(schema, module)
-  const moduleTitle = module.info ? module.info.title : module.title
+  const title = name || schema.title || ''
+  const moduleTitle = getXSchemaGroup(schema, module)
   const description = getSchemaDescription(schema, module)
-
-  if (title.includes('.')) {
-    title = title.split('.').pop()
-  }
 
   content = content
     .replace(/\$\{title\}/g, title)
@@ -199,9 +194,9 @@ function insertSchemaMacros(content, schema, module, { name = '', parent = '', p
     .replace(/\$\{TITLE\}/g, title.toUpperCase())
     .replace(/\$\{property\}/g, property)
     .replace(/\$\{Property\}/g, capitalize(property))
-    .replace(/\$\{if\.namespace\.notsame}(.*?)\$\{end\.if\.namespace\.notsame\}/g, (moduleTitle !== (parent || parentTitle)) ? '$1' : '')
-    .replace(/\$\{parent\.title\}/g, parent || parentTitle)
-    .replace(/\$\{parent\.Title\}/g, capitalize(parent || parentTitle))
+    .replace(/\$\{if\.namespace\.notsame}(.*?)\$\{end\.if\.namespace\.notsame\}/g, (module.info.title !== (parent || moduleTitle)) ? '$1' : '')
+    .replace(/\$\{parent\.title\}/g, parent || moduleTitle)
+    .replace(/\$\{parent\.Title\}/g, capitalize(parent || moduleTitle))
     .replace(/\$\{description\}/g, description)
     .replace(/\$\{if\.optional\}(.*?)\$\{end\.if\.optional\}/gms, (Array.isArray(required) ? required.includes(property) : required) ? '' : '$1')
     .replace(/\$\{if\.non.optional\}(.*?)\$\{end\.if\.non.optional\}/gms, (Array.isArray(required) ? required.includes(property) : required) ? '$1' : '')
@@ -209,12 +204,12 @@ function insertSchemaMacros(content, schema, module, { name = '', parent = '', p
     .replace(/\$\{summary\}/g, description ? description.split('\n')[0] : '')
     .replace(/\$\{name\}/g, title)
     .replace(/\$\{NAME\}/g, title.toUpperCase())
-    .replace(/\$\{info.title\}/g, parentTitle)
-    .replace(/\$\{info.Title\}/g, capitalize(parentTitle))
-    .replace(/\$\{info.TITLE\}/g, parentTitle.toUpperCase())
+    .replace(/\$\{info.title\}/g, moduleTitle)
+    .replace(/\$\{info.Title\}/g, capitalize(moduleTitle))
+    .replace(/\$\{info.TITLE\}/g, moduleTitle.toUpperCase())
 
   if (recursive) {
-    content = content.replace(/\$\{type\}/g, getSchemaType(schema, module, { templateDir: templateDir, section: state.section, code: false, namespace: true }))
+    content = content.replace(/\$\{type\}/g, getSchemaType(schema, module, { templateDir: templateDir, destination: state.destination, section: state.section, code: false, namespace: false }))
   }
   return content
 }
@@ -343,7 +338,7 @@ const insertObjectMacros = (content, schema, module, title, property, options)=>
         let localizedProp = localizeDependencies(prop, module)
         
         if (localizedProp['$ref']) {
-          localizedProp = getReferencedSchema(localizedProp['$ref'], module)
+          localizedProp = getPath(localizedProp['$ref'], module)
         }
 
         const subProperty = getTemplate(path.join(options2.templateDir, 'sub-property/object'))
@@ -560,7 +555,8 @@ const sanitize = (schema) => {
   return result
 }
 
-function getSchemaShape(schema = {}, module = {}, { templateDir = 'types', parent = '', property = '', required = false, parentLevel = 0, level = 0, summary, descriptions = true, enums = true, enumImpl = false, skipTitleOnce = false, array = false, primitive = false, type = false, namespace = true, suffix = '' } = {}) {
+function getSchemaShape(schema = {}, module = {}, { templateDir = 'types', parent = '', property = '', required = false, parentLevel = 0, level = 0, summary, descriptions = true, enums = true, enumImpl = false, skipTitleOnce = false, array = false, primitive = false, type = false, namespace = false, suffix = '' } = {}) {
+  namespace = false // disable namespace support
   schema = sanitize(schema)
   if (level === 0 && !schema.title && !primitive) {
     return ''
@@ -582,7 +578,7 @@ function getSchemaShape(schema = {}, module = {}, { templateDir = 'types', paren
   }
 
   if (schema['$ref']) {
-    const someJson = getReferencedSchema(schema['$ref'], module)
+    const someJson = getPath(schema['$ref'], module)
     if (someJson) {
       return getSchemaShape(someJson, module, { templateDir, parent, property, required, parentLevel, level, summary, descriptions, enums, array, primitive, namespace, suffix })
     }
@@ -659,7 +655,7 @@ function getSchemaShape(schema = {}, module = {}, { templateDir = 'types', paren
       }
     }
 
-    let union = deepmerge.all([...schema.allOf.map(x => x['$ref'] ? getReferencedSchema(x['$ref'], module) || x : x).reverse()], {
+    let union = deepmerge.all([...schema.allOf.map(x => x['$ref'] ? getPath(x['$ref'], module) || x : x).reverse()], {
       customMerge: merger
     })
 
@@ -681,7 +677,7 @@ function getSchemaShape(schema = {}, module = {}, { templateDir = 'types', paren
     const items = getSchemaShape(schema.items, module, { templateDir, parent, property, required, parentLevel: parentLevel + 1, level, summary, descriptions, enums: false, array: true, primitive, namespace, suffix })
     // Need to dereference any ref items
     if (schema.items['$ref']) {
-      schema.items = getReferencedSchema(schema.items['$ref'], module)
+      schema.items = getPath(schema.items['$ref'], module)
     }
     const shape = insertArrayMacros(getTemplate(path.join(templateDir, 'array')) || genericTemplate, schema, module, level, items, Array.isArray(required) ? required.includes(property) : required)
     result = result.replace(/\$\{shape\}/g, shape)
@@ -771,7 +767,7 @@ function getSchemaType(schema, module, { templateDir = 'types', link = false, co
   }
 
   if (schema['$ref']) {
-    const refSchema = getReferencedSchema(schema['$ref'], module)
+    const refSchema = getPath(schema['$ref'], module)
     if (refSchema) {
       return getSchemaType(refSchema, module, { templateDir, link, code, asPath, event, result, expandEnums, baseUrl, namespace })
     } else {
@@ -828,7 +824,7 @@ function getSchemaType(schema, module, { templateDir = 'types', link = false, co
   else if ((schema.type === 'object' || (schema.type === 'array')) && schema.title) {
     const maybeGetPath = (path, json) => {
       try {
-        return getReferencedSchema(path, json)
+        return getPath(path, json)
       }
       catch (e) {
         return null
@@ -880,7 +876,7 @@ function getSchemaType(schema, module, { templateDir = 'types', link = false, co
     return template
   }
   else if (schema.allOf) {
-    let union = deepmerge.all([...schema.allOf.map(x => x['$ref'] ? getReferencedSchema(x['$ref'], module) || x : x)])
+    let union = deepmerge.all([...schema.allOf.map(x => x['$ref'] ? getPath(x['$ref'], module) || x : x)])
     if (schema.title) {
       union.title = schema.title
     }
@@ -950,7 +946,7 @@ function getJsonType(schema, module, { link = false, title = false, code = false
     if (schema['$ref'][0] === '#') {
       //Ref points to local schema
       //Get Path to ref in this module and getSchemaType
-      let definition = getReferencedSchema(schema['$ref'], module)
+      let definition = getPath(schema['$ref'], module)
       if (!definition) {
         throw `Unresolved schema ${schema.$ref} in ${module.title || module.info.title}` 
       }
