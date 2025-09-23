@@ -1857,38 +1857,47 @@ const addExternalSchemas = (json, sharedSchemas) => {
 
     return json
 }
-// TODO: make this recursive, and check for group vs schema
+
 const removeUnusedSchemas = (json) => {
-    const schema = JSON.parse(JSON.stringify(json))
+    let deleted = false
+    function removeUnusedSchemasClosure(json) {
+        const schema = JSON.parse(JSON.stringify(json))
 
-    const recurse = (schema, path) => {
-        let deleted = false
-        Object.keys(schema).forEach(name => {
-            if (isSchema(schema[name])) {
-                const used = isDefinitionReferencedBySchema(path + '/' + name, json)
+        const recurse = (schema, path) => {
+            
+            Object.keys(schema).forEach(name => {
+                if (isSchema(schema[name])) {
+                    const used = isDefinitionReferencedBySchema(path + '/' + name, json)
 
-                if (!used) {
-                    delete schema[name]
-                    deleted = true
+                    if (!used) {
+                        delete schema[name]
+                        deleted = true
+                    }
+                    else {
+                    }
                 }
-                else {
+                else if (typeof schema[name] === 'object') {
+                    deleted = deleted || recurse(schema[name], path + '/' + name)
                 }
-            }
-            else if (typeof schema[name] === 'object') {
-                deleted = deleted || recurse(schema[name], path + '/' + name)
-            }
-        })
-        return deleted
+            })
+            return deleted
+        }
+
+        if (schema.components.schemas) {
+            deleted = deleted || recurse(schema.components.schemas, '#/components/schemas')
+        }
+
+        if (schema['x-schemas']) {
+            deleted = deleted || recurse(schema['x-schemas'], '#/x-schemas')
+        }
+        return schema
     }
 
-    if (schema.components.schemas) {
-        while(recurse(schema.components.schemas, '#/components/schemas')) {}
+    let schema = removeUnusedSchemasClosure(json)
+    while(deleted) {
+        deleted = false
+        schema = removeUnusedSchemasClosure(schema)
     }
-
-    if (schema['x-schemas']) {
-        while(recurse(schema['x-schemas'], '#/x-schemas')) {}
-    }
-
     return schema
 }
 
