@@ -36,6 +36,9 @@ const run = async ({
   let appApiOpenRpc = appApi && await readJson(template)
   let mergedOpenRpc = await readJson(template)
 
+  //remove rpc.discover method if it exists as it got duplicated when splitting out platform & app APIs
+  mergedOpenRpc.methods = mergedOpenRpc.methods.filter(m => m.name !== 'rpc.discover')
+
   const sharedSchemaList = schemas ? (await Promise.all(schemas.map(d => readDir(d, { recursive: true })))).flat() : []
   const sharedSchemas = await readFiles(sharedSchemaList)
   var openRpcVersion = '';
