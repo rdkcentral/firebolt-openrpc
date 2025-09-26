@@ -5,6 +5,8 @@ on:
     branches:
       - 'main'
       - 'next'
+permissions:
+  contents: read      
 env:
   HUSKY: 0
 jobs:
