@@ -3,12 +3,17 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - "next"
+      - 'next'
+permissions:
+  contents: read
 
 jobs:
   # Check if next can merge into next-major
   perform_merge:
     name: Perform merge if "next" can merge into "next-major"
+    permissions:
+      contents: write #because we push - git push origin "next-major"
+      pull-requests: write # PR updates
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
