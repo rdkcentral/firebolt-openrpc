@@ -126,7 +126,10 @@ const getTemplate = (name, templates) => {
 }
 
 const getTemplateTypeForMethod = (method, type, templates) => {
-  const name = method.tags ? (isAllowFocusMethod(method) && Object.keys(templates).find(name => name.startsWith(`/${type}/allowsFocus.`))) ? 'allowsFocus' : (method.tags.map(tag => tag.name.split(":").shift()).find(tag => Object.keys(templates).find(name => name.startsWith(`/${type}/${tag}.`)))) || 'default' : 'default'
+  let name = method.tags ? (isAllowFocusMethod(method) && Object.keys(templates).find(name => name.startsWith(`/${type}/allowsFocus.`))) ? 'allowsFocus' : (method.tags.map(tag => tag.name.split(":").shift()).find(tag => Object.keys(templates).find(name => name.startsWith(`/${type}/${tag}.`)))) || 'default' : 'default'
+  if(isXSubscriberFor(method)) {
+    name = 'subscriber'
+  }
   const path = `/${type}/${name}`
   return getTemplate(path, templates)
 }
@@ -1639,7 +1642,7 @@ function insertMethodMacros(template, methodObj, platformApi, appApi, templates,
   const pullerTemplate = (puller ? insertMethodMacros(getTemplate('/codeblocks/puller', templates), puller, platformApi, appApi, templates, type, examples, languages) : '')
   const setter = getSetterFor(methodObj.name, platformApi)
   const setterTemplate = (setter ? insertMethodMacros(getTemplate('/codeblocks/setter', templates), setter, platformApi, appApi, templates, type, examples, languages) : '')
-  const subscriber = platformApi.methods.find(method => method.tags.find(tag => tag['x-subscriber-for'] === `${moduleName}.${methodObj.name}`) || method.tags.find(tag => tag['x-alternative'] === `${moduleName}.${methodObj.name}()`))
+  const subscriber = platformApi.methods.find(method => method.tags.find(tag => tag['x-subscriber-for'] === `${moduleName}.${methodObj.name}`) )
   let subscriberTemplate = ''
   if (subscriber) {
     subscriberTemplate = getTemplate('/codeblocks/subscriber', templates)
@@ -1830,7 +1833,7 @@ function insertMethodMacros(template, methodObj, platformApi, appApi, templates,
     .replace(/\$\{event\.result\.json\.type\}/g, resultJsonType)
     .replace(/\$\{event\.result\.json\.type\}/g, callbackResultJsonType)
     .replace(/\$\{event\.pulls\.param\.name\}/g, pullsEventParamName)
-    .replace(/\$\{method\.result\}/g, generateResult(result.schema, currentModuleApiForEvent, templates, { name: result.name }))
+    .replace(/\$\{method\.result\}/g, generateResult(result.schema, currentModuleApi, templates, { name: result.name }))
     .replace(/\$\{method\.result\.json\.type\}/g, resultJsonType)
     .replace(/\$\{method\.result\.instantiation\}/g, resultInst)
     .replace(/\$\{method\.result\.initialization\}/g, resultInit)

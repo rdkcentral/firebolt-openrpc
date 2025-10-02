@@ -1,4 +1,4 @@
 Parameters:
 
-| Param                  | Type                 | Required                 | Description                 |
+| Param                  | Type                 | Required                 | Description             |
 | ---------------------- | -------------------- | ------------------------ | ----------------------- |
