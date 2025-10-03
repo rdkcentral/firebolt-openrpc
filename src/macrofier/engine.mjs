@@ -617,7 +617,13 @@ const generateMacros = (platformApi, appApi, templates, languages, options = {})
 
   Array.from(new Set(['types'].concat(config.additionalSchemaTemplates))).filter(dir => dir).forEach(dir => {
     state.typeTemplateDir = dir
-    const schemasArray = unique(generateSchemas(platformApi, templates, { baseUrl: '' }).concat(generateSchemas(appApi, templates, { baseUrl: '' })))
+    let includeXSchemas = true;
+    if (isGeneratingDocs(languages)){
+       includeXSchemas = false;
+    }
+
+    const schemasArray = unique(generateSchemas(platformApi, templates, { baseUrl: '' }, includeXSchemas).concat(generateSchemas(appApi, templates, { baseUrl: '' }, includeXSchemas)))
+
     macros.schemas[dir] = getTemplate('/sections/schemas', templates).replace(/\$\{schema.list\}/g, schemasArray.map(s => s.body).filter(body => body).join('\n'))
     macros.types[dir] = getTemplate('/sections/types', templates).replace(/\$\{schema.list\}/g, schemasArray.filter(x => !x.enum).map(s => s.body).filter(body => body).join('\n'))
     macros.enums[dir] = getTemplate('/sections/enums', templates).replace(/\$\{schema.list\}/g, schemasArray.filter(x => x.enum).map(s => s.body).filter(body => body).join('\n'))
@@ -1033,7 +1039,7 @@ const isEnum = x => {
    return schema.type && schema.type === 'string' && Array.isArray(schema.enum) && x.title
 }
 
-function generateSchemas(platformApi, templates, options) {
+function generateSchemas(platformApi, templates, options, includeXSchemas = true) {
   let results = []
 
   if (!platformApi) {
@@ -1042,7 +1048,7 @@ function generateSchemas(platformApi, templates, options) {
 
   let schemas = JSON.parse(JSON.stringify(platformApi.definitions || (platformApi.components && platformApi.components.schemas) || {}))
   // we need to add also the schemas in platformApi["x-schemas"]
-  if (platformApi["x-schemas"]) {
+  if (includeXSchemas && platformApi["x-schemas"]) {
     //iterate over each key in platformApi["x-schemas"] and merge into schemas
     Object.entries(platformApi["x-schemas"]).forEach(([key, value]) => {
       schemas = {
