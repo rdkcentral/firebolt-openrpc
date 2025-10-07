@@ -17,7 +17,8 @@
  */
 
 import { readJson, writeJson } from '../shared/filesystem.mjs'
-import { removeUnusedSchemas, pruneNestedDefinitionsRecursively, removeUnusedDefinitions} from '../shared/modules.mjs'
+import { pruneNestedDefinitionsRecursively, removeUnusedDefinitions} from '../shared/modules.mjs'
+import {removeUnusedSchemas} from '../shared/module/remove-unused-schemas.mjs'
 
 // destructure well-known cli args and alias to variables expected by script
 const run = ({

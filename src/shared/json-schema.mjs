@@ -587,4 +587,5 @@ export {
   dereferenceAndMergeAllOfs,
   getReferencedSchema,
   getAllValuesForName,
+  dereferenceSchema
 } 
