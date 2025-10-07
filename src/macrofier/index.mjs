@@ -291,12 +291,17 @@ const macrofy = async (
         Object.values(externalSchemas).forEach( document => {
             getLocalSchemas(document).forEach((path) => {
                 const parts = path.split('/')
+                // For elements in x-schemas we have the following path pattern
+                // #/x-schemas/group_element/specific_element
+                // so the first type definition is the fourth after "#", "x-schemas" and the grouping element
+                const firstTypeDefinitionElement = 4;
+                
                 // Drop the grouping path element, since we've pulled this schema out into it's own document
-                if (parts.length === 4 && path.startsWith('#/x-schemas/' + document.info.title + '/')) {
+                if (parts.length === firstTypeDefinitionElement && path.startsWith('#/x-schemas/' + document.info.title + '/')) {
                     replaceRef(path, ['#/components/schemas', parts[3]].join('/'), document)
                 }
                 // Add the fully qualified URI for any schema groups other than this one
-                else if (parts.length === 4 && path.startsWith('#/x-schemas/')) {
+                else if (parts.length === firstTypeDefinitionElement && path.startsWith('#/x-schemas/')) {
                     const uri = platformApiOpenRpc['x-schemas'][parts[2]].uri
                     // store the case-senstive group title for later use
                     document.info['x-uri-titles'] = document.info['x-uri-titles'] || {}
