@@ -157,14 +157,14 @@ const getLinkForSchema = (schema, json) => {
   const copySchemasIntoModules = config.copySchemasIntoModules
   const definitions = json.definitions || json.components.schemas
 
-  const type = Types.getSchemaType(schema, json, { templateDir: state.typeTemplateDir, namespace: !config.copySchemasIntoModules })
+  const type = Types.getSchemaType(schema, json, { templateDir: state.typeTemplateDir, namespace: false })
 
   // local - insert a bogus link, that we'll update later based on final table-of-contents
-  if (definitions && definitions[type]) {
+  if (json.components.schemas[type]) {
     return `#\$\{LINK:schema:${type}\}`
   }
   else {
-    const [group, schema] = Object.entries(definitions).find(([key, value]) => definitions[key] && definitions[key][type]) || [null, null]
+    const [group, schema] = Object.entries(json['x-schemas']).find(([key, value]) => json['x-schemas'][key] && json['x-schemas'][key][type]) || [null, null]
     if (group && schema) {
       if (copySchemasIntoModules) {
         return `#\$\{LINK:schema:${type}\}`
@@ -2063,7 +2063,7 @@ function insertExampleMacros(template, examples, method, json, templates, appApi
 
 function generateResult(result, json, templates, { name = '' } = {}) {
 
-  const type = Types.getSchemaType(result, json, { templateDir: state.typeTemplateDir, namespace: !config.copySchemasIntoModules  })
+  const type = Types.getSchemaType(result, json, { templateDir: state.typeTemplateDir, namespace: false  })
 
   if (result.type === 'object' && result.properties) {
     let content = getTemplate('/types/object', templates).split('\n')
@@ -2084,13 +2084,13 @@ function generateResult(result, json, templates, { name = '' } = {}) {
 
     // if we get a real link use it
     if (link !== '#') {
-      return `[${Types.getSchemaType(result, json, { templateDir: state.typeTemplateDir, namespace: !config.copySchemasIntoModules })}](${link})`
+      return `[${Types.getSchemaType(result, json, { templateDir: state.typeTemplateDir, namespace: false })}](${link})`
     }
     // otherwise this was a schema with no title, and we'll just copy it here
     else {
       const schema = localizeDependencies(result, json)
       return getTemplate('/types/default', templates)
-        .replace(/\$\{type\}/, Types.getSchemaShape(schema, json, { templateDir: state.typeTemplateDir, namespace: !config.copySchemasIntoModules  }))
+        .replace(/\$\{type\}/, Types.getSchemaShape(schema, json, { templateDir: state.typeTemplateDir, namespace: false  }))
     }
   }
   else {
