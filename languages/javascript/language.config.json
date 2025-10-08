@@ -5,9 +5,6 @@
         "/index.mjs",
         "/defaults.mjs"
     ],
-    "templatesPerSchema": [
-      "/index.mjs"
-    ],
     "enableStringPropertyKeys": true,
     "createModuleDirectories": true,
     "copySchemasIntoModules": false,

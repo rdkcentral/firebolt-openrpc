@@ -27,7 +27,8 @@ import logic from 'crocks/logic/index.js'
 const { and, not } = logic
 import isString from 'crocks/core/isString.js'
 import predicates from 'crocks/predicates/index.js'
-import { getExternalSchemaPaths, isDefinitionReferencedBySchema, isNull, localizeDependencies, isSchema, getLocalSchemaPaths, replaceRef, getPropertySchema, dereferenceAndMergeAllOfs, getPath as getRefDefinition, getAllValuesForName, replaceUri, getReferencedSchema } from './json-schema.mjs'
+import {removeUnusedSchemas} from './module/remove-unused-schemas.mjs'
+import { getExternalSchemaPaths, isNull, localizeDependencies, isSchema, getLocalSchemaPaths, replaceRef, getPropertySchema, dereferenceAndMergeAllOfs, getPath as getRefDefinition, getAllValuesForName, replaceUri, getReferencedSchema } from './json-schema.mjs'
 import { extension, getNotifier, isEvent, isNotifier, isPusher, isRegistration, name as methodName, rename as methodRename, provides } from './methods.mjs'
 const { isObject, isArray, propEq, pathSatisfies, hasProp, propSatisfies } = predicates
 
@@ -1858,49 +1859,6 @@ const addExternalSchemas = (json, sharedSchemas) => {
     return json
 }
 
-const removeUnusedSchemas = (json) => {
-    let deleted = false
-    function removeUnusedSchemasClosure(json) {
-        const schema = JSON.parse(JSON.stringify(json))
-
-        const recurse = (schema, path) => {
-            
-            Object.keys(schema).forEach(name => {
-                if (isSchema(schema[name])) {
-                    const used = isDefinitionReferencedBySchema(path + '/' + name, json)
-
-                    if (!used) {
-                        delete schema[name]
-                        deleted = true
-                    }
-                    else {
-                    }
-                }
-                else if (typeof schema[name] === 'object') {
-                    deleted = deleted || recurse(schema[name], path + '/' + name)
-                }
-            })
-            return deleted
-        }
-
-        if (schema.components.schemas) {
-            deleted = deleted || recurse(schema.components.schemas, '#/components/schemas')
-        }
-
-        if (schema['x-schemas']) {
-            deleted = deleted || recurse(schema['x-schemas'], '#/x-schemas')
-        }
-        return schema
-    }
-
-    let schema = removeUnusedSchemasClosure(json)
-    while(deleted) {
-        deleted = false
-        schema = removeUnusedSchemasClosure(schema)
-    }
-    return schema
-}
-
 const getModule = (name, json, copySchemas, extractSubSchemas) => {
     let openrpc = JSON.parse(JSON.stringify(json))
     openrpc.methods = openrpc.methods
@@ -2278,7 +2236,6 @@ export {
     getPayloadFromEvent,
     getPathFromModule,
     providerHasNoParameters,
-    removeUnusedSchemas,
     getModule,
     getAppApiModule,
     getSemanticVersion,

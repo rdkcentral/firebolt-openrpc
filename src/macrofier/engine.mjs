@@ -126,7 +126,10 @@ const getTemplate = (name, templates) => {
 }
 
 const getTemplateTypeForMethod = (method, type, templates) => {
-  const name = method.tags ? (isAllowFocusMethod(method) && Object.keys(templates).find(name => name.startsWith(`/${type}/allowsFocus.`))) ? 'allowsFocus' : (method.tags.map(tag => tag.name.split(":").shift()).find(tag => Object.keys(templates).find(name => name.startsWith(`/${type}/${tag}.`)))) || 'default' : 'default'
+  let name = method.tags ? (isAllowFocusMethod(method) && Object.keys(templates).find(name => name.startsWith(`/${type}/allowsFocus.`))) ? 'allowsFocus' : (method.tags.map(tag => tag.name.split(":").shift()).find(tag => Object.keys(templates).find(name => name.startsWith(`/${type}/${tag}.`)))) || 'default' : 'default'
+  if(isXSubscriberFor(method)) {
+    name = 'subscriber'
+  }
   const path = `/${type}/${name}`
   return getTemplate(path, templates)
 }
@@ -614,7 +617,13 @@ const generateMacros = (platformApi, appApi, templates, languages, options = {})
 
   Array.from(new Set(['types'].concat(config.additionalSchemaTemplates))).filter(dir => dir).forEach(dir => {
     state.typeTemplateDir = dir
-    const schemasArray = unique(generateSchemas(platformApi, templates, { baseUrl: '' }).concat(generateSchemas(appApi, templates, { baseUrl: '' })))
+    let includeXSchemas = true;
+    if (isGeneratingDocs(languages)){
+       includeXSchemas = false;
+    }
+
+    const schemasArray = unique(generateSchemas(platformApi, templates, { baseUrl: '' }, includeXSchemas).concat(generateSchemas(appApi, templates, { baseUrl: '' }, includeXSchemas)))
+
     macros.schemas[dir] = getTemplate('/sections/schemas', templates).replace(/\$\{schema.list\}/g, schemasArray.map(s => s.body).filter(body => body).join('\n'))
     macros.types[dir] = getTemplate('/sections/types', templates).replace(/\$\{schema.list\}/g, schemasArray.filter(x => !x.enum).map(s => s.body).filter(body => body).join('\n'))
     macros.enums[dir] = getTemplate('/sections/enums', templates).replace(/\$\{schema.list\}/g, schemasArray.filter(x => x.enum).map(s => s.body).filter(body => body).join('\n'))
@@ -1030,7 +1039,7 @@ const isEnum = x => {
    return schema.type && schema.type === 'string' && Array.isArray(schema.enum) && x.title
 }
 
-function generateSchemas(platformApi, templates, options) {
+function generateSchemas(platformApi, templates, options, includeXSchemas = true) {
   let results = []
 
   if (!platformApi) {
@@ -1039,7 +1048,7 @@ function generateSchemas(platformApi, templates, options) {
 
   let schemas = JSON.parse(JSON.stringify(platformApi.definitions || (platformApi.components && platformApi.components.schemas) || {}))
   // we need to add also the schemas in platformApi["x-schemas"]
-  if (platformApi["x-schemas"]) {
+  if (includeXSchemas && platformApi["x-schemas"]) {
     //iterate over each key in platformApi["x-schemas"] and merge into schemas
     Object.entries(platformApi["x-schemas"]).forEach(([key, value]) => {
       schemas = {
@@ -1639,7 +1648,7 @@ function insertMethodMacros(template, methodObj, platformApi, appApi, templates,
   const pullerTemplate = (puller ? insertMethodMacros(getTemplate('/codeblocks/puller', templates), puller, platformApi, appApi, templates, type, examples, languages) : '')
   const setter = getSetterFor(methodObj.name, platformApi)
   const setterTemplate = (setter ? insertMethodMacros(getTemplate('/codeblocks/setter', templates), setter, platformApi, appApi, templates, type, examples, languages) : '')
-  const subscriber = platformApi.methods.find(method => method.tags.find(tag => tag['x-subscriber-for'] === `${moduleName}.${methodObj.name}`) || method.tags.find(tag => tag['x-alternative'] === `${moduleName}.${methodObj.name}()`))
+  const subscriber = platformApi.methods.find(method => method.tags.find(tag => tag['x-subscriber-for'] === `${moduleName}.${methodObj.name}`) )
   let subscriberTemplate = ''
   if (subscriber) {
     subscriberTemplate = getTemplate('/codeblocks/subscriber', templates)
@@ -1830,7 +1839,7 @@ function insertMethodMacros(template, methodObj, platformApi, appApi, templates,
     .replace(/\$\{event\.result\.json\.type\}/g, resultJsonType)
     .replace(/\$\{event\.result\.json\.type\}/g, callbackResultJsonType)
     .replace(/\$\{event\.pulls\.param\.name\}/g, pullsEventParamName)
-    .replace(/\$\{method\.result\}/g, generateResult(result.schema, currentModuleApiForEvent, templates, { name: result.name }))
+    .replace(/\$\{method\.result\}/g, generateResult(result.schema, currentModuleApi, templates, { name: result.name }))
     .replace(/\$\{method\.result\.json\.type\}/g, resultJsonType)
     .replace(/\$\{method\.result\.instantiation\}/g, resultInst)
     .replace(/\$\{method\.result\.initialization\}/g, resultInit)

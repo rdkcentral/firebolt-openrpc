@@ -27,6 +27,7 @@ import Types from './types.mjs'
 import path from 'path'
 import engine from './engine.mjs'
 import { replaceUri } from '../shared/json-schema.mjs'
+import { getLocalSchemas, replaceRef } from '../shared/json-schema.mjs'
 import { getConfig } from '../shared/configLoader.mjs'
 
 /************************************************************************************************/
@@ -270,7 +271,48 @@ const macrofy = async (
                 }
             })
         }
+
+        platformApiOpenRpc['x-schemas']
+            && Object.entries(platformApiOpenRpc['x-schemas']).forEach(([name, schema]) => {
+                if (schema.uri) {
+                    const id = schema.uri
+                    externalSchemas[id] = externalSchemas[id] || { $id: id, info: {title: name }, methods: []}
+                    externalSchemas[id].components = externalSchemas[id].components || {}
+                    externalSchemas[id].components.schemas = externalSchemas[id].components.schemas || {}
+                    externalSchemas[id]['x-schemas'] = JSON.parse(JSON.stringify(platformApiOpenRpc['x-schemas']))
+
+                    const schemas = JSON.parse(JSON.stringify(schema))
+                    delete schemas.uri
+                    Object.assign(externalSchemas[id].components.schemas, schemas)
+                }
+        })
+        
+        // update the refs
+        Object.values(externalSchemas).forEach( document => {
+            getLocalSchemas(document).forEach((path) => {
+                const parts = path.split('/')
+                // For elements in x-schemas we have the following path pattern
+                // #/x-schemas/group_element/specific_element
+                // so the first type definition is the fourth after "#", "x-schemas" and the grouping element
+                const firstTypeDefinitionElement = 4;
                 
+                // Drop the grouping path element, since we've pulled this schema out into it's own document
+                if (parts.length === firstTypeDefinitionElement && path.startsWith('#/x-schemas/' + document.info.title + '/')) {
+                    replaceRef(path, ['#/components/schemas', parts[3]].join('/'), document)
+                }
+                // Add the fully qualified URI for any schema groups other than this one
+                else if (parts.length === firstTypeDefinitionElement && path.startsWith('#/x-schemas/')) {
+                    const uri = platformApiOpenRpc['x-schemas'][parts[2]].uri
+                    // store the case-senstive group title for later use
+                    document.info['x-uri-titles'] = document.info['x-uri-titles'] || {}
+                    document.info['x-uri-titles'][uri] = document.info.title
+                    platformApiOpenRpc.info['x-uri-titles'] = platformApiOpenRpc.info['x-uri-titles'] || {}
+                    platformApiOpenRpc.info['x-uri-titles'][uri] = document.info.title
+                    replaceRef(path, '#/x-schemas/' + parts[2] + '/' + parts[3], document)
+                }
+            })
+        })
+
         // Output any schema templates for each bundled external schema document
         !copySchemasIntoModules && Object.values(externalSchemas).forEach( document => {
           if (mergeOnTitle && modules.find(m => m.info.title === document.title)) {
@@ -278,24 +320,17 @@ const macrofy = async (
           }
 
           const macros        = engine.generateMacros(document, null, templates, exampleTemplates, {hideExcluded: hideExcluded, copySchemasIntoModules: copySchemasIntoModules, createPolymorphicMethods: createPolymorphicMethods, suffix: suffixes?.js })
-          const macrosPrimary = engine.generateMacros(document, null, templates, exampleTemplates, {hideExcluded: hideExcluded, copySchemasIntoModules: copySchemasIntoModules, createPolymorphicMethods: createPolymorphicMethods, suffix: suffixes?.ts })
 
           if (templatesPerSchema || primaryOutput.length) {
               templatesPerSchema && templatesPerSchema.forEach( t => {
                     let content = getTemplate('/schemas', t, templates)
                     content = engine.insertMacros(content, macros)
-        
-                    const location = createModuleDirectories ? path.join(output, document.title, t) : path.join(output, t.replace(/module/, document.title.toLowerCase()).replace(/index/, document.title))
+
+                    const location = createModuleDirectories ? path.join(output, document.info.title, t) : path.join(output, t.replace(/module/, document.info.title.toLowerCase()).replace(/index/, document.info.title))
         
                     outputFiles[location] = content
                     logSuccess(`Generated macros for schema ${path.relative(output, location)}`)
                 })
-
-                primaryOutput && primaryOutput.forEach(output => {
-                  macrosPrimary.append = append
-                  outputFiles[output] = engine.insertMacros(outputFiles[output], macrosPrimary)
-                })
-
               append = true
             }
         })
