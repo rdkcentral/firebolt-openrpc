@@ -1543,6 +1543,7 @@ function insertMethodMacros(template, methodObj, platformApi, appApi, templates,
     method.transform = getTemplate('/codeblocks/transform', templates).replace(/\$\{transforms\}/g, JSON.stringify(method.transforms))
   }
 
+
   const paramDelimiter = config.operators ? config.operators.paramDelimiter : ''
 
   const temporalItemName = isTemporalSetMethod(methodObj) ? methodObj.result.schema.items && methodObj.result.schema.items.title || 'Item' : ''
@@ -1632,7 +1633,7 @@ function insertMethodMacros(template, methodObj, platformApi, appApi, templates,
     // If there's a notifier for this method, and it has examples, use its params for the eventParams section
     if (eventForSubscriber && eventForSubscriber.examples && eventForSubscriber.examples.length) {
       eventParams = (eventForSubscriber.params && eventForSubscriber.params.length) ?
-        getTemplate('/sections/parameters', templates) + eventForSubscriber.params.map(p => insertParameterMacros(getTemplate('/parameters/default', templates), p, eventForSubscriber, appApi)).join('')
+        getTemplate('/sections/callback-parameters', templates) + eventForSubscriber.params.map(p => insertParameterMacros(getTemplate('/parameters/default', templates), p, eventForSubscriber, appApi)).join('')
         : ''
     }
   }
