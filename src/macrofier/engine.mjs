@@ -157,14 +157,14 @@ const getLinkForSchema = (schema, json) => {
   const copySchemasIntoModules = config.copySchemasIntoModules
   const definitions = json.definitions || json.components.schemas
 
-  const type = Types.getSchemaType(schema, json, { templateDir: state.typeTemplateDir, namespace: !config.copySchemasIntoModules })
+  const type = Types.getSchemaType(schema, json, { templateDir: state.typeTemplateDir, namespace: false })
 
   // local - insert a bogus link, that we'll update later based on final table-of-contents
-  if (definitions && definitions[type]) {
+  if (json.components.schemas[type]) {
     return `#\$\{LINK:schema:${type}\}`
   }
   else {
-    const [group, schema] = Object.entries(definitions).find(([key, value]) => definitions[key] && definitions[key][type]) || [null, null]
+    const [group, schema] = Object.entries(json['x-schemas']).find(([key, value]) => json['x-schemas'][key] && json['x-schemas'][key][type]) || [null, null]
     if (group && schema) {
       if (copySchemasIntoModules) {
         return `#\$\{LINK:schema:${type}\}`
@@ -1543,6 +1543,7 @@ function insertMethodMacros(template, methodObj, platformApi, appApi, templates,
     method.transform = getTemplate('/codeblocks/transform', templates).replace(/\$\{transforms\}/g, JSON.stringify(method.transforms))
   }
 
+
   const paramDelimiter = config.operators ? config.operators.paramDelimiter : ''
 
   const temporalItemName = isTemporalSetMethod(methodObj) ? methodObj.result.schema.items && methodObj.result.schema.items.title || 'Item' : ''
@@ -1632,7 +1633,7 @@ function insertMethodMacros(template, methodObj, platformApi, appApi, templates,
     // If there's a notifier for this method, and it has examples, use its params for the eventParams section
     if (eventForSubscriber && eventForSubscriber.examples && eventForSubscriber.examples.length) {
       eventParams = (eventForSubscriber.params && eventForSubscriber.params.length) ?
-        getTemplate('/sections/parameters', templates) + eventForSubscriber.params.map(p => insertParameterMacros(getTemplate('/parameters/default', templates), p, eventForSubscriber, appApi)).join('')
+        getTemplate('/sections/callback-parameters', templates) + eventForSubscriber.params.map(p => insertParameterMacros(getTemplate('/parameters/default', templates), p, eventForSubscriber, appApi)).join('')
         : ''
     }
   }
@@ -2063,7 +2064,7 @@ function insertExampleMacros(template, examples, method, json, templates, appApi
 
 function generateResult(result, json, templates, { name = '' } = {}) {
 
-  const type = Types.getSchemaType(result, json, { templateDir: state.typeTemplateDir, namespace: !config.copySchemasIntoModules  })
+  const type = Types.getSchemaType(result, json, { templateDir: state.typeTemplateDir, namespace: false  })
 
   if (result.type === 'object' && result.properties) {
     let content = getTemplate('/types/object', templates).split('\n')
@@ -2084,13 +2085,13 @@ function generateResult(result, json, templates, { name = '' } = {}) {
 
     // if we get a real link use it
     if (link !== '#') {
-      return `[${Types.getSchemaType(result, json, { templateDir: state.typeTemplateDir, namespace: !config.copySchemasIntoModules })}](${link})`
+      return `[${Types.getSchemaType(result, json, { templateDir: state.typeTemplateDir, namespace: false })}](${link})`
     }
     // otherwise this was a schema with no title, and we'll just copy it here
     else {
       const schema = localizeDependencies(result, json)
       return getTemplate('/types/default', templates)
-        .replace(/\$\{type\}/, Types.getSchemaShape(schema, json, { templateDir: state.typeTemplateDir, namespace: !config.copySchemasIntoModules  }))
+        .replace(/\$\{type\}/, Types.getSchemaShape(schema, json, { templateDir: state.typeTemplateDir, namespace: false  }))
     }
   }
   else {
