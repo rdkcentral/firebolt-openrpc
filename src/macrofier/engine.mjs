@@ -112,7 +112,7 @@ const getNotifierForMethod = (method, appApi) => {
       if (appApiMethod.tags) {
         //iterate over tags to find the event tag with x-event
         const eventTag = appApiMethod.tags.find(tag => tag.name === "notifier" && tag["x-event"])
-        if (eventTag && eventTag["x-event"].includes(method.name))
+        if (eventTag && eventTag["x-event"].includes('.' + method.name))
           return appApiMethod
       }
       return null
@@ -331,9 +331,6 @@ const eventHasOptionalParam = (event) => {
   return event.params.length && event.params.find(param => !(param.required && param.required === true))
 }
 
-const isGlobalSubscriber = (method) => {
-  return method.tags && method.tags.some(tag => tag['x-subscriber-type'] === 'global');
-}
 
 const isOptionalParam = (param) => {
   return (!(param.required && param.required === true))
@@ -410,12 +407,6 @@ const providersOrEmptyArray = compose(
 const deprecatedOrEmptyArray = compose(
   option([]),
   map(filter(isDeprecatedMethod)),
-  getMethods
-)
-
-const getGlobalSubscribers = compose(
-  option([]),
-  map(filter(isGlobalSubscriber)),
   getMethods
 )
 
@@ -1597,16 +1588,7 @@ function insertMethodMacros(template, methodObj, platformApi, appApi, templates,
     })
   }
 
-  // Keep track of any global subscribers to insert into templates
-  const globalSubscribersArr = getGlobalSubscribers(platformApi);
-  let isGlobalSubscriberEvent = false
-
   if (event) {
-    isGlobalSubscriberEvent = globalSubscribersArr.some(subscriber => {
-      const strippedEventName = event.name.replace(/^on/, '').replace(/Changed$/, '').toLowerCase();
-      const subscriberName = subscriber.name.toLowerCase();
-      return subscriberName && strippedEventName === subscriberName;
-    })
     
     if (!appApi) {
       result.schema = JSON.parse(JSON.stringify(getPayloadFromEvent(methodObj)))
@@ -1807,7 +1789,6 @@ function insertMethodMacros(template, methodObj, platformApi, appApi, templates,
     .replace(/\$\{event\.params\}/g, eventParams)
     .replace(/\$\{event\.params\.table\.rows\}/g, eventParamsRows)
     .replace(/\$\{if\.event\.params\}(.*?)\$\{end\.if\.event\.params\}/gms, event && event.params.length ? '$1' : '')
-    .replace(/\$\{if\.globalsubscriber\}(.*?)\$\{end\.if\.globalsubscriber\}/gms, (isGlobalSubscriberEvent) ? '$1' : '')
     .replace(/\$\{if\.event\.callback\.params\}(.*?)\$\{end\.if\.event\.callback\.params\}/gms, event && eventHasOptionalParam(event) ? '$1' : '')
     .replace(/\$\{event\.signature\.params\}/g, event ? Types.getMethodSignatureParams(event, currentModuleApiForEvent, { namespace: !config.copySchemasIntoModules }) : '')
     .replace(/\$\{event\.result\.schema\.params\}/g, eventResultSchemaPropParams ? eventResultSchemaPropParams : '')

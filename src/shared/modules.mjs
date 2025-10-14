@@ -428,100 +428,8 @@ const eventDefaults = event => {
     return event
 }
 
-const createEventResultSchemaFromProperty = (property, type='Changed') => {
-  const subscriberType = property.tags.map(t => t['x-subscriber-type']).find(t => typeof t === 'string') || 'context'
-
-  const caps = property.tags.find(t => t.name === 'capabilities')
-  let name = caps['x-provided-by'] ? caps['x-provided-by'].split('.').pop().replace('onRequest', '') : property.name
-  name = name.charAt(0).toUpperCase() + name.substring(1)
-
-  if ( subscriberType === 'global') { 
-      // wrap the existing result and the params in a new result object
-      const schema = {
-          title: methodRename(property, name => name.charAt(0).toUpperCase() + name.substring(1) + type + 'Info').split('.').pop(),
-          type: "object",
-          properties: {
-
-          },
-          required: []
-      }
-
-      // add all of the params
-      property.params.filter(p => p.name !== 'listen').forEach(p => {
-          schema.properties[p.name] = p.schema
-          schema.required.push(p.name)
-      })
-
-      // add the result (which might override a param of the same name)
-      schema.properties[property.result.name] = property.result.schema
-      !schema.required.includes(property.result.name) && schema.required.push(property.result.name)
-
-      return schema
-  }
-}
-
-const createEventFromProperty = (property, type='', alternative, json) => {
-    const provider = (property.tags.find(t => t['x-provided-by']) || {})['x-provided-by']
-    const pusher = provider ? provider.replace('onRequest', '').split('.').map((x, i, arr) => (i === arr.length-1) ? x.charAt(0).toLowerCase() + x.substr(1) : x).join('.') : undefined
-    const event = eventDefaults(JSON.parse(JSON.stringify(property)))
-//    event.name = (module ? module + '.' : '') + 'on' + event.name.charAt(0).toUpperCase() + event.name.substr(1) + type
-    event.name = provider ? provider.split('.').pop().replace('onRequest', '') : event.name.charAt(0).toUpperCase() + event.name.substr(1) + type
-    event.name = event.name.split('.').map((x, i, arr) => (i === arr.length-1) ? 'on' + x.charAt(0).toUpperCase() + x.substr(1) : x).join('.')
-    const subscriberFor = pusher || (json.info.title + '.' + property.name)
-    
-    const old_tags = JSON.parse(JSON.stringify(property.tags))
-
-    alternative && (event.tags[0]['x-alternative'] = alternative)
-
-    !provider && event.tags.unshift({
-        name: "subscriber",
-        'x-subscriber-for': subscriberFor
-    })
-
-    const subscriberType = property.tags.map(t => t['x-subscriber-type']).find(t => typeof t === 'string') || 'context'
-    
-    // if the subscriber type is global, zap all of the parameters and change the result type to the schema that includes them
-    if (subscriberType === 'global') {
-        
-        // wrap the existing result and the params in a new result object
-        const result = {
-            name: "data",
-            schema: {
-                $ref: "#/components/schemas/" + event.name.substring(2) + 'Info'
-            }
-        }
-
-        event.examples.map(example => {
-            const result = {}
-            example.params.filter(p => p.name !== 'listen').forEach(p => {
-                result[p.name] = p.value
-            })
-            result[example.result.name] = example.result.value
-            example.params = example.params.filter(p => p.name === 'listen')
-            example.result.name = "data"
-            example.result.value = result
-        })
-
-        event.result = result
-        
-        // remove the params
-        event.params = event.params.filter(p => p.name === 'listen')
-    }
-
-    old_tags.forEach(t => {
-        if (t.name !== 'property' && !t.name.startsWith('property:') && t.name !== 'push-pull')
-        {
-            event.tags.push(t)
-        }
-    })
-
-    provider && (event.tags.find(t => t.name === 'capabilities')['x-provided-by'] = subscriberFor)
-
-    return event
-}
 
 const createNotifierFromProperty = (property, type='Changed') => {
-  const subscriberType = property.tags.map(t => t['x-subscriber-type']).find(t => typeof t === 'string') || 'context'
 
   const notifier = JSON.parse(JSON.stringify(property))
   notifier.name = methodRename(notifier, name => name + type)
@@ -532,40 +440,13 @@ const createNotifierFromProperty = (property, type='Changed') => {
       'x-event': methodRename(notifier, name => 'on' + name.charAt(0).toUpperCase() + name.substring(1))
   })
 
-  if (subscriberType === 'global') {
-      notifier.params = [
-          {
-              name: "info",
-              schema: {
-                  "$ref": "#/components/schemas/" + methodRename(notifier, name => name.charAt(0).toUpperCase() + name.substr(1) + 'Info')
-              }
-          }
-      ]
-  }
-  else {
-      notifier.params.push(notifier.result)
-  }
-
+  notifier.params.push(notifier.result)
+ 
   delete notifier.result    
-
-  if (subscriberType === 'global') {
-      notifier.examples = property.examples.map(example => ({
-          name: example.name,
-          params: [
-              {
-                  name: "info",
-                  value: Object.assign(Object.fromEntries(example.params.map(p => [p.name, p.value])), Object.fromEntries([[example.result.name, example.result.value]]))
-              }                    
-          ]
-      }))
-  }
-  else {
-      notifier.examples.forEach(example => {
+  notifier.examples.forEach(example => {
           example.params.push(example.result)
           delete example.result    
       })
-  }
-
   return notifier
 }
 
@@ -600,10 +481,6 @@ const createNotifierFromEvent = (event, json) => {
     })
 
     return push
-}
-
-const createPushEvent = (requestor, json) => {
-    return createEventFromProperty(requestor, '', undefined, json)
 }
 
 const createPullEventFromPush = (pusher, json) => {
@@ -1042,17 +919,11 @@ const generatePropertyEvents = json => {
 
   properties.forEach(property => {
       json.methods.push(createNotifierFromProperty(property))
-      const schema = createEventResultSchemaFromProperty(property)
-      if (schema) {
-          json.components.schemas[property.name.split('.').shift() + '.' + schema.title] = schema
-      }
+
   })
   readonlies.forEach(property => {
       json.methods.push(createNotifierFromProperty(property))
-      const schema = createEventResultSchemaFromProperty(property)
-      if (schema) {
-          json.components.schemas[property.name.split('.').shift() + '.' + schema.title] = schema
-      }
+
   })
 
   return json
@@ -1074,21 +945,6 @@ const generatePolymorphicPullEvents = json => {
     return json
 }
 
-const generatePushPullMethods = json => {
-    const requestors = json.methods.filter( m => m.tags && m.tags.find( t => t.name == 'push-pull')) || []
-    requestors.forEach(requestor => {
-        json.methods.push(createPushEvent(requestor, json))
-        
-        const schema = createEventResultSchemaFromProperty(requestor)
-        if (schema) {
-            json.components = json.components || {}
-            json.components.schemas = json.components.schemas || {}
-            json.components.schemas[schema.title] = schema
-        }        
-    })
-
-    return json
-}
 
 const generateProvidedByMethods = json => {
   const requestors = json.methods.filter(m => !m.tags.find(t => t.name === 'notifier')).filter( m => m.tags && m.tags.find( t => t['x-provided-by'])) || []
