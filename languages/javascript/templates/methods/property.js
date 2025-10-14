@@ -2,7 +2,7 @@ function ${method.name}(${method.params.list}) {
   let callbackOrValue = arguments[${method.params.count}]
   let params = { ${method.params.list} }
   
-  // x-subscriber-type: global
+  // If there is only one parameter, it must be the callback.
   if (arguments.length === 1 && (typeof arguments[0] === 'function')) {
     callbackOrValue = arguments[0]
     params = {}

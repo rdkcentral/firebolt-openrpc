@@ -13,8 +13,6 @@ See also: [listen()](#listen), [once()](#listen), [clear()](#listen).
 
 ${event.params}
 
-Event value:
-
 ${method.result}
 
 ${method.capabilities}
