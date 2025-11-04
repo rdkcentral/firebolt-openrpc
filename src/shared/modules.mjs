@@ -440,12 +440,36 @@ const createNotifierFromProperty = (property, type='Changed') => {
       'x-event': methodRename(notifier, name => 'on' + name.charAt(0).toUpperCase() + name.substring(1))
   })
 
-  notifier.params.push(notifier.result)
- 
-  delete notifier.result    
+  notifier.params = []
+  //if notifier.result.schema.type === 'object', we want to push all notifier.result properties as params in notifier.params instead of the whole object
+  if (notifier.result && notifier.result.schema && notifier.result.schema.type === 'object') {
+      Object.keys(notifier.result.schema.properties).forEach(key => {
+          notifier.params.push({
+              name: key,
+              schema: notifier.result.schema.properties[key]
+          })
+      })
+  }else{
+      notifier.params.push(notifier.result)
+  }
+
+  delete notifier.result
   notifier.examples.forEach(example => {
-          example.params.push(example.result)
-          delete example.result    
+        
+        example.params = []
+        // if example.result prototype is an object we want to push all example.result properties as params in example.params
+        if (example.result && example.result.value && typeof example.result.value === 'object' && !Array.isArray(example.result.value)) {
+            Object.keys(example.result.value).forEach(key => {
+                example.params.push({
+                    name: key,
+                    value: example.result.value[key]
+                })
+            })
+        }   else {
+            example.params.push(example.result)
+        }
+
+          delete example.result
       })
   return notifier
 }
@@ -696,13 +720,23 @@ const createSetterFromProperty = property => {
           'x-setter-for': property.name
       }
   ]
-
-  const param = setter.result
-  param.name = 'value'
-  param.required = true
-  setter.params.push(param)
   
-  setter.result = {
+  setter.params = []
+  //if setter.result.schema.type === 'object', we want to push all setter.result properties as params in setter.params instead of the whole object
+  if (setter.result && setter.result.schema && setter.result.schema.type === 'object') {
+      Object.keys(setter.result.schema.properties).forEach(key => {
+          setter.params.push({
+              name: key,
+              schema: setter.result.schema.properties[key]
+          })
+      })
+    } else {
+        const param = setter.result
+        param.name = 'value'
+        param.required = true
+        setter.params.push(param)
+      }
+    setter.result = {
       name: 'result',
       schema: {
           type: "null"
@@ -710,10 +744,21 @@ const createSetterFromProperty = property => {
   }
 
   setter.examples && setter.examples.forEach(example => {
-      example.params.push({
-          name: 'value',
-          value: example.result.value
-      })
+        example.params = []
+        // if example.result prototype is an object we want to push all example.result properties as params in example.params
+         if (example.result && example.result.value && typeof example.result.value === 'object' && !Array.isArray(example.result.value)) {
+            Object.keys(example.result.value).forEach(key => {
+                example.params.push({
+                    name: key,
+                    value: example.result.value[key]
+                })
+            })
+        }   else {
+             example.params.push({
+                name: 'value',
+                value: example.result.value
+            })
+        }
 
       example.result.value = null
   })
