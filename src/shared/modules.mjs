@@ -1103,6 +1103,10 @@ const generateUnidirectionalProviderMethods = json => {
   return json
 }
 
+const haveContextualParams = subscriber => {
+  return subscriber.tags.find(tag => tag["x-contextual-parameters"]) > 0 ? true : false
+}
+
 const generateEventSubscribers = json => {
   const notifiers = json.methods.filter( m => m.tags && m.tags.find(t => t.name == 'notifier')) || []
 
@@ -1113,11 +1117,19 @@ const generateEventSubscribers = json => {
           tag['x-event'] = methodRename(notifier, name => 'on' + name.charAt(0).toUpperCase() + name.substring(1))
       }
       const subscriber = json.methods.find(method => method.name === tag['x-event'])
-
+      
       if (!subscriber) {
           const subscriber = JSON.parse(JSON.stringify(notifier))
           subscriber.name = methodRename(subscriber, name => 'on' + name.charAt(0).toUpperCase() + name.substring(1))
-          subscriber.params.pop()
+        
+          const isParamsContextual = haveContextualParams(subscriber)
+          if (isParamsContextual) {
+              subscriber.params = []
+          }
+          else{
+              subscriber.params.pop()
+          }
+
           subscriber.params.push({
               name: 'listen',
               schema: {
@@ -1133,7 +1145,13 @@ const generateEventSubscribers = json => {
           }
 
           subscriber.examples.forEach(example => {
-              example.params.pop()
+              
+              if (isParamsContextual) {
+                  example.params = []
+              }
+              else {
+                  example.params.pop()
+              }
               example.params.push({
                   name: "listen",
                   value: true
@@ -1253,7 +1271,7 @@ const generateEventListenerParameters = json => {
         event.params = event.params || []
         event.params.push({
             "name": "listen",
-            "required": true,
+            //"required": true,
             "schema": {
                 "type": "boolean"
             }
