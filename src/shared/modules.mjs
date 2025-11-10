@@ -442,8 +442,9 @@ const createNotifierFromProperty = (property, type='Changed') => {
 
   notifier.params = []
   //if notifier.result.schema.type === 'object', we want to push all notifier.result properties as params in notifier.params instead of the whole object
-  if (notifier.result && notifier.result.schema && notifier.result.schema.type === 'object') {
-      Object.keys(notifier.result.schema.properties).forEach(key => {
+  if (notifier.result && notifier.result.schema && notifier.result.schema.type === 'object' && notifier.result.schema.properties) {
+        //console.log("Pushing notifier.result properties as params: ", notifier.result);
+        Object.keys(notifier.result.schema.properties).forEach(key => {
           notifier.params.push({
               name: key,
               schema: notifier.result.schema.properties[key]
@@ -723,7 +724,7 @@ const createSetterFromProperty = property => {
   
   setter.params = []
   //if setter.result.schema.type === 'object', we want to push all setter.result properties as params in setter.params instead of the whole object
-  if (setter.result && setter.result.schema && setter.result.schema.type === 'object') {
+  if (setter.result && setter.result.schema && setter.result.schema.type === 'object' && setter.result.schema.properties) {
       Object.keys(setter.result.schema.properties).forEach(key => {
           setter.params.push({
               name: key,
