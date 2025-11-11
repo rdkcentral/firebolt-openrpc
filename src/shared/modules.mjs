@@ -112,7 +112,7 @@ function getUnidirectionalProviderInterfaceName(_interface, capability, document
   return name
 }
 
-function updateUnidirectionalProviderInterface(iface, module) {
+function updateUnidirectionalProviderInterface(iface, module) {iface, module
   iface.forEach(method => {
       const payload = getPayloadFromEvent(method)
       const focusable = method.tags.find(t => t['x-allow-focus'])
@@ -429,10 +429,10 @@ const eventDefaults = event => {
 }
 
 
-const createNotifierFromProperty = (property, type='Changed') => {
+const createNotifierFromProperty = (property, json) => {
 
   const notifier = JSON.parse(JSON.stringify(property))
-  notifier.name = methodRename(notifier, name => name + type)
+  notifier.name = methodRename(notifier, name => name + 'Changed')
 
   Object.assign(notifier.tags.find(t => t.name.startsWith('property')), {
       name: 'notifier',
@@ -440,14 +440,25 @@ const createNotifierFromProperty = (property, type='Changed') => {
       'x-event': methodRename(notifier, name => 'on' + name.charAt(0).toUpperCase() + name.substring(1))
   })
 
-  notifier.params = []
-  //if notifier.result.schema.type === 'object', we want to push all notifier.result properties as params in notifier.params instead of the whole object
-  if (notifier.result && notifier.result.schema && notifier.result.schema.type === 'object' && notifier.result.schema.properties) {
+  let noContextParams = true
+  if (notifier.params && notifier.params.length > 0) {
+        noContextParams = false
+  }
+  
+  //if notifier.result.schema is a $ref, we need to dereference it first
+  let resultSchema = notifier.result && notifier.result.schema
+  if (resultSchema && resultSchema['$ref']) {
+        resultSchema = getRefDefinition(resultSchema['$ref'], json, json['x-schemas'])
+  }
+
+  //if notifier.result.schema.type === 'object' and there are no params, we want to push all notifier.result properties as params in notifier.params instead of the whole object
+  if (resultSchema && resultSchema.type === 'object' && resultSchema.properties && noContextParams) {
+        notifier.params = []
         //console.log("Pushing notifier.result properties as params: ", notifier.result);
-        Object.keys(notifier.result.schema.properties).forEach(key => {
+        Object.keys(resultSchema.properties).forEach(key => {
           notifier.params.push({
               name: key,
-              schema: notifier.result.schema.properties[key]
+              schema: resultSchema.properties[key]
           })
       })
   }else{
@@ -456,10 +467,9 @@ const createNotifierFromProperty = (property, type='Changed') => {
 
   delete notifier.result
   notifier.examples.forEach(example => {
-        
-        example.params = []
         // if example.result prototype is an object we want to push all example.result properties as params in example.params
-        if (example.result && example.result.value && typeof example.result.value === 'object' && !Array.isArray(example.result.value)) {
+        if (noContextParams && example.result && example.result.value && typeof example.result.value === 'object' && !Array.isArray(example.result.value)) {
+            example.params = []
             Object.keys(example.result.value).forEach(key => {
                 example.params.push({
                     name: key,
@@ -711,7 +721,7 @@ const createTemporalStopMethod = (method, jsoname) => {
   return stop
 }
 
-const createSetterFromProperty = property => {
+const createSetterFromProperty = (property, json) => {
   const setter = JSON.parse(JSON.stringify(property))
   setter.name = methodRename(setter, name => 'set' + name.charAt(0).toUpperCase() + name.substr(1))
   const old_tags = setter.tags
@@ -722,13 +732,24 @@ const createSetterFromProperty = property => {
       }
   ]
   
-  setter.params = []
-  //if setter.result.schema.type === 'object', we want to push all setter.result properties as params in setter.params instead of the whole object
-  if (setter.result && setter.result.schema && setter.result.schema.type === 'object' && setter.result.schema.properties) {
-      Object.keys(setter.result.schema.properties).forEach(key => {
+
+  let noContextParams = true
+  if (setter.params && setter.params.length > 0) {
+        noContextParams = false
+  }
+  //if setter.result.schema is a $ref, we need to dereference it first
+  let resultSchema = setter.result && setter.result.schema
+  if (resultSchema && resultSchema['$ref']) {
+        resultSchema = getRefDefinition(resultSchema['$ref'], json, json['x-schemas'])
+  }
+
+  //if setter.result.schema.type === 'object' and the property does not have context params, we want to push all setter.result properties as params in setter.params instead of the whole object
+  if (resultSchema && resultSchema.type === 'object' && resultSchema.properties && noContextParams) {
+      setter.params = []
+      Object.keys(resultSchema.properties).forEach(key => {
           setter.params.push({
               name: key,
-              schema: setter.result.schema.properties[key]
+              schema: resultSchema.properties[key]
           })
       })
     } else {
@@ -745,9 +766,10 @@ const createSetterFromProperty = property => {
   }
 
   setter.examples && setter.examples.forEach(example => {
-        example.params = []
+        
         // if example.result prototype is an object we want to push all example.result properties as params in example.params
-         if (example.result && example.result.value && typeof example.result.value === 'object' && !Array.isArray(example.result.value)) {
+         if (noContextParams && example.result && example.result.value && typeof example.result.value === 'object' && !Array.isArray(example.result.value)) {
+            example.params = []
             Object.keys(example.result.value).forEach(key => {
                 example.params.push({
                     name: key,
@@ -959,16 +981,16 @@ const copyAllowFocusTags = (json) => {
     return json
 }
 
-const generatePropertyEvents = json => {
+const generatePropertyEvents = (json) => {
   const properties = json.methods.filter( m => m.tags && m.tags.find( t => t.name == 'property')) || []
   const readonlies = json.methods.filter( m => m.tags && m.tags.find( t => t.name == 'property:readonly')) || []
 
   properties.forEach(property => {
-      json.methods.push(createNotifierFromProperty(property))
+      json.methods.push(createNotifierFromProperty(property, json))
 
   })
   readonlies.forEach(property => {
-      json.methods.push(createNotifierFromProperty(property))
+      json.methods.push(createNotifierFromProperty(property, json))
 
   })
 
@@ -978,7 +1000,7 @@ const generatePropertyEvents = json => {
 const generatePropertySetters = json => {
     const properties = json.methods.filter( m => m.tags && m.tags.find( t => t.name == 'property')) || []
 
-    properties.forEach(property => json.methods.push(createSetterFromProperty(property)))
+    properties.forEach(property => json.methods.push(createSetterFromProperty(property, json)))
 
     return json
 }
@@ -1615,7 +1637,7 @@ const getPathFromModule = (module, path) => {
     return item    
 }
 
-const fireboltize = (json, bidirectional) => {
+const fireboltize = (json, bidirectional, module) => {
     json = generatePropertyEvents(json)
     json = generatePropertySetters(json)
     json = generateProvidedByMethods(json)
