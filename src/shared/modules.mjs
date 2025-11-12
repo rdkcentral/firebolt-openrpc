@@ -112,7 +112,7 @@ function getUnidirectionalProviderInterfaceName(_interface, capability, document
   return name
 }
 
-function updateUnidirectionalProviderInterface(iface, module) {iface, module
+function updateUnidirectionalProviderInterface(iface, module) {
   iface.forEach(method => {
       const payload = getPayloadFromEvent(method)
       const focusable = method.tags.find(t => t['x-allow-focus'])
@@ -1180,13 +1180,23 @@ const generateEventSubscribers = json => {
       if (!tag['x-event']) {
           tag['x-event'] = methodRename(notifier, name => 'on' + name.charAt(0).toUpperCase() + name.substring(1))
       }
-      const subscriber = json.methods.find(method => method.name === tag['x-event'])
+     
+
+      let subscriber = json.methods.find(method => method.name === tag['x-event'])
+      let xNotifierFor = json.methods.find(method => method.name === tag['x-notifier-for'])
 
       if (!subscriber) {
           const subscriber = JSON.parse(JSON.stringify(notifier))
           subscriber.name = methodRename(subscriber, name => 'on' + name.charAt(0).toUpperCase() + name.substring(1))
+
+          if (xNotifierFor) {
+              subscriber.params = JSON.parse(JSON.stringify(xNotifierFor.params))
+              subscriber.examples = JSON.parse(JSON.stringify(xNotifierFor.examples))
+          }
+
           subscriber.params.pop()
-          subscriber.params.push({
+          //subscriber.params.push({
+          subscriber.params.unshift({
               name: 'listen',
               schema: {
                   type: 'boolean'
@@ -1199,10 +1209,11 @@ const generateEventSubscribers = json => {
                   type: "null"
               }
           }
-
+          
           subscriber.examples.forEach(example => {
               example.params.pop()
-              example.params.push({
+              //example.params.push({
+              example.params.unshift({
                   name: "listen",
                   value: true
               })
@@ -1319,7 +1330,9 @@ const generateEventListenerParameters = json => {
 
     events.forEach(event => {
         event.params = event.params || []
-        event.params.push({
+        //push in front to keep existing params order
+        event.params.unshift({
+        //example.params.push({
             "name": "listen",
             "required": true,
             "schema": {
@@ -1331,7 +1344,8 @@ const generateEventListenerParameters = json => {
 
         event.examples.forEach(example => {
             example.params = example.params || []
-            example.params.push({
+            event.params.unshift({
+            //example.params.push({
                 "name": "listen",
                 "value": true
             })

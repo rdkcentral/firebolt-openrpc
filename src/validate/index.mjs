@@ -216,7 +216,6 @@ const run = async ({
 
     // Validate all modules examples
     Object.keys(modules).forEach(key => {
-        return; // Temporarily disable method example validation
         const json = modules[key]
         json.methods.forEach((method, index) => {
             const exampleSpec = {
