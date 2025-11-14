@@ -1609,9 +1609,10 @@ function insertMethodMacros(template, methodObj, platformApi, appApi, templates,
 
   
   let eventParams = event.params && event.params.length ? getTemplate('/sections/parameters', templates) + event.params.map(p => insertParameterMacros(getTemplate('/parameters/default', templates), p, event, currentModuleApiForEvent)).join('') : ''
- 
+  const eventForSubscriber = getNotifierForMethod(method, appApi)
+  let eventParams2 =  (eventForSubscriber && eventForSubscriber.params && eventForSubscriber.params.length) ? getTemplate('/sections/parameters', templates) + eventForSubscriber.params.map(p => insertParameterMacros(getTemplate('/parameters/default', templates), p, eventForSubscriber, appApi)).join(', ') : ''
+
   if (isGeneratingDocs(languages)) {
-    const eventForSubscriber = getNotifierForMethod(method, appApi)
     // If there's a notifier for this method, and it has examples, use its params for the eventParams section
     if (eventForSubscriber && eventForSubscriber.examples && eventForSubscriber.examples.length) {
       eventParams = (eventForSubscriber.params && eventForSubscriber.params.length) ?
@@ -1747,7 +1748,6 @@ function insertMethodMacros(template, methodObj, platformApi, appApi, templates,
     }
   }
 
-
   template = insertExampleMacros(template, examples || [], methodObj, platformApi, templates, appApi, isGeneratingDocs(languages))
 
   template = template.replace(/\$\{method\.name\}/g, method.name)
@@ -1817,7 +1817,7 @@ function insertMethodMacros(template, methodObj, platformApi, appApi, templates,
     .replace(/\$\{method\.result\.type\}/g, Types.getSchemaType(result.schema, platformApi, { templateDir: state.typeTemplateDir, title: true, asPath: false, result: true, namespace: false  })) //, baseUrl: options.baseUrl    
     .replace(/\$\{method\.result\.json\}/g, Types.getSchemaType(result.schema.type === 'null' ? getNonNullSchema(methodObj, event, platformApi, appApi) : result.schema, platformApi, { templateDir: 'json-types', title: true, code: false, link: false, asPath: false, expandEnums: false, namespace: true  }))
     // todo: what does prefix do?
-    .replace(/\$\{event\.result\.type\}/g, isEventMethod(methodObj) && event.result ? Types.getMethodSignatureResult(event, currentModuleApiForEvent, { callback: true, namespace: !config.copySchemasIntoModules }) : '')
+    .replace(/\$\{event\.result\.type\}/g, isEventMethod(methodObj) && eventParams2 ? eventParams2 : '')
     .replace(/\$\{event\.result\.json\.type\}/g, resultJsonType)
     .replace(/\$\{event\.result\.json\.type\}/g, callbackResultJsonType)
     .replace(/\$\{event\.pulls\.param\.name\}/g, pullsEventParamName)
