@@ -346,15 +346,6 @@ const rpcMethodsOrEmptyArray = compose(
 // Pick events out of the methods array
 const eventsOrEmptyArray = compose(
   option([]),
-  map(filter(validEvent)),
-  // Maintain the side effect of process.exit here if someone is violating the rules
-  map(map(e => {
-    if (!e.name.match(/on[A-Z]/)) {
-      console.error(`ERROR: ${e.name} method is tagged as an event, but does not match the pattern "on[A-Z]"`)
-      process.kill(process.pid) // Using process.kill so that other worspaces all exit (and don't bury this error w/ logs)
-    }
-    return e
-  })),
   map(filter(isPublicEventMethod)),
   getMethods
 )
@@ -390,15 +381,6 @@ const providedCapabilitiesOrEmptyArray = compose(
 // Pick providers out of the methods array
 const providersOrEmptyArray = compose(
   option([]),
-  map(filter(validEvent)),
-  // Maintain the side effect of process.exit here if someone is violating the rules
-  map(map(e => {
-    if (!e.name.match(/on[A-Z]/)) {
-      console.error(`ERROR: ${e.name} method is tagged as a provider, but does not match the pattern "on[A-Z]"`)
-      process.exit(1) // Non-zero exit since we don't want to continue. Useful for CI/CD pipelines.
-    }
-    return e
-  })),
   map(filter(isProviderInterfaceMethod)),
   getMethods
 )
