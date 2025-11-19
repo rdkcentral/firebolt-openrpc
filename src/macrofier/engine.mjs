@@ -346,15 +346,6 @@ const rpcMethodsOrEmptyArray = compose(
 // Pick events out of the methods array
 const eventsOrEmptyArray = compose(
   option([]),
-  map(filter(validEvent)),
-  // Maintain the side effect of process.exit here if someone is violating the rules
-  map(map(e => {
-    if (!e.name.match(/on[A-Z]/)) {
-      console.error(`ERROR: ${e.name} method is tagged as an event, but does not match the pattern "on[A-Z]"`)
-      process.kill(process.pid) // Using process.kill so that other worspaces all exit (and don't bury this error w/ logs)
-    }
-    return e
-  })),
   map(filter(isPublicEventMethod)),
   getMethods
 )
@@ -390,15 +381,6 @@ const providedCapabilitiesOrEmptyArray = compose(
 // Pick providers out of the methods array
 const providersOrEmptyArray = compose(
   option([]),
-  map(filter(validEvent)),
-  // Maintain the side effect of process.exit here if someone is violating the rules
-  map(map(e => {
-    if (!e.name.match(/on[A-Z]/)) {
-      console.error(`ERROR: ${e.name} method is tagged as a provider, but does not match the pattern "on[A-Z]"`)
-      process.exit(1) // Non-zero exit since we don't want to continue. Useful for CI/CD pipelines.
-    }
-    return e
-  })),
   map(filter(isProviderInterfaceMethod)),
   getMethods
 )
@@ -420,7 +402,7 @@ const getModuleName = json => {
   return json ? (json.title || (json.info ? json.info.title : 'Unknown')) : 'Unknown'
 }
 
-const makeEventName = x => methodName(x)[2].toLowerCase() + methodName(x).substr(3) // onFooBar becomes fooBar
+const makeEventName = x => methodName(x) // onFooBar  remains onFooBar
 const makeProviderMethod = x => x.name["onRequest".length].toLowerCase() + x.name.substr("onRequest".length + 1) // onRequestChallenge becomes challenge
 
 const generateAggregateMacros = (platformApi, appApi, additional, templates, library) => {
@@ -1785,7 +1767,7 @@ function insertMethodMacros(template, methodObj, platformApi, appApi, templates,
     .replace(/\$\{method\.context\.count}/g, method.context ? method.context.length : 0)
     .replace(/\$\{method\.deprecation\}/g, deprecation)
     .replace(/\$\{method\.Name\}/g, method.name[0].toUpperCase() + method.name.substr(1))
-    .replace(/\$\{event\.name\}/g, method.name.toLowerCase()[2] + method.name.substr(3))
+    .replace(/\$\{event\.name\}/g, method.name)
     .replace(/\$\{event\.params\}/g, eventParams)
     .replace(/\$\{event\.params\.table\.rows\}/g, eventParamsRows)
     .replace(/\$\{if\.event\.params\}(.*?)\$\{end\.if\.event\.params\}/gms, event && event.params.length ? '$1' : '')

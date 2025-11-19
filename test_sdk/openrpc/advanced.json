@@ -10,8 +10,7 @@
             "name": "plainEvent",
             "tags": [
                 {
-                    "name": "notifier",
-                    "x-event": "Advanced.onPlainEvent"
+                    "name": "notifier"
                 },
                 {
                     "name": "capabilities",
@@ -43,7 +42,7 @@
             ]
         },
         {
-            "name": "eventWithContext",
+            "name": "onEventWithContext",
             "tags": [
                 {
                     "name": "notifier",
@@ -96,11 +95,10 @@
             ]
         },
         {
-            "name": "eventWithTwoContext",
+            "name": "onEventWithTwoContext",
             "tags": [
                 {
-                    "name": "notifier",
-                    "x-event": "Advanced.onEventWithTwoContext"
+                    "name": "notifier"
                 },
                 {
                     "name": "capabilities",

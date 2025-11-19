@@ -145,8 +145,7 @@ const doListen = function(module, event, callback, context, once, internal=false
       if (Object.values(listeners.get(key)).length === 0) {
         const args = Object.assign({ listen: true }, context)
 
-        // TODO: Is subscriber -> notifer required to be a simple transform (drop 'on'?)
-        const subscriber = module + '.on' + event[0].toUpperCase() + event.substring(1)
+        const subscriber = module + '.' + event
         const notifier = module + '.' + event
 
         Gateway.subscribe(notifier, (params) => {
@@ -252,7 +251,7 @@ export const prioritize = function(...args) {
 const unsubscribe = (key, context) => {
   const [module, event] = key.split('.').slice(0, 2)
   const args = Object.assign({ listen: false }, context)
-  Gateway.request(module + '.on' + event[0].toUpperCase() + event.substr(1), args)
+  Gateway.request(module + '.' + event, args)
   Gateway.unsubscribe(`${module}.${event}`)
 }
 
