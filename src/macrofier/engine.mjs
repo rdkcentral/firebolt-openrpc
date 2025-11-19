@@ -402,7 +402,7 @@ const getModuleName = json => {
   return json ? (json.title || (json.info ? json.info.title : 'Unknown')) : 'Unknown'
 }
 
-const makeEventName = x => methodName(x)[2].toLowerCase() + methodName(x).substr(3) // onFooBar becomes fooBar
+const makeEventName = x => methodName(x) // onFooBar  remains onFooBar
 const makeProviderMethod = x => x.name["onRequest".length].toLowerCase() + x.name.substr("onRequest".length + 1) // onRequestChallenge becomes challenge
 
 const generateAggregateMacros = (platformApi, appApi, additional, templates, library) => {
@@ -1767,7 +1767,7 @@ function insertMethodMacros(template, methodObj, platformApi, appApi, templates,
     .replace(/\$\{method\.context\.count}/g, method.context ? method.context.length : 0)
     .replace(/\$\{method\.deprecation\}/g, deprecation)
     .replace(/\$\{method\.Name\}/g, method.name[0].toUpperCase() + method.name.substr(1))
-    .replace(/\$\{event\.name\}/g, method.name.toLowerCase()[2] + method.name.substr(3))
+    .replace(/\$\{event\.name\}/g, method.name)
     .replace(/\$\{event\.params\}/g, eventParams)
     .replace(/\$\{event\.params\.table\.rows\}/g, eventParamsRows)
     .replace(/\$\{if\.event\.params\}(.*?)\$\{end\.if\.event\.params\}/gms, event && event.params.length ? '$1' : '')

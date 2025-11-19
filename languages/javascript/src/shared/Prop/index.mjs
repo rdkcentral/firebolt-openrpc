@@ -21,7 +21,8 @@ function prop(
     if (immutable) {
       throw new Error('Cannot subscribe to an immutable property');
     }
-    return Events.listen(moduleName, key + 'Changed', ...Object.values(params), callbackOrValue);
+    const subscriber = 'on' + key[0].toUpperCase() + key.substring(1) + 'Changed'
+    return Events.listen(moduleName, subscriber, ...Object.values(params), callbackOrValue);
   } else if (type === 'setter') {
     // setter
     if (immutable) {
