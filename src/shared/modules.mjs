@@ -432,12 +432,12 @@ const eventDefaults = event => {
 const createNotifierFromProperty = (property, json) => {
 
   const notifier = JSON.parse(JSON.stringify(property))
-  notifier.name = methodRename(notifier, name => name + 'Changed')
+  notifier.name = methodRename(notifier, name => 'on' + name.charAt(0).toUpperCase() + name.substring(1) + 'Changed')
 
   Object.assign(notifier.tags.find(t => t.name.startsWith('property')), {
       name: 'notifier',
       'x-notifier-for': property.name,
-      'x-event': methodRename(notifier, name => 'on' + name.charAt(0).toUpperCase() + name.substring(1))
+      'x-event': notifier.name
   })
   
   //if notifier.result.schema is a $ref, we need to dereference it first
@@ -1232,17 +1232,16 @@ const generateEventSubscribers = json => {
       const tag = notifier.tags.find(tag => tag.name === 'notifier')
       // if there's an x-event extension, this denotes an editorially created subscriber
       if (!tag['x-event']) {
-          tag['x-event'] = methodRename(notifier, name => 'on' + name.charAt(0).toUpperCase() + name.substring(1))
+          tag['x-event'] = notifier.name
       }
 
       const xContextParams = tag['x-contextual-params'] || 0
-
-      let subscriber = json.methods.find(method => method.name === tag['x-event'])
+      const subscriber = json.methods.find(method => method.tags.find(t => t['x-notifier'] === notifier.name))
+      
       let xNotifierFor = json.methods.find(method => method.name === tag['x-notifier-for'])
 
       if (!subscriber) {
           const subscriber = JSON.parse(JSON.stringify(notifier))
-          subscriber.name = methodRename(subscriber, name => 'on' + name.charAt(0).toUpperCase() + name.substring(1))
 
           if (xNotifierFor) {
               subscriber.params = JSON.parse(JSON.stringify(xNotifierFor.params))
@@ -2244,7 +2243,6 @@ export {
     getEnums,
     getTypes,
     getEvents,
-    getPublicEvents,
     getSchemas,
     getParamsFromMethod,
     fireboltize,

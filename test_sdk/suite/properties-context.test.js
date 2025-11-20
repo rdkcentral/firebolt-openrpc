@@ -114,13 +114,13 @@ test('Context Property set', () => {
 });
 
 test('Event with single context param', () => {
-    Advanced.listen("eventWithContext", "some-app", (data) => {
+    Advanced.listen("onEventWithContext", "some-app", (data) => {
         expect(contextSentToEvent).toBe(true)
     })
 })
 
 test('Event with two context params', () => {
-    Advanced.listen("eventWithTwoContext", "some-app", "inactive", (data) => {
+    Advanced.listen("onEventWithTwoContext", "some-app", "inactive", (data) => {
         expect(bothContextSentToEvent).toBe(true)
     })
 })
