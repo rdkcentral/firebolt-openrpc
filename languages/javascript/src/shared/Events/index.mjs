@@ -127,6 +127,13 @@ const doListen = function(module, event, callback, context, once, internal=false
       return Promise.reject('No valid module name provided')
     }
 
+    //TODO: This is a patch and should be removed! Adds "on" if the event does not start with "on".
+    // Added temporarily for backward compatibility with older event namings
+    if (event != '*' && !event.startsWith('on')) {
+      event = 'on' + event[0].toUpperCase() + event.substring(1)
+      console.warn(`Event names should begin with 'on'. Using '${module + '.' + event}' instead.`)
+    }
+
     const wildcard = event === '*'
     const events = (wildcard ? validEvents[module] : [event]) // explodes wildcards into an array
     const promises = []
