@@ -429,7 +429,28 @@ const eventDefaults = event => {
 }
 
 
-const createNotifierFromProperty = (property, json) => {
+const createNotifierFromProperty = (property) => {
+
+  const notifier = JSON.parse(JSON.stringify(property))
+  notifier.name = methodRename(notifier, name => 'on' + name.charAt(0).toUpperCase() + name.substring(1) + 'Changed')
+
+  Object.assign(notifier.tags.find(t => t.name.startsWith('property')), {
+      name: 'notifier',
+      'x-notifier-for': property.name,
+      'x-event': notifier.name
+  })
+
+  notifier.params.push(notifier.result)
+ 
+  delete notifier.result    
+  notifier.examples.forEach(example => {
+          example.params.push(example.result)
+          delete example.result    
+      })
+  return notifier
+}
+
+const createNotifierFromPropertyFlatteningParams = (property, json) => {
 
   const notifier = JSON.parse(JSON.stringify(property))
   notifier.name = methodRename(notifier, name => 'on' + name.charAt(0).toUpperCase() + name.substring(1) + 'Changed')
@@ -734,7 +755,56 @@ const createTemporalStopMethod = (method, jsoname) => {
   return stop
 }
 
-const createSetterFromProperty = (property, json) => {
+const createSetterFromProperty = property => {
+  const setter = JSON.parse(JSON.stringify(property))
+  setter.name = methodRename(setter, name => 'set' + name.charAt(0).toUpperCase() + name.substr(1))
+  const old_tags = setter.tags
+  setter.tags = [
+      {
+          'name': 'setter',
+          'x-setter-for': property.name
+      }
+  ]
+
+  const param = setter.result
+  param.name = 'value'
+  param.required = true
+  setter.params.push(param)
+  
+  setter.result = {
+      name: 'result',
+      schema: {
+          type: "null"
+      }
+  }
+
+  setter.examples && setter.examples.forEach(example => {
+      example.params.push({
+          name: 'value',
+          value: example.result.value
+      })
+
+      example.result.value = null
+  })
+
+  old_tags.forEach(t => {
+      if (t.name !== 'property' && !t.name.startsWith('property:'))
+      {
+          if (t.name === 'capabilities') {
+              setter.tags.push({
+                  name: 'capabilities',
+                  'x-manages': t['x-uses'] || t['x-manages']
+              })
+          } else {
+              setter.tags.push(t)
+          }
+      }
+  })
+
+  return setter
+}
+
+const createSetterFromPropertyFlatteningParams = (property, json) => {
   const setter = JSON.parse(JSON.stringify(property))
   setter.name = methodRename(setter, name => 'set' + name.charAt(0).toUpperCase() + name.substr(1))
   const old_tags = setter.tags
@@ -1019,12 +1089,24 @@ const generatePropertyEvents = (json) => {
   const readonlies = json.methods.filter( m => m.tags && m.tags.find( t => t.name == 'property:readonly')) || []
 
   properties.forEach(property => {
-      json.methods.push(createNotifierFromProperty(property, json))
-
+      //check if the property has a tag to flatten the params or not ("x-notifier-params-flattening" )
+      const xNotifierParamsFlattening = property.tags.find(t => t['x-notifier-params-flattening']) ? property.tags.find(t => t['x-notifier-params-flattening'])['x-notifier-params-flattening'] : false
+      if (xNotifierParamsFlattening) {
+         json.methods.push(createNotifierFromPropertyFlatteningParams(property, json))
+      }
+      else {
+        json.methods.push(createNotifierFromProperty(property))
+      }
   })
   readonlies.forEach(property => {
-      json.methods.push(createNotifierFromProperty(property, json))
-
+      //check if the property has a tag to flatten the params or not ("x-notifier-params-flattening" )
+      const xNotifierParamsFlattening = property.tags.find(t => t['x-notifier-params-flattening']) ? property.tags.find(t => t['x-notifier-params-flattening'])['x-notifier-params-flattening'] : false
+      if (xNotifierParamsFlattening) {
+         json.methods.push(createNotifierFromPropertyFlatteningParams(property, json))
+      }
+      else {
+        json.methods.push(createNotifierFromProperty(property))
+      }
   })
 
   return json
@@ -1033,7 +1115,16 @@ const generatePropertyEvents = (json) => {
 const generatePropertySetters = json => {
     const properties = json.methods.filter( m => m.tags && m.tags.find( t => t.name == 'property')) || []
 
-    properties.forEach(property => json.methods.push(createSetterFromProperty(property, json)))
+    properties.forEach(property => {
+        //check if the property has a tag to flatten the params or not ("x-setter-params-flattening" )
+        const xSetterParamsFlattening = property.tags.find(t => t['x-setter-params-flattening']) ? property.tags.find(t => t['x-setter-params-flattening'])['x-setter-params-flattening'] : false
+        if (xSetterParamsFlattening) {
+            json.methods.push(createSetterFromPropertyFlatteningParams(property, json))
+        }
+        else {
+            json.methods.push(createSetterFromProperty(property))
+        }
+    })
 
     return json
 }
@@ -1254,8 +1345,8 @@ const generateEventSubscribers = json => {
                 subscriber.params.pop()
             }
           }
-          //subscriber.params.push({
-          subscriber.params.unshift({
+          subscriber.params.push({
+          //subscriber.params.unshift({
               name: 'listen',
               schema: {
                   type: 'boolean'
@@ -1287,8 +1378,8 @@ const generateEventSubscribers = json => {
                     }
                 } 
                 
-              //example.params.push({
-              example.params.unshift({
+              example.params.push({
+              //example.params.unshift({
                   name: "listen",
                   value: true
               })
@@ -1406,8 +1497,8 @@ const generateEventListenerParameters = json => {
     events.forEach(event => {
         event.params = event.params || []
         //push in front to keep existing params order
-        event.params.unshift({
-        //example.params.push({
+        //event.params.unshift({
+        example.params.push({
             "name": "listen",
             "required": true,
             "schema": {
@@ -1419,8 +1510,8 @@ const generateEventListenerParameters = json => {
 
         event.examples.forEach(example => {
             example.params = example.params || []
-            event.params.unshift({
-            //example.params.push({
+            //event.params.unshift({
+            example.params.push({
                 "name": "listen",
                 "value": true
             })

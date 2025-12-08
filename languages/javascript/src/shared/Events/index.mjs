@@ -221,6 +221,7 @@ const getClearArgs = function(...args) {
  
   // populate context based on registered context for this module/event
   // if an argument is not registered in validContext, that is ok meaning it is not a context argument
+  // Needed after introducing x-contextual-params
   for (let i = 0; args.length; i++) {
     let currentArg = args.shift()
     if (validContext[module] && validContext[module][event] && validContext[module][event][i]) {
