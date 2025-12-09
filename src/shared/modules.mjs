@@ -439,11 +439,15 @@ const createNotifierFromProperty = (property) => {
       'x-notifier-for': property.name,
       'x-event': notifier.name
   })
+  
+  //if we don't have flattening of params, and because all context params are mandatory, we must just push the result as the only param
+  notifier.params = []
 
   notifier.params.push(notifier.result)
  
   delete notifier.result    
   notifier.examples.forEach(example => {
+          example.params = []
           example.params.push(example.result)
           delete example.result    
       })
@@ -454,6 +458,9 @@ const createNotifierFromPropertyFlatteningParams = (property, json) => {
 
   const notifier = JSON.parse(JSON.stringify(property))
   notifier.name = methodRename(notifier, name => 'on' + name.charAt(0).toUpperCase() + name.substring(1) + 'Changed')
+
+  //this is a property, so all context params are mandatory, we must clear all context params if any and then flatten the result into params
+  notifier.params = []
 
   Object.assign(notifier.tags.find(t => t.name.startsWith('property')), {
       name: 'notifier',
@@ -493,12 +500,12 @@ const createNotifierFromPropertyFlatteningParams = (property, json) => {
 
   delete notifier.result
   notifier.examples.forEach(example => {
+        example.params = []
         // if example.result prototype is an object we want to push all example.result properties as params in example.params
         if (example.result && example.result.value && typeof example.result.value === 'object' && !Array.isArray(example.result.value)) {
             //if there are existing context params, we need to store them first as a copy
             const existingParams = example.params ? JSON.parse(JSON.stringify(example.params)) : []
-
-            example.params = []
+            
             Object.keys(example.result.value).forEach(key => {
                 example.params.push({
                     name: key,

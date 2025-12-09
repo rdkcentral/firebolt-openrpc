@@ -293,6 +293,14 @@ const isPublicEventMethod = and(
   )
 )
 
+const isNotifierMethod = compose(
+  option(false),
+  map(_ => true),
+  chain(find(propEq('name', 'notifier'))),
+  getPath(['tags'])
+)
+
+
 // TODO: import from shared/modules.mjs
 const isEventMethod = compose(
   option(false),
@@ -1535,40 +1543,86 @@ function insertMethodMacros(template, methodObj, platformApi, appApi, templates,
   const result = methodObj.result && JSON.parse(JSON.stringify(methodObj.result))
   const event = methodObj.providerEvent ?  JSON.parse(JSON.stringify(methodObj.providerEvent)) :  isEventMethod(methodObj) ? JSON.parse(JSON.stringify(methodObj)) : ''
  
-  const isEventInAppApiModule = appApi.methods.find(method => method.name === `${event.name}` || method.name === `${moduleName}.${event.name}`)
+  const isAppApi = isNotifierMethod(event)
   //full copy appApi or platformApi into currentModuleApiForEvent not shallow copy
-  let currentModuleApiForEvent = appApi ? JSON.parse(JSON.stringify(appApi)) : JSON.parse(JSON.stringify(platformApi))
-  if (isEventInAppApiModule ) {
-    console.log(`Event ${event.name} found in appApi`)
+  let currentModuleApiForEvent = isAppApi ? JSON.parse(JSON.stringify(appApi)) : JSON.parse(JSON.stringify(platformApi))
+
+  if (isAppApi ) {
+    console.log(`Notifier ${event.name} found in appApi`)
   }
 
   // add patformApi components.schemas to currentModuleApiForEvent
   // as we need to combine platformApi and appApi schemas for event result schema resolution
   // this is because the params of an event are usueally defined in appApi while the event context parameters if any are defined in platformApi
-  if (platformApi.components && platformApi.components.schemas) {
-    if (!currentModuleApiForEvent.components) {
-      currentModuleApiForEvent.components = {}
-    }
-    if (!currentModuleApiForEvent.components.schemas) {
-      currentModuleApiForEvent.components.schemas = {}
-    }
-    Object.entries(platformApi.components.schemas).forEach(([key, value]) => {
-      if (!currentModuleApiForEvent.components.schemas[key]) {
-        currentModuleApiForEvent.components.schemas[key] = value
-      }
-    })
+  if (!currentModuleApiForEvent.components) {
+    currentModuleApiForEvent.components = {}
   }
-  // add platformAip["x-schemas"] to currentModuleApiForEvent
-  if (platformApi["x-schemas"]) {
-    if (!currentModuleApiForEvent["x-schemas"]) {
-      currentModuleApiForEvent["x-schemas"] = {}
-    }
-    Object.entries(platformApi["x-schemas"]).forEach(([key, value]) => {
-      if (!currentModuleApiForEvent["x-schemas"][key]) {
-        currentModuleApiForEvent["x-schemas"][key] = value
-      }
-    })
+  if (!currentModuleApiForEvent.components.schemas) {
+    currentModuleApiForEvent.components.schemas = {}
   }
+  if (!currentModuleApiForEvent["x-schemas"]) {
+    currentModuleApiForEvent["x-schemas"] = {}
+  }
+  if (isAppApi) {
+    if (platformApi.components && platformApi.components.schemas) {
+      Object.entries(platformApi.components.schemas).forEach(([key, value]) => {
+        if (!currentModuleApiForEvent.components.schemas[key]) {
+          currentModuleApiForEvent.components.schemas[key] = value
+        }
+        //loop through each entity in value and add its entires to currentModuleApiForEvent.components.schemas[key]
+        Object.entries(value).forEach(([entityKey, entityValue]) => {
+          if (!currentModuleApiForEvent.components.schemas[key][entityKey]) {
+            currentModuleApiForEvent.components.schemas[key][entityKey] = entityValue
+          }
+        })
+      })
+    }
+    // add platformAip["x-schemas"] to currentModuleApiForEvent
+    if (platformApi["x-schemas"]) {
+      Object.entries(platformApi["x-schemas"]).forEach(([key, value]) => {
+        if (!currentModuleApiForEvent["x-schemas"][key]) {
+          currentModuleApiForEvent["x-schemas"][key] = value
+        }
+        //loop through each entity in value and add its entires to currentModuleApiForEvent["x-schemas"][key]
+        Object.entries(value).forEach(([entityKey, entityValue]) => {
+          if (!currentModuleApiForEvent["x-schemas"][key][entityKey]) {
+            currentModuleApiForEvent["x-schemas"][key][entityKey] = entityValue
+          }
+        })
+      })
+    }
+  }
+  else {
+    if (appApi.components && appApi.components.schemas) {
+      Object.entries(appApi.components.schemas).forEach(([key, value]) => {
+        if (!currentModuleApiForEvent.components.schemas[key]) {
+          currentModuleApiForEvent.components.schemas[key] = value
+        }
+        //loop through each entity in value and add its entires to currentModuleApiForEvent.components.schemas[key]
+        Object.entries(value).forEach(([entityKey, entityValue]) => {
+          if (!currentModuleApiForEvent.components.schemas[key][entityKey]) {
+            currentModuleApiForEvent.components.schemas[key][entityKey] = entityValue
+          }
+        })
+      })
+    }
+    // add appApi["x-schemas"] to currentModuleApiForEvent
+    if (appApi["x-schemas"]) {
+      Object.entries(appApi["x-schemas"]).forEach(([key, value]) => {
+        if (!currentModuleApiForEvent["x-schemas"][key]) {
+          currentModuleApiForEvent["x-schemas"][key] = value
+        }
+        //loop through each entity in value and add its entires to currentModuleApiForEvent["x-schemas"][key]
+        Object.entries(value).forEach(([entityKey, entityValue]) => {
+          if (!currentModuleApiForEvent["x-schemas"][key][entityKey]) {
+            currentModuleApiForEvent["x-schemas"][key][entityKey] = entityValue
+          }
+        })
+
+      })
+    }
+  }
+
 
   if (event) {
     
