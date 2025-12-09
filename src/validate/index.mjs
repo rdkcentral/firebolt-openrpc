@@ -192,14 +192,14 @@ const run = async ({
             })
             //namespaceRefs('', json.info.title, json)
 
+            // pull in external markdown files for descriptions
+            json = addExternalMarkdown(json, markdown)
+
             // add externally referenced schemas that are in our shared schemas path
             json = addExternalSchemas(json, sharedSchemas)
 
             // Do the firebolt API magic
             json = fireboltize(json, !!appApi, key)
-
-            // pull in external markdown files for descriptions
-            json = addExternalMarkdown(json, markdown)
 
             // Make sure we have a place to drop shared schemas
             json.components = json.components || {}
