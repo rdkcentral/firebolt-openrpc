@@ -429,10 +429,10 @@ const eventDefaults = event => {
 }
 
 
-const createNotifierFromProperty = (property, type='Changed') => {
+const createNotifierFromProperty = (property) => {
 
   const notifier = JSON.parse(JSON.stringify(property))
-  notifier.name = methodRename(notifier, name => 'on' + name.charAt(0).toUpperCase() + name.substring(1) + type)
+  notifier.name = methodRename(notifier, name => 'on' + name.charAt(0).toUpperCase() + name.substring(1) + 'Changed')
 
   Object.assign(notifier.tags.find(t => t.name.startsWith('property')), {
       name: 'notifier',
@@ -446,6 +446,75 @@ const createNotifierFromProperty = (property, type='Changed') => {
   notifier.examples.forEach(example => {
           example.params.push(example.result)
           delete example.result    
+      })
+  return notifier
+}
+
+const createNotifierFromPropertyFlatteningParams = (property, json) => {
+
+  const notifier = JSON.parse(JSON.stringify(property))
+  notifier.name = methodRename(notifier, name => 'on' + name.charAt(0).toUpperCase() + name.substring(1) + 'Changed')
+
+  Object.assign(notifier.tags.find(t => t.name.startsWith('property')), {
+      name: 'notifier',
+      'x-notifier-for': property.name,
+      'x-event': notifier.name
+  })
+  
+  //if notifier.result.schema is a $ref, we need to dereference it first
+  let resultSchema = notifier.result && notifier.result.schema
+  if (resultSchema && resultSchema['$ref']) {
+        resultSchema = getRefDefinition(resultSchema['$ref'], json, json['x-schemas'])
+  }
+
+  //if notifier.result.schema.type === 'object' and there are no params, we want to push all notifier.result properties as params in notifier.params instead of the whole object
+  if (resultSchema && resultSchema.type === 'object' && resultSchema.properties) {
+        //if there are existing context params, we need to store them first as a copy
+        /*
+        const existingParams = notifier.params ? JSON.parse(JSON.stringify(notifier.params)) : []
+        notifier.params = []
+        */
+        //console.log("Pushing notifier.result properties as params: ", notifier.result);
+        Object.keys(resultSchema.properties).forEach(key => {
+          notifier.params.push({
+              name: key,
+              schema: resultSchema.properties[key]
+          })
+      })
+      /*
+    //if there are existing context params, we need to push them back after the result properties
+    existingParams.forEach(p => {
+        notifier.params.push(p)
+    })
+        */
+  }else{
+      notifier.params.push(notifier.result)
+  }
+
+  delete notifier.result
+  notifier.examples.forEach(example => {
+        // if example.result prototype is an object we want to push all example.result properties as params in example.params
+        if (example.result && example.result.value && typeof example.result.value === 'object' && !Array.isArray(example.result.value)) {
+            //if there are existing context params, we need to store them first as a copy
+            const existingParams = example.params ? JSON.parse(JSON.stringify(example.params)) : []
+
+            example.params = []
+            Object.keys(example.result.value).forEach(key => {
+                example.params.push({
+                    name: key,
+                    value: example.result.value[key]
+                })
+            })
+            //if there are existing context params, we need to push them back after the result properties
+            existingParams.forEach(p => {
+                example.params.push(p)
+            })
+
+        }   else {
+            example.params.push(example.result)
+        }
+
+          delete example.result
       })
   return notifier
 }
@@ -735,6 +804,108 @@ const createSetterFromProperty = property => {
   return setter
 }
 
+const createSetterFromPropertyFlatteningParams = (property, json) => {
+  const setter = JSON.parse(JSON.stringify(property))
+  setter.name = methodRename(setter, name => 'set' + name.charAt(0).toUpperCase() + name.substr(1))
+  const old_tags = setter.tags
+  setter.tags = [
+      {
+          'name': 'setter',
+          'x-setter-for': property.name
+      }
+  ]
+  
+  //if setter.result.schema is a $ref, we need to dereference it first
+  let resultSchema = setter.result && setter.result.schema
+  if (resultSchema && resultSchema['$ref']) {
+        resultSchema = getRefDefinition(resultSchema['$ref'], json, json['x-schemas'])
+  }
+
+  //if setter.result.schema.type === 'object' and the property does not have context params, we want to push all setter.result properties as params in setter.params instead of the whole object
+  if (resultSchema && resultSchema.type === 'object' && resultSchema.properties) {
+      /*
+      //this is a setter we don't want to remove the context params if they exist, but we want to push the result properties as params but before the context params
+      //for that we need to store the existing context params first as a copy
+      const existingParams = setter.params ? JSON.parse(JSON.stringify(setter.params)) : []
+      setter.params = []
+       */ 
+     
+      //this is a setter we don't want to remove the context params if they exist,
+      Object.keys(resultSchema.properties).forEach(key => {
+          setter.params.push({
+              name: key,
+              schema: resultSchema.properties[key]
+          })
+      })
+      /*  
+      //now we can push back the existing context params
+        existingParams.forEach(p => {
+            setter.params.push(p)
+        })
+      */
+    } else {
+        const param = setter.result
+        param.name = 'value'
+        param.required = true
+        setter.params.push(param)
+      }
+    setter.result = {
+      name: 'result',
+      schema: {
+          type: "null"
+      }
+  }
+
+  setter.examples && setter.examples.forEach(example => {
+       
+        //first copy existing params from property example if they exist
+        example.params = property.examples[0].params || []
+
+        // if example.result prototype is an object we want to push all example.result properties as params in example.params
+         if (example.result && example.result.value && typeof example.result.value === 'object' && !Array.isArray(example.result.value)) {
+            /*
+            const existingParams = example.params ? JSON.parse(JSON.stringify(example.params)) : []
+            example.params = []
+            */
+            Object.keys(example.result.value).forEach(key => {
+                example.params.push({
+                    name: key,
+                    value: example.result.value[key]
+                })
+            })
+            /*
+            //now we can push back the existing context params
+            existingParams.forEach(p => {
+                example.params.push(p)
+            })
+                */
+        }   else {
+             example.params.push({
+                name: 'value',
+                value: example.result.value
+            })
+        }
+
+      example.result.value = null
+  })
+
+  old_tags.forEach(t => {
+      if (t.name !== 'property' && !t.name.startsWith('property:'))
+      {
+          if (t.name === 'capabilities') {
+              setter.tags.push({
+                  name: 'capabilities',
+                  'x-manages': t['x-uses'] || t['x-manages']
+              })
+          } else {
+              setter.tags.push(t)
+          }
+      }
+  })
+
+  return setter
+}
+
 const createFocusFromProvider = provider => {
   
   const ready = JSON.parse(JSON.stringify(provider))
@@ -913,17 +1084,29 @@ const copyAllowFocusTags = (json) => {
     return json
 }
 
-const generatePropertyEvents = json => {
+const generatePropertyEvents = (json) => {
   const properties = json.methods.filter( m => m.tags && m.tags.find( t => t.name == 'property')) || []
   const readonlies = json.methods.filter( m => m.tags && m.tags.find( t => t.name == 'property:readonly')) || []
 
   properties.forEach(property => {
-      json.methods.push(createNotifierFromProperty(property))
-
+      //check if the property has a tag to flatten the params or not ("x-notifier-params-flattening" )
+      const xNotifierParamsFlattening = property.tags.find(t => t['x-notifier-params-flattening']) ? property.tags.find(t => t['x-notifier-params-flattening'])['x-notifier-params-flattening'] : false
+      if (xNotifierParamsFlattening) {
+         json.methods.push(createNotifierFromPropertyFlatteningParams(property, json))
+      }
+      else {
+        json.methods.push(createNotifierFromProperty(property))
+      }
   })
   readonlies.forEach(property => {
-      json.methods.push(createNotifierFromProperty(property))
-
+      //check if the property has a tag to flatten the params or not ("x-notifier-params-flattening" )
+      const xNotifierParamsFlattening = property.tags.find(t => t['x-notifier-params-flattening']) ? property.tags.find(t => t['x-notifier-params-flattening'])['x-notifier-params-flattening'] : false
+      if (xNotifierParamsFlattening) {
+         json.methods.push(createNotifierFromPropertyFlatteningParams(property, json))
+      }
+      else {
+        json.methods.push(createNotifierFromProperty(property))
+      }
   })
 
   return json
@@ -932,10 +1115,36 @@ const generatePropertyEvents = json => {
 const generatePropertySetters = json => {
     const properties = json.methods.filter( m => m.tags && m.tags.find( t => t.name == 'property')) || []
 
-    properties.forEach(property => json.methods.push(createSetterFromProperty(property)))
+    properties.forEach(property => {
+        //check if the property has a tag to flatten the params or not ("x-setter-params-flattening" )
+        const xSetterParamsFlattening = property.tags.find(t => t['x-setter-params-flattening']) ? property.tags.find(t => t['x-setter-params-flattening'])['x-setter-params-flattening'] : false
+        if (xSetterParamsFlattening) {
+            json.methods.push(createSetterFromPropertyFlatteningParams(property, json))
+        }
+        else {
+            json.methods.push(createSetterFromProperty(property))
+        }
+    })
 
     return json
 }
+
+const removePropertyContextParams = json => {
+    let properties = json.methods.filter( m => m.tags && m.tags.find( t => t.name == 'property')) || []
+
+    properties.forEach(property => {
+        if (property.params.length > 0) {
+            property.params = []
+        }
+        if (property.examples && property.examples.length > 0) {
+            property.examples.forEach(example => {
+                example.params = []
+            })
+        }
+    })
+ 
+}
+
 
 const generatePolymorphicPullEvents = json => {
     const pushers = json.methods.filter( m => m.tags && m.tags.find( t => t.name == 'polymorphic-pull')) || []
@@ -1103,6 +1312,10 @@ const generateUnidirectionalProviderMethods = json => {
   return json
 }
 
+const haveContextualParams = subscriber => {
+  return subscriber.tags.find(tag => tag["x-contextual-params"]) > 0 ? true : false
+}
+
 const generateEventSubscribers = json => {
   const notifiers = json.methods.filter( m => m.tags && m.tags.find(t => t.name == 'notifier')) || []
 
@@ -1112,12 +1325,28 @@ const generateEventSubscribers = json => {
       if (!tag['x-event']) {
           tag['x-event'] = notifier.name
       }
+
+      const xContextParams = tag['x-contextual-params'] || 0
       const subscriber = json.methods.find(method => method.tags.find(t => t['x-notifier'] === notifier.name))
+      
+      let xNotifierFor = json.methods.find(method => method.name === tag['x-notifier-for'])
 
       if (!subscriber) {
           const subscriber = JSON.parse(JSON.stringify(notifier))
-          subscriber.params.pop()
+
+          if (xNotifierFor) {
+              subscriber.params = JSON.parse(JSON.stringify(xNotifierFor.params))
+              subscriber.examples = JSON.parse(JSON.stringify(xNotifierFor.examples))
+          }
+          else {
+            // pop as many params as specified as context params in the notifier
+            const paramsLength = subscriber.params.length
+            for (let i = xContextParams; i < paramsLength; i++) {
+                subscriber.params.pop()
+            }
+          }
           subscriber.params.push({
+          //subscriber.params.unshift({
               name: 'listen',
               schema: {
                   type: 'boolean'
@@ -1130,10 +1359,27 @@ const generateEventSubscribers = json => {
                   type: "null"
               }
           }
-
+           
           subscriber.examples.forEach(example => {
-              example.params.pop()
+            if (xNotifierFor)
+                {
+                    // remove 1, that is for listen
+                    const contextParamsCount = subscriber.params.length -1;
+                    const totalParams = example.params.length;
+                    for (let i = contextParamsCount; i < totalParams; i++) {
+                        example.params.pop()
+                    }
+                }
+                else {
+                    // pop as many params as specified as context params in the notifier
+                    const paramsLength = example.params.length
+                    for (let i = xContextParams; i < paramsLength; i++) {
+                        example.params.pop()
+                    }
+                } 
+                
               example.params.push({
+              //example.params.unshift({
                   name: "listen",
                   value: true
               })
@@ -1250,7 +1496,9 @@ const generateEventListenerParameters = json => {
 
     events.forEach(event => {
         event.params = event.params || []
-        event.params.push({
+        //push in front to keep existing params order
+        //event.params.unshift({
+        example.params.push({
             "name": "listen",
             "required": true,
             "schema": {
@@ -1262,6 +1510,7 @@ const generateEventListenerParameters = json => {
 
         event.examples.forEach(example => {
             example.params = example.params || []
+            //event.params.unshift({
             example.params.push({
                 "name": "listen",
                 "value": true
@@ -1568,7 +1817,7 @@ const getPathFromModule = (module, path) => {
     return item    
 }
 
-const fireboltize = (json, bidirectional) => {
+const fireboltize = (json, bidirectional, module) => {
     json = generatePropertyEvents(json)
     json = generatePropertySetters(json)
     json = generateProvidedByMethods(json)
@@ -1578,6 +1827,7 @@ const fireboltize = (json, bidirectional) => {
       console.log('Creating bidirectional APIs')
       json = generateEventSubscribers(json)
       json = generateProviderRegistrars(json)
+      //removePropertyContextParams(json)
 
     } else {
       console.log('Creating unidirectional APIs')
