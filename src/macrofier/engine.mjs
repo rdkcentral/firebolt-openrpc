@@ -1647,20 +1647,9 @@ function insertMethodMacros(template, methodObj, platformApi, appApi, templates,
   let eventParams = event.params && event.params.length ? getTemplate('/sections/parameters', templates) + event.params.map(p => insertParameterMacros(getTemplate('/parameters/default', templates), p, event, currentModuleApiForEvent)).join('') : ''
   const eventForSubscriber = getNotifierForMethod(method, appApi)
   
-  // Filter parameters to remove context parameters, because only non-context parameters are parameters for the event callback
-  let xContextParams = 0
   let eventNonContextualParams = ''
   if (eventForSubscriber) {
-    if (eventForSubscriber.tags) {
-      const tag = eventForSubscriber.tags.find(tag => tag.name === 'notifier');
-      xContextParams = tag['x-contextual-params'] || 0
-    }
-
     if (eventForSubscriber.params && eventForSubscriber.params.length) {
-      if (xContextParams > 0) {
-        const nonContextParamsArray = eventForSubscriber.params.slice(xContextParams, eventForSubscriber.params.length)
-        eventNonContextualParams = getTemplate('/sections/parameters', templates) + nonContextParamsArray.map(p => insertParameterMacros(getTemplate('/parameters/default', templates), p, eventForSubscriber, appApi)).join(', ')
-      } else
         eventNonContextualParams = getTemplate('/sections/parameters', templates) + eventForSubscriber.params.map(p => insertParameterMacros(getTemplate('/parameters/default', templates), p, eventForSubscriber, appApi)).join(', ')
     }
   }

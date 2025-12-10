@@ -1152,6 +1152,27 @@ const removePropertyContextParams = json => {
  
 }
 
+const removeNotifierContextParams = json => {
+    let notifiers = json.methods.filter(m => m.tags && m.tags.find(t => t.name == 'notifier')) || []
+
+    notifiers.forEach(notifyer => {
+        if (notifyer.tags) {
+            const tag = notifyer.tags.find(tag => tag.name === 'notifier');
+            const xContextParams = tag['x-contextual-params'] || 0
+
+            if (xContextParams > 0) {
+                if (notifyer.params.length > 0 ) {
+                    notifyer.params = notifyer.params.slice(xContextParams, notifyer.params.length)
+                }
+                if (notifyer.examples && notifyer.examples.length > 0) {
+                    notifyer.examples.forEach(example => {
+                        example.params = example.params.slice(xContextParams, example.params.length)
+                    })
+                }
+            }
+        }
+    })
+}
 
 const generatePolymorphicPullEvents = json => {
     const pushers = json.methods.filter( m => m.tags && m.tags.find( t => t.name == 'polymorphic-pull')) || []
@@ -1835,6 +1856,7 @@ const fireboltize = (json, bidirectional, module) => {
       json = generateEventSubscribers(json)
       json = generateProviderRegistrars(json)
       //removePropertyContextParams(json)
+      removeNotifierContextParams(json)
 
     } else {
       console.log('Creating unidirectional APIs')

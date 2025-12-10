@@ -749,7 +749,7 @@ const isSupportedTuple = schema => {
 }
 
 function getSchemaType(schema, module, { templateDir = 'types', link = false, code = false, asPath = false, event = false, result = false, expandEnums = true, baseUrl = '', namespace = true } = {}) {
-  namespace = false // disable namespace support
+  //namespace = false // disable namespace support
   const wrap = (str, wrapper) => wrapper + str + wrapper
 
   schema = sanitize(schema)
