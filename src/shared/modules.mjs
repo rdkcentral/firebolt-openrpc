@@ -504,7 +504,7 @@ const createNotifierFromPropertyFlatteningParams = (property, json) => {
         // if example.result prototype is an object we want to push all example.result properties as params in example.params
         if (example.result && example.result.value && typeof example.result.value === 'object' && !Array.isArray(example.result.value)) {
             //if there are existing context params, we need to store them first as a copy
-            const existingParams = example.params ? JSON.parse(JSON.stringify(example.params)) : []
+            //const existingParams = example.params ? JSON.parse(JSON.stringify(example.params)) : []
             
             Object.keys(example.result.value).forEach(key => {
                 example.params.push({
@@ -513,9 +513,9 @@ const createNotifierFromPropertyFlatteningParams = (property, json) => {
                 })
             })
             //if there are existing context params, we need to push them back after the result properties
-            existingParams.forEach(p => {
-                example.params.push(p)
-            })
+            //existingParams.forEach(p => {
+            //    example.params.push(p)
+            //})
 
         }   else {
             example.params.push(example.result)

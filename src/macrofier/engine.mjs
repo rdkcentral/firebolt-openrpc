@@ -1530,10 +1530,10 @@ function insertMethodMacros(template, methodObj, platformApi, appApi, templates,
   const temporalItemName = isTemporalSetMethod(methodObj) ? methodObj.result.schema.items && methodObj.result.schema.items.title || 'Item' : ''
   const temporalAddName = isTemporalSetMethod(methodObj) ? `on${temporalItemName}Available` : ''
   const temporalRemoveName = isTemporalSetMethod(methodObj) ? `on${temporalItemName}Unvailable` : ''
-  const params = methodObj.params && methodObj.params.length ? getTemplate('/sections/parameters', templates) + methodObj.params.map(p => insertParameterMacros(getTemplate('/parameters/default', templates), p, methodObj, currentModuleApi)).join(paramDelimiter) : ''
-  const paramsRows = methodObj.params && methodObj.params.length ? methodObj.params.map(p => insertParameterMacros(getTemplate('/parameters/default', templates), p, methodObj, currentModuleApi)).join('') : ''
-  const paramsAnnotations = methodObj.params && methodObj.params.length ? methodObj.params.map(p => insertParameterMacros(getTemplate('/parameters/annotations', templates), p, methodObj, currentModuleApi)).join('') : ''
-  const paramsJson = methodObj.params && methodObj.params.length ? methodObj.params.map(p => insertParameterMacros(getTemplate('/parameters/json', templates), p, methodObj, currentModuleApi)).join('') : ''
+  const params = methodObj.params && methodObj.params.length ? getTemplate('/sections/parameters', templates) + methodObj.params.map(p => insertParameterMacros(getTemplate('/parameters/default', templates), p, currentModuleApi)).join(paramDelimiter) : ''
+  const paramsRows = methodObj.params && methodObj.params.length ? methodObj.params.map(p => insertParameterMacros(getTemplate('/parameters/default', templates), p, currentModuleApi)).join('') : ''
+  const paramsAnnotations = methodObj.params && methodObj.params.length ? methodObj.params.map(p => insertParameterMacros(getTemplate('/parameters/annotations', templates), p, currentModuleApi)).join('') : ''
+  const paramsJson = methodObj.params && methodObj.params.length ? methodObj.params.map(p => insertParameterMacros(getTemplate('/parameters/json', templates), p, currentModuleApi)).join('') : ''
 
   const deprecated = methodObj.tags && methodObj.tags.find(t => t.name === 'deprecated')
   const deprecation = deprecated ? deprecated['x-since'] ? `since version ${deprecated['x-since']}` : '' : ''
@@ -1644,13 +1644,13 @@ function insertMethodMacros(template, methodObj, platformApi, appApi, templates,
   const eventResultSchemaPropParams = event && event.result && event.result.schema && event.result.schema.properties && event.result.schema.properties.parameters ? `const ${event.result.schema.properties.parameters.title}& parameters` : ''
 
   
-  let eventParams = event.params && event.params.length ? getTemplate('/sections/parameters', templates) + event.params.map(p => insertParameterMacros(getTemplate('/parameters/default', templates), p, event, currentModuleApiForEvent)).join('') : ''
+  let eventParams = event.params && event.params.length ? getTemplate('/sections/parameters', templates) + event.params.map(p => insertParameterMacros(getTemplate('/parameters/default', templates), p, currentModuleApiForEvent)).join('') : ''
   const eventForSubscriber = getNotifierForMethod(method, appApi)
   
   let eventNonContextualParams = ''
   if (eventForSubscriber) {
     if (eventForSubscriber.params && eventForSubscriber.params.length) {
-        eventNonContextualParams = getTemplate('/sections/parameters', templates) + eventForSubscriber.params.map(p => insertParameterMacros(getTemplate('/parameters/default', templates), p, eventForSubscriber, appApi)).join(', ')
+        eventNonContextualParams = getTemplate('/sections/parameters', templates) + eventForSubscriber.params.map(p => insertParameterMacros(getTemplate('/parameters/default', templates), p, appApi)).join(', ')
     }
   }
 
@@ -1659,12 +1659,12 @@ function insertMethodMacros(template, methodObj, platformApi, appApi, templates,
     // If there's a notifier for this method, and it has examples, use its params for the eventParams section
     if (eventForSubscriber && eventForSubscriber.examples && eventForSubscriber.examples.length) {
       eventParams = (eventForSubscriber.params && eventForSubscriber.params.length) ?
-        getTemplate('/sections/callback-parameters', templates) + eventForSubscriber.params.map(p => insertParameterMacros(getTemplate('/parameters/default', templates), p, eventForSubscriber, appApi)).join('')
+        getTemplate('/sections/callback-parameters', templates) + eventForSubscriber.params.map(p => insertParameterMacros(getTemplate('/parameters/default', templates), p, appApi)).join('')
         : ''
     }
   }
 
-  const eventParamsRows = event.params && event.params.length ? event.params.map(p => insertParameterMacros(getTemplate('/parameters/default', templates), p, event, currentModuleApiForEvent)).join('') : ''
+  const eventParamsRows = event.params && event.params.length ? event.params.map(p => insertParameterMacros(getTemplate('/parameters/default', templates), p, currentModuleApiForEvent)).join('') : ''
 
   let itemName = ''
   let itemType = ''
@@ -2186,14 +2186,13 @@ function insertSchemaMacros(template, title, schema, module) {
     .replace(/\$\{name\}/g, title || '')
 }
 
-function insertParameterMacros(template, param, method, module) {
+function insertParameterMacros(template, param, module, addNamespace = false) {
 
-  //| `${method.param.name}` | ${method.param.type} | ${method.param.required} | ${method.param.summary} ${method.param.constraints} |
 
   let constraints = getSchemaConstraints(param, module)
-  let type = Types.getSchemaType(param.schema, module, { templateDir: state.typeTemplateDir, code: false, link: false, asPath: false, expandEnums: false, namespace: !config.copySchemasIntoModules }) //baseUrl: options.baseUrl
+  let type = Types.getSchemaType(param.schema, module, { templateDir: state.typeTemplateDir, code: false, link: false, asPath: false, expandEnums: false, namespace: addNamespace }) //baseUrl: options.baseUrl
   // let typeLink = getLinkForSchema(param.schema, module)
-  let jsonType = Types.getSchemaType(param.schema, module, { templateDir: 'json-types', code: false, link: false, asPath: false, expandEnums: false, namespace: !config.copySchemasIntoModules })
+  let jsonType = Types.getSchemaType(param.schema, module, { templateDir: 'json-types', code: false, link: false, asPath: false, expandEnums: false, namespace: addNamespace })
 
   if (constraints && type) {
     constraints = '<br/>' + constraints
