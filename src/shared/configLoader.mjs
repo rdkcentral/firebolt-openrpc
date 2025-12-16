@@ -1,6 +1,8 @@
 import path from 'path'
 import { readJson } from './filesystem.mjs'
 
+import { logInfo, logSuccess } from './io.mjs'
+
 let config = null
 
 export const loadConfig = async (customConfig, language) => {
@@ -10,9 +12,9 @@ export const loadConfig = async (customConfig, language) => {
     try {
       const overrideConfig = await readJson(path.join(customConfig, 'language.config.json'))
       config = { ...config, ...overrideConfig }
-
+      logSuccess(`Override default language configuration from ${customConfig}`);
     } catch (error) {
-      console.log(`Custom configuration file not found at ${customConfig}. Falling back to default language configuration.`);
+      logInfo(`Custom language configuration not found at ${customConfig}. Falling back to default configuration.`);
     }
   }
   return config

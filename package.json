@@ -14,9 +14,9 @@
     "build": "npm run validate && npm run build:docs && npm run build:sdk",
     "validate": "node ./src/cli.mjs validate --input ./test_sdk/openrpc --platformApi ./build/sdk-open-rpc.json --appApi ./build/sdk-app-open-rpc.json --schemas test_sdk/schemas --transformations && npm run build:openrpc && node ./src/cli.mjs validate --input ./build/sdk-open-rpc.json",
     "build:openrpc": "node ./src/cli.mjs openrpc --input ./test_sdk --template ./src/openrpc-template.json --platformApi ./build/sdk-open-rpc.json --appApi ./build/sdk-app-open-rpc.json  --schemas test_sdk/schemas",
-    "build:sdk": "node ./src/cli.mjs sdk --input ./build/sdk-open-rpc.json --template ./test_sdk/sdk --output ./build/sdk/javascript/src --platformApi ./build/sdk-open-rpc.json --appApi ./build/sdk-app-open-rpc.json --schemas test_sdk/schemas",
+    "build:sdk": "node ./src/cli.mjs sdk --input ./build/sdk-open-rpc.json --template ./test_sdk/sdk --config-file-override ./test_sdk/sdk/configOverride/languages/javascript --output ./build/sdk/javascript/src --platformApi ./build/sdk-open-rpc.json --appApi ./build/sdk-app-open-rpc.json --schemas test_sdk/schemas",
     "build:d": "node ./src/cli.mjs declarations --input ./build/sdk-open-rpc.json --output ./dist/lib/sdk.d.ts --platformApi ./build/sdk-open-rpc.json --appApi ./build/sdk-app-open-rpc.json --schemas test_sdk/schemas",
-    "build:docs": "node ./src/cli.mjs docs --input ./build/sdk-open-rpc.json --template ./test_sdk/sdk --output ./build/docs/markdown  --platformApi ./build/sdk-open-rpc.json --appApi ./build/sdk-app-open-rpc.json --schemas test_sdk/schemas --as-path",
+    "build:docs": "node ./src/cli.mjs docs --input ./build/sdk-open-rpc.json --config-file-override ./test_sdk/sdk/configOverride/languages/markdown --output ./build/docs/markdown  --platformApi ./build/sdk-open-rpc.json --appApi ./build/sdk-app-open-rpc.json --schemas test_sdk/schemas --as-path",
     "build:wiki": "node ./src/cli.mjs docs --input ./build/sdk-open-rpc.json --output ./build/docs/wiki --schemas test_sdk/schemas",
     "dist": "npm run validate && npm run build:sdk && npm run build:docs && npm run test",
     "prepare": "husky install"

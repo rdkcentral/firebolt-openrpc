@@ -20,7 +20,7 @@ const knownOpts = {
   'template': [path],
   'static-module': [String, Array],
   'language': [path],
-  'config': [path],
+  'config-file-override': [path],
   'examples': [path, Array],
   'as-path': [Boolean],
   'bidirectional': [Boolean],
@@ -51,10 +51,8 @@ const defaults = {
 // Ignore args: 0 (node), 1 (cli.mjs), and 2 (the task name, which has no --option in front of it)
 const noptResult = nopt(knownOpts, shortHands, process.argv, 3)
 
-//TODO --template is used in two different ways: a) to pass an Open RPC template for spec slicing/generation and b) to pass a path to the directory containing a custom API implementation for a particular language
-// We use the path to the directory where the configuration file is located, but --template should only be used for one thing
-if (noptResult.template) {
-  defaults.config = 'docs' ? noptResult.template +  "/configOverride/languages/markdown" : noptResult.template +  "/configOverride/languages/javascript" 
+if (noptResult['config-file-override']) {
+  defaults.config = noptResult['config-file-override']
 }
 
 const parsedArgs = Object.assign({}, defaults, noptResult)
