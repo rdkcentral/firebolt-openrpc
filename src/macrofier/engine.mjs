@@ -49,6 +49,10 @@ let config = {
   extractSubSchemas: false,
   unwrapResultObjects: false,
   excludeDeclarations: false,
+  // TODO: This flag is for legacy support. The old behavior was to generate 
+  // listen and once for all components the have events, but after switching to bidirectional
+  // that is not possible because the event signature is no longer the same for all events - one argument object with all event payload properties
+  enableListenAndOnceDeclarations: false,
 }
 
 const state = {
@@ -635,7 +639,8 @@ const generateMacros = (platformApi, appApi, templates, languages, options = {})
       macros.methods.private = methodSection('private-methods', privateMethodsArray)
 
       const publicEventsArray = allMethodsArray.filter(m => m.body[dir] && m.event && (!options.hideExcluded || !m.excluded) && !m.private)
-      const privateEventsArray = allMethodsArray.filter(m => m.body[dir] && m.event && (!options.hideExcluded || !m.excluded && m.private))
+      //const privateEventsArray = allMethodsArray.filter(m => m.body[dir] && m.event && (!options.hideExcluded || !m.excluded && m.private))
+      const privateEventsArray = []
       macros.events.methods = methodSection('events', publicEventsArray)
       macros.events.private = methodSection('private-events', privateEventsArray)
 
@@ -1347,7 +1352,7 @@ function generateExamples(json = {}, mainTemplates = {}, languages = {}) {
   return examples
 }
 
-function generateMethodResult(type, templates) {
+function generateMethodResult(type, templates, enableListenAndOnceDeclarations = false) {
   const result = {
     name: type,
     body: {},
@@ -1358,6 +1363,10 @@ function generateMethodResult(type, templates) {
      const template = getTemplate(('/' + dir + '/' + type), templates)
      if (template) {
        if (dir.includes('declarations')) {
+         //skip listen and once if not enabled"
+         if (!enableListenAndOnceDeclarations && (type === 'listen' || type === 'once')) {
+           return;
+         }
          result.declaration[dir] = template
        }
        else if (dir.includes('methods')) {
@@ -1408,8 +1417,17 @@ function generateMethods(platformApi = {}, appApi = null, examples = {}, templat
 
   // TODO: might be useful to pass in local macro for an array with all event names
   if (platformApi.methods && platformApi.methods.find(isPublicEventMethod)) {
-    ['listen', 'once', 'clear'].forEach(type => {
-      results.push(generateMethodResult(type, templates))
+    
+    const allEventNames = ['listen', 'once', 'clear'];
+    
+    const enableListenAndOnceDeclarations = config.enableListenAndOnceDeclarations || false;
+    if(!enableListenAndOnceDeclarations && isGeneratingDocs(languages)){
+      //remove listen and once for docs generation
+      allEventNames.splice(0,2);
+    }
+    
+    allEventNames.forEach(type => {
+      results.push(generateMethodResult(type, templates, enableListenAndOnceDeclarations))
     })
   }
 
@@ -1655,7 +1673,7 @@ function insertMethodMacros(template, methodObj, platformApi, appApi, templates,
   }
 
   if (isGeneratingDocs(languages)) {
-    eventNonContextualParams = isEventMethod(methodObj) && event.result ? Types.getMethodSignatureResult(event, currentModuleApiForEvent, { callback: true, namespace: !config.copySchemasIntoModules }) : ''
+    eventNonContextualParams = isEventMethod(methodObj) && event.result ? Types.getMethodSignatureResult(event, currentModuleApiForEvent, { callback: true, namespace: true}) : ''
     // If there's a notifier for this method, and it has examples, use its params for the eventParams section
     if (eventForSubscriber && eventForSubscriber.examples && eventForSubscriber.examples.length) {
       eventParams = (eventForSubscriber.params && eventForSubscriber.params.length) ?

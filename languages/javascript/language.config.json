@@ -5,6 +5,7 @@
         "/index.mjs",
         "/defaults.mjs"
     ],
+    "enableListenAndOnceDeclarations": false,
     "enableStringPropertyKeys": true,
     "createModuleDirectories": true,
     "copySchemasIntoModules": false,

@@ -75,6 +75,7 @@ const macrofy = async (
         treeshakePattern = null,
         treeshakeEntry = null,
         treeshakeTypes = [],
+        enableListenAndOnceDeclarations = false,
         moduleWhitelist = []
     } = options
 
@@ -98,6 +99,7 @@ const macrofy = async (
             templateExtensionMap,
             excludeDeclarations,
             extractProviderSchema,
+            enableListenAndOnceDeclarations,
             operators
         })
 
