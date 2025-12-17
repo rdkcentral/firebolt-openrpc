@@ -21,7 +21,7 @@
 import path from 'path'
 import { readJson } from '../shared/filesystem.mjs'
 import macrofy from '../macrofier/index.mjs'
-import { loadConfig, getConfig } from '../shared/configLoader.mjs';
+import { loadConfig } from '../shared/configLoader.mjs';
 
 /************************************************************************************************/
 /******************************************** MAIN **********************************************/
@@ -33,6 +33,7 @@ const run = async ({
   template: template,
   output: output,
   language: language,
+  config: config,
   'static-module': staticModuleNames,
   argv: {
     remain: moduleWhitelist
@@ -54,40 +55,40 @@ const run = async ({
   }
   
   // Load in config
-  await loadConfig(language)
-  const config = getConfig()
+  const conf = await loadConfig(config, language);
 
   return macrofy(platformApi, appApi, template, output, {
     headline: 'SDK code',
     outputDirectory:    'sdk',
     sharedTemplates:    path.join(language, 'templates'),
     staticContent:      path.join(language, 'src', 'shared'),
-    templatesPerModule: config.templatesPerModule,
-    templatesPerSchema: config.templatesPerSchema,
-    persistPermission: config.persistPermission,
-    createPolymorphicMethods: config.createPolymorphicMethods || false,
-    enableUnionTypes: config.enableUnionTypes || false,
-    operators: config.operators,
-    primitives: config.primitives,
-    createModuleDirectories: config.createModuleDirectories,
-    copySchemasIntoModules: config.copySchemasIntoModules,
-    extractSubSchemas: config.extractSubSchemas,
-    convertTuplesToArraysOrObjects: config.convertTuplesToArraysOrObjects,
-    unwrapResultObjects: config.unwrapResultObjects,
-    allocatedPrimitiveProxies: config.allocatedPrimitiveProxies,
-    additionalSchemaTemplates: config.additionalSchemaTemplates,
-    additionalMethodTemplates: config.additionalMethodTemplates,
-    templateExtensionMap: config.templateExtensionMap,
-    excludeDeclarations: config.excludeDeclarations,
-    extractProviderSchema: config.extractProviderSchema,
+    templatesPerModule: conf.templatesPerModule,
+    templatesPerSchema: conf.templatesPerSchema,
+    persistPermission: conf.persistPermission,
+    createPolymorphicMethods: conf.createPolymorphicMethods || false,
+    enableUnionTypes: conf.enableUnionTypes || false,
+    operators: conf.operators,
+    primitives: conf.primitives,
+    createModuleDirectories: conf.createModuleDirectories,
+    copySchemasIntoModules: conf.copySchemasIntoModules,
+    extractSubSchemas: conf.extractSubSchemas,
+    convertTuplesToArraysOrObjects: conf.convertTuplesToArraysOrObjects,
+    unwrapResultObjects: conf.unwrapResultObjects,
+    allocatedPrimitiveProxies: conf.allocatedPrimitiveProxies,
+    additionalSchemaTemplates: conf.additionalSchemaTemplates,
+    additionalMethodTemplates: conf.additionalMethodTemplates,
+    templateExtensionMap: conf.templateExtensionMap,
+    excludeDeclarations: conf.excludeDeclarations,
+    extractProviderSchema: conf.extractProviderSchema,
     staticModuleNames: staticModuleNames,
     hideExcluded: true,
     moduleWhitelist: moduleWhitelist,
-    aggregateFiles: config.aggregateFiles,
+    aggregateFiles: conf.aggregateFiles,
     rename: mainFilename ? { '/index.mjs': mainFilename, '/index.d.ts': declarationsFilename } : {},
-    treeshakePattern: config.treeshakePattern ? new RegExp(config.treeshakePattern, "g") : undefined,
-    treeshakeTypes: config.treeshakeTypes,
-    treeshakeEntry: mainFilename ? '/' + mainFilename : '/index.mjs'
+    treeshakePattern: conf.treeshakePattern ? new RegExp(conf.treeshakePattern, "g") : undefined,
+    treeshakeTypes: conf.treeshakeTypes,
+    treeshakeEntry: mainFilename ? '/' + mainFilename : '/index.mjs',
+    enableListenAndOnceDeclarations: conf.enableListenAndOnceDeclarations || false
   })
 }
 

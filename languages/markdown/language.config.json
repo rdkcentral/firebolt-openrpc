@@ -3,6 +3,7 @@
     "langcode": "markdown",
     "createModuleDirectories": true,
     "copySchemasIntoModules": false,
+    "enableListenAndOnceDeclarations": false,
     "templatesPerModule": [ "index.md" ],
     "templatesPerSchema": [ "schemas/index.md" ]
 }

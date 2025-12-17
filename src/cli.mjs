@@ -20,6 +20,7 @@ const knownOpts = {
   'template': [path],
   'static-module': [String, Array],
   'language': [path],
+  'config-file-override': [path],
   'examples': [path, Array],
   'as-path': [Boolean],
   'bidirectional': [Boolean],
@@ -48,7 +49,13 @@ const defaults = {
 
 // Parse the arguments and merge with the defaults
 // Ignore args: 0 (node), 1 (cli.mjs), and 2 (the task name, which has no --option in front of it)
-const parsedArgs = Object.assign({}, defaults, nopt(knownOpts, shortHands, process.argv, 3))
+const noptResult = nopt(knownOpts, shortHands, process.argv, 3)
+
+if (noptResult['config-file-override']) {
+  defaults.config = noptResult['config-file-override']
+}
+
+const parsedArgs = Object.assign({}, defaults, noptResult)
 const task = process.argv[2]
 
 try {

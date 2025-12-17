@@ -21,7 +21,7 @@
 import path from 'path'
 import macrofy from '../macrofier/index.mjs'
 import { readJson } from '../shared/filesystem.mjs'
-
+import { readConfigFile } from '../shared/configLoader.mjs';
 /************************************************************************************************/
 /******************************************** MAIN **********************************************/
 /************************************************************************************************/
@@ -33,6 +33,7 @@ const run = async ({
   output: output,
   examples: examples,
   language: language,
+  config: config,
   'as-path': asPath
 }) => {
   let libraryName = 'your-library' // TODO find a better default if package.json isn't available...
@@ -48,21 +49,23 @@ const run = async ({
      // fail silently
      throw error
   }
-
-  const config = await readJson(path.join(language, 'language.config.json'))
-
+  // Load in config
+  const conf = await readConfigFile(config, language);
+  
   return macrofy(platformApi, appApi, template, output, {
     headline: "documentation",
     outputDirectory:    'content',
     sharedTemplates:    path.join(language, 'templates'),
     createModuleDirectories: asPath,
-    copySchemasIntoModules: config.copySchemasIntoModules,
+    copySchemasIntoModules: conf.copySchemasIntoModules,
     examples: examples,
-    templatesPerModule: config.templatesPerModule,
-    templatesPerSchema: config.templatesPerSchema,
-    operators: config.operators,
+    templatesPerModule: conf.templatesPerModule,
+    templatesPerSchema: conf.templatesPerSchema,
+    operators: conf.operators,
     libraryName: libraryName,
-    hidePrivate: false
+    hidePrivate: false,
+    enableListenAndOnceDeclarations: conf.enableListenAndOnceDeclarations || false
+
   })
 }
 
