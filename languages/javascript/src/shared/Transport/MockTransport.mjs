@@ -101,16 +101,14 @@ function receive(_callback) {
   }
 }
 
-function event(module, event, value) {
+function event(module, event, data) {
   callback(JSON.stringify({
     jsonrpc: '2.0',
     method: `${module}.${event}`,
-    params: [
-      {
-        name: 'value',
-        value: value
-      }
-    ]
+    params:
+    {
+      value: data
+    }
   }))
 }
 

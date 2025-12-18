@@ -67,9 +67,20 @@ test('Basic Property get', () => {
 
 test('Basic Property subscribe', () => {
     let p = Simple.plainProperty(value => {
-        expect(value.value).toBe("value 123")
+        expect(value).toBe("value 123")
+        Simple.clear();
     })
     MockTransport.event("Simple","onPlainPropertyChanged",  "value 123");
+    return p;
+});
+
+// This is to test the patch in Bidirectional gateway that handles event payloads that are arrays
+test('Test event payload and array should be handled as a single argument array', () => {
+    let p = Simple.plainProperty(value => {
+        expect(Array.isArray(value)).toBe(true)
+        Simple.clear();
+    })
+    MockTransport.event("Simple","onPlainPropertyChanged",  [1,2,3]);
     return p;
 });
 
@@ -94,7 +105,7 @@ test('Basic Property set with null', () => {
 test('Basic Property subscribe to event', () => {
     Simple.clear("onPlainPropertyChanged");
     let p = Simple.listen("onPlainPropertyChanged", value => {
-        expect(value.value).toBe( "value 123")
+        expect(value).toBe( "value 123")
     })
     MockTransport.event("Simple","onPlainPropertyChanged",  "value 123");
     return p;

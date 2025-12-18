@@ -39,7 +39,15 @@ function processMessage(json) {
     if (json.id !== undefined) {
       PlatformApi.request(json.id, json.method, json.params);
     } else {
-      PlatformApi.notify(json.method, json.params);
+      let params = json.params;
+      // TODO: Check if json.params is an array and if so, convert to a key-value object
+      // This is necessary because for Ripple, if params is an array this means that 
+      // the callback function is expected to have one argument - the array itself.
+      // This is not compliant with the JSON-RPC specification, i.e. it should be removed.
+      if (Array.isArray(params)) {
+        params = { "value": json.params };
+      }
+      PlatformApi.notify(json.method, params);
     }
   } else if (json.id !== undefined) {
     AppApi.response(json.id, json.result, json.error);
