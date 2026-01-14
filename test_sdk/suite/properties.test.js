@@ -74,7 +74,7 @@ test('Basic Property subscribe', () => {
     return p;
 });
 
-// This is to test the patch in Bidirectional gateway that handles event payloads that are arrays
+// This is to test the patch in bidirectional gateway to handle events differently if params in the jsonrpc message is an array
 test('Test event payload and array should be handled as a single argument array', () => {
     let p = Simple.plainProperty(value => {
         expect(Array.isArray(value)).toBe(true)
