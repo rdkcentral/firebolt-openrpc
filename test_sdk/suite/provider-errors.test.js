@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 Comcast Cable Communications Management, LLC
+ * Copyright 2026 Comcast Cable Communications Management, LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -47,7 +47,7 @@ beforeAll(() => {
     })
 
     class SimpleProvider {
-        requestSimpleMethod(...args) {
+        requestBasicMethod(...args) {
             providerMethodRequestReceived = true
 
             throw {
@@ -62,7 +62,7 @@ beforeAll(() => {
 
     Provider.provide(new SimpleProvider())
     //call the provider method to trigger the error
-    MockTransport.receiveMessage(JSON.stringify({ jsonrpc: "2.0", method: "Provider.requestSimpleMethod", id: 1 }))
+    MockTransport.receiveMessage(JSON.stringify({ jsonrpc: "2.0", method: "Provider.requestBasicMethod", id: 1 }))
 
     return new Promise((resolve, reject) => {
         setTimeout(resolve, 100)

@@ -7,7 +7,7 @@
     },
     "methods": [
         {
-            "name": "requestSimpleMethod",
+            "name": "requestBasicMethod",
             "tags": [
                 {
                     "name": "capabilities",
