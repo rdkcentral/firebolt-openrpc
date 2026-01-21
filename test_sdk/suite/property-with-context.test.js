@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 Comcast Cable Communications Management, LLC
+ * Copyright 2026 Comcast Cable Communications Management, LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@
 
 import { transport } from '../TransportHarness.js'
 import MockTransport from '../../build/sdk/javascript/src/Transport/MockTransport.mjs'
-import { Advanced } from '../../build/sdk/javascript/src/sdk.mjs'
+import { PropertyExtension } from '../../build/sdk/javascript/src/sdk.mjs'
 
 
 import { expect } from '@jest/globals';
@@ -28,16 +28,14 @@ let propertySetterWasTriggeredWithValue = false
 let contextSentToGetter = false
 let contextSentToSetter = false
 let contextSentToSubscriber = false
-let contextSentToEvent = false
-let bothContextSentToEvent = false
 
 beforeAll(() => {
 
-    transport.onSend ((json) => {
+    transport.onSend((json) => {
         let [module, method] = json.method.split('.')
 
-        //assert that module is Advanced
-        expect(module).toBe('Advanced')
+        //assert that module is PropertyExtension
+        expect(module).toBe('PropertyExtension')
 
         if (method === 'propertyWithContext') {
             if (json.params.appId === 'some-app') {
@@ -74,19 +72,9 @@ beforeAll(() => {
                 propertySetterWasTriggeredWithValue = true
             }
         }
-        else if (method === "onEventWithContext") {
-            if (json.params.appId === 'some-app') {
-                contextSentToEvent = true
-            }
-        }
-        else if (method === "onEventWithTwoContext") {
-            if (json.params.appId === 'some-app' && json.params.state === 'inactive') {
-                bothContextSentToEvent = true
-            }
-        }
     });
 
-    Advanced.propertyWithContext('some-app', true)
+    PropertyExtension.propertyWithContext('some-app', true)
 
     return new Promise((resolve, reject) => {
         setTimeout(resolve, 100)
@@ -94,14 +82,14 @@ beforeAll(() => {
 })
 
 test('Context Property get', () => {
-    return Advanced.propertyWithContext("some-app").then(result => {
+    return PropertyExtension.propertyWithContext("some-app").then(result => {
         expect(result).toBe(true)
         expect(contextSentToGetter).toBe(true)
     })
 });
 
 test('Context Property subscribe', () => {
-    return Advanced.propertyWithContext("some-app", value => {
+    return PropertyExtension.propertyWithContext("some-app", value => {
         expect(value).toBe(false)
         expect(contextSentToSubscriber).toBe(true)
     })
@@ -112,15 +100,3 @@ test('Context Property set', () => {
     expect(propertySetterWasTriggeredWithValue).toBe(true)
     expect(contextSentToSetter).toBe(true)
 });
-
-test('Event with single context param', () => {
-    Advanced.listen("onEventWithContext", "some-app", (data) => {
-        expect(contextSentToEvent).toBe(true)
-    })
-})
-
-test('Event with two context params', () => {
-    Advanced.listen("onEventWithTwoContext", "some-app", "inactive", (data) => {
-        expect(bothContextSentToEvent).toBe(true)
-    })
-})

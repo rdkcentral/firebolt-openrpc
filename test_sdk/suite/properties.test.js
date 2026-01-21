@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 Comcast Cable Communications Management, LLC
+ * Copyright 2026 Comcast Cable Communications Management, LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,21 +18,20 @@
 
 import { transport } from '../TransportHarness.js'
 import MockTransport from '../../build/sdk/javascript/src/Transport/MockTransport.mjs'
-import { Simple } from '../../build/sdk/javascript/src/sdk.mjs'
+import { PropertyExtension } from '../../build/sdk/javascript/src/sdk.mjs'
 import { expect } from '@jest/globals';
-
 
 let propertySetterWasTriggered = false
 let propertySetterWasTriggeredWithValue = false
 
 beforeAll(() => {
 
-    transport.onSend ((json) => {
+    transport.onSend((json) => {
         let [module, method] = json.method.split('.')
 
-        expect(module).toBe('Simple')
+        expect(module).toBe('PropertyExtension')
 
-        if (method === 'plainProperty') {
+        if (method === 'basicProperty') {
             /*
             transport.response(json.id, {
                 foo: "here's foo"
@@ -40,12 +39,12 @@ beforeAll(() => {
             */
             MockTransport.receiveMessage(JSON.stringify({ jsonrpc: "2.0", result: { foo: "here's foo" }, id: json.id }))
         }
-        else if (method === 'onPlainPropertyChanged') {
+        else if (method === 'onBasicPropertyChanged') {
             // Confirm the listener is on
             MockTransport.receiveMessage(JSON.stringify({ jsonrpc: "2.0", result: { listening: true, event: method }, id: json.id }))
 
         }
-        else if (method === 'setPlainProperty') {
+        else if (method === 'setBasicProperty') {
             propertySetterWasTriggered = true
             if (json.params.value.foo === 'a new foo!' || json.params.value.foo === null) {
                 propertySetterWasTriggeredWithValue = true
@@ -60,32 +59,32 @@ beforeAll(() => {
 
 
 test('Basic Property get', () => {
-    return Simple.plainProperty().then(result => {
+    return PropertyExtension.basicProperty().then(result => {
         expect(result.foo).toBe("here's foo")
     })
 });
 
 test('Basic Property subscribe', () => {
-    let p = Simple.plainProperty(value => {
+    let p = PropertyExtension.basicProperty(value => {
         expect(value).toBe("value 123")
-        Simple.clear();
+        PropertyExtension.clear();
     })
-    MockTransport.event("Simple","onPlainPropertyChanged",  "value 123");
+    MockTransport.event("PropertyExtension", "onBasicPropertyChanged", "value 123");
     return p;
 });
 
 // This is to test the patch in Bidirectional gateway that handles event payloads that are arrays
 test('Test event payload and array should be handled as a single argument array', () => {
-    let p = Simple.plainProperty(value => {
+    let p = PropertyExtension.basicProperty(value => {
         expect(Array.isArray(value)).toBe(true)
-        Simple.clear();
+        PropertyExtension.clear();
     })
-    MockTransport.event("Simple","onPlainPropertyChanged",  [1,2,3]);
+    MockTransport.event("PropertyExtension", "onBasicPropertyChanged", [1, 2, 3]);
     return p;
 });
 
 test('Basic Property set', () => {
-    Simple.plainProperty({
+    PropertyExtension.basicProperty({
         foo: 'a new foo!'
     })
 
@@ -94,19 +93,19 @@ test('Basic Property set', () => {
 });
 
 test('Basic Property set with null', () => {
-    Simple.plainProperty({
+    PropertyExtension.basicProperty({
         foo: null
     })
     expect(propertySetterWasTriggered).toBe(true)
     expect(propertySetterWasTriggeredWithValue).toBe(true)
 });
 
-//test listen to "onPlainPropertyChanged" event
+//test listen to "onBasicPropertyChanged" event
 test('Basic Property subscribe to event', () => {
-    Simple.clear("onPlainPropertyChanged");
-    let p = Simple.listen("onPlainPropertyChanged", value => {
-        expect(value).toBe( "value 123")
+    PropertyExtension.clear("onBasicPropertyChanged");
+    let p = PropertyExtension.listen("onBasicPropertyChanged", value => {
+        expect(value).toBe("value 123")
     })
-    MockTransport.event("Simple","onPlainPropertyChanged",  "value 123");
+    MockTransport.event("PropertyExtension", "onBasicPropertyChanged", "value 123");
     return p;
 });
