@@ -1,46 +1,46 @@
 import "./utils/bootstrap.mjs";
 
 
-import Advanced from "../../build/sdk/javascript/src/Advanced/index.mjs";
+import { PropertyExtension, Simple, EventExtension } from "../../../build/sdk/javascript/src/sdk.mjs";
 
-//import Simple from "../../build/sdk/javascript/src/Simple/index.mjs";
 
 import { triggerRaw } from './utils/httpClientHelper.js';
 
 let result = null;
 
-/*
+
 result = await new Promise((resolve) => {
   let listenerId = null;
 
-  Simple.once("basicPropertyChanged", (data) => {
+    EventExtension.once("onEventWithThreeParams", (param1, param2, param3) => {
+      console.log("Subscribe callback:", param1, param2, param3);
+
+      EventExtension.clear(listenerId);
+      resolve({ param1, param2, param3 });
+    }).then((id) => {
+      listenerId = id;
+      console.log("Subscribe ID:", listenerId);
+      triggerRaw('{"jsonrpc":"2.0","method":"EventExtension.onEventWithThreeParams","params":{"appId": "someAppId", "value": "foo param", "extra": {"foo":"bar"}}}');
+    });
+});
+
+console.log("Final Result:", result);
+
+result = await new Promise((resolve) => {
+  let listenerId = null;
+  PropertyExtension.once("onPropertyWithContextChanged", "appContext1", (data) => {
+    //PropertyExtension.propertyWithContext("appContext1", (data) => {
     console.log("Subscribe callback:", data);
 
-    Simple.clear(listenerId);
+    PropertyExtension.clear(listenerId);
     resolve(data);
   }).then((id) => {
     listenerId = id;
     console.log("Subscribe ID:", listenerId);
-    triggerRaw('{"jsonrpc":"2.0","method":"Simple.onBasicPropertyChanged","params":{ "value": "Living Room"}}');
+    triggerRaw('{"jsonrpc":"2.0","method":"PropertyExtension.onPropertyWithContextChanged","params":{ "value": false}}');
   });
 });
 
 console.log("Final Result:", result);
-*/
 
-await Advanced.propertyWithContext("app12");
 
-await new Promise((resolve) => {
-  let listenerId = null;
-  Advanced.listen( (event, data) => {
-    console.log("Subscribe callback:",event, data);
-
-    Advanced.clear(listenerId);
-    resolve(data);
-  }).then((id) => {
-    listenerId = id;
-    console.log("Subscribe ID:", listenerId);
-    triggerRaw('{"jsonrpc":"2.0","method":"Advanced.onEventWithContext","params":["foo", "bar"]}');
-  });
-});
-console.log("Final Result:", result);
