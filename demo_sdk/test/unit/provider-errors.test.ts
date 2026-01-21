@@ -16,10 +16,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { transport } from '../TransportHarness.js'
-import MockTransport from '../../build/sdk/javascript/src/Transport/MockTransport.mjs'
-import { Provider } from '../../build/sdk/javascript/src/sdk.mjs'
-import { expect } from '@jest/globals';
+import { test, expect, beforeAll } from '@jest/globals';
+
+import { transport } from '../../TransportHarness.js'
+import MockTransport from '../../../build/sdk/javascript/src/Transport/MockTransport.mjs'
+import { Provider } from '../../../build/sdk/javascript/src/sdk.mjs'
 
 let providerMethodRequestReceived = false
 let providerMethodErrorSent = false

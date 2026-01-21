@@ -15,88 +15,72 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-
-import { transport } from '../TransportHarness.js'
-import MockTransport from '../../build/sdk/javascript/src/Transport/MockTransport.mjs'
-import { PropertyExtension } from '../../build/sdk/javascript/src/sdk.mjs'
-
-
-import { expect } from '@jest/globals';
-
-let propertySetterWasTriggered = false
-let propertySetterWasTriggeredWithValue = false
-let contextSentToGetter = false
-let contextSentToSetter = false
-let contextSentToSubscriber = false
-
+import { test, expect, beforeAll } from '@jest/globals';
+import { transport } from '../../TransportHarness.js';
+import MockTransport from '../../../build/sdk/javascript/src/Transport/MockTransport.mjs';
+import { PropertyExtension } from '../../../build/sdk/javascript/src/sdk.mjs';
+let propertySetterWasTriggered = false;
+let propertySetterWasTriggeredWithValue = false;
+let contextSentToGetter = false;
+let contextSentToSetter = false;
+let contextSentToSubscriber = false;
 beforeAll(() => {
-
     transport.onSend((json) => {
-        let [module, method] = json.method.split('.')
-
+        let [module, method] = json.method.split('.');
         //assert that module is PropertyExtension
-        expect(module).toBe('PropertyExtension')
-
+        expect(module).toBe('PropertyExtension');
         if (method === 'propertyWithContext') {
             if (json.params.appId === 'some-app') {
-                contextSentToGetter = true
+                contextSentToGetter = true;
             }
             //transport.response(json.id, true) 
-            MockTransport.receiveMessage(JSON.stringify({ jsonrpc: "2.0", result: true, id: json.id }))
+            MockTransport.receiveMessage(JSON.stringify({ jsonrpc: "2.0", result: true, id: json.id }));
         }
         else if (method === 'onPropertyWithContextChanged') {
             if (json.params.appId === 'some-app') {
-                contextSentToSubscriber = true
+                contextSentToSubscriber = true;
             }
-
             // Confirm the listener is on
             /* transport.response(json.id, {
                  listening: true,
                  event: method
              })
                  */
-            MockTransport.receiveMessage(JSON.stringify({ jsonrpc: "2.0", result: { listening: true, event: method }, id: json.id }))
-
+            MockTransport.receiveMessage(JSON.stringify({ jsonrpc: "2.0", result: { listening: true, event: method }, id: json.id }));
             // send out a request event
             setTimeout(_ => {
-                transport.response(json.id, false)
-            })
+                transport.response(json.id, false);
+            });
         }
         else if (method === 'setPropertyWithContext') {
             if (json.params.appId === 'some-app') {
-                contextSentToSetter = true
+                contextSentToSetter = true;
             }
-
-            propertySetterWasTriggered = true
+            propertySetterWasTriggered = true;
             if (json.params.value === true) {
-                propertySetterWasTriggeredWithValue = true
+                propertySetterWasTriggeredWithValue = true;
             }
         }
     });
-
-    PropertyExtension.propertyWithContext('some-app', true)
-
+    PropertyExtension.propertyWithContext('some-app', true);
     return new Promise((resolve, reject) => {
-        setTimeout(resolve, 100)
-    })
-})
-
+        setTimeout(resolve, 100);
+    });
+});
 test('Context Property get', () => {
     return PropertyExtension.propertyWithContext("some-app").then(result => {
-        expect(result).toBe(true)
-        expect(contextSentToGetter).toBe(true)
-    })
+        expect(result).toBe(true);
+        expect(contextSentToGetter).toBe(true);
+    });
 });
-
 test('Context Property subscribe', () => {
     return PropertyExtension.propertyWithContext("some-app", value => {
-        expect(value).toBe(false)
-        expect(contextSentToSubscriber).toBe(true)
-    })
+        expect(value).toBe(false);
+        expect(contextSentToSubscriber).toBe(true);
+    });
 });
-
 test('Context Property set', () => {
-    expect(propertySetterWasTriggered).toBe(true)
-    expect(propertySetterWasTriggeredWithValue).toBe(true)
-    expect(contextSentToSetter).toBe(true)
+    expect(propertySetterWasTriggered).toBe(true);
+    expect(propertySetterWasTriggeredWithValue).toBe(true);
+    expect(contextSentToSetter).toBe(true);
 });
