@@ -69,7 +69,7 @@ test('Basic Property subscribe', () => {
         expect(value).toBe("value 123")
         PropertyExtension.clear();
     })
-    MockTransport.event("PropertyExtension", "onbasicPropertyChanged", "value 123");
+    MockTransport.event("PropertyExtension", "onBasicPropertyChanged", "value 123");
     return p;
 });
 
@@ -79,7 +79,7 @@ test('Test event payload and array should be handled as a single argument array'
         expect(Array.isArray(value)).toBe(true)
         PropertyExtension.clear();
     })
-    MockTransport.event("PropertyExtension", "onbasicPropertyChanged", [1, 2, 3]);
+    MockTransport.event("PropertyExtension", "onBasicPropertyChanged", [1, 2, 3]);
     return p;
 });
 
@@ -100,12 +100,12 @@ test('Basic Property set with null', () => {
     expect(propertySetterWasTriggeredWithValue).toBe(true)
 });
 
-//test listen to "onbasicPropertyChanged" event
+//test listen to "onBasicPropertyChanged" event
 test('Basic Property subscribe to event', () => {
-    PropertyExtension.clear("onbasicPropertyChanged");
-    let p = PropertyExtension.listen("onbasicPropertyChanged", value => {
+    PropertyExtension.clear("onBasicPropertyChanged");
+    let p = PropertyExtension.listen("onBasicPropertyChanged", value => {
         expect(value).toBe("value 123")
     })
-    MockTransport.event("PropertyExtension", "onbasicPropertyChanged", "value 123");
+    MockTransport.event("PropertyExtension", "onBasicPropertyChanged", "value 123");
     return p;
 });
