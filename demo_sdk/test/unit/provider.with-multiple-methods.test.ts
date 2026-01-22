@@ -16,10 +16,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { transport } from '../TransportHarness.js'
-import MockTransport from '../../build/sdk/javascript/src/Transport/MockTransport.mjs'
-import { Provider } from '../../build/sdk/javascript/src/sdk.mjs'
-import { expect } from '@jest/globals';
+import { test, expect, beforeAll } from '@jest/globals';
+
+import { transport } from '../../TransportHarness.js'
+import MockTransport from '../../../build/sdk/javascript/src/Transport/MockTransport.mjs'
+import { Provider } from '../../../build/sdk/javascript/src/sdk.mjs'
 
 
 let providerRegistered = false
@@ -93,7 +94,7 @@ test('Provide method 1 called with two args', () => {
     expect(numberOfArgsMethodOne).toBe(1)
 })
 
-test('Provide method 1 parame1 is true', () => {
+test('Provide method 1 param1 is true', () => {
     expect(methodOneParameters).toBe(true)
 })
 

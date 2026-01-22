@@ -104,7 +104,7 @@ const provide = function(capability, provider) {
       let handleError = error => {
         response.error = {
           code: error.code || 1000, // todo: should be some reserved code for "Unknown"
-          message: error.message || `An error occured while calling provided ${method} method.`
+          message: error.message || `An error occurred while calling provided ${method} method.`
         }
 
         if (error.data) {

@@ -16,12 +16,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { transport } from '../TransportHarness.js'
-import MockTransport from '../../build/sdk/javascript/src/Transport/MockTransport.mjs'
-import { EventExtension } from '../../build/sdk/javascript/src/sdk.mjs'
+import { test, expect, beforeAll } from '@jest/globals';
 
+import { transport } from '../../TransportHarness.js'
+import { EventExtension } from '../../../build/sdk/javascript/src/sdk.mjs'
 
-import { expect } from '@jest/globals';
 
 let contextSentToEvent = false
 let bothContextSentToEvent = false

@@ -16,10 +16,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { transport } from '../TransportHarness.js'
-import MockTransport from '../../build/sdk/javascript/src/Transport/MockTransport.mjs'
-import { Provider } from '../../build/sdk/javascript/src/sdk.mjs'
-import { expect } from '@jest/globals';
+import { test, expect, beforeAll } from '@jest/globals';
+
+import { transport } from '../../TransportHarness.js'
+import MockTransport from '../../../build/sdk/javascript/src/Transport/MockTransport.mjs'
+import { Provider } from '../../../build/sdk/javascript/src/sdk.mjs'
 
 let providerMethodRequestReceived = false
 let providerMethodErrorSent = false
@@ -51,7 +52,7 @@ beforeAll(() => {
             providerMethodRequestReceived = true
 
             throw {
-                message: 'An error occured!',
+                message: 'An error occurred!',
                 code: 50,
                 data: {
                     info: 'the_info'
@@ -74,11 +75,11 @@ test('Provider as Class registered', () => {
     expect(1).toBe(1)
 });
 
-test('Provider method throw an exeption', () => {
+test('Provider method throw an exception', () => {
 
     expect(providerMethodRequestReceived).toBe(true)
     expect(providerMethodErrorSent).toBe(true)
-    expect(errorMessage).toBe('An error occured!')
+    expect(errorMessage).toBe('An error occurred!')
     expect(errorCode).toBe(50)
     expect(errorData).toEqual({ info: 'the_info' })
 

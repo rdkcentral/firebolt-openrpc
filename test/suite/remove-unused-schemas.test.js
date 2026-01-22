@@ -21,7 +21,7 @@ import {
     findRefs,
     resolveRef,
     collectRefs, removeUnusedSchemas
-} from '../src/shared/module/remove-unused-schemas.mjs'
+} from '../../src/shared/module/remove-unused-schemas.mjs'
 
 const mockSpec = {
     methods: [
