@@ -1,6 +1,6 @@
 import "./utils/bootstrap.mjs";
 
-import { test, expect, describe } from "@jest/globals";
+import { test, expect} from "@jest/globals";
 import { EventExtension } from "../../../build/sdk/javascript/src/sdk.mjs";
 
 import { triggerRaw } from './utils/httpClientHelper.js';

@@ -43,7 +43,7 @@ beforeAll(() => {
         requestBasicMethod(...args) {
             providerMethodRequestReceived = true;
             throw {
-                message: 'An error occured!',
+                message: 'An error occurred!',
                 code: 50,
                 data: {
                     info: 'the_info'
@@ -63,10 +63,10 @@ test('Provider as Class registered', () => {
     // this one is good as long as there's no errors yet
     expect(1).toBe(1);
 });
-test('Provider method throw an exeption', () => {
+test('Provider method throw an exception', () => {
     expect(providerMethodRequestReceived).toBe(true);
     expect(providerMethodErrorSent).toBe(true);
-    expect(errorMessage).toBe('An error occured!');
+    expect(errorMessage).toBe('An error occurred!');
     expect(errorCode).toBe(50);
     expect(errorData).toEqual({ info: 'the_info' });
 });
