@@ -68,6 +68,53 @@
             ]
         },
         {
+            "name": "testMethodWithoutParams",
+            "summary": "A method.",
+            "tags": [
+                {
+                    "name": "capabilities",
+                    "x-uses": [
+                        "xrn:firebolt:capability:test:test"
+                    ]
+                }
+            ],
+            "description": "Validates basic method generation with a single boolean parameter and a simple object result.",
+            "params": [],
+            "result": {
+                "name": "result",
+                "summary": "A result for testing basic method generation.",
+                "schema": {
+                    "type": "object",
+                    "required": [
+                        "foo"
+                    ],
+                    "properties": {
+                        "foo": {
+                            "type": "string",
+                            "description": "A required field in the result."
+                        },
+                        "bar": {
+                            "type": "number",
+                            "description": "An optional field in the result."
+                        }
+                    },
+                    "additionalProperties": false
+                }
+            },
+            "examples": [
+                {
+                    "name": "Default Example",
+                    "params": [],
+                    "result": {
+                        "name": "Default Result",
+                        "value": {
+                            "foo": "here's foo"
+                        }
+                    }
+                }
+            ]
+        },
+        {
             "name": "testMarkdownDescription",
             "summary": "A method that pulls it's description from an external markdown file.",
             "description": {
@@ -93,23 +140,9 @@
             ],
             "result": {
                 "name": "result",
-                "summary": "A result for testing basic method generation.",
+                "summary": "A result string.",
                 "schema": {
-                    "type": "object",
-                    "required": [
-                        "foo"
-                    ],
-                    "properties": {
-                        "foo": {
-                            "type": "string",
-                            "description": "A required field in the result."
-                        },
-                        "bar": {
-                            "type": "number",
-                            "description": "An optional field in the result."
-                        }
-                    },
-                    "additionalProperties": false
+                    "type": "string"
                 }
             },
             "examples": [
@@ -123,9 +156,7 @@
                     ],
                     "result": {
                         "name": "Default Result",
-                        "value": {
-                            "foo": "here's foo"
-                        }
+                        "value": "here's the result"
                     }
                 }
             ]
@@ -213,7 +244,7 @@
                 "name": "result",
                 "summary": "A result for testing basic method generation.",
                 "schema": {
-                    "type": "null"
+                    "type": "integer"
                 }
             },
             "examples": [
@@ -227,7 +258,7 @@
                     ],
                     "result": {
                         "name": "Default Result",
-                        "value": null
+                        "value": 123
                     }
                 }
             ]
