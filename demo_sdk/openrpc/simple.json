@@ -78,7 +78,7 @@
                     ]
                 }
             ],
-            "description": "Validates basic method generation with a single boolean parameter and a simple object result.",
+            "description": "Validates basic method generation with no parameters and a simple object result.",
             "params": [],
             "result": {
                 "name": "result",
