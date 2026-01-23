@@ -116,7 +116,7 @@
         },
         {
             "name": "testMarkdownDescription",
-            "summary": "A method that pulls it's description from an external markdown file.",
+            "summary": "A method that pulls its description from an external markdown file.",
             "description": {
                 "$ref": "file:../descriptions/modules/Simple/methodWithMarkdownDescription.md"
             },
