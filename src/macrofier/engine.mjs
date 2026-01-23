@@ -1961,6 +1961,12 @@ function insertExampleMacros(template, examples, method, json, templates, appApi
       let first = true
       let languages = ''
       Object.entries(example.languages).forEach(([name, language]) => {
+
+        //In the generated documentation, the example code for JSON-RPC is deprecated, so we omit it.
+        if (name.toLowerCase() === 'json-rpc') {
+          return;
+        }
+
         let languageContent = language.template //getTemplateForExample(method, templates)
         // wrap example in collapsible HTML if not first
         if (!first) {

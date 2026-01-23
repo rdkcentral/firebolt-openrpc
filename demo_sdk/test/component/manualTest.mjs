@@ -8,20 +8,36 @@ import { triggerRaw } from './utils/httpClientHelper.js';
 
 let result = null;
 
-
 result = await new Promise((resolve) => {
   let listenerId = null;
 
-    EventExtension.once("onEventWithThreeParams", (param1, param2, param3) => {
-      console.log("Subscribe callback:", param1, param2, param3);
+  EventExtension.once("onBasicEvent", (data) => {
+    console.log("Subscribe callback:", data);
+    EventExtension.clear(listenerId);
+    resolve(data);
+  }).then((id) => {
+    listenerId = id;
+    console.log("Subscribe ID:", listenerId);
+    triggerRaw('{"jsonrpc":"2.0","method":"EventExtension.onBasicEvent","params":{ "value": "foo param"}}');
+  });
+});
 
-      EventExtension.clear(listenerId);
-      resolve({ param1, param2, param3 });
-    }).then((id) => {
-      listenerId = id;
-      console.log("Subscribe ID:", listenerId);
-      triggerRaw('{"jsonrpc":"2.0","method":"EventExtension.onEventWithThreeParams","params":{"appId": "someAppId", "value": "foo param", "extra": {"foo":"bar"}}}');
-    });
+console.log("Final Result:", result);
+
+/*
+result = await new Promise((resolve) => {
+  let listenerId = null;
+
+  EventExtension.once("onEventWithThreeParams", (param1, param2, param3) => {
+    console.log("Subscribe callback:", param1, param2, param3);
+
+    EventExtension.clear(listenerId);
+    resolve({ param1, param2, param3 });
+  }).then((id) => {
+    listenerId = id;
+    console.log("Subscribe ID:", listenerId);
+    triggerRaw('{"jsonrpc":"2.0","method":"EventExtension.onEventWithThreeParams","params":{"appId": "someAppId", "value": "foo param", "extra": {"foo":"bar"}}}');
+  });
 });
 
 console.log("Final Result:", result);
@@ -43,4 +59,4 @@ result = await new Promise((resolve) => {
 
 console.log("Final Result:", result);
 
-
+*/
