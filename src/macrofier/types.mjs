@@ -126,7 +126,7 @@ function getMethodSignatureResult(method, module, {  callback, namespace }) {
   else {
     result = getTemplate('/result/default')
   }
-  return result.replace(/\$\{method\.result\.type\}/g, type)
+  return result.replace(/\$\{method\.result\.name\}/g, method.result.name).replace(/\$\{method\.result\.type\}/g, type)
 }
 
 const getTemplate = (name) => {
