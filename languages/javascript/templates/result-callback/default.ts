@@ -1,1 +1,1 @@
-${method.result.type}
+${method.result.name}: ${method.result.type}
