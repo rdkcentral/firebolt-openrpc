@@ -10,7 +10,15 @@ methods = Map<string, {
 
 function transform(result, transforms) {
 
-    if (!transforms || !transforms.methods) {
+    if (!transforms) {
+        return result
+    }
+
+    if (transforms.jsonString) {
+        return typeof result === 'string' ? result : JSON.stringify(result)
+    }
+
+    if (!transforms.methods) {
         return result
     }
 

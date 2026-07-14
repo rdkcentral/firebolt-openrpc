@@ -107,6 +107,22 @@ export const registerEventContext = (module, event, context) => {
   validContext[module.toLowerCase()][event] = context.concat()
 }
 
+const eventTransforms = {}
+
+export const registerEventTransform = (module, event, transforms) => {
+  if (transforms) {
+    eventTransforms[module.toLowerCase() + '.' + event] = transforms
+  }
+}
+
+const applyEventTransform = (value, transforms) => {
+  if (!transforms) return value
+  if (transforms.jsonString) {
+    return typeof value === 'string' ? value : JSON.stringify(value)
+  }
+  return value
+}
+
 const callCallbacks = (cbs, args) => {
   cbs &&
     Object.keys(cbs).forEach(listenerId => {
@@ -152,12 +168,15 @@ const doListen = function(module, event, callback, context, once, internal=false
       }
 
       const setter = internal ? listeners.setInternal : listeners.set
+      const transform = eventTransforms[module.toLowerCase() + '.' + event]
 
       if (wildcard) {
-        setter(key, ''+listenerId, value => callback(event, value))
+        setter(key, ''+listenerId, value => callback(event, applyEventTransform(value, transform)))
       }
       else {
-        setter(key, ''+listenerId, callback)
+        setter(key, ''+listenerId, transform
+          ? (value) => callback(applyEventTransform(value, transform))
+          : callback)
       }
     })
 

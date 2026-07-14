@@ -1040,6 +1040,16 @@ const generateImports = (json, templates, options = { destination: '' }) => {
     imports += getTemplate('/imports/context-event', templates)
   }
 
+  if (eventsOrEmptyArray(json).find(m => {
+    const payload = getPayloadFromEvent(m)
+    return payload && (
+      (payload['$ref'] || '').endsWith('/JSONString') ||
+      payload.contentMediaType === 'application/json'
+    )
+  })) {
+    imports += getTemplate('/imports/transform-event', templates)
+  }
+
   if (providersOrEmptyArray(json).length) {
     imports += getTemplate('/imports/provider', templates)
   }
@@ -1301,6 +1311,21 @@ function insertMethodMacros(template, methodObj, json, templates, type = '', exa
     }
   }
 
+  // Detect JSONString result type: transport sends a JSON object, SDK must serialize to string for consumers
+  // Use methodObj (pre-localization) so $ref URLs are still intact for endsWith checks.
+  // Also check contentMediaType for cases where schemas are fully inlined.
+  const rawPayload = isEventMethod(methodObj)
+    ? getPayloadFromEvent(methodObj)
+    : (methodObj.result && methodObj.result.schema)
+  const isJsonStringResult = rawPayload && (
+    (rawPayload['$ref'] || '').endsWith('/JSONString')
+    || rawPayload.contentMediaType === 'application/json'
+  )
+  if (isJsonStringResult) {
+    method.transforms = method.transforms || {}
+    method.transforms.jsonString = true
+  }
+
   const paramDelimiter = config.operators ? config.operators.paramDelimiter : ''
 
   const temporalItemName = isTemporalSetMethod(methodObj) ? methodObj.result.schema.items && methodObj.result.schema.items.title || 'Item' : ''
@@ -1469,6 +1494,7 @@ function insertMethodMacros(template, methodObj, json, templates, type = '', exa
     .replace(/\$\{if\.params\.empty\}(.*?)\$\{end\.if\.params\.empty\}/gms, method.params.length === 0 ? '$1' : '')
     .replace(/\$\{if\.signature\.empty\}(.*?)\$\{end\.if\.signature\.empty\}/gms, (method.params.length === 0 && resultType === '') ? '$1' : '')
     .replace(/\$\{if\.context\}(.*?)\$\{end\.if\.context\}/gms, event && event.params.length ? '$1' : '')
+    .replace(/\$\{if\.transforms\}(.*?)\$\{end\.if\.transforms\}/gms, method.transforms ? '$1' : '')
     .replace(/\$\{method\.params\.serialization\}/g, serializedParams)
     .replace(/\$\{method\.params\.serialization\.with\.indent\}/g, indent(serializedParams, '    '))
     // Typed signature stuff
