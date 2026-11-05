@@ -140,13 +140,13 @@ Macrofier --> OUT
 
 - **Threading Architecture**: Single-threaded, event-driven Node.js process.
 - **Main Thread**: Parses CLI arguments, dispatches to the selected task, drives the async/await pipeline for reading input files, expanding macros, and writing output files.
-- **Worker Threads**: Concurrency is achieved through asynchronous I/O; independent file reads (such as reading every file in a schema directory) are parallelized with `Promise.all` within the single main thread.
+- **Worker Threads**: None; concurrent file operations use asynchronous I/O and `Promise.all` on the single main thread.
 - **Synchronization**: Each task instance owns an isolated set of document and template objects for the duration of a single CLI invocation, keeping generated state scoped to that run.
 - **Async / Event Dispatch**: Each task returns a `Promise` that resolves once its output files have been written; the CLI prints a completion message only after that promise resolves.
 
 ### Prerequisites and Dependencies
 
-- **Build Dependencies**: Node.js (an `lts/*` release, as used by the project's GitHub Actions workflows) and npm. Runtime dependencies actually imported by the tool are `ajv` and `ajv-formats` (OpenRPC/JSON-Schema validation), `crocks` (functional helpers used to traverse and transform OpenRPC/JSON-Schema documents), `deepmerge` (merging OpenRPC method/schema fragments), `fs-extra` (directory creation/emptying), `node-fetch` (fetching the public JSON-Schema and OpenRPC meta-schemas during validation), and `nopt` (CLI argument parsing).
+- **Build Dependencies**: Node.js (an `lts/*` release, as used by the project's GitHub Actions workflows) and npm. Runtime dependencies actually imported by the tool are `ajv` and `ajv-formats` (OpenRPC/JSON-Schema validation), `array.prototype.groupby` (validation-error grouping), `crocks` (functional helpers used to traverse and transform OpenRPC/JSON-Schema documents), `deepmerge` (merging OpenRPC method/schema fragments), `fs-extra` (directory creation/emptying), `node-fetch` (fetching the public JSON-Schema and OpenRPC meta-schemas during validation), and `nopt` (CLI argument parsing).
 - **Configuration Files**: A `language.config.json` file is required for each target language and is read at the start of every `sdk`/`docs` invocation; an SDK configuration manifest (JSON) is required as input to the `slice` task.
 - **Task Execution Order**: The `slice`, `sdk`, and `docs` tasks are designed to run against the output of the `openrpc` task (a single, already-compiled OpenRPC document); `slice` is typically run before `sdk`/`docs` when multiple SDK variants are produced from one specification, while `sdk`/`docs` can alternatively run directly against an unsliced document.
 
@@ -201,7 +201,7 @@ sequenceDiagram
 
 **Context Switching Scenarios:**
 
-- Running `openrpc` against a directory of modules and shared schemas produces one compiled document; running it again with a different `--template` (the base OpenRPC skeleton) changes only the document's `info` block while reusing the same modules.
+- Running `openrpc` against a directory of modules and shared schemas produces one compiled document; running it again with a different `--template` (the base OpenRPC skeleton) changes the root fields that skeleton supplies (such as `info`, `methods`, and `components`) while reusing the same modules.
 - Running `slice` with different SDK configuration manifests against the same compiled document produces different method/schema subsets (for example, a Core SDK versus a Manage SDK) without recompiling the source modules.
 - Running `sdk` with `--language` pointed at `javascript` versus `cpp` reuses the same input OpenRPC document and macrofier engine but produces structurally different output because each language supplies its own `language.config.json` and templates.
 
@@ -352,7 +352,7 @@ sequenceDiagram
     FireboltAPIs->>FireboltAPIs: Generate JavaScript SDK and run tests
     FireboltAPIs->>FireboltAPIs: Generate and compile C++ SDK
     FireboltAPIs-->>CheckPR: Poll workflow run status
-    CheckPR->>PR: Post result comment on pull request
+    CheckPR->>PR: Report workflow check status
 ```
 
 ---
@@ -375,12 +375,12 @@ The closest equivalent integrations for this tool are the schema-validation and 
   - Entry point and dispatch: `src/cli.mjs`
   - Task implementations: `src/openrpc/index.mjs`, `src/slice/index.mjs`, `src/sdk/index.mjs`, `src/docs/index.mjs`, `src/validate/index.mjs`
 
-- **Method Tag Processing**: `fireboltize()` interprets Firebolt method tags (`event`, `property`, `property:readonly`, `property:immutable`, `polymorphic-pull`, `polymorphic-reducer`, `rpc-only`, `synchronous`, `exclude-from-sdk`, `calls-metrics`) and normalizes methods accordingly before they reach code/doc generation.
-  - Implementation: `src/shared/modules.mjs`
+- **Method Tag Processing**: Firebolt method tags (`event`, `property`, `property:readonly`, `property:immutable`, `polymorphic-pull`, `polymorphic-reducer`, `rpc-only`, `synchronous`, `exclude-from-sdk`, `calls-metrics`) are interpreted across compilation and generation. `fireboltize()` applies only the property, setter, polymorphic-pull, provider, temporal-set, and event-listener transformations; tags such as `synchronous`, `property:immutable`, `exclude-from-sdk`, and `calls-metrics` are read later by macrofier and type-generation helpers.
+  - Implementation: `src/shared/modules.mjs`, `src/macrofier/engine.mjs`, `src/shared/typescript.mjs`
 
-- **Error Handling Strategy**: The `validate` task counts failed documents and prints every AJV error while continuing to validate the remaining documents; the `slice` task raises an explicit error when a method's declared provider is missing from the compiled document.
+- **Error Handling Strategy**: The `validate` task counts failed documents and prints every AJV error while continuing to validate the remaining documents; the `openrpc` task raises an explicit error when a method's declared provider is missing from the compiled document.
   - Validation error reporting: `src/validate/index.mjs`, `src/validate/validator/`
-  - Provider-resolution check: `src/slice/index.mjs`
+  - Provider-resolution check: `src/openrpc/index.mjs`
 
 - **Logging & Diagnostics**: A small console logging helper provides consistent, color-coded success/info/error/header output used by every task.
   - Implementation: `src/shared/io.mjs` (`logSuccess`, `logInfo`, `logError`, `logHeader`)
@@ -402,13 +402,13 @@ The closest equivalent integrations for this tool are the schema-validation and 
 
 | Parameter                             | Type   | Default                                                               | Description                                                                                                        |
 | ------------------------------------- | ------ | --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| `createModuleDirectories`             | bool   | Language-specific (`true` for JavaScript/Markdown, `false` for C++/C) | Whether generated files are organized into one directory per module.                                               |
+| `createModuleDirectories`             | bool   | Language-specific (`true` for JavaScript; controlled by `--as-path` for Markdown; `false` for C++/C) | Whether generated files are organized into one directory per module.                                               |
 | `copySchemasIntoModules`              | bool   | Language-specific                                                     | Whether shared schemas are duplicated into each module's generated output.                                         |
 | `extractSubSchemas`                   | bool   | Language-specific (`true` for C++/C)                                  | Whether nested inline schemas are extracted into separately named schemas.                                         |
 | `unwrapResultObjects`                 | bool   | Language-specific                                                     | Whether single-property result objects are unwrapped to their inner value.                                         |
 | `createPolymorphicMethods`            | bool   | Language-specific (`true` for C++/C)                                  | Whether `polymorphic-pull`/`polymorphic-reducer` tagged methods generate a single overloaded method.               |
 | `persistPermission`                   | bool   | Language-specific (`true` for C++/C)                                  | Whether file system permissions from template files are copied onto generated output files.                        |
-| `excludeDeclarations`                 | bool   | Language-specific (`true` for C++/C)                                  | Whether a separate type-declarations file is skipped for this language.                                            |
+| `excludeDeclarations`                 | bool   | Language-specific (`true` for C++/C)                                  | Whether methods excluded from SDK implementations are also omitted from generated declaration sections (applied only when `hideExcluded` is enabled, as in the `sdk` task).                                            |
 | `treeshakePattern` / `treeshakeEntry` | string | JavaScript only                                                       | Regular expression and entry file used to prune generated modules that are not reachable from the SDK's main file. |
 
 ### Runtime Configuration
